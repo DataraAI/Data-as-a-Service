@@ -1,3 +1,4 @@
+backend/dataset_list/*
 node_modules/
 build/
 *.env
