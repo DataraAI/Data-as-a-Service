@@ -23,7 +23,7 @@ if not cap.isOpened():
     exit()
 
 directory_name = os.path.dirname(os.path.abspath(__file__))
-output_dir = os.path.join(directory_name, "dataset_list", f"bmw_{output_name}")
+output_dir = os.path.join(directory_name, "dataset_list", f"{output_name}")
 
 os.makedirs(output_dir, exist_ok=True)
 os.makedirs(os.path.join(output_dir, "orig"), exist_ok=True)
@@ -36,7 +36,7 @@ while True:
         break
 
     # Construct the filename for the current frame
-    frame_filename = os.path.join(output_dir, "orig", f"bmw_{output_name}_{str(frame_count)}.jpg")
+    frame_filename = os.path.join(output_dir, "orig", f"{output_name}_{str(frame_count)}.jpg")
 
     # Save the frame as an image file
     cv2.imwrite(frame_filename, frame)
