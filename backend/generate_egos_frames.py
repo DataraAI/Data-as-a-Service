@@ -14,12 +14,19 @@ parser.add_argument(
     choices=["base", "rotate_left", "rotate_right", "top_down", "low_angle"],
     default="base"
 )
+parser.add_argument(
+    "--custom_prompt",
+    type=str,
+    help="enter in a custom prompt for the VLM",
+    default="Create an image in the car assembler's perspective, and remove the person."
+)
 
 
 args = parser.parse_args()
 dataset_name = args.dataset_name
 frame_id = str(args.frame_id)
-view_option = str(args.view_option)
+view_option = args.view_option
+custom_prompt = args.custom_prompt
 
 
 dataset_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dataset_list", dataset_name)
@@ -45,7 +52,8 @@ client = Client("tori29umai/Qwen-Image-2509-MultipleAngles")
 if view_option == "base":
     image = handle_file(os.path.join(orig_path, f"{dataset_name}_{frame_id}.jpg"))
     dropdown_value_cn="__custom__"
-    custom_cn = "Create an image in the car assembler's perspective, and remove the person."
+    custom_cn = custom_prompt
+    # custom_cn = "Create an image in the car assembler's perspective, and remove the person."
 elif view_option == "rotate_left":
     image = handle_file(os.path.join(ego_path, f"{dataset_name}_{frame_id}_ego_base.jpg"))
     dropdown_value_cn = "镜头方向左回转45度"
