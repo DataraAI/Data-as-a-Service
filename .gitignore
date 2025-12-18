@@ -3,6 +3,7 @@ backend/__pycache__/
 backend/*.pyc
 backend/venv/
 backend/.env
+backend/dataset_list/*
 
 # Node
 frontend/node_modules/
