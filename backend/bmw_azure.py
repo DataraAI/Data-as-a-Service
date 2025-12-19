@@ -1,189 +1,99 @@
 import os
 import threading
-# import random
-from flask import Flask #, request, jsonify, send_from_directory
+from flask import Flask
 from flask_cors import CORS
 import fiftyone as fo
-from fiftyone import Sample #, Classification
-# from PIL import Image
+from fiftyone import Sample
 from dotenv import load_dotenv
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient
 
-account_url = "https://datara04749.blob.core.windows.net/"
+load_dotenv()
+account_name = "datara04749"
+account_url = f"https:://{account_name}.blob.core.windows.net/"
+container_name = "bmw"
+
 credential = DefaultAzureCredential()
 blob_service_client = BlobServiceClient(account_url=account_url, credential=credential)
-container_client = blob_service_client.get_container_client("bmw")
-load_dotenv()
-db_password = os.getenv("MONGODB_PASSWORD")
+container_client = blob_service_client.get_container_client(container_name)
 
-UPLOAD_FOLDER = "uploads"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-# DATASET_NAME = "BMW"
-# DATASET_LIST = ["bmw_grill", "bmw_rear_bumper", "BMW_Rear_Seat", "BMW_Front_Bumper"]
 blob_iter = container_client.walk_blobs(name_starts_with="", delimiter='/')
-DATASET_LIST = []
-for item in blob_iter:
-    # Items that represent folders are of type 'BlobPrefix'
-    if item.name.endswith('/'):
-        DATASET_LIST.append(item.name.rstrip('/'))
+DATASET_LIST = [item.name.rstrip('/') for item in blob_iter if item.name.endswith('/')]
 
 app = Flask(__name__)
 CORS(app)
 
-print(f"📂 Existing datasets: {fo.list_datasets()}")
-for dataset_name in fo.list_datasets():
-    fo.delete_dataset(dataset_name)
+print(f"Clearing existing datasets: {fo.list_datasets()}")
+for d_name in fo.list_datasets():
+    fo.delete_dataset(d_name)
 
-
-# is_loaded = False
-# if DATASET_NAME in fo.list_datasets():
-#     dataset = fo.load_dataset(DATASET_NAME)
-#     print(f"📂 Loaded existing dataset: {DATASET_NAME}")
-#     is_loaded = True
-# else:
-#     dataset = fo.Dataset(DATASET_NAME)
-#     print(f"✨ Created new dataset: {DATASET_NAME}")
-
-
-datasets = [fo.Dataset(dataset_name) for dataset_name in DATASET_LIST]
-
-
-# def assign_demo_labels(ds):
-#     weld_shapes = ["round", "square", "irregular"]
-#     noise_types = ["low_noise", "medium_noise", "high_noise"]
-#     colors = ["red", "blue", "green"]
-
-#     for sample in ds:
-#         if not sample.tags:  # Only assign if tags empty
-#             chosen_labels = [
-#                 random.choice(weld_shapes),
-#                 random.choice(noise_types),
-#                 random.choice(colors),
-#             ]
-#             sample.tags.extend(chosen_labels)
-#             sample.save()
-
-# # assign_demo_labels(dataset)
-# print("✅ Demo labels ensured!")
-
+datasets = [fo.Dataset(name) for name in DATASET_LIST]
 
 def add_folder_images(base_path_id):
     base_path = DATASET_LIST[base_path_id]
     dataset = datasets[base_path_id]
-    print(f"base_path: {base_path}")
+    print(f"Indexing Azure Blobs for: {base_path}")
 
-    base_dir = os.path.join("dataset_list", base_path)
-    if not os.path.exists(base_dir):
-        return
-    orig_dir = os.path.join(base_dir, "orig")
-    if not os.path.exists(orig_dir):
-        return
-    egos_dir = os.path.join(base_dir, "egos")
-    for file_path in os.listdir(orig_dir):
-        basename, ext = os.path.splitext(file_path)
-        if ext in [".jpg", ".jpeg", ".png"]:
+    orig_prefix = f"{base_path}/orig/"
+    egos_prefix = f"{base_path}/egos/"
+
+    for blob in container_client.list_blobs(name_starts_with=orig_prefix):
+        filename = os.path.basename(blob.name)
+        basename, ext = os.path.splitext(filename)
+        
+        if ext.lower() in [".jpg", ".jpeg", ".png"]:
+            online_url = f"{account_url}{container_name}/{blob.name}"
+            
+            try:
+                search_string = blob.name 
+                start_idx = search_string.index(base_path) + len(base_path) + 1
+                fid = int(''.join(filter(str.isdigit, search_string[start_idx:])))
+            except (ValueError, IndexError):
+                fid = 0
+
             sample = Sample(
-                filepath=os.path.join(orig_dir, file_path),
+                filepath=online_url,
                 tags=["exocentric"],
-                frameID=int(basename[basename.index(base_path) + len(base_path) + 1 :])
+                frameID=fid
             )
             dataset.add_sample(sample)
-    for file_path in os.listdir(egos_dir):
-        basename, ext = os.path.splitext(file_path)
-        if ext in [".jpg", ".jpeg", ".png"]:
-            egoInd = basename.index("_ego_")
-            tagName = "ego_" + basename[egoInd + 5 : ]
+
+    for blob in container_client.list_blobs(name_starts_with=egos_prefix):
+        filename = os.path.basename(blob.name)
+        basename, ext = os.path.splitext(filename)
+        
+        if ext.lower() in [".jpg", ".jpeg", ".png"]:
+            online_url = f"{account_url}{container_name}/{blob.name}"
+            
+            egoInd = blob.name.index("_ego_")
+            tagName = "ego_" + basename[basename.index("_ego_") + 5 : ]
+                
+            start_idx = blob.name.index(base_path) + len(base_path) + 1
+            fid = int(''.join(filter(str.isdigit, blob.name[start_idx : egoInd])))
+
             sample = Sample(
-                filepath=os.path.join(egos_dir, file_path),
+                filepath=online_url,
                 tags=[tagName],
-                frameID=int(basename[basename.index(base_path) + len(base_path) + 1 : egoInd])
+                frameID=fid
             )
             dataset.add_sample(sample)
 
-# for i in range(len(DATASET_LIST)):
-#     add_folder_images(i)
+for i in range(len(DATASET_LIST)):
+    add_folder_images(i)
 
-# print(f"✅ {DATASET_LIST[0]} has {len([s for s in datasets[0]])} samples")
-# print(f"✅ {DATASET_LIST[1]} has {len([s for s in datasets[1]])} samples")
+print(f"✅ {DATASET_LIST[0]} has {len([s for s in datasets[0]])} samples")
+print(f"✅ {DATASET_LIST[1]} has {len([s for s in datasets[1]])} samples")
+print(f"✅ {DATASET_LIST[2]} has {len([s for s in datasets[2]])} samples")
+print(f"✅ {DATASET_LIST[3]} has {len([s for s in datasets[3]])} samples")
 
 
+def start_fiftyone():
+    if datasets:
+        session = fo.launch_app(datasets[0], port=5151, remote=True, address="127.0.0.1")
+        session.wait()
 
-# ----------------------------
-# Launch FiftyOne
-# ----------------------------
-# def start_fiftyone():
-#     fo.launch_app(datasets[0], port=5151, remote=True, address="127.0.0.1")
-#     fo.launch_app(datasets[1], port=5151, remote=True, address="127.0.0.1")
-
-# thread = threading.Thread(target=start_fiftyone, daemon=True)
-# thread.start()
-# thread.join()
-# print("✅ FiftyOne launching on http://127.0.0.1:5151")
-
-# # ----------------------------
-# # Serve images for React
-# # ----------------------------
-# @app.route("/datasets/<path:filename>")
-# def serve_dataset_image(filename):
-#     return send_from_directory(os.path.join("dataset_list", "bmw_grill"), filename)
-
-# @app.route("/list_images")
-# def list_images():
-#     folder = request.args.get("folder")  # e.g., "train/images/good"
-#     folder_path = os.path.join("dataset_list", "bmw_grill", folder)
-#     if not os.path.exists(folder_path):
-#         return jsonify([])
-#     files = [f for f in os.listdir(folder_path) if f.lower().endswith((".jpg", ".jpeg", ".png"))]
-#     return jsonify(files)
-
-# # ----------------------------
-# # Upload route
-# # ----------------------------
-# @app.route("/upload", methods=["POST"])
-# def upload_file():
-#     if "file" not in request.files:
-#         return {"error": "No file part"}, 400
-#     file = request.files["file"]
-#     if file.filename == "":
-#         return {"error": "No selected file"}, 400
-
-#     filepath = os.path.join(UPLOAD_FOLDER, file.filename)
-#     file.save(filepath)
-
-#     if not any(s.filepath == filepath for s in dataset):
-#         sample = Sample(filepath=filepath, ground_truth=Classification(label="unlabeled"))
-#         dataset.add_sample(sample)
-#         # assign_demo_labels(dataset)
-
-#     return {"message": "File uploaded", "filename": file.filename, "label": "unlabeled"}
-
-# # ----------------------------
-# # Stats route
-# # ----------------------------
-# @app.route("/stats", methods=["GET"])
-# def get_stats():
-#     total_size = sum(os.path.getsize(s.filepath) for s in dataset) / 1e6
-#     return jsonify({
-#         "active_users": 1,
-#         "total_datasets": 10,
-#         "api_calls_today": 120,
-#         "storage_used": f"{total_size:.2f} MB"
-#     })
-
-# ----------------------------
-# Run Flask
-# ----------------------------
-
-def access_blobs():
-    container_name = "bmw"  # Replace with your container name
-    container_client = blob_service_client.get_container_client(container_name)
-
-    print(f"Listing blobs in container '{container_name}':")
-    for blob in container_client.list_blobs():
-        print(f"- {blob.name}")
+thread = threading.Thread(target=start_fiftyone, daemon=True)
+thread.start()
 
 if __name__ == "__main__":
-    # app.run(host="127.0.0.1", port=5050, debug=True, use_reloader=False)
-    access_blobs()
+    app.run(host="127.0.0.1", port=5050, debug=True, use_reloader=False)
