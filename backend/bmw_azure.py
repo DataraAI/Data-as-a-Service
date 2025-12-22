@@ -1,4 +1,3 @@
-import os
 import threading
 from flask import Flask
 from flask_cors import CORS
@@ -10,7 +9,7 @@ from azure.storage.blob import BlobServiceClient
 
 load_dotenv()
 account_name = "datara04749"
-account_url = f"https:://{account_name}.blob.core.windows.net/"
+account_url = f"https://{account_name}.blob.core.windows.net/"
 container_name = "bmw"
 
 credential = DefaultAzureCredential()
@@ -19,6 +18,7 @@ container_client = blob_service_client.get_container_client(container_name)
 
 blob_iter = container_client.walk_blobs(name_starts_with="", delimiter='/')
 DATASET_LIST = [item.name.rstrip('/') for item in blob_iter if item.name.endswith('/')]
+print("dataset list:", DATASET_LIST)
 
 app = Flask(__name__)
 CORS(app)
@@ -38,18 +38,12 @@ def add_folder_images(base_path_id):
     egos_prefix = f"{base_path}/egos/"
 
     for blob in container_client.list_blobs(name_starts_with=orig_prefix):
-        filename = os.path.basename(blob.name)
-        basename, ext = os.path.splitext(filename)
-        
-        if ext.lower() in [".jpg", ".jpeg", ".png"]:
-            online_url = f"{account_url}{container_name}/{blob.name}"
-            
-            try:
-                search_string = blob.name 
-                start_idx = search_string.index(base_path) + len(base_path) + 1
-                fid = int(''.join(filter(str.isdigit, search_string[start_idx:])))
-            except (ValueError, IndexError):
-                fid = 0
+        if blob.name.lower().endswith(('.jpg', '.jpeg', '.png')):
+            online_url = f"https://{account_name}.blob.core.windows.net/{container_name}/{blob.name}"
+            print("online_url:", online_url)
+            search_string = blob.name
+            start_idx = search_string.index(base_path) + len(base_path) + 1
+            fid = int(''.join(filter(str.isdigit, search_string[start_idx:])))
 
             sample = Sample(
                 filepath=online_url,
@@ -59,15 +53,13 @@ def add_folder_images(base_path_id):
             dataset.add_sample(sample)
 
     for blob in container_client.list_blobs(name_starts_with=egos_prefix):
-        filename = os.path.basename(blob.name)
-        basename, ext = os.path.splitext(filename)
-        
-        if ext.lower() in [".jpg", ".jpeg", ".png"]:
-            online_url = f"{account_url}{container_name}/{blob.name}"
+        filename = blob.name.split('/')[-1]
+        if filename.lower().endswith(('.jpg', '.jpeg', '.png')):
+            basename = filename.rsplit('.', 1)[0]
+            online_url = f"https://{account_name}.blob.core.windows.net/{container_name}/{blob.name}"
             
             egoInd = blob.name.index("_ego_")
             tagName = "ego_" + basename[basename.index("_ego_") + 5 : ]
-                
             start_idx = blob.name.index(base_path) + len(base_path) + 1
             fid = int(''.join(filter(str.isdigit, blob.name[start_idx : egoInd])))
 
