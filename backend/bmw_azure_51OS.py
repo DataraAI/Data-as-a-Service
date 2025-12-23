@@ -57,7 +57,7 @@ def add_folder_images(base_path_id):
 
     for blob in container_client.list_blobs(name_starts_with=orig_prefix):
         filename = os.path.basename(blob.name)
-        _, ext = os.path.splitext(filename)
+        basename, ext = os.path.splitext(filename)
         if ext.lower() in [".jpg", ".jpeg", ".png"]:
             local_path = download_blob(blob.name, base_path)
             start_idx = blob.name.index(base_path) + len(base_path) + 1
@@ -72,7 +72,7 @@ def add_folder_images(base_path_id):
 
     for blob in container_client.list_blobs(name_starts_with=egos_prefix):
         filename = os.path.basename(blob.name)
-        _, ext = os.path.splitext(filename)
+        basename, ext = os.path.splitext(filename)
         if ext.lower() in [".jpg", ".jpeg", ".png"]:
             local_path = download_blob(blob.name, base_path)
             egoInd = blob.name.index("_ego_")
@@ -83,7 +83,7 @@ def add_folder_images(base_path_id):
                 filepath=local_path,
                 tags=[tagName],
                 frameID=fid
-            )
+            ) 
             dataset.add_sample(sample)
 
 for i in range(len(DATASET_LIST)):
