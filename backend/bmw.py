@@ -37,7 +37,7 @@ for dataset_name in fo.list_datasets():
 
 
 datasets = [fo.Dataset(dataset_name) for dataset_name in DATASET_LIST]
-
+datasets_3d = []
 
 
 # def assign_demo_labels(ds):
@@ -72,7 +72,6 @@ def add_folder_images(base_path_id):
     orig_dir = os.path.join(base_dir, "orig")
     if not os.path.exists(orig_dir):
         return
-    egos_dir = os.path.join(base_dir, "egos")
     for file_path in os.listdir(orig_dir):
         basename, ext = os.path.splitext(file_path)
         if ext in [".jpg", ".jpeg", ".png"]:
@@ -82,6 +81,7 @@ def add_folder_images(base_path_id):
                 frameID=int(basename[basename.index(base_path) + len(base_path) + 1 :])
             )
             dataset.add_sample(sample)
+    egos_dir = os.path.join(base_dir, "egos")
     for file_path in os.listdir(egos_dir):
         basename, ext = os.path.splitext(file_path)
         if ext in [".jpg", ".jpeg", ".png"]:
@@ -93,6 +93,43 @@ def add_folder_images(base_path_id):
                 frameID=int(basename[basename.index(base_path) + len(base_path) + 1 : egoInd])
             )
             dataset.add_sample(sample)
+    mask_dir = os.path.join(base_dir, "mask")
+    if os.path.exists(mask_dir):
+        for file_path in os.listdir(mask_dir):
+            basename, ext = os.path.splitext(file_path)
+            if ext in [".jpg", ".jpeg", ".png"]:
+                egoInd = basename.index("_ego_")
+                maskInd = basename.index("_seg")
+                tagName = "ego_" + basename[egoInd + 5 : maskInd] + "_seg"
+                sample = Sample(
+                    filepath=os.path.join(mask_dir, file_path),
+                    tags=[tagName],
+                    frameID=int(basename[basename.index(base_path) + len(base_path) + 1 : egoInd])
+                )
+                dataset.add_sample(sample)
+    threeDGen_dir = os.path.join(base_dir, "3d_gen")
+    if os.path.exists(threeDGen_dir):
+        datasets_3d.append(fo.Dataset(dataset.name + "_3d"))
+        for file_path in os.listdir(threeDGen_dir):
+            basename, ext = os.path.splitext(file_path)
+            if ext in [".glb", ".olb"]:
+                egoInd = basename.index("_ego_")
+                maskInd = basename.index("_seg_")
+                tagName = "ego_" + basename[egoInd + 5 : maskInd] + "_glb"
+                mesh = fo.GltfMesh(
+                    tagName + "_" + basename[basename.index(base_path) + len(base_path) + 1 : egoInd],
+                    os.path.join(file_path)
+                )
+                mesh.position = [0, 0, 0]
+                scene = fo.Scene()
+                scene.add(mesh)
+                scene.write(os.path.join(threeDGen_dir, "test.fo3d"))
+                sample = Sample(
+                    filepath=os.path.join(threeDGen_dir, "test.fo3d"),
+                    tags=[tagName],
+                    frameID=int(basename[basename.index(base_path) + len(base_path) + 1 : egoInd])#,
+                )
+                datasets_3d[-1].add_sample(sample)
 
 for i in range(len(DATASET_LIST)):
     add_folder_images(i)

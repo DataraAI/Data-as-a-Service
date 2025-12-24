@@ -36,7 +36,7 @@ while True:
         break
 
     # Construct the filename for the current frame
-    frame_filename = os.path.join(output_dir, "orig", f"{output_name}_{str(frame_count)}.jpg")
+    frame_filename = os.path.join(output_dir, "orig", f"{output_name}_{str(frame_count)}.png")
 
     # Save the frame as an image file
     cv2.imwrite(frame_filename, frame)

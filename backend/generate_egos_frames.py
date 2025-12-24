@@ -50,24 +50,24 @@ os.makedirs(ego_path, exist_ok=True)
 client = Client("tori29umai/Qwen-Image-2509-MultipleAngles")
 
 if view_option == "base":
-    image = handle_file(os.path.join(orig_path, f"{dataset_name}_{frame_id}.jpg"))
+    image = handle_file(os.path.join(orig_path, f"{dataset_name}_{frame_id}.png"))
     dropdown_value_cn="__custom__"
     custom_cn = custom_prompt
     # custom_cn = "Create an image in the car assembler's perspective, and remove the person."
 elif view_option == "rotate_left":
-    image = handle_file(os.path.join(ego_path, f"{dataset_name}_{frame_id}_ego_base.jpg"))
+    image = handle_file(os.path.join(ego_path, f"{dataset_name}_{frame_id}_ego_base.png"))
     dropdown_value_cn = "镜头方向左回转45度"
     custom_cn = ""
 elif view_option == "rotate_right":
-    image = handle_file(os.path.join(ego_path, f"{dataset_name}_{frame_id}_ego_base.jpg"))
+    image = handle_file(os.path.join(ego_path, f"{dataset_name}_{frame_id}_ego_base.png"))
     dropdown_value_cn = "镜头向右回转45度"
     custom_cn = ""
 elif view_option == "top_down":
-    image = handle_file(os.path.join(ego_path, f"{dataset_name}_{frame_id}_ego_base.jpg"))
+    image = handle_file(os.path.join(ego_path, f"{dataset_name}_{frame_id}_ego_base.png"))
     dropdown_value_cn = "将镜头转为俯视"
     custom_cn = ""
 elif view_option == "low_angle":
-    image = handle_file(os.path.join(ego_path, f"{dataset_name}_{frame_id}_ego_base.jpg"))
+    image = handle_file(os.path.join(ego_path, f"{dataset_name}_{frame_id}_ego_base.png"))
     dropdown_value_cn = "将镜头转为仰视"
     custom_cn = ""
 
@@ -88,7 +88,7 @@ output_path, _ = client.predict(
 source_file = output_path
 
 # Define the destination path (can be a directory or a new file path)
-destination_path = os.path.join(ego_path, f"{dataset_name}_{frame_id}_ego_{view_option}.jpg")
+destination_path = os.path.join(ego_path, f"{dataset_name}_{frame_id}_ego_{view_option}.png")
 
 # Move the file
 try:
