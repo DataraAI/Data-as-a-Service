@@ -126,6 +126,7 @@ def add_folder_images(base_path_id):
                 frameID=fid
             ) 
             dataset.add_sample(sample)
+    dataset.compute_metadata()
 
 for i in range(len(DATASET_LIST)):
     add_folder_images(i)
