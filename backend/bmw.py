@@ -1,10 +1,10 @@
 import os
 import threading
-# import random
-from flask import Flask #, request, jsonify, send_from_directory
+import random
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import fiftyone as fo
-from fiftyone import Sample #, Classification
+from fiftyone import Sample, Classification
 # from PIL import Image
 from dotenv import load_dotenv
 
@@ -57,8 +57,6 @@ datasets_3d = []
 
 # # assign_demo_labels(dataset)
 # print("✅ Demo labels ensured!")
-
-
 
 
 def add_folder_images(base_path_id):
@@ -131,78 +129,87 @@ def add_folder_images(base_path_id):
                 )
                 datasets_3d[-1].add_sample(sample)
 
+
 for i in range(len(DATASET_LIST)):
     add_folder_images(i)
 
+
 print(f"✅ {DATASET_LIST[0]} has {len([s for s in datasets[0]])} samples")
 print(f"✅ {DATASET_LIST[1]} has {len([s for s in datasets[1]])} samples")
+print(f"✅ {DATASET_LIST[2]} has {len([s for s in datasets[2]])} samples")
+print(f"✅ {DATASET_LIST[3]} has {len([s for s in datasets[3]])} samples")
 
 
 
-# ----------------------------
-# Launch FiftyOne
-# ----------------------------
 def start_fiftyone():
     fo.launch_app(datasets[0], port=5151, remote=True, address="127.0.0.1")
     fo.launch_app(datasets[1], port=5151, remote=True, address="127.0.0.1")
+
 
 thread = threading.Thread(target=start_fiftyone, daemon=True)
 thread.start()
 thread.join()
 print("✅ FiftyOne launching on http://127.0.0.1:5151")
 
-# # ----------------------------
-# # Serve images for React
-# # ----------------------------
-# @app.route("/datasets/<path:filename>")
-# def serve_dataset_image(filename):
-#     return send_from_directory(os.path.join("dataset_list", "bmw_grill"), filename)
 
-# @app.route("/list_images")
-# def list_images():
-#     folder = request.args.get("folder")  # e.g., "train/images/good"
-#     folder_path = os.path.join("dataset_list", "bmw_grill", folder)
-#     if not os.path.exists(folder_path):
-#         return jsonify([])
-#     files = [f for f in os.listdir(folder_path) if f.lower().endswith((".jpg", ".jpeg", ".png"))]
-#     return jsonify(files)
+@app.route("/process_video", methods=["POST"])
+def process_video():
+    import subprocess
+    import shutil
 
-# # ----------------------------
-# # Upload route
-# # ----------------------------
-# @app.route("/upload", methods=["POST"])
-# def upload_file():
-#     if "file" not in request.files:
-#         return {"error": "No file part"}, 400
-#     file = request.files["file"]
-#     if file.filename == "":
-#         return {"error": "No selected file"}, 400
+    if "file" not in request.files:
+        return {"error": "No file part"}, 400
+    
+    file = request.files["file"]
+    connection_string = request.form.get("connection_string")
+    output_name = request.form.get("output_name")
+    
+    if file.filename == "":
+        return {"error": "No selected file"}, 400
+        
+    if not connection_string:
+        return {"error": "Azure connection string is required"}, 400
+    
+    if not output_name:
+        return {"error": "Output name is required"}, 400
 
-#     filepath = os.path.join(UPLOAD_FOLDER, file.filename)
-#     file.save(filepath)
+    video_filename = file.filename
+    video_path = os.path.join(UPLOAD_FOLDER, video_filename)
+    file.save(video_path)
+    
+    video_basename = os.path.splitext(video_filename)[0]
+    output_dir = os.path.join("dataset_list", video_basename)
 
-#     if not any(s.filepath == filepath for s in dataset):
-#         sample = Sample(filepath=filepath, ground_truth=Classification(label="unlabeled"))
-#         dataset.add_sample(sample)
-#         # assign_demo_labels(dataset)
+    try:
+        cmd_gen = [
+            "python", "generate_orig_frames.py",
+            "--video_path", video_path,
+            "--output_name", output_name
+        ]
+        subprocess.check_call(cmd_gen)
+        
+        cmd_upload = [
+            "python", "upload_frames_to_azure.py",
+            "--container_name", "testing",
+            "--output_name", video_basename,
+            "--input_dir", os.path.join("dataset_list", video_basename),
+            "--view", "orig",
+            "--connection_string", connection_string
+        ]
+        subprocess.check_call(cmd_upload)
+        
+        if os.path.exists(output_dir):
+            shutil.rmtree(output_dir)
+        
+        if os.path.exists(video_path):
+            os.remove(video_path)
+            
+        return {"message": "Video processed and uploaded successfully"}
 
-#     return {"message": "File uploaded", "filename": file.filename, "label": "unlabeled"}
+    except subprocess.CalledProcessError as e:
+        return {"error": f"Script execution failed: {str(e)}"}, 500
+    except Exception as e:
+        return {"error": f"An error occurred: {str(e)}"}, 500
 
-# # ----------------------------
-# # Stats route
-# # ----------------------------
-# @app.route("/stats", methods=["GET"])
-# def get_stats():
-#     total_size = sum(os.path.getsize(s.filepath) for s in dataset) / 1e6
-#     return jsonify({
-#         "active_users": 1,
-#         "total_datasets": 10,
-#         "api_calls_today": 120,
-#         "storage_used": f"{total_size:.2f} MB"
-#     })
-
-# ----------------------------
-# Run Flask
-# ----------------------------
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5050, debug=True, use_reloader=False)
+    app.run(host="0.0.0.0", port=5050, debug=True, use_reloader=False)

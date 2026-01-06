@@ -1,5 +1,5 @@
 """
-Upload image datasets to Azure Blob Storage.
+Upload image datasets to Azure Blob Storage and Cosmos DB.
 
 Usage example:
 
@@ -8,18 +8,32 @@ python backend/upload_frames_to_azure.py \
   --output_name test-output \
   --input_dir backend/dataset_list/bmw_front_bumper \
   --view egos \
-  --connection_string "<AZURE_CONNECTION_STRING>"
+  --connection_string "<AZURE_CONNECTION_STRING>" \
+  --date "20251231" \
+  --tags '["tag1", "tag2"]'
 
 Notes:
 - Only .jpg/.jpeg/.png files are uploaded
 - orig and egos are treated as independent views
 - Fully compatible with Windows, macOS, and Linux
+- Each frame also gets a document in Cosmos DB
 """
 
 import os
+import json
 import argparse
 from azure.storage.blob import BlobServiceClient
 from azure.core.exceptions import ResourceExistsError
+from azure.cosmos import CosmosClient
+
+
+# ----------------------------
+# Cosmos DB Configuration
+# ----------------------------
+COSMOS_ENDPOINT = "https://roboteyeview.documents.azure.com:443/"
+COSMOS_DATABASE = "RobotEyeView"
+COSMOS_CONTAINER = "imageTags"
+COSMOS_KEY = os.getenv("COSMOS_DB_KEY")
 
 
 # ----------------------------
@@ -63,7 +77,27 @@ parser.add_argument(
     help="Azure Blob Storage connection string"
 )
 
+parser.add_argument(
+    "--date",
+    type=str,
+    default="",
+    help="Upload date (YYYYMMDD)"
+)
+
+parser.add_argument(
+    "--tags",
+    type=str,
+    default="[]",
+    help="JSON array of tags"
+)
+
 args = parser.parse_args()
+
+# Parse tags
+try:
+    misc_tags = json.loads(args.tags)
+except:
+    misc_tags = []
 
 
 # ----------------------------
@@ -80,7 +114,7 @@ if not os.path.isdir(input_dir):
 
 
 # ----------------------------
-# Azure client setup
+# Azure Blob client setup
 # ----------------------------
 blob_service_client = BlobServiceClient.from_connection_string(
     args.connection_string
@@ -100,6 +134,14 @@ except ResourceExistsError as e:
             "Container is currently being deleted by Azure. "
             "Wait 1–2 minutes and retry."
         )
+
+
+# ----------------------------
+# Cosmos DB client setup
+# ----------------------------
+cosmos_client = CosmosClient(COSMOS_ENDPOINT, credential=COSMOS_KEY)
+cosmos_database = cosmos_client.get_database_client(COSMOS_DATABASE)
+cosmos_container = cosmos_database.get_container_client(COSMOS_CONTAINER)
 
 
 # ----------------------------
@@ -141,6 +183,25 @@ for filename in os.listdir(input_dir):
             overwrite=True
         )
 
+    cosmos_view = "exo" if view == "orig" else view
+    frame_id = f"{args.container_name}_{args.output_name}_{view}_{filename}"
+    
+    metadata_item = {
+        "id": frame_id,
+        "ContainerName": args.container_name,
+        "DatasetName": args.output_name,
+        "View": cosmos_view,
+        "FrameName": filename,
+        "BlobPath": blob_name,
+        "Date": args.date,
+        "MiscTags": misc_tags
+    }
+    
+    try:
+        cosmos_container.upsert_item(metadata_item)
+    except Exception as e:
+        print(f"Failed to upload {filename} metadata to Cosmos: {e}")
+
     uploaded_count += 1
     print(f"Uploaded ({uploaded_count}): {blob_name}")
 
@@ -150,6 +211,4 @@ print(
     f"from '{dataset_name}/{view}' "
     f"to '{args.container_name}' "
 )
-
-
-
+print(f"{uploaded_count} documents created in Cosmos DB")
