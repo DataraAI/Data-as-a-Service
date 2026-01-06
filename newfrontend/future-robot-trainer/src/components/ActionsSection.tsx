@@ -1,88 +1,107 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Database, Image, Bot, ArrowRight, ExternalLink } from "lucide-react";
+import { Database, Upload, ArrowRight, ExternalLink } from "lucide-react";
+import { UploadModal } from "@/components/UploadModal";
 
 const ActionsSection = () => {
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+
   const actions = [
     {
+      icon: Upload,
+      title: "Upload Video",
+      description: "Upload a video file for processing and Azure upload",
+      action: () => setIsUploadModalOpen(true),
+      accentColor: "sea-green",
+      isExternal: false,
+    },
+    {
       icon: Database,
-      title: "View Dataset with Annotations",
-      description: "Explore comprehensive robotics datasets with detailed annotations for training",
-      href: "/datasets/annotated",
-      variant: "default" as const,
-      color: "from-blue-500 to-cyan-500",
-    },
-    {
-      icon: Image,
-      title: "View Dataset (Images Only)",
-      description: "Access raw image datasets for computer vision model training",
-      href: "/datasets/images",
-      variant: "secondary" as const,
-      color: "from-green-500 to-emerald-500",
-    },
-    {
-      icon: Bot,
-      title: "View AI Robotics System",
-      description: "Explore our advanced AI robotics training and deployment platform",
-      href: "/robotics-system",
-      variant: "premium" as const,
-      color: "from-purple-500 to-pink-500",
+      title: "View 51 Dataset",
+      description: "Explore the dataset in FiftyOne",
+      href: "http://localhost:5151",
+      accentColor: "amber",
+      isExternal: true,
     },
   ];
 
   return (
-    <section className="py-16">
+    <section className="py-20 relative">
       <div className="container mx-auto px-6">
-        <div className="text-center mb-12">
-          <h2 className="text-4xl font-bold mb-4 bg-gradient-to-r from-foreground to-primary bg-clip-text text-transparent">
-            Quick Actions
+        <div className="text-center mb-14">
+          <h2 className="text-4xl md:text-5xl font-bold font-display mb-4 text-foreground">
+            Quick <span className="text-gradient-green">Actions</span>
           </h2>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Access your robotics training data and AI systems with one click
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            Manage your video datasets and view processing results
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
           {actions.map((action, index) => (
-            <Card key={index} className="p-8 bg-gradient-card border-border/50 shadow-elegant hover:shadow-glow transition-all duration-300 hover:scale-105 group">
+            <Card
+              key={index}
+              className={`p-8 bg-coffee-bean/50 border-border/30 hover-lift group animate-fade-up ${action.accentColor === 'sea-green'
+                  ? 'hover:glow-border-green'
+                  : 'hover:glow-border-amber'
+                }`}
+              style={{ animationDelay: `${index * 0.15}s` }}
+            >
               <div className="mb-6">
-                <div className={`w-16 h-16 rounded-xl bg-gradient-to-r ${action.color} flex items-center justify-center shadow-lg mb-4 group-hover:scale-110 transition-transform duration-300`}>
-                  <action.icon className="w-8 h-8 text-white" />
+                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-5 transition-all duration-300 group-hover:scale-110 ${action.accentColor === 'sea-green'
+                    ? 'bg-sea-green/20 group-hover:bg-sea-green/30'
+                    : 'bg-amber-glow/20 group-hover:bg-amber-glow/30'
+                  }`}>
+                  <action.icon className={`w-8 h-8 ${action.accentColor === 'sea-green' ? 'text-light-green' : 'text-amber-glow'
+                    }`} />
                 </div>
-                <h3 className="text-xl font-bold mb-2 text-foreground">{action.title}</h3>
+                <h3 className="text-2xl font-bold font-display mb-2 text-foreground">{action.title}</h3>
                 <p className="text-muted-foreground leading-relaxed">{action.description}</p>
               </div>
-              
-              <Button 
-                variant={action.variant} 
-                className="w-full group-hover:scale-105 transition-transform duration-300" 
-                size="lg"
-              >
-                <span>Access Now</span>
-                <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-300" />
-              </Button>
+
+              {action.href ? (
+                <Button
+                  asChild
+                  variant={action.accentColor === 'sea-green' ? 'default' : 'outline'}
+                  className="w-full group/btn"
+                  size="lg"
+                >
+                  <a href={action.href} target="_blank" rel="noopener noreferrer">
+                    <span>Access Now</span>
+                    <ExternalLink className="w-4 h-4 ml-2 group-hover/btn:translate-x-1 transition-transform duration-300" />
+                  </a>
+                </Button>
+              ) : (
+                <Button
+                  onClick={action.action}
+                  variant="default"
+                  className="w-full group/btn"
+                  size="lg"
+                >
+                  <span>Start Upload</span>
+                  <ArrowRight className="w-4 h-4 ml-2 group-hover/btn:translate-x-1 transition-transform duration-300" />
+                </Button>
+              )}
             </Card>
           ))}
         </div>
 
+        <UploadModal
+          isOpen={isUploadModalOpen}
+          onClose={() => setIsUploadModalOpen(false)}
+        />
+
         {/* Additional Links Section */}
-        <div className="mt-16 text-center">
-          <h3 className="text-2xl font-bold mb-8 text-foreground">Explore More</h3>
+        <div className="mt-20 text-center">
+          <h3 className="text-2xl font-bold font-display mb-8 text-foreground">Explore More</h3>
           <div className="flex flex-wrap justify-center gap-4">
-            <Button variant="outline" className="group">
+            <Button variant="ghost" className="group">
               API Documentation
               <ExternalLink className="w-4 h-4 ml-2 group-hover:scale-110 transition-transform duration-300" />
             </Button>
-            <Button variant="outline" className="group">
+            <Button variant="ghost" className="group">
               Research Papers
-              <ExternalLink className="w-4 h-4 ml-2 group-hover:scale-110 transition-transform duration-300" />
-            </Button>
-            <Button variant="outline" className="group">
-              Community Forum
-              <ExternalLink className="w-4 h-4 ml-2 group-hover:scale-110 transition-transform duration-300" />
-            </Button>
-            <Button variant="outline" className="group">
-              Enterprise Solutions
               <ExternalLink className="w-4 h-4 ml-2 group-hover:scale-110 transition-transform duration-300" />
             </Button>
           </div>

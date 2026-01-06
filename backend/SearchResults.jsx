@@ -13,10 +13,9 @@ export default function SearchComponent() {
     setStatus("");
 
     try {
-      const res = await axios.post("http://localhost:5000/search", { query });
+      const res = await axios.post("http://localhost:5050/search", { query });
       if (res.data.status === "launching") {
         setStatus("FiftyOne is starting, retrying in 3s...");
-        // Retry automatically after delay
         setTimeout(handleSearch, 3000);
       } else if (res.data.status === "ok") {
         setStatus(`Showing results for: "${res.data.query}"`);
@@ -34,7 +33,7 @@ export default function SearchComponent() {
     setQuery("");
     setStatus("Resetting search...");
     try {
-      const res = await axios.post("http://localhost:5000/search", { query: "" });
+      const res = await axios.post("http://localhost:5050/search", { query: "" });
       if (res.data.status === "ok") {
         setResults([]);
         setStatus("Showing full dataset.");
