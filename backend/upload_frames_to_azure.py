@@ -19,9 +19,11 @@ Notes:
 - Each frame also gets a document in Cosmos DB
 """
 
+import cv2 
+import numpy as np
 import os
 import json
-import argparse
+import argparse 
 from azure.storage.blob import BlobServiceClient
 from azure.core.exceptions import ResourceExistsError
 from azure.cosmos import CosmosClient
@@ -91,6 +93,13 @@ parser.add_argument(
     help="JSON array of tags"
 )
 
+parser.add_argument(
+    "--clarity_threshold",
+    type=float,
+    default=100.0,
+    help="Laplacian variance threshold for clarity"
+)
+
 args = parser.parse_args()
 
 # Parse tags
@@ -99,7 +108,13 @@ try:
 except:
     misc_tags = []
 
-
+# ----------------------------
+# Image clarity helper
+# ----------------------------
+def laplacian_sharpness_score(image_bgr: np.ndarray) -> float:
+    gray = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2GRAY)
+    lap = cv2.Laplacian(gray, cv2.CV_64F)
+    return float(lap.var())
 # ----------------------------
 # Resolve paths
 # ----------------------------
@@ -135,7 +150,6 @@ except ResourceExistsError as e:
             "Wait 1–2 minutes and retry."
         )
 
-
 # ----------------------------
 # Cosmos DB client setup
 # ----------------------------
@@ -160,7 +174,6 @@ if existing_blobs:
     )
     exit(0)
 
-
 # ----------------------------
 # Upload images
 # ----------------------------
@@ -172,7 +185,16 @@ for filename in os.listdir(input_dir):
         continue
 
     local_path = os.path.join(input_dir, filename)
-
+    
+    # Clarity check 
+    img = cv2.imread(local_path)
+    if img is None: 
+        sharpness_score = None
+        is_clear = False
+    else: 
+        sharpness_score = laplacian_sharpness_score(img)
+        is_clear = sharpness_score >= args.clarity_threshold
+    
     # Azure blob paths always use forward slashes
     blob_name = f"{args.output_name}/{view}/{filename}"
 
@@ -194,8 +216,10 @@ for filename in os.listdir(input_dir):
         "FrameName": filename,
         "BlobPath": blob_name,
         "Date": args.date,
-        "MiscTags": misc_tags
-    }
+        "MiscTags": misc_tags,
+        "SharpnessScore": sharpness_score,
+        "Clear": is_clear
+}
     
     try:
         cosmos_container.upsert_item(metadata_item)
