@@ -93,13 +93,6 @@ parser.add_argument(
     help="JSON array of tags"
 )
 
-parser.add_argument(
-    "--clarity_threshold",
-    type=float,
-    default=100.0,
-    help="Laplacian variance threshold for clarity"
-)
-
 args = parser.parse_args()
 
 # Parse tags
@@ -187,13 +180,14 @@ for filename in os.listdir(input_dir):
     local_path = os.path.join(input_dir, filename)
     
     # Clarity check 
+    clarity_threshold = 100.0 
     img = cv2.imread(local_path)
     if img is None: 
         sharpness_score = None
         is_clear = False
     else: 
         sharpness_score = laplacian_sharpness_score(img)
-        is_clear = sharpness_score >= args.clarity_threshold
+        is_clear = sharpness_score >= clarity_threshold
     
     # Azure blob paths always use forward slashes
     blob_name = f"{args.output_name}/{view}/{filename}"
