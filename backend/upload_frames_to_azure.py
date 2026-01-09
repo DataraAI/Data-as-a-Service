@@ -24,7 +24,7 @@ import numpy as np
 import os
 import json
 import argparse 
-from azure.storage.blob import BlobServiceClient
+from azure.storage.blob import BlobServiceClient, ContentSettings
 from azure.core.exceptions import ResourceExistsError
 from azure.cosmos import CosmosClient
 
@@ -196,7 +196,8 @@ for filename in os.listdir(input_dir):
         container_client.upload_blob(
             name=blob_name,
             data=f,
-            overwrite=True
+            overwrite=True,
+            content_settings=ContentSettings(content_type="image/png")
         )
 
     cosmos_view = "exo" if view == "orig" else view
