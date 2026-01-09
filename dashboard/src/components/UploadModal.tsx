@@ -4,11 +4,11 @@ import { Upload, X, Loader2, Plus, Trash2 } from 'lucide-react';
 interface UploadModalProps {
     isOpen: boolean;
     onClose: () => void;
+    onSuccess?: () => void;
 }
 
-export function UploadModal({ isOpen, onClose }: UploadModalProps) {
+export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
     const [file, setFile] = useState(null);
-    const [connectionString, setConnectionString] = useState("");
     const [outputName, setOutputName] = useState("");
     const [isUploading, setIsUploading] = useState(false);
 
@@ -36,12 +36,11 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!file || !connectionString) return;
+        if (!file) return;
 
         setIsUploading(true);
         const uploadData = new FormData();
         uploadData.append("file", file);
-        uploadData.append("connection_string", connectionString);
         uploadData.append("output_name", outputName);
 
         const date = new Date().toISOString().slice(0, 10).replace(/-/g, ""); // YYYYMMDD
@@ -58,10 +57,10 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
 
             if (response.ok) {
                 alert("Success: Video uploaded and processed successfully!");
+                if (onSuccess) onSuccess();
                 onClose();
                 // Reset form
                 setFile(null);
-                setConnectionString("");
                 setOutputName("");
                 setTags([]);
             } else {
@@ -127,18 +126,6 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
                         />
                     </div>
 
-                    {/* Connection String */}
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-300">Azure Blob Key (Connection String)</label>
-                        <input
-                            type="text"
-                            value={connectionString}
-                            onChange={(e) => setConnectionString(e.target.value)}
-                            placeholder="Blob Storage Connection String"
-                            className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500"
-                            required
-                        />
-                    </div>
 
                     {/* Tags */}
                     <div className="space-y-2">

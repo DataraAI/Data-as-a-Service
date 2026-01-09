@@ -24,13 +24,21 @@ export default function DataViewer() {
     const [visibleTags, setVisibleTags] = useState(new Set<string>());
 
     // Fetch Datasets
-    useEffect(() => {
+    const fetchDatasets = () => {
         axios.get('/api/datasets')
             .then(res => {
                 setDatasets(res.data);
-                if (res.data.length > 0) setSelectedDataset(res.data[0]);
+                // If current selected dataset is not in the new list (or empty), select first
+                if (res.data.length > 0 && (!selectedDataset || !res.data.includes(selectedDataset))) {
+                    setSelectedDataset(res.data[0]);
+                }
             })
             .catch(err => console.error("Error fetching datasets:", err));
+    };
+
+    // Fetch Datasets
+    useEffect(() => {
+        fetchDatasets();
     }, []);
 
     // Fetch Images & Extract Tags
@@ -76,7 +84,7 @@ export default function DataViewer() {
     return (
         <div className="flex flex-col h-screen text-slate-100 bg-slate-950 font-sans">
             <Navigation />
-            <div className="flex flex-1 overflow-hidden">
+            <div className="flex flex-1 overflow-hidden pt-16">
                 {/* Sidebar */}
                 <Sidebar
                     availableTags={availableTags}
@@ -153,6 +161,7 @@ export default function DataViewer() {
             <UploadModal
                 isOpen={isUploadModalOpen}
                 onClose={() => setIsUploadModalOpen(false)}
+                onSuccess={fetchDatasets}
             />
         </div>
     )
