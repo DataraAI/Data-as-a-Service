@@ -1,7 +1,14 @@
 import React, { useEffect } from 'react';
-import { X, Copy, ChevronLeft, ChevronRight, Info } from 'lucide-react';
+import { X, Copy, ChevronLeft, ChevronRight, Info, Calendar, Activity, Eye, Check } from 'lucide-react';
 
-export function ImageModal({ image, onClose, onNext, onPrev }) {
+interface ImageModalProps {
+    image: any;
+    onClose: () => void;
+    onNext?: () => void;
+    onPrev?: () => void;
+}
+
+export function ImageModal({ image, onClose, onNext, onPrev }: ImageModalProps) {
     if (!image) return null;
 
     // Keyboard navigation

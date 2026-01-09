@@ -40,101 +40,42 @@ CORS(app)
 
 LOCAL_ROOT = "testing_data"
 
-def download_blob(blob_name, base_path):
-    rel_path = blob_name.replace(base_path + "/", "")
-    local_path = os.path.join(LOCAL_ROOT, base_path, rel_path)
-    os.makedirs(os.path.dirname(local_path), exist_ok=True)
-    if not os.path.exists(local_path):
-        blob_client = BlobClient(
-            account_url=account_url,
-            container_name=container_name,
-            blob_name=blob_name,
-            credential=credential
-        )
-        with open(local_path, "wb") as f:
-            f.write(blob_client.download_blob().readall())
-    return local_path
 
-def get_cosmos_metadata(dataset_name):
+def get_cosmos_metadata_map(dataset_name):
     """
-    Attempts to fetch metadata for the given dataset_name from Cosmos DB.
-    Returns a list of tags from matching documents.
+    Fetches all metadata documents for the given dataset_name from Cosmos DB.
+    Returns a dictionary mapping BlobPath -> document.
     """
-    default_tags = []
+    metadata_map = {}
     
     try:
         client = CosmosClient(COSMOS_ENDPOINT, credential=COSMOS_KEY)
         database = client.get_database_client(COSMOS_DATABASE)
         container = database.get_container_client(COSMOS_CONTAINER)
         
+        # Select relevant fields using BlobPath as key if possible, or FrameName if BlobPath isn't reliable match
+        # Upload script sets 'BlobPath' = f"{output_name}/{view}/{filename}" which matches blob.name exactly.
         query = f"SELECT * FROM c WHERE c.DatasetName = '{dataset_name}'"
         items = list(container.query_items(query=query, enable_cross_partition_query=True))
         
-        if items:
-            tags = items[0].get("MiscTags", [])
-            print(f"Found {len(items)} documents for {dataset_name}, tags: {tags}")
-            return tags
-        else:
-            print(f"No Cosmos documents found for dataset: {dataset_name}")
-            return default_tags
+        print(f"Found {len(items)} Cosmos documents for {dataset_name}")
+        
+        for item in items:
+            # Normalize key
+            blob_path = item.get("BlobPath")
+            if blob_path:
+                metadata_map[blob_path] = item
+                
+        return metadata_map
             
     except Exception as e:
         print(f"⚠️ Failed to fetch metadata for {dataset_name} from Cosmos: {e}")
-        return default_tags
+        return metadata_map
 
-def add_folder_images(base_path_id):
-    base_path = DATASET_LIST[base_path_id]
-    dataset = datasets[base_path_id]
-    print(f"Indexing Azure Blobs for: {base_path}")
-    
-    db_tags = get_cosmos_metadata(base_path)
-
-    orig_prefix = f"{base_path}/orig/"
-    egos_prefix = f"{base_path}/egos/"
-
-    for blob in container_client.list_blobs(name_starts_with=orig_prefix):
-        filename = os.path.basename(blob.name)
-        basename, ext = os.path.splitext(filename)
-        if ext.lower() in [".jpg", ".jpeg", ".png"]:
-            local_path = download_blob(blob.name, base_path)
-            start_idx = blob.name.index(base_path) + len(base_path) + 1
-            fid = int("".join(filter(str.isdigit, blob.name[start_idx:])))
-            
-            tagName = "exocentric"
-            sample_tags = [tagName] + db_tags
-            
-            sample = Sample(
-                filepath=local_path,
-                tags=sample_tags,
-                frameID=fid
-            )
-            dataset.add_sample(sample)
-
-    for blob in container_client.list_blobs(name_starts_with=egos_prefix):
-        filename = os.path.basename(blob.name)
-        basename, ext = os.path.splitext(filename)
-        if ext.lower() in [".jpg", ".jpeg", ".png"]:
-            local_path = download_blob(blob.name, base_path)
-            egoInd = blob.name.index("_ego_")
-            
-            tagName = "ego_" + filename[filename.index("_ego_") + 5 :]
-            sample_tags = [tagName] + db_tags
-            
-            sample = Sample(
-                filepath=local_path,
-                tags=sample_tags,
-                frameID=fid
-            ) 
-            dataset.add_sample(sample)
-    # dataset.compute_metadata()
 
 # for i in range(len(DATASET_LIST)):
 #     add_folder_images(i)
 
-print(f"✅ {DATASET_LIST[0]} has {len(datasets[0])} samples" if len(DATASET_LIST) > 0 else "No datasets found")
-print(f"✅ {DATASET_LIST[1]} has {len(datasets[1])} samples" if len(DATASET_LIST) > 1 else "")
-print(f"✅ {DATASET_LIST[2]} has {len(datasets[2])} samples" if len(DATASET_LIST) > 2 else "")
-print(f"✅ {DATASET_LIST[3]} has {len(datasets[3])} samples" if len(DATASET_LIST) > 3 else "")
 
 def start_fiftyone():
     try:
@@ -153,9 +94,8 @@ def get_dataset_images(name):
     if name not in DATASET_LIST:
         return jsonify({"error": "Dataset not found"}), 404
         
-    # Get metadata from Cosmos
-    # Get metadata from Cosmos
-    db_tags = get_cosmos_metadata(name)
+    # Get metadata map from Cosmos
+    metadata_map = get_cosmos_metadata_map(name)
 
     image_list = []
     base_prefix = f"{name}/"
@@ -165,31 +105,52 @@ def get_dataset_images(name):
         blobs = container_client.list_blobs(name_starts_with=base_prefix)
         for blob in blobs:
              if blob.name.endswith(('.png', '.jpg', '.jpeg')):
-                 # Derive tags
-                 current_tags = list(db_tags)
+                 # Get specific metadata for this blob
+                 cosmos_doc = metadata_map.get(blob.name, {})
                  
+                 # Base tags from Cosmos (MiscTags)
+                 current_tags = list(cosmos_doc.get("MiscTags", []))
+                 
+                 # Add derived tags (View)
                  if "/orig/" in blob.name:
                      current_tags.append("exocentric")
                  elif "/egos/" in blob.name:
-                     # try to extract ego name
+                     current_tags.append("ego_view")
+                     # Extract specific ego name if present
                      try:
-                         filename = os.path.basename(blob.name)
-                         if "_ego_" in filename:
-                             ego_part = filename.split("_ego_")[1]
-                             # Remove extension and potential suffix
-                             ego_name = os.path.splitext(ego_part)[0]
-                             current_tags.append(f"ego_{ego_name}")
-                         else:
-                             current_tags.append("ego_view")
+                         if "_ego_" in blob.name:
+                             # .../name_ego_Left.jpg -> Left
+                             # Filename parsing
+                             fname = os.path.basename(blob.name)
+                             parts = fname.split("_ego_")
+                             if len(parts) > 1:
+                                 ego_name = os.path.splitext(parts[1])[0]
+                                 current_tags.append(f"ego_{ego_name}")
                      except:
-                         current_tags.append("ego_view")
+                         pass
 
-                 image_list.append({
+                 # Add other metadata as tags or separate fields?
+                 # User wants "tags". Let's add Sharpness/Clear as tags for now or just pass them as data
+                 if cosmos_doc.get("Clear") is True:
+                     current_tags.append("clear")
+                 elif cosmos_doc.get("Clear") is False:
+                     current_tags.append("blurry")
+                     
+                 # Construct full object
+                 image_data = {
                      "id": blob.name,
                      "url": f"{account_url}{container_name}/{blob.name}",
                      "name": os.path.basename(blob.name),
-                     "tags": current_tags 
-                 })
+                     "tags": list(set(current_tags)), # Deduplicate
+                     # Pass raw metadata for the modal to display
+                     "metadata": {
+                         "date": cosmos_doc.get("Date"),
+                         "sharpness": cosmos_doc.get("SharpnessScore"),
+                         "view": cosmos_doc.get("View")
+                     }
+                 }
+                 image_list.append(image_data)
+
     except Exception as e:
          return jsonify({"error": str(e)}), 500
          
@@ -202,7 +163,7 @@ def get_dataset_images(name):
 # thread.start()
 
 
-@app.route("/process_video", methods=["POST"])
+@app.route("/api/process_video", methods=["POST"])
 def process_video():
     import subprocess
     import shutil

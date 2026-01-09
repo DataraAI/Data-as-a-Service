@@ -1,13 +1,20 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Maximize2 } from 'lucide-react';
 
-export function ImageGrid({ images, onImageClick, visibleTags }) {
-    const [displayedImages, setDisplayedImages] = useState([]);
+interface ImageGridProps {
+    images: any[];
+    onImageClick: (image: any) => void;
+    visibleTags: Set<string>;
+}
+
+export function ImageGrid({ images, onImageClick, visibleTags }: ImageGridProps) {
+    const [displayedImages, setDisplayedImages] = useState<any[]>([]);
     const [page, setPage] = useState(1);
     const itemsPerPage = 50;
-    const observerTarget = useRef(null);
+    const observerTarget = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
+        // Reset when images prop changes (filter changes)
         setDisplayedImages(images.slice(0, itemsPerPage));
         setPage(1);
     }, [images]);
@@ -42,7 +49,6 @@ export function ImageGrid({ images, onImageClick, visibleTags }) {
         }
     }, [page, images]);
 
-
     return (
         <div className="p-4 flex-1 h-full overflow-y-auto bg-slate-950">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -66,7 +72,7 @@ export function ImageGrid({ images, onImageClick, visibleTags }) {
 
                         {/* Tags Overlay */}
                         <div className="absolute bottom-6 left-0 right-0 p-2 flex flex-wrap gap-1">
-                            {img.tags && img.tags.map(tag => (
+                            {img.tags && img.tags.map((tag: string) => (
                                 visibleTags instanceof Set && visibleTags.has(tag) && (
                                     <span
                                         key={tag}
@@ -86,7 +92,7 @@ export function ImageGrid({ images, onImageClick, visibleTags }) {
                 ))}
             </div>
 
-            {/* Intersection Observer Target */}
+            {/* Intersection Observer Target for Infinite Scroll */}
             <div ref={observerTarget} className="h-10 w-full mt-4" />
 
             {displayedImages.length === 0 && (
