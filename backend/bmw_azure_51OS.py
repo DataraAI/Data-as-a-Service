@@ -1,10 +1,10 @@
 import os
 import threading
 import json
-from flask import Flask
+from flask import Flask, jsonify
 from flask_cors import CORS
-import fiftyone as fo
-from fiftyone import Sample
+# import fiftyone as fo
+# from fiftyone import Sample
 from dotenv import load_dotenv
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient, BlobClient
@@ -32,11 +32,11 @@ DATASET_LIST = [item.name.rstrip("/") for item in blob_iter if item.name.endswit
 app = Flask(__name__)
 CORS(app)
 
-print(f"Clearing existing datasets: {fo.list_datasets()}")
-for d_name in fo.list_datasets():
-    fo.delete_dataset(d_name)
+# print(f"Clearing existing datasets: {fo.list_datasets()}")
+# for d_name in fo.list_datasets():
+#     fo.delete_dataset(d_name)
 
-datasets = [fo.Dataset(name) for name in DATASET_LIST]
+# datasets = [fo.Dataset(name) for name in DATASET_LIST]
 
 LOCAL_ROOT = "testing_data"
 
@@ -126,10 +126,10 @@ def add_folder_images(base_path_id):
                 frameID=fid
             ) 
             dataset.add_sample(sample)
-    dataset.compute_metadata()
+    # dataset.compute_metadata()
 
-for i in range(len(DATASET_LIST)):
-    add_folder_images(i)
+# for i in range(len(DATASET_LIST)):
+#     add_folder_images(i)
 
 print(f"✅ {DATASET_LIST[0]} has {len(datasets[0])} samples" if len(DATASET_LIST) > 0 else "No datasets found")
 print(f"✅ {DATASET_LIST[1]} has {len(datasets[1])} samples" if len(DATASET_LIST) > 1 else "")
@@ -137,13 +137,69 @@ print(f"✅ {DATASET_LIST[2]} has {len(datasets[2])} samples" if len(DATASET_LIS
 print(f"✅ {DATASET_LIST[3]} has {len(datasets[3])} samples" if len(DATASET_LIST) > 3 else "")
 
 def start_fiftyone():
-    if datasets:
-        session = fo.launch_app(datasets[0], port=5151, remote=True, address="127.0.0.1")
-        session.wait()
+    try:
+        if datasets:
+            session = fo.launch_app(datasets[0], port=5151, remote=True, address="127.0.0.1")
+            session.wait()
+    except Exception as e:
+        print(f"FiftyOne launch failed (expected if port in use): {e}")
+
+@app.route("/api/datasets", methods=["GET"])
+def get_datasets():
+    return jsonify(DATASET_LIST)
+
+@app.route("/api/dataset/<name>", methods=["GET"])
+def get_dataset_images(name):
+    if name not in DATASET_LIST:
+        return jsonify({"error": "Dataset not found"}), 404
+        
+    # Get metadata from Cosmos
+    # Get metadata from Cosmos
+    db_tags = get_cosmos_metadata(name)
+
+    image_list = []
+    base_prefix = f"{name}/"
+    
+    try:
+        # List blobs directly from Azure
+        blobs = container_client.list_blobs(name_starts_with=base_prefix)
+        for blob in blobs:
+             if blob.name.endswith(('.png', '.jpg', '.jpeg')):
+                 # Derive tags
+                 current_tags = list(db_tags)
+                 
+                 if "/orig/" in blob.name:
+                     current_tags.append("exocentric")
+                 elif "/egos/" in blob.name:
+                     # try to extract ego name
+                     try:
+                         filename = os.path.basename(blob.name)
+                         if "_ego_" in filename:
+                             ego_part = filename.split("_ego_")[1]
+                             # Remove extension and potential suffix
+                             ego_name = os.path.splitext(ego_part)[0]
+                             current_tags.append(f"ego_{ego_name}")
+                         else:
+                             current_tags.append("ego_view")
+                     except:
+                         current_tags.append("ego_view")
+
+                 image_list.append({
+                     "id": blob.name,
+                     "url": f"{account_url}{container_name}/{blob.name}",
+                     "name": os.path.basename(blob.name),
+                     "tags": current_tags 
+                 })
+    except Exception as e:
+         return jsonify({"error": str(e)}), 500
+         
+    return jsonify(image_list)
 
 
-thread = threading.Thread(target=start_fiftyone, daemon=True)
-thread.start()
+
+
+# thread = threading.Thread(target=start_fiftyone, daemon=True)
+# thread.start()
 
 
 @app.route("/process_video", methods=["POST"])
@@ -223,4 +279,4 @@ def process_video():
         return {"error": f"An error occurred: {str(e)}"}, 500
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5050, debug=True, use_reloader=False)
+    app.run(host="0.0.0.0", port=5151, debug=True, use_reloader=False)
