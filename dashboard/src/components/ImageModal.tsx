@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { X, Copy, ChevronLeft, ChevronRight, Info, Calendar, Activity, Eye, Check } from 'lucide-react';
+import { useEffect } from 'react';
+import { X, Copy, ChevronLeft, ChevronRight, Info } from 'lucide-react';
 
 interface ImageModalProps {
     image: any;
@@ -13,16 +13,16 @@ export function ImageModal({ image, onClose, onNext, onPrev }: ImageModalProps) 
 
     // Keyboard navigation
     useEffect(() => {
-        const handleKeyDown = (e) => {
+        const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key === 'Escape') onClose();
-            if (e.key === 'ArrowRight') onNext();
-            if (e.key === 'ArrowLeft') onPrev();
+            if (e.key === 'ArrowRight' && onNext) onNext();
+            if (e.key === 'ArrowLeft' && onPrev) onPrev();
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [onClose, onNext, onPrev]);
 
-    const copyToClipboard = (text) => {
+    const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
         // Could add toast notification here
     };
@@ -89,16 +89,51 @@ export function ImageModal({ image, onClose, onNext, onPrev }: ImageModalProps) 
                         </div>
                     </div>
 
-                    {/* Metadata JSON */}
+                    {/* Formatted Metadata */}
                     <div>
-                        <div className="flex items-center mb-2">
+                        <div className="flex items-center mb-3">
                             <Info className="w-3 h-3 text-slate-500 mr-2" />
-                            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Raw Metadata</label>
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Properties</label>
                         </div>
-                        <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 overflow-x-auto">
-                            <pre className="text-[10px] text-slate-400 font-mono leading-relaxed">
-                                {JSON.stringify(image.tags || {}, null, 2)}
-                            </pre>
+
+                        <div className="bg-slate-950 rounded-lg border border-slate-800 divide-y divide-slate-800 text-[11px]">
+                            {/* Capture Date */}
+                            <div className="flex justify-between p-3">
+                                <span className="text-slate-500 font-medium">Date Captured</span>
+                                <span className="text-slate-300 font-mono">
+                                    {image.metadata?.date
+                                        ? `${image.metadata.date.substring(0, 4)}-${image.metadata.date.substring(4, 6)}-${image.metadata.date.substring(6, 8)}`
+                                        : 'N/A'}
+                                </span>
+                            </div>
+
+                            {/* Upload Date */}
+                            <div className="flex justify-between p-3">
+                                <span className="text-slate-500 font-medium">Date Uploaded</span>
+                                <span className="text-slate-300 font-mono">
+                                    {image.metadata?.uploaded_at
+                                        ? new Date(image.metadata.uploaded_at * 1000).toLocaleString()
+                                        : 'N/A'}
+                                </span>
+                            </div>
+
+                            {/* Sharpness */}
+                            <div className="flex justify-between p-3">
+                                <span className="text-slate-500 font-medium">Sharpness Score</span>
+                                <span className="text-slate-300 font-mono">
+                                    {typeof image.metadata?.sharpness === 'number'
+                                        ? image.metadata.sharpness.toFixed(2)
+                                        : 'N/A'}
+                                </span>
+                            </div>
+
+                            {/* View */}
+                            <div className="flex justify-between p-3">
+                                <span className="text-slate-500 font-medium">View</span>
+                                <span className="text-slate-300">
+                                    {image.metadata?.view || 'N/A'}
+                                </span>
+                            </div>
                         </div>
                     </div>
 

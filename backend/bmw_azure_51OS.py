@@ -16,7 +16,7 @@ load_dotenv()
 
 account_name = "datara04749"
 account_url = f"https://{account_name}.blob.core.windows.net/"
-container_name = "test"
+container_name = "bmw"
 
 # Parse Account Key from Connection String
 conn_str = os.getenv("BLOB_CONNECTION_STRING")
@@ -80,18 +80,62 @@ def get_cosmos_metadata_map(dataset_name):
 @app.route("/api/datasets", methods=["GET"])
 def get_datasets():
     try:
-        # storage_account_url = f"https://{account_name}.blob.core.windows.net/"
-        # blob_service_client = BlobServiceClient(account_url=storage_account_url, credential=credential)
-        # container_client = blob_service_client.get_container_client(container_name)
+        # 1. Try fetching from Cosmos DB to get metadata (timestamps)
+        datasets_metadata = []
+        try:
+            client = CosmosClient(COSMOS_ENDPOINT, credential=COSMOS_KEY)
+            database = client.get_database_client(COSMOS_DATABASE)
+            container = database.get_container_client(COSMOS_CONTAINER)
+            
+            # Group by DatasetName to get the latest upload timestamp
+            # NOTE: "GROUP BY" acts weird on cross-partition queries in some Cosmos configs.
+            # We will fetch all (DatasetName, _ts) and aggregate in Python.
+            query = "SELECT c.DatasetName, c._ts FROM c"
+            items = list(container.query_items(query=query, enable_cross_partition_query=True))
+            
+            # Aggregate max _ts per dataset
+            temp_map = {}
+            for item in items:
+                name = item.get("DatasetName")
+                ts = item.get("_ts", 0)
+                if name:
+                    if name not in temp_map or ts > temp_map[name]:
+                        temp_map[name] = ts
 
+            for name, ts in temp_map.items():
+                datasets_metadata.append({
+                    "name": name,
+                    "uploaded_at": ts
+                })
+                    
+        except Exception as e:
+             print(f"⚠️ Cosmos DB dataset fetch failed: {e}")
+        
+        # 2. Fallback / Merge with Blob Storage (Source of Truth for existence)
         blob_iter = container_client.walk_blobs(name_starts_with="", delimiter="/")
-        datasets = [item.name.rstrip("/") for item in blob_iter if item.name.endswith("/")]
+        blob_datasets = [item.name.rstrip("/") for item in blob_iter if item.name.endswith("/")]
         
-        # Update global list for validation
+        # Merge logic: Create a map of cosmos data
+        cosmos_map = {d["name"]: d["uploaded_at"] for d in datasets_metadata}
+        
+        final_list = []
+        for ds_name in blob_datasets:
+            final_list.append({
+                "name": ds_name,
+                "uploaded_at": cosmos_map.get(ds_name, 0) # Default to 0 if not in Cosmos
+            })
+            
+        # Update global list
         global DATASET_LIST
-        DATASET_LIST = datasets
+        DATASET_LIST = blob_datasets # Keep string list for simple validation if needed elsewhere? 
+        # Actually validation might break if we rely on this. 
+        # But get_datasets now returns OBJECTS. Frontend must handle this.
         
-        return jsonify(datasets)
+        # Sort by uploaded_at desc
+        final_list.sort(key=lambda x: x["uploaded_at"], reverse=True)
+        
+        return jsonify(final_list)
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -164,6 +208,7 @@ def get_dataset_images(name):
                      # Pass raw metadata for the modal to display
                      "metadata": {
                          "date": cosmos_doc.get("Date"),
+                         "uploaded_at": cosmos_doc.get("_ts"),
                          "sharpness": cosmos_doc.get("SharpnessScore"),
                          "view": cosmos_doc.get("View")
                      }
