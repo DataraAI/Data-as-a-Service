@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { X, Copy, ChevronLeft, ChevronRight, Info } from 'lucide-react';
+import { ThreeDViewer } from './ThreeDViewer';
 
 interface ImageModalProps {
     image: any;
@@ -39,12 +40,18 @@ export function ImageModal({ image, onClose, onNext, onPrev }: ImageModalProps) 
             </div>
 
             {/* Main Content Area */}
-            <div className="flex-1 flex items-center justify-center p-8 relative">
-                <img
-                    src={image.url}
-                    alt={image.name}
-                    className="max-h-full max-w-full object-contain rounded-lg shadow-2xl border border-slate-800"
-                />
+            <div className="flex-1 flex items-center justify-center p-8 relative overflow-hidden">
+                {image.type === '3d' ? (
+                    <div className="w-full h-full max-w-4xl border border-slate-800 rounded-lg bg-slate-900/50 relative">
+                        <ThreeDViewer url={image.proxy_url || image.url} />
+                    </div>
+                ) : (
+                    <img
+                        src={image.url}
+                        alt={image.name}
+                        className="max-h-full max-w-full object-contain rounded-lg shadow-2xl border border-slate-800"
+                    />
+                )}
             </div>
 
             {/* Right Navigation Zone */}

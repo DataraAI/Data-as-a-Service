@@ -1,7 +1,7 @@
 import os
 import threading
 import json
-from flask import Flask, jsonify
+from flask import Flask, jsonify, Response, stream_with_context
 from flask_cors import CORS
 # import fiftyone as fo
 # from fiftyone import Sample
@@ -16,7 +16,7 @@ load_dotenv()
 
 account_name = "datara04749"
 account_url = f"https://{account_name}.blob.core.windows.net/"
-container_name = "bmw"
+container_name = "test"
 
 # Parse Account Key from Connection String
 conn_str = os.getenv("BLOB_CONNECTION_STRING")
@@ -76,6 +76,21 @@ def get_cosmos_metadata_map(dataset_name):
     except Exception as e:
         print(f"⚠️ Failed to fetch metadata for {dataset_name} from Cosmos: {e}")
         return metadata_map
+
+@app.route("/api/proxy/<path:blob_name>")
+def proxy_blob(blob_name):
+    try:
+        blob_client = container_client.get_blob_client(blob_name)
+        stream = blob_client.download_blob()
+        
+        def generate():
+            for chunk in stream.chunks():
+                yield chunk
+
+        return Response(stream_with_context(generate()), mimetype="application/octet-stream")
+    except Exception as e:
+        print(f"Proxy error: {e}")
+        return jsonify({"error": str(e)}), 404
 
 @app.route("/api/datasets", methods=["GET"])
 def get_datasets():
@@ -151,7 +166,10 @@ def get_dataset_images(name):
         # List blobs directly from Azure
         blobs = container_client.list_blobs(name_starts_with=base_prefix)
         for blob in blobs:
-             if blob.name.endswith(('.png', '.jpg', '.jpeg')):
+             is_image = blob.name.lower().endswith(('.png', '.jpg', '.jpeg'))
+             is_3d = blob.name.lower().endswith(('.stl', '.obj'))
+
+             if is_image or is_3d:
                  # Generate SAS Token
                  sas_token = ""
                  if account_key:
@@ -167,19 +185,16 @@ def get_dataset_images(name):
                  # Get specific metadata for this blob
                  cosmos_doc = metadata_map.get(blob.name, {})
                  
-                 # Base tags from Cosmos (MiscTags)
+                 # Base tags from Cosmos
                  current_tags = list(cosmos_doc.get("MiscTags", []))
                  
-                 # Add derived tags (View)
+                 # ... (Tag logic remains same, mostly applicable to images but fine for 3d) ...
                  if "/orig/" in blob.name:
                      current_tags.append("exocentric")
                  elif "/egos/" in blob.name:
                      current_tags.append("ego_view")
-                     # Extract specific ego name if present
                      try:
                          if "_ego_" in blob.name:
-                             # .../name_ego_Left.jpg -> Left
-                             # Filename parsing
                              fname = os.path.basename(blob.name)
                              parts = fname.split("_ego_")
                              if len(parts) > 1:
@@ -188,8 +203,6 @@ def get_dataset_images(name):
                      except:
                          pass
 
-                 # Add other metadata as tags or separate fields?
-                 # User wants "tags". Let's add Sharpness/Clear as tags for now or just pass them as data
                  if cosmos_doc.get("Clear") is True:
                      current_tags.append("clear")
                  elif cosmos_doc.get("Clear") is False:
@@ -200,12 +213,18 @@ def get_dataset_images(name):
                  if sas_token:
                      final_url += f"?{sas_token}"
 
+                 media_type = "3d" if is_3d else "image"
+
+                 if media_type == "3d":
+                     print(f"DEBUG 3D URL: {final_url}")
+
                  image_data = {
                      "id": blob.name,
                      "url": final_url,
+                     "proxy_url": f"/api/proxy/{blob.name}",
                      "name": os.path.basename(blob.name),
-                     "tags": list(set(current_tags)), # Deduplicate
-                     # Pass raw metadata for the modal to display
+                     "type": media_type,
+                     "tags": list(set(current_tags)), 
                      "metadata": {
                          "date": cosmos_doc.get("Date"),
                          "uploaded_at": cosmos_doc.get("_ts"),
@@ -214,7 +233,8 @@ def get_dataset_images(name):
                      }
                  }
                  image_list.append(image_data)
-
+                 
+                 
     except Exception as e:
          print(f"Error fetching dataset {name}: {e}")
          return jsonify({"error": str(e)}), 500

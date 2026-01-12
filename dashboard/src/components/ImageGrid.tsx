@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Maximize2 } from 'lucide-react';
+import { Maximize2, Box } from 'lucide-react';
 
 interface ImageGridProps {
     images: any[];
@@ -58,12 +58,19 @@ export function ImageGrid({ images, onImageClick, visibleTags }: ImageGridProps)
                         className="relative group bg-slate-900 rounded-lg overflow-hidden border border-slate-800 hover:border-orange-500 transition-colors cursor-pointer"
                         onClick={() => onImageClick(img)}
                     >
-                        <img
-                            src={img.url}
-                            alt={img.name}
-                            loading="lazy"
-                            className="w-full h-auto object-contain transition-transform duration-300 group-hover:scale-105"
-                        />
+                        {img.type === '3d' ? (
+                            <div className="w-full h-48 md:h-64 flex flex-col items-center justify-center bg-slate-800/50 text-slate-500 group-hover:text-orange-400 transition-colors">
+                                <Box className="w-12 h-12 mb-2" />
+                                <span className="text-xs font-mono uppercase tracking-wider">3D Model</span>
+                            </div>
+                        ) : (
+                            <img
+                                src={img.url}
+                                alt={img.name}
+                                loading="lazy"
+                                className="w-full h-auto object-contain transition-transform duration-300 group-hover:scale-105"
+                            />
+                        )}
 
                         {/* Overlay on hover */}
                         <div className="absolute inset-0 bg-black/10 group-hover:bg-black/40 transition-colors flex items-center justify-center">
