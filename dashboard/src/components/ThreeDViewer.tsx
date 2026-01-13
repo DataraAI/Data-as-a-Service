@@ -1,22 +1,35 @@
 import React, { Suspense } from 'react';
 import { Canvas, useLoader } from '@react-three/fiber';
 import { OrbitControls, Stage, Html } from '@react-three/drei';
-import { STLLoader } from 'three-stdlib';
+import { STLLoader, GLTFLoader } from 'three-stdlib';
 import { Loader2, AlertTriangle } from 'lucide-react';
 
 interface ModelProps {
     url: string;
 }
 
-function Model({ url }: ModelProps) {
+function STLModel({ url }: ModelProps) {
     const geometry = useLoader(STLLoader, url);
     geometry.center();
-
     return (
         <mesh geometry={geometry}>
-            <meshStandardMaterial color="#f97316" /> {/* Orange-500 */}
+            <meshStandardMaterial color="#f97316" />
         </mesh>
     );
+}
+
+function GLBModel({ url }: ModelProps) {
+    const gltf = useLoader(GLTFLoader, url);
+    return <primitive object={gltf.scene} />;
+}
+
+function ModelSelector({ url }: ModelProps) {
+    const isGLB = url.toLowerCase().endsWith('.glb') || url.toLowerCase().endsWith('.gltf') || url.toLowerCase().includes('.glb?') || url.toLowerCase().includes('.gltf?');
+
+    if (isGLB) {
+        return <GLBModel url={url} />;
+    }
+    return <STLModel url={url} />;
 }
 
 class ErrorBoundary extends React.Component<{ children: React.ReactNode, fallback: React.ReactNode }, { hasError: boolean }> {
@@ -62,7 +75,7 @@ export function ThreeDViewer({ url }: ThreeDViewerProps) {
                         }
                     >
                         <Stage environment="city" intensity={0.6}>
-                            <Model url={url} />
+                            <ModelSelector url={url} />
                         </Stage>
                     </Suspense>
                 </ErrorBoundary>

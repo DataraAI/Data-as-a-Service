@@ -167,7 +167,7 @@ def get_dataset_images(name):
         blobs = container_client.list_blobs(name_starts_with=base_prefix)
         for blob in blobs:
              is_image = blob.name.lower().endswith(('.png', '.jpg', '.jpeg'))
-             is_3d = blob.name.lower().endswith(('.stl', '.obj'))
+             is_3d = blob.name.lower().endswith(('.stl', '.obj', ".glb", ".gltf"))
 
              if is_image or is_3d:
                  # Generate SAS Token
