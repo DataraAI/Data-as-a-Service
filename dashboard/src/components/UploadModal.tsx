@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Upload, X, Loader2, Plus, Trash2 } from 'lucide-react';
+import { Upload, X, Loader2, Plus, Link as LinkIcon } from 'lucide-react';
 
 interface UploadModalProps {
     isOpen: boolean;
@@ -8,20 +8,14 @@ interface UploadModalProps {
 }
 
 export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
-    const [file, setFile] = useState(null);
+    const [gdriveLink, setGdriveLink] = useState("");
     const [outputName, setOutputName] = useState("");
     const [isUploading, setIsUploading] = useState(false);
 
-    const [tags, setTags] = useState([]);
+    const [tags, setTags] = useState<string[]>([]);
     const [currentTag, setCurrentTag] = useState("");
 
     if (!isOpen) return null;
-
-    const handleFileChange = (e) => {
-        if (e.target.files && e.target.files[0]) {
-            setFile(e.target.files[0]);
-        }
-    };
 
     const handleAddTag = () => {
         if (currentTag.trim()) {
@@ -30,43 +24,50 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
         }
     };
 
-    const handleRemoveTag = (index) => {
+    const handleRemoveTag = (index: number) => {
         setTags(tags.filter((_, i) => i !== index));
     };
 
-    const handleSubmit = async (e) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!file) return;
+        if (!gdriveLink) return;
 
         setIsUploading(true);
-        const uploadData = new FormData();
-        uploadData.append("file", file);
-        uploadData.append("output_name", outputName);
 
         const date = new Date().toISOString().slice(0, 10).replace(/-/g, ""); // YYYYMMDD
-        uploadData.append("date", date);
-        uploadData.append("tags", JSON.stringify(tags));
+
+        const payload = {
+            gdrive_link: gdriveLink,
+            output_name: outputName,
+            date: date,
+            tags: tags // Backend expects regex or list? Previous code used JSON.stringify(tags), but if we send JSON body we can send array directly if backend supports it, check backend. 
+            // Previous backend: `tags_json = request.form.get("tags", "[]")` then `json.loads`. 
+            // I will send it as an object property, backend needs to be updated to read JSON body anyway.
+        };
 
         try {
             const response = await fetch("/api/process_video", {
                 method: "POST",
-                body: uploadData,
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(payload),
             });
 
             const data = await response.json();
 
             if (response.ok) {
-                alert("Success: Video uploaded and processed successfully!");
+                alert("Success: Video queued for download and processing!");
                 if (onSuccess) onSuccess();
                 onClose();
                 // Reset form
-                setFile(null);
+                setGdriveLink("");
                 setOutputName("");
                 setTags([]);
             } else {
                 throw new Error(data.error || "Upload failed");
             }
-        } catch (error) {
+        } catch (error: any) {
             alert(`Error: ${error.message}`);
         } finally {
             setIsUploading(false);
@@ -86,30 +87,28 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
                 <div className="mb-6">
                     <h2 className="text-xl font-bold text-white flex items-center gap-2">
                         <Upload className="w-5 h-5 text-orange-500" />
-                        Upload Video
+                        Import from Google Drive
                     </h2>
                     <p className="text-sm text-slate-400 mt-1">
-                        Upload video, tags, and Azure connection details.
+                        Provide a public Google Drive link to process.
                     </p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    {/* Video File */}
+                    {/* GDrive Link */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-300">Video File</label>
-                        <input
-                            type="file"
-                            accept="video/*"
-                            onChange={handleFileChange}
-                            className="block w-full text-sm text-slate-400
-                                file:mr-4 file:py-2 file:px-4
-                                file:rounded-full file:border-0
-                                file:text-sm file:font-semibold
-                                file:bg-orange-500/10 file:text-orange-500
-                                hover:file:bg-orange-500/20
-                                cursor-pointer"
-                            required
-                        />
+                        <label className="text-sm font-medium text-slate-300">Google Drive Link</label>
+                        <div className="relative">
+                            <LinkIcon className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
+                            <input
+                                type="text"
+                                value={gdriveLink}
+                                onChange={(e) => setGdriveLink(e.target.value)}
+                                placeholder="https://drive.google.com/file/d/..."
+                                className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 pl-9 text-sm text-white focus:outline-none focus:border-orange-500"
+                                required
+                            />
+                        </div>
                     </div>
 
                     {/* Dataset Name */}
@@ -129,7 +128,7 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
 
                     {/* Tags */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-300">Misc Tags</label>
+                        <label className="text-sm font-medium text-slate-300">Misc Tags (e.g. location, conditions)</label>
                         <div className="flex gap-2">
                             <input
                                 type="text"
@@ -186,7 +185,7 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
                             className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-sm rounded flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {isUploading && <Loader2 className="w-4 h-4 animate-spin" />}
-                            {isUploading ? 'Uploading...' : 'Start Upload'}
+                            {isUploading ? 'Processing...' : 'Start Process'}
                         </button>
                     </div>
                 </form>

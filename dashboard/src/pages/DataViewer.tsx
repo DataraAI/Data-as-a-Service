@@ -137,7 +137,7 @@ export default function DataViewer() {
                         visibleTags={visibleTags}
                         onToggleTag={toggleTag}
                         filters={{}}
-                        onFilterChange={(key, val) => setFilterText(val)}
+                        onFilterChange={(_key, val) => setFilterText(val)}
                         onUploadClick={() => setIsUploadModalOpen(true)}
                     />
 

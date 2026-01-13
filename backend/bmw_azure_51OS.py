@@ -26,7 +26,7 @@ if conn_str:
         data = dict(item.split('=', 1) for item in conn_str.split(';') if item)
         account_key = data.get('AccountKey')
     except:
-        print("⚠️ Could not parse AccountKey from connection string")
+        print("Could not parse AccountKey from connection string")
 
 credential = DefaultAzureCredential()
 blob_service_client = BlobServiceClient(account_url=account_url, credential=credential)
@@ -74,7 +74,7 @@ def get_cosmos_metadata_map(dataset_name):
         return metadata_map
             
     except Exception as e:
-        print(f"⚠️ Failed to fetch metadata for {dataset_name} from Cosmos: {e}")
+        print(f"Failed to fetch metadata for {dataset_name} from Cosmos: {e}")
         return metadata_map
 
 @app.route("/api/proxy/<path:blob_name>")
@@ -253,41 +253,50 @@ def process_video():
     import subprocess
     import shutil
     import sys
+    import gdown
     from flask import request
 
-    if "file" not in request.files:
-        return {"error": "No file part"}, 400
+    data = request.get_json()
+    if not data:
+         return {"error": "Invalid JSON body"}, 400
+
+    gdrive_link = data.get("gdrive_link")
+    output_name = data.get("output_name")
     
-    file = request.files["file"]
-    output_name = request.form.get("output_name")
-    
-    if file.filename == "":
-        return {"error": "No selected file"}, 400
+    if not gdrive_link:
+        return {"error": "No Google Drive link provided"}, 400
         
     # Retrieve Metadata (Date & Tags)
-    date_val = request.form.get("date")
-    tags_json = request.form.get("tags", "[]")
-
-    try:
-        misc_tags = json.loads(tags_json)
-    except:
-        misc_tags = []
+    date_val = data.get("date")
+    misc_tags = data.get("tags", [])
 
     UPLOAD_FOLDER = "uploads"
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-    video_filename = file.filename
-    video_path = os.path.join(UPLOAD_FOLDER, video_filename)
-    file.save(video_path)
     
-    # Logic to align directory naming
-    if output_name:
-         video_basename = output_name
-    else:
-         video_basename = os.path.splitext(video_filename)[0]
-
-    output_dir = os.path.join("dataset_list", video_basename)
+    # Generate temporary filename
+    ts = int(datetime.now().timestamp())
+    video_filename = f"video_{ts}.mp4"
+    video_path = os.path.join(UPLOAD_FOLDER, video_filename)
 
     try:
+        print(f"⬇️ Downloading from GDrive: {gdrive_link}")
+        # fuzzy=True allows extracting ID from view links
+        downloaded_path = gdown.download(gdrive_link, video_path, quiet=False, fuzzy=True)
+        
+        if not downloaded_path:
+             return {"error": "Download failed or link invalid"}, 400
+
+        # Update path in case gdown changed it (unlikely with output arg but good to be safe)
+        video_path = downloaded_path
+        
+        # Logic to align directory naming
+        if output_name:
+             video_basename = output_name
+        else:
+             video_basename = os.path.splitext(os.path.basename(video_path))[0]
+
+        output_dir = os.path.join("dataset_list", video_basename)
+
         print(f"🔄 Processing video: {video_basename}")
         
         # 1. Process Video (Generate Frames)
@@ -301,7 +310,7 @@ def process_video():
         subprocess.check_call(cmd_gen)
         
         # 2. Upload Frames to Azure and Cosmos DB
-        # Matching container name 'testing' from previous working logic
+        # Matching container name 'test'
         cmd_upload = [
             sys.executable, "upload_frames_to_azure.py",
             "--container_name", "test",
