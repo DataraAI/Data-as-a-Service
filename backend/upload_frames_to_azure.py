@@ -75,8 +75,8 @@ parser.add_argument(
 parser.add_argument(
     "--connection_string",
     type=str,
-    required=True,
-    help="Azure Blob Storage connection string"
+    required=False,
+    help="Azure Blob Storage connection string (optional if BLOB_CONNECTION_STRING env var is set)"
 )
 
 parser.add_argument(
@@ -124,9 +124,15 @@ if not os.path.isdir(input_dir):
 # ----------------------------
 # Azure Blob client setup
 # ----------------------------
-blob_service_client = BlobServiceClient.from_connection_string(
-    args.connection_string
-)
+from dotenv import load_dotenv
+load_dotenv()
+
+connection_string = args.connection_string or os.getenv("BLOB_CONNECTION_STRING")
+
+if not connection_string:
+    raise ValueError("Azure connection string must be provided via --connection_string or BLOB_CONNECTION_STRING environment variable.")
+
+blob_service_client = BlobServiceClient.from_connection_string(connection_string)
 
 container_client = blob_service_client.get_container_client(args.container_name)
 
