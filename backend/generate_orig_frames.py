@@ -1,62 +1,11 @@
-# import argparse
-# import cv2
-# import os
-
-# parser = argparse.ArgumentParser()
-# parser.add_argument("--video_path", type=str, help="input mp4 path")
-# parser.add_argument("--output_name", type=str, help="output name for the directory of image frames")
-
-# args = parser.parse_args()
-# video_path = args.video_path
-# output_name = args.output_name
-
-# if '~' in video_path:
-#     video_path = video_path.replace("~", os.path.expanduser("~"))
-
-# if not os.path.exists(video_path):
-#     print(f"File '{video_path}' does not exist.")
-#     exit()
-
-# cap = cv2.VideoCapture(video_path)
-# if not cap.isOpened():
-#     print(f"Error: Could not open video at {video_path}")
-#     exit()
-
-# directory_name = os.path.dirname(os.path.abspath(__file__))
-# output_dir = os.path.join(directory_name, "dataset_list", f"{output_name}")
-
-# os.makedirs(output_dir, exist_ok=True)
-# os.makedirs(os.path.join(output_dir, "orig"), exist_ok=True)
-
-# frame_count = 0
-# while True:
-#     ret, frame = cap.read() # Read a frame from the video
-
-#     if not ret: # If no more frames are returned, break the loop
-#         break
-
-#     # Construct the filename for the current frame
-#     frame_filename = os.path.join(output_dir, "orig", f"{output_name}_{str(frame_count)}.png")
-
-#     # Save the frame as an image file
-#     cv2.imwrite(frame_filename, frame)
-
-#     frame_count += 1
-
-# print(f"Successfully extracted {frame_count} frames to {output_dir}")
-
-
-# cap.release()
-# cv2.destroyAllWindows() # Close any OpenCV windows (if you were displaying frames)
-
 import argparse
 import cv2
 import os
+import math
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--video_path", type=str, required=True, help="input mp4 path")
 parser.add_argument("--output_name", type=str, required=True, help="output name for the directory")
-# New argument for desired FPS
 parser.add_argument("--target_fps", type=float, default=1.0, help="how many frames to save per second of video")
 
 args = parser.parse_args()
@@ -79,9 +28,20 @@ if not cap.isOpened():
 # --- FPS LOGIC START ---
 # Get the original video's frame rate
 video_fps = cap.get(cv2.CAP_PROP_FPS)
+total_video_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
 # Calculate how many frames to skip. 
 hop_interval = video_fps / target_fps
+
+# Calculate expected number of output frames to determine padding width
+# We assume the max frames we can extract is the total video frames
+if hop_interval <= 1:
+    expected_output_count = total_video_frames
+else:
+    expected_output_count = math.ceil(total_video_frames / hop_interval)
+
+# Determine the number of zeros needed (e.g., if 1000 frames, width is 4)
+pad_width = len(str(expected_output_count))
 # --- FPS LOGIC END ---
 
 directory_name = os.path.dirname(os.path.abspath(__file__))
@@ -98,9 +58,9 @@ while True:
         break
 
     # Only save the frame if it matches our calculated interval
-    # We use a threshold of 1 to catch the frame closest to the interval mark
     if frame_id >= (saved_count * hop_interval):
-        frame_filename = os.path.join(output_dir, "orig", f"{output_name}_{saved_count}.png")
+        # Use :0{pad_width}d to pad the number with zeros
+        frame_filename = os.path.join(output_dir, "orig", f"{output_name}_{saved_count:0{pad_width}d}.png")
         cv2.imwrite(frame_filename, frame)
         saved_count += 1
 
