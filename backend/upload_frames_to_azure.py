@@ -211,15 +211,15 @@ for filename in os.listdir(input_dir):
     
     metadata_item = {
         "id": frame_id,
-        "ContainerName": args.container_name,
-        "DatasetName": args.output_name,
-        "View": cosmos_view,
-        "FrameName": filename,
-        "BlobPath": blob_name,
-        "Date": args.date,
-        "MiscTags": misc_tags,
-        "SharpnessScore": sharpness_score,
-        "Clear": is_clear
+        "containerName": args.container_name,
+        "catasetName": args.output_name,
+        "view": cosmos_view,
+        "frameName": filename,
+        "blobPath": blob_name,
+        "date": args.date,
+        "miscTags": misc_tags,
+        "sharpnessScore": sharpness_score,
+        "clear": is_clear
 }
     
     try:
