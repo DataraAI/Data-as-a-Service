@@ -8,12 +8,14 @@ interface SidebarProps {
     availableTags: string[];
     visibleTags: Set<string>;
     onToggleTag: (tag: string) => void;
+    visiblePrimitives: Set<string>;
+    onTogglePrimitive: (primitive: string) => void;
     onUploadClick: () => void;
 }
 
 type SectionKey = 'filter' | 'tags' | 'metadata' | 'labels' | 'primitives';
 
-export function Sidebar({ onFilterChange, availableTags, visibleTags, onToggleTag, onUploadClick }: SidebarProps) {
+export function Sidebar({ onFilterChange, availableTags, visibleTags, onToggleTag, visiblePrimitives, onTogglePrimitive, onUploadClick }: SidebarProps) {
     const [expandedSections, setExpandedSections] = useState<Record<SectionKey, boolean>>({
         filter: true,
         tags: true,
@@ -127,15 +129,26 @@ export function Sidebar({ onFilterChange, availableTags, visibleTags, onToggleTa
                         <div className="px-2 pb-2 space-y-0.5">
                             {[
                                 { icon: Hash, label: "id" },
+                                { icon: Hash, label: "frame_id" },
                                 { icon: FileText, label: "filepath" },
-                                { icon: FileText, label: "metadata" },
-                            ].map(item => (
-                                <div key={item.label} className="flex items-center px-3 py-1.5 text-slate-500 hover:text-slate-300 hover:bg-slate-900 rounded cursor-not-allowed opacity-70">
-                                    <div className="w-3 h-3 border border-slate-700 rounded mr-2 bg-slate-800/50"></div>
-                                    <item.icon className="w-3 h-3 mr-2 opacity-50" />
-                                    <span>{item.label}</span>
-                                </div>
-                            ))}
+                                { icon: Hash, label: "width" },
+                                { icon: Hash, label: "height" },
+                            ].map(item => {
+                                const isVisible = visiblePrimitives.has(item.label);
+                                return (
+                                    <div
+                                        key={item.label}
+                                        className={`flex items-center px-3 py-1.5 rounded cursor-pointer transition-colors ${isVisible ? 'bg-slate-800 text-slate-200' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-900'}`}
+                                        onClick={() => onTogglePrimitive(item.label)}
+                                    >
+                                        <div className={`w-3 h-3 border rounded mr-2 flex items-center justify-center ${isVisible ? 'border-orange-500 bg-orange-500/20' : 'border-slate-700 bg-slate-800/50'}`}>
+                                            {isVisible && <div className="w-1.5 h-1.5 bg-orange-500 rounded-full" />}
+                                        </div>
+                                        <item.icon className={`w-3 h-3 mr-2 ${isVisible ? 'text-orange-500' : 'opacity-50'}`} />
+                                        <span>{item.label}</span>
+                                    </div>
+                                );
+                            })}
                         </div>
                     )}
                 </div>

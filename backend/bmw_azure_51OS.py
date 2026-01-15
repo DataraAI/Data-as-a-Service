@@ -1,16 +1,16 @@
 import os
 import threading
 import json
-from flask import Flask, jsonify, Response, stream_with_context
+from flask import Flask, jsonify, Response, stream_with_context, request
 from flask_cors import CORS
-# import fiftyone as fo
-# from fiftyone import Sample
 from dotenv import load_dotenv
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient, BlobClient, generate_blob_sas, BlobSasPermissions
 from datetime import datetime, timedelta, timezone
-
-# ... imports ...
+import subprocess
+import shutil
+import sys
+import gdown
 
 load_dotenv()
 
@@ -58,16 +58,16 @@ def get_cosmos_metadata_map(dataset_name):
         database = client.get_database_client(COSMOS_DATABASE)
         container = database.get_container_client(COSMOS_CONTAINER)
         
-        # Select relevant fields using BlobPath as key if possible, or FrameName if BlobPath isn't reliable match
+        # Select relevant fields using BlobPath as key if possible, or frameName if BlobPath isn't reliable match
         # Upload script sets 'BlobPath' = f"{output_name}/{view}/{filename}" which matches blob.name exactly.
-        query = f"SELECT * FROM c WHERE c.DatasetName = '{dataset_name}'"
+        query = f"SELECT * FROM c WHERE c.datasetName = '{dataset_name}'"
         items = list(container.query_items(query=query, enable_cross_partition_query=True))
         
         print(f"Found {len(items)} Cosmos documents for {dataset_name}")
         
         for item in items:
             # Normalize key
-            blob_path = item.get("BlobPath")
+            blob_path = item.get("blobPath")
             if blob_path:
                 metadata_map[blob_path] = item
                 
@@ -105,13 +105,13 @@ def get_datasets():
             # Group by DatasetName to get the latest upload timestamp
             # NOTE: "GROUP BY" acts weird on cross-partition queries in some Cosmos configs.
             # We will fetch all (DatasetName, _ts) and aggregate in Python.
-            query = "SELECT c.DatasetName, c._ts FROM c"
+            query = "SELECT c.datasetName, c._ts FROM c"
             items = list(container.query_items(query=query, enable_cross_partition_query=True))
             
             # Aggregate max _ts per dataset
             temp_map = {}
             for item in items:
-                name = item.get("DatasetName")
+                name = item.get("datasetName")
                 ts = item.get("_ts", 0)
                 if name:
                     if name not in temp_map or ts > temp_map[name]:
@@ -186,7 +186,7 @@ def get_dataset_images(name):
                  cosmos_doc = metadata_map.get(blob.name, {})
                  
                  # Base tags from Cosmos
-                 current_tags = list(cosmos_doc.get("MiscTags", []))
+                 current_tags = list(cosmos_doc.get("miscTags", []))
                  
                  # ... (Tag logic remains same, mostly applicable to images but fine for 3d) ...
                  if "/orig/" in blob.name:
@@ -203,9 +203,9 @@ def get_dataset_images(name):
                      except:
                          pass
 
-                 if cosmos_doc.get("Clear") is True:
+                 if cosmos_doc.get("clear") is True:
                      current_tags.append("clear")
-                 elif cosmos_doc.get("Clear") is False:
+                 elif cosmos_doc.get("clear") is False:
                      current_tags.append("blurry")
                      
                  # Construct full object
@@ -226,10 +226,14 @@ def get_dataset_images(name):
                      "type": media_type,
                      "tags": list(set(current_tags)), 
                      "metadata": {
-                         "date": cosmos_doc.get("Date"),
+                         "uuid": cosmos_doc.get("id"),
+                         "date": cosmos_doc.get("date"),
                          "uploaded_at": cosmos_doc.get("_ts"),
-                         "sharpness": cosmos_doc.get("SharpnessScore"),
-                         "view": cosmos_doc.get("View")
+                         "frame_id": cosmos_doc.get("frameId"),
+                         "width": cosmos_doc.get("width"),
+                         "height": cosmos_doc.get("height"),
+                         "sharpness": cosmos_doc.get("sharpnessScore"),
+                         "view": cosmos_doc.get("view")
                      }
                  }
                  image_list.append(image_data)
@@ -250,11 +254,6 @@ def get_dataset_images(name):
 
 @app.route("/api/process_video", methods=["POST"])
 def process_video():
-    import subprocess
-    import shutil
-    import sys
-    import gdown
-    from flask import request
 
     data = request.get_json()
     if not data:
@@ -265,6 +264,12 @@ def process_video():
     
     if not gdrive_link:
         return {"error": "No Google Drive link provided"}, 400
+        
+    # Check if dataset already exists
+    if output_name:
+        existing_blobs = list(container_client.list_blobs(name_starts_with=f"{output_name}/", results_per_page=1))
+        if existing_blobs:
+            return {"error": f"Dataset '{output_name}' already exists."}, 409
         
     # Retrieve Metadata (Date & Tags)
     date_val = data.get("date")

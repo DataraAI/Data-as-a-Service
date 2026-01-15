@@ -5,9 +5,10 @@ interface ImageGridProps {
     images: any[];
     onImageClick: (image: any) => void;
     visibleTags: Set<string>;
+    visiblePrimitives: Set<string>;
 }
 
-export function ImageGrid({ images, onImageClick, visibleTags }: ImageGridProps) {
+export function ImageGrid({ images, onImageClick, visibleTags, visiblePrimitives }: ImageGridProps) {
     const [displayedImages, setDisplayedImages] = useState<any[]>([]);
     const [page, setPage] = useState(1);
     const itemsPerPage = 50;
@@ -72,8 +73,29 @@ export function ImageGrid({ images, onImageClick, visibleTags }: ImageGridProps)
                             />
                         )}
 
+                        {/* Primitives Overlay */}
+                        <div className="absolute top-0 left-0 p-2 space-y-1 pointer-events-none z-10 max-w-full">
+                            {visiblePrimitives instanceof Set && Array.from(visiblePrimitives).map(prim => {
+                                let val = '';
+                                if (prim === 'id') val = img.metadata?.uuid;
+                                else if (prim === 'frame_id') val = img.metadata?.frame_id;
+                                else if (prim === 'filepath') val = img.id;
+                                else if (prim === 'width') val = img.metadata?.width;
+                                else if (prim === 'height') val = img.metadata?.height;
+
+                                if (val === undefined || val === null) return null;
+
+                                return (
+                                    <div key={prim} className="flex items-baseline gap-1.5 px-1.5 py-0.5 bg-black/30 backdrop-blur-md rounded text-[10px] text-slate-200 font-mono shadow-sm w-fit max-w-full">
+                                        <span className="text-slate-400 font-bold text-[9px] uppercase tracking-wider shrink-0">{prim}:</span>
+                                        <span className="break-all whitespace-normal leading-tight">{String(val)}</span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
                         {/* Overlay on hover */}
-                        <div className="absolute inset-0 bg-black/10 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                        <div className="absolute inset-0 bg-black/10 group-hover:bg-black/40 transition-colors flex items-center justify-center pointer-events-none">
                             <Maximize2 className="text-white w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
 

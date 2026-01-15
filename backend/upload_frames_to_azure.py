@@ -27,6 +27,8 @@ import argparse
 from azure.storage.blob import BlobServiceClient, ContentSettings
 from azure.core.exceptions import ResourceExistsError
 from azure.cosmos import CosmosClient
+import sys
+import uuid
 
 
 # ----------------------------
@@ -117,7 +119,7 @@ view = args.view
 
 input_dir = os.path.join(base_input_dir, view)
 
-if not os.path.isdir(input_dir):
+if not os.path.isdir(input_dir): 
     raise FileNotFoundError(f"Directory not found: {input_dir}")
 
 
@@ -167,11 +169,13 @@ existing_blobs = list(
 )
 
 if existing_blobs:
-    print(
-        f"⚠️ Dataset view '{dataset_name}/{view}' already exists in container "
-        f"'{args.container_name}'. No files were uploaded."
-    )
-    exit(0)
+    error_msg = f"⚠️ Dataset view '{dataset_name}/{view}' already exists in container '{args.container_name}'. No files were uploaded."
+    
+    # 1. Print directly to standard error (so the parent process sees it as an error)
+    print(error_msg, file=sys.stderr)
+    
+    # 2. Exit with a non-zero code to tell the backend "I failed"
+    sys.exit(1)
 
 # ----------------------------
 # Upload images
@@ -191,13 +195,15 @@ for filename in os.listdir(input_dir):
     if img is None: 
         sharpness_score = None
         is_clear = False
+        height, width = 0, 0
     else: 
         sharpness_score = laplacian_sharpness_score(img)
         is_clear = sharpness_score >= clarity_threshold
+        height, width = img.shape[:2]
     
     # Azure blob paths always use forward slashes
     blob_name = f"{args.output_name}/{view}/{filename}"
-
+    
     with open(local_path, "rb") as f:
         container_client.upload_blob(
             name=blob_name,
@@ -207,20 +213,31 @@ for filename in os.listdir(input_dir):
         )
 
     cosmos_view = "exo" if view == "orig" else view
-    frame_id = f"{args.container_name}_{args.output_name}_{view}_{filename}"
+    # frame_id = f"{args.container_name}_{args.output_name}_{view}_{filename}"
+    frame_id = uuid.uuid4().hex
     
+    # Extract frameId (last part of filename after underscore, before extension)
+    # e.g., bmwGrille_001.png -> 001
+    try:
+        frame_id_val = os.path.splitext(filename)[0].split('_')[-1]
+    except:
+        frame_id_val = "0"
+
     metadata_item = {
         "id": frame_id,
         "containerName": args.container_name,
-        "catasetName": args.output_name,
+        "datasetName": args.output_name,
         "view": cosmos_view,
         "frameName": filename,
         "blobPath": blob_name,
         "date": args.date,
+        "frameId": frame_id_val,
+        "width": width,
+        "height": height,
         "miscTags": misc_tags,
         "sharpnessScore": sharpness_score,
         "clear": is_clear
-}
+    }
     
     try:
         cosmos_container.upsert_item(metadata_item)

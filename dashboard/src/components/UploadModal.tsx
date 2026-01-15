@@ -57,7 +57,7 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
             const data = await response.json();
 
             if (response.ok) {
-                alert("Success: Video queued for download and processing!");
+                alert("Success: Video uploaded and processed!");
                 if (onSuccess) onSuccess();
                 onClose();
                 // Reset form

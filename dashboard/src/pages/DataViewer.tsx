@@ -76,6 +76,15 @@ export default function DataViewer() {
         setVisibleTags(newVisible);
     };
 
+    // Primitive State
+    const [visiblePrimitives, setVisiblePrimitives] = useState<Set<string>>(new Set());
+    const togglePrimitive = (prim: string) => {
+        const newVisible = new Set(visiblePrimitives);
+        if (newVisible.has(prim)) newVisible.delete(prim);
+        else newVisible.add(prim);
+        setVisiblePrimitives(newVisible);
+    };
+
     // Filter Logic
     const filteredImages = useMemo(() => {
         let result = images;
@@ -136,6 +145,8 @@ export default function DataViewer() {
                         availableTags={availableTags}
                         visibleTags={visibleTags}
                         onToggleTag={toggleTag}
+                        visiblePrimitives={visiblePrimitives}
+                        onTogglePrimitive={togglePrimitive}
                         filters={{}}
                         onFilterChange={(_key, val) => setFilterText(val)}
                         onUploadClick={() => setIsUploadModalOpen(true)}
@@ -173,6 +184,7 @@ export default function DataViewer() {
                                     images={filteredImages}
                                     onImageClick={setSelectedImage}
                                     visibleTags={visibleTags}
+                                    visiblePrimitives={visiblePrimitives}
                                 />
                             )}
                         </div>
