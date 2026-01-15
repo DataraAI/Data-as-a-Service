@@ -94,67 +94,35 @@ def proxy_blob(blob_name):
 
 @app.route("/api/datasets", methods=["GET"])
 def get_datasets():
+    path = request.args.get('path', '')
+    if path and not path.endswith('/'):
+        path += '/'
+        
     try:
-        # 1. Try fetching from Cosmos DB to get metadata (timestamps)
-        datasets_metadata = []
-        try:
-            client = CosmosClient(COSMOS_ENDPOINT, credential=COSMOS_KEY)
-            database = client.get_database_client(COSMOS_DATABASE)
-            container = database.get_container_client(COSMOS_CONTAINER)
-            
-            # Group by DatasetName to get the latest upload timestamp
-            # NOTE: "GROUP BY" acts weird on cross-partition queries in some Cosmos configs.
-            # We will fetch all (DatasetName, _ts) and aggregate in Python.
-            query = "SELECT c.datasetName, c._ts FROM c"
-            items = list(container.query_items(query=query, enable_cross_partition_query=True))
-            
-            # Aggregate max _ts per dataset
-            temp_map = {}
-            for item in items:
-                name = item.get("datasetName")
-                ts = item.get("_ts", 0)
-                if name:
-                    if name not in temp_map or ts > temp_map[name]:
-                        temp_map[name] = ts
-
-            for name, ts in temp_map.items():
-                datasets_metadata.append({
-                    "name": name,
-                    "uploaded_at": ts
+        blob_iter = container_client.walk_blobs(name_starts_with=path, delimiter="/")
+        
+        items = []
+        for item in blob_iter:
+            # handle prefix (directories)
+            if hasattr(item, 'name') and item.name.endswith('/'):
+                full_path = item.name.rstrip('/')
+                # Calculate relative name
+                # item.name is full path with trailing slash e.g. "automotive/bmw/"
+                # path is "automotive/"
+                relative_name = item.name[len(path):].rstrip('/')
+                
+                items.append({
+                    "name": relative_name,
+                    "full_path": full_path,
+                    "type": "folder"
                 })
-                    
-        except Exception as e:
-             print(f"⚠️ Cosmos DB dataset fetch failed: {e}")
         
-        # 2. Fallback / Merge with Blob Storage (Source of Truth for existence)
-        blob_iter = container_client.walk_blobs(name_starts_with="", delimiter="/")
-        blob_datasets = [item.name.rstrip("/") for item in blob_iter if item.name.endswith("/")]
-        
-        # Merge logic: Create a map of cosmos data
-        cosmos_map = {d["name"]: d["uploaded_at"] for d in datasets_metadata}
-        
-        final_list = []
-        for ds_name in blob_datasets:
-            final_list.append({
-                "name": ds_name,
-                "uploaded_at": cosmos_map.get(ds_name, 0) # Default to 0 if not in Cosmos
-            })
-            
-        # Update global list
-        global DATASET_LIST
-        DATASET_LIST = blob_datasets # Keep string list for simple validation if needed elsewhere? 
-        # Actually validation might break if we rely on this. 
-        # But get_datasets now returns OBJECTS. Frontend must handle this.
-        
-        # Sort by uploaded_at desc
-        final_list.sort(key=lambda x: x["uploaded_at"], reverse=True)
-        
-        return jsonify(final_list)
+        return jsonify(items)
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route("/api/dataset/<name>", methods=["GET"])
+@app.route("/api/dataset/<path:name>", methods=["GET"])
 def get_dataset_images(name):
     # Get metadata map from Cosmos
     metadata_map = get_cosmos_metadata_map(name)
@@ -309,7 +277,7 @@ def process_video():
             sys.executable, "generate_orig_frames.py",
             "--video_path", video_path,
             "--output_name", video_basename,
-            "--target_fps", "15"
+            "--target_fps", "2"
         ]
         print(f"Running gen: {cmd_gen}")
         subprocess.check_call(cmd_gen)

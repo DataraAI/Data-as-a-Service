@@ -9,11 +9,31 @@ interface UploadModalProps {
 
 export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
     const [gdriveLink, setGdriveLink] = useState("");
-    const [outputName, setOutputName] = useState("");
+
+    // Hierarchical State
+    const [categories, setCategories] = useState<string[]>([]);
+    const [selectedCategory, setSelectedCategory] = useState("");
+    const [brandName, setBrandName] = useState("");
+    const [datasetName, setDatasetName] = useState("");
+
     const [isUploading, setIsUploading] = useState(false);
 
     const [tags, setTags] = useState<string[]>([]);
     const [currentTag, setCurrentTag] = useState("");
+
+    // Fetch Categories on mount
+    useState(() => {
+        fetch('/api/datasets?path=')
+            .then(res => res.json())
+            .then(data => {
+                const cats = data
+                    .filter((d: any) => d.type === 'folder')
+                    .map((d: any) => d.name);
+                setCategories(cats);
+                if (cats.length > 0) setSelectedCategory(cats[0]);
+            })
+            .catch(err => console.error("Failed to fetch categories", err));
+    }); // Using useState as mount effect since React 18 strict mode double invoke fix/habit, or just useEffect
 
     if (!isOpen) return null;
 
@@ -30,19 +50,20 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!gdriveLink) return;
+        if (!gdriveLink || !selectedCategory || !brandName || !datasetName) return;
 
         setIsUploading(true);
 
         const date = new Date().toISOString().slice(0, 10).replace(/-/g, ""); // YYYYMMDD
 
+        // Construct hierarchical path
+        const finalOutputName = `${selectedCategory}/${brandName}/${datasetName}`;
+
         const payload = {
             gdrive_link: gdriveLink,
-            output_name: outputName,
+            output_name: finalOutputName,
             date: date,
-            tags: tags // Backend expects regex or list? Previous code used JSON.stringify(tags), but if we send JSON body we can send array directly if backend supports it, check backend. 
-            // Previous backend: `tags_json = request.form.get("tags", "[]")` then `json.loads`. 
-            // I will send it as an object property, backend needs to be updated to read JSON body anyway.
+            tags: tags
         };
 
         try {
@@ -62,7 +83,8 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
                 onClose();
                 // Reset form
                 setGdriveLink("");
-                setOutputName("");
+                setBrandName("");
+                setDatasetName("");
                 setTags([]);
             } else {
                 throw new Error(data.error || "Upload failed");
@@ -111,14 +133,46 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
                         </div>
                     </div>
 
-                    {/* Dataset Name */}
+                    <div className="grid grid-cols-2 gap-4">
+                        {/* Level 1: Category */}
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-300">Category</label>
+                            <select
+                                value={selectedCategory}
+                                onChange={(e) => setSelectedCategory(e.target.value)}
+                                className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500 appearance-none"
+                                required
+                            >
+                                <option value="" disabled>Select...</option>
+                                {categories.map(cat => (
+                                    <option key={cat} value={cat}>{cat}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Level 2: Brand */}
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-300">Brand / Subdir</label>
+                            <input
+                                type="text"
+                                value={brandName}
+                                onChange={(e) => setBrandName(e.target.value)}
+                                placeholder="e.g. bmw"
+                                pattern="[a-zA-Z0-9]+"
+                                className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500"
+                                required
+                            />
+                        </div>
+                    </div>
+
+                    {/* Level 3: Dataset Name */}
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-slate-300">Dataset Name (Output)</label>
                         <input
                             type="text"
-                            value={outputName}
-                            onChange={(e) => setOutputName(e.target.value)}
-                            placeholder="e.g. bmwTest"
+                            value={datasetName}
+                            onChange={(e) => setDatasetName(e.target.value)}
+                            placeholder="e.g. frontGrille"
                             pattern="[a-zA-Z0-9]+"
                             className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500"
                             required
