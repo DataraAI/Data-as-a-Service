@@ -32,6 +32,9 @@ export default function DataViewer() {
     // Primitive State
     const [visiblePrimitives, setVisiblePrimitives] = useState<Set<string>>(new Set());
 
+    // Frame Range State
+    const [frameRange, setFrameRange] = useState<{ min: number | null; max: number | null }>({ min: null, max: null });
+
     // -- Derived State --
     // Parse path: /viewer/automotive/bmw -> ['automotive', 'bmw']
     const pathSegments = useMemo(() => {
@@ -131,6 +134,29 @@ export default function DataViewer() {
                     img.tags && img.tags.some((t: string) => visibleTags.has(t))
                 );
             }
+            if (frameRange.min !== null || frameRange.max !== null) {
+                result = result.filter((img: any) => {
+                    // Robustly get frame_id
+                    let rawFrameId = img.frame_id ?? img.metadata?.frame_id;
+
+                    // Parse if string
+                    let frameId: number | null = null;
+                    if (typeof rawFrameId === 'number') {
+                        frameId = rawFrameId;
+                    } else if (typeof rawFrameId === 'string' && !isNaN(parseInt(rawFrameId))) {
+                        frameId = parseInt(rawFrameId);
+                    }
+
+                    // If we can't determine a frame ID, usually we should hide it if a filter is active?
+                    // Or keep it? If the user is filtering "Frames 1-10", they want to see Frames 1-10.
+                    // Items without frames effectively don't match that criteria.
+                    if (frameId === null) return false;
+
+                    const min = frameRange.min ?? -Infinity;
+                    const max = frameRange.max ?? Infinity;
+                    return frameId >= min && frameId <= max;
+                });
+            }
             return result;
         } else {
             // Filter Folders
@@ -140,7 +166,7 @@ export default function DataViewer() {
             }
             return folders;
         }
-    }, [isLeaf, images, folders, filterText, visibleTags]);
+    }, [isLeaf, images, folders, filterText, visibleTags, frameRange]);
 
 
     return (
@@ -180,6 +206,8 @@ export default function DataViewer() {
                             filters={{}}
                             onFilterChange={(_key, val) => setFilterText(val)}
                             onUploadClick={() => setIsUploadModalOpen(true)}
+                            frameRange={frameRange}
+                            onFrameRangeChange={(min, max) => setFrameRange({ min, max })}
                         />
                     )}
 

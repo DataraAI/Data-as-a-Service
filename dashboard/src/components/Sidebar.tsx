@@ -11,17 +11,20 @@ interface SidebarProps {
     visiblePrimitives: Set<string>;
     onTogglePrimitive: (primitive: string) => void;
     onUploadClick: () => void;
+    frameRange: { min: number | null; max: number | null };
+    onFrameRangeChange: (min: number | null, max: number | null) => void;
 }
 
-type SectionKey = 'filter' | 'tags' | 'metadata' | 'labels' | 'primitives';
+type SectionKey = 'filter' | 'tags' | 'metadata' | 'labels' | 'primitives' | 'frames';
 
-export function Sidebar({ onFilterChange, availableTags, visibleTags, onToggleTag, visiblePrimitives, onTogglePrimitive, onUploadClick }: SidebarProps) {
+export function Sidebar({ onFilterChange, availableTags, visibleTags, onToggleTag, visiblePrimitives, onTogglePrimitive, onUploadClick, frameRange, onFrameRangeChange }: SidebarProps) {
     const [expandedSections, setExpandedSections] = useState<Record<SectionKey, boolean>>({
         filter: true,
         tags: true,
         metadata: false,
         labels: true,
-        primitives: false
+        primitives: false,
+        frames: true
     });
 
     const toggleSection = (section: SectionKey) => {
@@ -68,6 +71,44 @@ export function Sidebar({ onFilterChange, availableTags, visibleTags, onToggleTa
                                 <Plus className="w-3 h-3 mr-1.5" />
                                 Add Stage
                             </Button>
+                        </div>
+                    )}
+                </div>
+
+                {/* FRAME ID Section */}
+                <div className="border-b border-border">
+                    <button
+                        onClick={() => toggleSection('frames')}
+                        className="flex items-center w-full px-4 py-3 hover:bg-background/80 transition-colors group"
+                    >
+                        {expandedSections.frames ? <ChevronDown className="w-3 h-3 mr-2 text-primary" /> : <ChevronRight className="w-3 h-3 mr-2" />}
+                        <span className="font-sans-tech font-bold tracking-wider text-foreground group-hover:text-primary transition-colors">Frame Range</span>
+                    </button>
+
+                    {expandedSections.frames && (
+                        <div className="px-4 pb-4 space-y-3 bg-background/30">
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label className="text-[10px] text-muted-foreground font-sans-tech mb-1 block uppercase tracking-wider">Min Frame</label>
+                                    <input
+                                        type="number"
+                                        placeholder="0"
+                                        value={frameRange.min ?? ''}
+                                        onChange={(e) => onFrameRangeChange(e.target.value ? parseInt(e.target.value) : null, frameRange.max)}
+                                        className="w-full bg-input border border-border rounded-sm py-1.5 px-2 text-xs focus:border-primary focus:outline-none placeholder-muted-foreground text-foreground font-sans-tech"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] text-muted-foreground font-sans-tech mb-1 block uppercase tracking-wider">Max Frame</label>
+                                    <input
+                                        type="number"
+                                        placeholder="100"
+                                        value={frameRange.max ?? ''}
+                                        onChange={(e) => onFrameRangeChange(frameRange.min, e.target.value ? parseInt(e.target.value) : null)}
+                                        className="w-full bg-input border border-border rounded-sm py-1.5 px-2 text-xs focus:border-primary focus:outline-none placeholder-muted-foreground text-foreground font-sans-tech"
+                                    />
+                                </div>
+                            </div>
                         </div>
                     )}
                 </div>
