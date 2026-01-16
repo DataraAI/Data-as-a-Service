@@ -175,20 +175,15 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
                         <div className="space-y-2">
                             <label className="text-xs font-bold text-muted-foreground font-sans-tech">Category</label>
                             <div className="relative">
-                                <select
+                                <input
+                                    type="text"
                                     value={selectedCategory}
                                     onChange={(e) => setSelectedCategory(e.target.value)}
-                                    className="w-full bg-input border border-border rounded-sm px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary appearance-none font-sans-tech"
+                                    placeholder="e.g. automotive"
+                                    pattern="[a-zA-Z0-9]+"
+                                    className="w-full bg-input border border-border rounded-sm px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary font-sans-tech"
                                     required
-                                >
-                                    <option value="" disabled>Select...</option>
-                                    {categories.map(cat => (
-                                        <option key={cat} value={cat}>{cat}</option>
-                                    ))}
-                                </select>
-                                <div className="absolute right-3 top-2.5 pointer-events-none">
-                                    <div className="w-0 h-0 border-l-[3px] border-l-transparent border-r-[3px] border-r-transparent border-t-[4px] border-t-muted-foreground"></div>
-                                </div>
+                                />
                             </div>
                         </div>
 
