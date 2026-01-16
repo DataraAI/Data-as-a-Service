@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Upload, X, Loader2, Plus, Link as LinkIcon } from 'lucide-react';
+import { Upload, X, Loader2, Plus, Link as LinkIcon, Folder, FileVideo } from 'lucide-react';
 
 interface UploadModalProps {
     isOpen: boolean;
@@ -100,64 +100,71 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-            <div className="bg-slate-900 border border-slate-800 rounded-lg shadow-xl w-full max-w-lg p-6 relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-md">
+            <div className="bg-card border border-border rounded-lg shadow-2xl w-full max-w-lg p-8 relative overflow-hidden">
+                {/* Decorative border at top */}
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary/50 via-primary to-primary/50"></div>
+
                 <button
                     onClick={onClose}
-                    className="absolute top-4 right-4 text-slate-400 hover:text-white"
+                    className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors"
                 >
                     <X className="w-5 h-5" />
                 </button>
 
                 <div className="mb-6">
-                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                        <Upload className="w-5 h-5 text-orange-500" />
+                    <h2 className="text-xl font-bold font-sans-tech text-foreground flex items-center gap-2">
+                        <div className="p-2 bg-primary/10 rounded-sm">
+                            <Upload className="w-5 h-5 text-primary" />
+                        </div>
                         Import Data
                     </h2>
-                    <p className="text-sm text-slate-400 mt-1">
-                        Import videos or folders of images from Google Drive.
+                    <p className="text-sm text-muted-foreground mt-2 font-sans-tech">
+                        Import assets via Drive Link
                     </p>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-5">
 
                     {/* Upload Type Selector */}
-                    <div className="bg-slate-950 p-1 rounded-lg flex border border-slate-800">
+                    <div className="bg-input p-1 rounded-sm flex border border-border">
                         <button
                             type="button"
                             onClick={() => setUploadType('video')}
-                            className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${uploadType === 'video'
-                                    ? 'bg-orange-600 text-white shadow-sm'
-                                    : 'text-slate-400 hover:text-slate-200'
+                            className={`flex-1 py-2 text-sm font-medium font-sans-tech rounded-sm transition-all flex items-center justify-center gap-2 ${uploadType === 'video'
+                                ? 'bg-card text-primary shadow-sm border border-border/50'
+                                : 'text-muted-foreground hover:text-foreground'
                                 }`}
                         >
+                            <FileVideo className="w-4 h-4" />
                             Video File
                         </button>
                         <button
                             type="button"
                             onClick={() => setUploadType('folder')}
-                            className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${uploadType === 'folder'
-                                    ? 'bg-orange-600 text-white shadow-sm'
-                                    : 'text-slate-400 hover:text-slate-200'
+                            className={`flex-1 py-2 text-sm font-medium font-sans-tech rounded-sm transition-all flex items-center justify-center gap-2 ${uploadType === 'folder'
+                                ? 'bg-card text-primary shadow-sm border border-border/50'
+                                : 'text-muted-foreground hover:text-foreground'
                                 }`}
                         >
-                            Images Folder
+                            <Folder className="w-4 h-4" />
+                            Image Folder
                         </button>
                     </div>
 
                     {/* GDrive Link */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-300">
-                            {uploadType === 'video' ? 'Google Drive Video Link' : 'Google Drive Folder Link'}
+                        <label className="text-xs font-bold text-muted-foreground font-sans-tech">
+                            {uploadType === 'video' ? 'Drive Link (Video)' : 'Drive Link (Folder)'}
                         </label>
-                        <div className="relative">
-                            <LinkIcon className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
+                        <div className="relative group">
+                            <LinkIcon className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
                             <input
                                 type="text"
                                 value={gdriveLink}
                                 onChange={(e) => setGdriveLink(e.target.value)}
                                 placeholder={uploadType === 'video' ? "https://drive.google.com/file/d/..." : "https://drive.google.com/drive/folders/..."}
-                                className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 pl-9 text-sm text-white focus:outline-none focus:border-orange-500"
+                                className="w-full bg-input border border-border rounded-sm px-3 py-2 pl-9 text-sm text-foreground focus:outline-none focus:border-primary font-sans-tech transition-all placeholder:text-muted-foreground/50"
                                 required
                             />
                         </div>
@@ -166,30 +173,35 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
                     <div className="grid grid-cols-2 gap-4">
                         {/* Level 1: Category */}
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-slate-300">Category</label>
-                            <select
-                                value={selectedCategory}
-                                onChange={(e) => setSelectedCategory(e.target.value)}
-                                className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500 appearance-none"
-                                required
-                            >
-                                <option value="" disabled>Select...</option>
-                                {categories.map(cat => (
-                                    <option key={cat} value={cat}>{cat}</option>
-                                ))}
-                            </select>
+                            <label className="text-xs font-bold text-muted-foreground font-sans-tech">Category</label>
+                            <div className="relative">
+                                <select
+                                    value={selectedCategory}
+                                    onChange={(e) => setSelectedCategory(e.target.value)}
+                                    className="w-full bg-input border border-border rounded-sm px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary appearance-none font-sans-tech"
+                                    required
+                                >
+                                    <option value="" disabled>Select...</option>
+                                    {categories.map(cat => (
+                                        <option key={cat} value={cat}>{cat}</option>
+                                    ))}
+                                </select>
+                                <div className="absolute right-3 top-2.5 pointer-events-none">
+                                    <div className="w-0 h-0 border-l-[3px] border-l-transparent border-r-[3px] border-r-transparent border-t-[4px] border-t-muted-foreground"></div>
+                                </div>
+                            </div>
                         </div>
 
                         {/* Level 2: Brand */}
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-slate-300">Brand / Subdir</label>
+                            <label className="text-xs font-bold text-muted-foreground font-sans-tech">Brand / Subdir</label>
                             <input
                                 type="text"
                                 value={brandName}
                                 onChange={(e) => setBrandName(e.target.value)}
                                 placeholder="e.g. bmw"
                                 pattern="[a-zA-Z0-9]+"
-                                className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500"
+                                className="w-full bg-input border border-border rounded-sm px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary font-sans-tech"
                                 required
                             />
                         </div>
@@ -197,14 +209,14 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
 
                     {/* Level 3: Dataset Name */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-300">Dataset Name (Output)</label>
+                        <label className="text-xs font-bold text-muted-foreground font-sans-tech">Dataset Name (Output)</label>
                         <input
                             type="text"
                             value={datasetName}
                             onChange={(e) => setDatasetName(e.target.value)}
                             placeholder="e.g. frontGrille"
                             pattern="[a-zA-Z0-9]+"
-                            className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500"
+                            className="w-full bg-input border border-border rounded-sm px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary font-sans-tech"
                             required
                         />
                     </div>
@@ -212,25 +224,25 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
 
                     {/* Tags */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-300">Misc Tags (e.g. location, conditions)</label>
+                        <label className="text-xs font-bold text-muted-foreground font-sans-tech">Metadata Tags</label>
                         <div className="flex gap-2">
                             <input
                                 type="text"
                                 value={currentTag}
                                 onChange={(e) => setCurrentTag(e.target.value)}
-                                placeholder="Add a tag..."
+                                placeholder="Add tag..."
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter') {
                                         e.preventDefault();
                                         handleAddTag();
                                     }
                                 }}
-                                className="flex-1 bg-slate-950 border border-slate-800 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500"
+                                className="flex-1 bg-input border border-border rounded-sm px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary font-sans-tech"
                             />
                             <button
                                 type="button"
                                 onClick={handleAddTag}
-                                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded text-white transition-colors"
+                                className="px-3 py-2 bg-input hover:bg-card border border-border hover:border-primary rounded-sm text-primary transition-colors"
                             >
                                 <Plus className="w-4 h-4" />
                             </button>
@@ -239,12 +251,12 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
                         {tags.length > 0 && (
                             <div className="flex flex-wrap gap-2 mt-2">
                                 {tags.map((tag, index) => (
-                                    <div key={index} className="bg-slate-800 text-slate-200 px-2 py-1 rounded text-xs flex items-center gap-1 group">
+                                    <div key={index} className="bg-primary/10 border border-primary/20 text-primary px-2 py-1 rounded-sm text-xs font-sans-tech flex items-center gap-1 group">
                                         {tag}
                                         <button
                                             type="button"
                                             onClick={() => handleRemoveTag(index)}
-                                            className="text-slate-500 group-hover:text-red-400 ml-1"
+                                            className="text-primary/50 group-hover:text-primary ml-1"
                                         >
                                             <X className="w-3 h-3" />
                                         </button>
@@ -254,21 +266,21 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
                         )}
                     </div>
 
-                    <div className="pt-4 flex justify-end gap-3">
+                    <div className="pt-4 flex justify-end gap-3 border-t border-border mt-6">
                         <button
                             type="button"
                             onClick={onClose}
                             disabled={isUploading}
-                            className="px-4 py-2 text-sm text-slate-400 hover:text-white transition-colors"
+                            className="px-4 py-2 text-xs font-bold font-sans-tech text-muted-foreground hover:text-foreground transition-colors uppercase"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={isUploading}
-                            className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-sm rounded flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="px-6 py-2 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold font-sans-tech rounded-sm flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed uppercase shadow-lg shadow-primary/20"
                         >
-                            {isUploading && <Loader2 className="w-4 h-4 animate-spin" />}
+                            {isUploading && <Loader2 className="w-3 h-3 animate-spin" />}
                             {isUploading ? 'Processing...' : 'Start Process'}
                         </button>
                     </div>

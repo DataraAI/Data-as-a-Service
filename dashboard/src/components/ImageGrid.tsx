@@ -51,25 +51,25 @@ export function ImageGrid({ images, onImageClick, visibleTags, visiblePrimitives
     }, [page, images]);
 
     return (
-        <div className="p-4 flex-1 h-full overflow-y-auto bg-slate-950">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="p-4 flex-1 h-full overflow-y-auto bg-transparent custom-scrollbar">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
                 {displayedImages.map((img) => (
                     <div
                         key={img.id}
-                        className="relative group bg-slate-900 rounded-lg overflow-hidden border border-slate-800 hover:border-orange-500 transition-colors cursor-pointer"
+                        className="relative group bg-card/10 backdrop-blur-[5px] rounded-sm overflow-hidden border border-border hover:border-primary transition-all duration-300 cursor-pointer shadow-none hover:shadow-elegant"
                         onClick={() => onImageClick(img)}
                     >
                         {img.type === '3d' ? (
-                            <div className="w-full h-48 md:h-64 flex flex-col items-center justify-center bg-slate-800/50 text-slate-500 group-hover:text-orange-400 transition-colors">
+                            <div className="w-full h-48 md:h-64 flex flex-col items-center justify-center bg-card/50 text-muted-foreground group-hover:text-primary transition-colors">
                                 <Box className="w-12 h-12 mb-2" />
-                                <span className="text-xs font-mono uppercase tracking-wider">3D Model</span>
+                                <span className="text-xs font-sans-tech uppercase tracking-wider">3D Model</span>
                             </div>
                         ) : (
                             <img
                                 src={img.url}
                                 alt={img.name}
                                 loading="lazy"
-                                className="w-full h-auto object-contain transition-transform duration-300 group-hover:scale-105"
+                                className="w-full h-auto object-contain transition-transform duration-300 group-hover:scale-105 bg-black/20"
                             />
                         )}
 
@@ -86,26 +86,27 @@ export function ImageGrid({ images, onImageClick, visibleTags, visiblePrimitives
                                 if (val === undefined || val === null) return null;
 
                                 return (
-                                    <div key={prim} className="flex items-baseline gap-1.5 px-1.5 py-0.5 bg-black/30 backdrop-blur-md rounded text-[10px] text-slate-200 font-mono shadow-sm w-fit max-w-full">
-                                        <span className="text-slate-400 font-bold text-[9px] uppercase tracking-wider shrink-0">{prim}:</span>
-                                        <span className="break-all whitespace-normal leading-tight">{String(val)}</span>
+                                    <div key={prim} className="flex items-baseline gap-1.5 px-1.5 py-0.5 bg-black/60 backdrop-blur-md rounded-sm text-[10px] text-primary-foreground font-sans-tech shadow-sm w-fit max-w-full border border-primary/20">
+                                        <span className="text-muted-foreground font-bold text-[9px] uppercase tracking-wider shrink-0">{prim}:</span>
+                                        <span className="break-all whitespace-normal leading-tight text-primary">{String(val)}</span>
                                     </div>
                                 );
                             })}
                         </div>
 
                         {/* Overlay on hover */}
-                        <div className="absolute inset-0 bg-black/10 group-hover:bg-black/40 transition-colors flex items-center justify-center pointer-events-none">
-                            <Maximize2 className="text-white w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <div className="absolute inset-0 bg-primary/5 group-hover:bg-primary/10 transition-colors flex items-center justify-center pointer-events-none">
+                            <div className="w-full h-full border-2 border-primary/0 group-hover:border-primary/50 transition-all absolute inset-0 rounded-sm"></div>
+                            <Maximize2 className="text-primary w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" />
                         </div>
 
                         {/* Tags Overlay */}
-                        <div className="absolute bottom-6 left-0 right-0 p-2 flex flex-wrap gap-1">
+                        <div className="absolute bottom-8 left-0 right-0 p-2 flex flex-wrap gap-1 z-20">
                             {img.tags && img.tags.map((tag: string) => (
                                 visibleTags instanceof Set && visibleTags.has(tag) && (
                                     <span
                                         key={tag}
-                                        className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/80 text-white font-medium shadow-sm backdrop-blur-sm"
+                                        className="text-[10px] px-1.5 py-0.5 rounded-sm bg-primary text-primary-foreground font-sans-tech shadow-sm"
                                     >
                                         {tag}
                                     </span>
@@ -114,8 +115,9 @@ export function ImageGrid({ images, onImageClick, visibleTags, visiblePrimitives
                         </div>
 
                         {/* Label Badge */}
-                        <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
-                            <p className="text-xs text-white truncate font-mono">{img.name}</p>
+                        <div className="absolute bottom-0 left-0 right-0 p-2 bg-background/90 border-t border-border flex justify-between items-center">
+                            <p className="text-xs text-muted-foreground truncate font-sans-tech group-hover:text-primary transition-colors">{img.name}</p>
+                            <div className="w-1.5 h-1.5 rounded-full bg-border group-hover:bg-primary transition-colors"></div>
                         </div>
                     </div>
                 ))}
@@ -125,8 +127,8 @@ export function ImageGrid({ images, onImageClick, visibleTags, visiblePrimitives
             <div ref={observerTarget} className="h-10 w-full mt-4" />
 
             {displayedImages.length === 0 && (
-                <div className="flex items-center justify-center h-full text-slate-500">
-                    No images to display
+                <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                    <p className="font-sans-tech text-sm">No images found</p>
                 </div>
             )}
         </div>

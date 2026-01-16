@@ -29,67 +29,67 @@ export function ImageModal({ image, onClose, onNext, onPrev }: ImageModalProps) 
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex bg-slate-950/95 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex bg-background/95 backdrop-blur-md">
 
             {/* Left Navigation Zone */}
             <div
-                className="w-16 flex items-center justify-center hover:bg-white/5 cursor-pointer transition-colors"
+                className="w-16 flex items-center justify-center hover:bg-primary/5 cursor-pointer transition-colors group"
                 onClick={onPrev}
             >
-                <ChevronLeft className="w-8 h-8 text-slate-400" />
+                <ChevronLeft className="w-8 h-8 text-muted-foreground group-hover:text-primary transition-colors" />
             </div>
 
             {/* Main Content Area */}
             <div className="flex-1 flex items-center justify-center p-8 relative overflow-hidden">
                 {image.type === '3d' ? (
-                    <div className="w-full h-full max-w-4xl border border-slate-800 rounded-lg bg-slate-900/50 relative">
+                    <div className="w-full h-full max-w-4xl border border-border rounded-lg bg-card/50 relative">
                         <ThreeDViewer url={image.proxy_url || image.url} />
                     </div>
                 ) : (
                     <img
                         src={image.url}
                         alt={image.name}
-                        className="max-h-full max-w-full object-contain rounded-lg shadow-2xl border border-slate-800"
+                        className="max-h-full max-w-full object-contain rounded-sm shadow-2xl border border-border bg-black/50"
                     />
                 )}
             </div>
 
             {/* Right Navigation Zone */}
             <div
-                className="w-16 flex items-center justify-center hover:bg-white/5 cursor-pointer transition-colors"
+                className="w-16 flex items-center justify-center hover:bg-primary/5 cursor-pointer transition-colors group"
                 onClick={onNext}
             >
-                <ChevronRight className="w-8 h-8 text-slate-400" />
+                <ChevronRight className="w-8 h-8 text-muted-foreground group-hover:text-primary transition-colors" />
             </div>
 
             {/* Sidebar Metadata Panel */}
-            <div className="w-96 bg-slate-900 border-l border-slate-800 flex flex-col shadow-2xl">
-                <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900">
-                    <h2 className="font-bold text-slate-200">Image Details</h2>
-                    <button onClick={onClose} className="p-1 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors">
+            <div className="w-96 bg-card border-l border-border flex flex-col shadow-2xl z-20">
+                <div className="p-4 border-b border-border flex justify-between items-center bg-card">
+                    <h2 className="font-bold font-sans-tech text-foreground tracking-tight">Image Details</h2>
+                    <button onClick={onClose} className="p-1 hover:bg-primary/10 rounded-sm text-muted-foreground hover:text-primary transition-colors">
                         <X className="w-5 h-5" />
                     </button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-4 space-y-6">
+                <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar">
 
                     {/* Basic Info */}
                     <div className="space-y-4">
                         <div className="group">
-                            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1">File Path</label>
-                            <div className="flex items-center space-x-2 bg-slate-950/50 p-2 rounded border border-slate-800">
-                                <code className="text-xs text-orange-400 truncate flex-1 font-mono">{image.name}</code>
-                                <button onClick={() => copyToClipboard(image.id)} className="text-slate-500 hover:text-white">
+                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-1 font-sans-tech">File Path</label>
+                            <div className="flex items-center space-x-2 bg-input p-2 rounded-sm border border-border group-hover:border-primary/50 transition-colors">
+                                <code className="text-xs text-primary truncate flex-1 font-sans-tech">{image.name}</code>
+                                <button onClick={() => copyToClipboard(image.id)} className="text-muted-foreground hover:text-foreground transition-colors">
                                     <Copy className="w-3 h-3" />
                                 </button>
                             </div>
                         </div>
 
                         <div className="group">
-                            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1">Blob URL</label>
-                            <div className="flex items-center space-x-2 bg-slate-950/50 p-2 rounded border border-slate-800">
-                                <code className="text-xs text-blue-400 truncate flex-1 font-mono">{image.url}</code>
-                                <button onClick={() => copyToClipboard(image.url)} className="text-slate-500 hover:text-white">
+                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-1 font-sans-tech">Blob URL</label>
+                            <div className="flex items-center space-x-2 bg-input p-2 rounded-sm border border-border group-hover:border-primary/50 transition-colors">
+                                <code className="text-xs text-blue-400 truncate flex-1 font-sans-tech">{image.url}</code>
+                                <button onClick={() => copyToClipboard(image.url)} className="text-muted-foreground hover:text-foreground transition-colors">
                                     <Copy className="w-3 h-3" />
                                 </button>
                             </div>
@@ -99,15 +99,15 @@ export function ImageModal({ image, onClose, onNext, onPrev }: ImageModalProps) 
                     {/* Formatted Metadata */}
                     <div>
                         <div className="flex items-center mb-3">
-                            <Info className="w-3 h-3 text-slate-500 mr-2" />
-                            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Properties</label>
+                            <Info className="w-3 h-3 text-muted-foreground mr-2" />
+                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest font-sans-tech">Properties</label>
                         </div>
 
-                        <div className="bg-slate-950 rounded-lg border border-slate-800 divide-y divide-slate-800 text-[11px]">
+                        <div className="bg-background/50 rounded-sm border border-border divide-y divide-border text-[11px] font-sans-tech">
                             {/* Capture Date */}
                             <div className="flex justify-between p-3">
-                                <span className="text-slate-500 font-medium">Date Captured</span>
-                                <span className="text-slate-300 font-mono">
+                                <span className="text-muted-foreground font-medium">Date Captured</span>
+                                <span className="text-foreground font-sans-tech">
                                     {image.metadata?.date
                                         ? `${image.metadata.date.substring(0, 4)}-${image.metadata.date.substring(4, 6)}-${image.metadata.date.substring(6, 8)}`
                                         : 'N/A'}
@@ -116,8 +116,8 @@ export function ImageModal({ image, onClose, onNext, onPrev }: ImageModalProps) 
 
                             {/* Upload Date */}
                             <div className="flex justify-between p-3">
-                                <span className="text-slate-500 font-medium">Date Uploaded</span>
-                                <span className="text-slate-300 font-mono">
+                                <span className="text-muted-foreground font-medium">Date Uploaded</span>
+                                <span className="text-foreground font-sans-tech">
                                     {image.metadata?.uploaded_at
                                         ? new Date(image.metadata.uploaded_at * 1000).toLocaleString()
                                         : 'N/A'}
@@ -126,8 +126,8 @@ export function ImageModal({ image, onClose, onNext, onPrev }: ImageModalProps) 
 
                             {/* Sharpness */}
                             <div className="flex justify-between p-3">
-                                <span className="text-slate-500 font-medium">Sharpness Score</span>
-                                <span className="text-slate-300 font-mono">
+                                <span className="text-muted-foreground font-medium">Sharpness Score</span>
+                                <span className="text-foreground font-sans-tech">
                                     {typeof image.metadata?.sharpness === 'number'
                                         ? image.metadata.sharpness.toFixed(2)
                                         : 'N/A'}
@@ -136,8 +136,8 @@ export function ImageModal({ image, onClose, onNext, onPrev }: ImageModalProps) 
 
                             {/* View */}
                             <div className="flex justify-between p-3">
-                                <span className="text-slate-500 font-medium">View</span>
-                                <span className="text-slate-300">
+                                <span className="text-muted-foreground font-medium">View Angle</span>
+                                <span className="text-foreground font-sans-tech">
                                     {image.metadata?.view || 'N/A'}
                                 </span>
                             </div>

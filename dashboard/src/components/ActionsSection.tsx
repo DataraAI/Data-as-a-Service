@@ -11,29 +11,30 @@ const ActionsSection = () => {
   const actions = [
     {
       icon: Upload,
-      title: "Upload Video",
-      description: "Upload a video file for processing and Azure upload",
+      title: "Import Dataset",
+      description: "Upload a dataset for processing",
       action: () => setIsUploadModalOpen(true),
-      variant: "secondary", // Maps to Brand Green
+      variant: "default",
     },
     {
       icon: Database,
       title: "Dataset Viewer",
       description: "Explore the dataset in our custom viewer",
       href: "/viewer",
-      variant: "primary", // Maps to Brand Orange
+      variant: "secondary",
     },
   ];
 
   return (
-    <section className="py-20 relative">
+    <section className="py-20 relative bg-background border-t border-border/50">
       <div className="container mx-auto px-6">
         <div className="text-center mb-14">
-          <h2 className="text-4xl md:text-5xl font-bold font-display mb-4 text-foreground">
-            Quick <span className="text-secondary">Actions</span>
+          <h2 className="text-3xl md:text-4xl font-bold font-sans-tech mb-4 text-foreground uppercase tracking-tight">
+            Quick <span className="text-primary">Actions</span>
           </h2>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Manage your video datasets and view processing results
+          <div className="h-1 w-20 bg-primary mx-auto mb-4"></div>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto font-mono-tech text-sm">
+            Manage your datasets and view results
           </p>
         </div>
 
@@ -41,28 +42,26 @@ const ActionsSection = () => {
           {actions.map((action, index) => (
             <Card
               key={index}
-              className={`p-8 bg-card/50 border-border/30 hover-lift group animate-fade-up ${action.variant === 'secondary'
-                  ? 'hover:border-secondary/50'
-                  : 'hover:border-primary/50'
-                }`}
-              style={{ animationDelay: `${index * 0.15}s` }}
+              className="p-8 bg-card/10 backdrop-blur-sm border border-border group relative overflow-hidden transition-all hover:border-primary/50"
             >
-              <div className="mb-6">
+              {/* Decorative corners */}
+              <div className="absolute top-0 left-0 w-3 h-3 border-t border-l border-primary/30 group-hover:border-primary transition-colors"></div>
+              <div className="absolute top-0 right-0 w-3 h-3 border-t border-r border-primary/30 group-hover:border-primary transition-colors"></div>
+              <div className="absolute bottom-0 left-0 w-3 h-3 border-b border-l border-primary/30 group-hover:border-primary transition-colors"></div>
+              <div className="absolute bottom-0 right-0 w-3 h-3 border-b border-r border-primary/30 group-hover:border-primary transition-colors"></div>
+
+              <div className="mb-6 relative z-10">
                 <div
-                  className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-5 transition-all duration-300 group-hover:scale-110 ${action.variant === 'secondary'
-                      ? 'bg-secondary/20 group-hover:bg-secondary/30'
-                      : 'bg-primary/20 group-hover:bg-primary/30'
-                    }`}
+                  className="w-14 h-14 rounded-sm flex items-center justify-center mb-5 bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-all"
                 >
                   <action.icon
-                    className={`w-8 h-8 ${action.variant === 'secondary' ? 'text-secondary' : 'text-primary'
-                      }`}
+                    className="w-7 h-7 text-primary"
                   />
                 </div>
-                <h3 className="text-2xl font-bold font-display mb-2 text-foreground">
+                <h3 className="text-2xl font-bold font-sans-tech mb-2 text-foreground">
                   {action.title}
                 </h3>
-                <p className="text-muted-foreground leading-relaxed">
+                <p className="text-muted-foreground leading-relaxed font-mono-tech text-sm">
                   {action.description}
                 </p>
               </div>
@@ -70,23 +69,22 @@ const ActionsSection = () => {
               {action.href ? (
                 <Button
                   asChild
-                  variant={action.variant === 'secondary' ? 'secondary' : 'default'}
-                  className="w-full group/btn"
+                  variant="outline"
+                  className="w-full group/btn border-primary/30 hover:bg-primary/10 hover:border-primary text-primary font-mono-tech"
                   size="lg"
                 >
                   <Link to={action.href}>
-                    <span>Access Now</span>
+                    <span>VIEW DATA</span>
                     <ExternalLink className="w-4 h-4 ml-2 group-hover/btn:translate-x-1 transition-transform duration-300" />
                   </Link>
                 </Button>
               ) : (
                 <Button
                   onClick={action.action}
-                  variant={action.variant === 'secondary' ? 'secondary' : 'default'}
-                  className="w-full group/btn"
+                  className="w-full group/btn bg-primary hover:bg-primary/90 text-primary-foreground font-mono-tech"
                   size="lg"
                 >
-                  <span>Start Upload</span>
+                  <span>IMPORT DATA</span>
                   <ArrowRight className="w-4 h-4 ml-2 group-hover/btn:translate-x-1 transition-transform duration-300" />
                 </Button>
               )}
@@ -100,18 +98,18 @@ const ActionsSection = () => {
         />
 
         {/* Additional Links Section */}
-        <div className="mt-20 text-center">
-          <h3 className="text-2xl font-bold font-display mb-8 text-foreground">
-            Explore More
+        <div className="mt-20 text-center border-t border-border pt-10">
+          <h3 className="text-xl font-bold font-sans-tech mb-8 text-foreground uppercase tracking-wider">
+            SYSTEM RESOURCES
           </h3>
           <div className="flex flex-wrap justify-center gap-4">
-            <Button variant="ghost" className="group">
-              API Documentation
-              <ExternalLink className="w-4 h-4 ml-2 group-hover:scale-110 transition-transform duration-300" />
+            <Button variant="ghost" className="group font-mono-tech text-muted-foreground hover:text-primary">
+              // API_DOCS
+              <ExternalLink className="w-3 h-3 ml-2 group-hover:scale-110 transition-transform duration-300" />
             </Button>
-            <Button variant="ghost" className="group">
-              Research Papers
-              <ExternalLink className="w-4 h-4 ml-2 group-hover:scale-110 transition-transform duration-300" />
+            <Button variant="ghost" className="group font-mono-tech text-muted-foreground hover:text-primary">
+              // RESEARCH_PAPERS
+              <ExternalLink className="w-3 h-3 ml-2 group-hover:scale-110 transition-transform duration-300" />
             </Button>
           </div>
         </div>

@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { UploadModal } from '../components/UploadModal';
-import { Loader2, RefreshCw, Folder } from 'lucide-react';
+import { Loader2, RefreshCw, Folder, Database, Terminal, AlertCircle } from 'lucide-react';
 import { ImageGrid } from '../components/ImageGrid';
 import { ImageModal } from '../components/ImageModal';
 import Navigation from '../components/Navigation';
@@ -144,21 +144,26 @@ export default function DataViewer() {
 
 
     return (
-        <div className="flex flex-col h-screen text-slate-100 bg-slate-950 font-sans overflow-hidden">
+        <div className="flex flex-col h-screen text-foreground bg-background font-sans-tech overflow-hidden relative">
+            <div className="absolute inset-0 bg-grid-pattern opacity-[0.05] pointer-events-none"></div>
             <Navigation />
-            <div className="flex flex-col flex-1 overflow-hidden pt-16">
+            <div className="flex flex-col flex-1 overflow-hidden pt-16 relative z-10">
 
                 {/* Header Bar */}
-                <div className="h-12 bg-slate-900 border-b border-slate-800 flex items-center px-4 justify-between z-20 shrink-0">
+                <div className="h-12 bg-background/80 backdrop-blur-md border-b border-border flex items-center px-4 justify-between z-20 shrink-0">
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2 text-sm">
-                            <Link to="/viewer" className="font-bold text-orange-500 hidden md:block hover:text-orange-400 transition-colors">Datara Explorer</Link>
+                            <Link to="/viewer" className="font-sans-tech font-bold text-primary hidden md:block hover:text-primary-glow transition-colors">DATARA EXPLORER</Link>
+                            {/* <span className="text-muted-foreground">/</span> */}
                             <Breadcrumbs />
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-6 text-xs font-medium text-slate-400">
-                        {/* Right side controls can go here */}
+                    <div className="flex items-center gap-6 text-xs font-sans-tech font-medium text-muted-foreground">
+                        <span className="flex items-center gap-2 text-success">
+                            <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse"></span>
+                            Live Connection
+                        </span>
                     </div>
                 </div>
 
@@ -179,47 +184,44 @@ export default function DataViewer() {
                     )}
 
                     {/* Main Content */}
-                    <div className="flex-1 flex flex-col min-w-0 bg-slate-950">
+                    <div className="flex-1 flex flex-col min-w-0 bg-background/50">
 
                         {/* Toolbar - Only show when viewing images or if we want search on folders too */}
-                        <div className="h-10 border-b border-slate-800 bg-slate-900/30 flex items-center px-4 justify-between">
+                        <div className="h-10 border-b border-border bg-card/10 flex items-center px-4 justify-between">
                             <div className="flex items-center space-x-4">
-                                <div className="flex items-center bg-slate-800 rounded px-2 py-1 text-xs">
-                                    <span className="text-slate-400 mr-2">Items</span>
-                                    <span className="bg-slate-700 text-slate-200 px-1.5 rounded">{filteredContent.length}</span>
+                                <div className="flex items-center bg-card border border-border rounded-sm px-2 py-1 text-xs">
+                                    <span className="text-muted-foreground mr-2 font-sans-tech">Items:</span>
+                                    <span className="text-foreground font-sans-tech">{filteredContent.length}</span>
                                 </div>
-                                <div className="h-4 w-px bg-slate-800"></div>
+                                <div className="h-4 w-px bg-border"></div>
                                 <button
                                     onClick={() => window.location.reload()} // Simple refresh
-                                    className="text-slate-400 hover:text-white transition-colors flex items-center text-xs gap-1"
+                                    className="text-muted-foreground hover:text-foreground transition-colors flex items-center text-xs gap-1 font-sans-tech"
                                 >
                                     <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
                                     <span>Refresh</span>
                                 </button>
                             </div>
 
-                            {/* Add Upload Button here for root view/folder view since sidebar is gone? 
-                                User asked for sidebar to be gone. 
-                                I should probably expose the upload button somewhere else if sidebar is gone.
-                                Or just rely on sidebar being there only for images?
-                                But they might want to upload from root.
-                                Let's add an Upload button to the toolbar if !isLeaf.
-                            */}
                             {!isLeaf && (
                                 <button
                                     onClick={() => setIsUploadModalOpen(true)}
-                                    className="bg-orange-600 hover:bg-orange-700 text-white px-3 py-1 rounded text-xs font-medium transition-colors"
+                                    className="bg-primary/10 hover:bg-primary/20 text-primary border border-primary/50 px-3 py-1 rounded-sm text-xs font-sans-tech font-medium transition-colors flex items-center gap-2"
                                 >
+                                    <Terminal className="w-3 h-3" />
                                     Import Data
                                 </button>
                             )}
                         </div>
 
                         {/* Content Area */}
-                        <div className="flex-1 overflow-y-auto relative p-0 custom-scrollbar bg-slate-950">
+                        <div className="flex-1 overflow-y-auto relative p-0 custom-scrollbar bg-background/30">
                             {loading && (
-                                <div className="absolute inset-0 flex items-center justify-center bg-slate-950/80 z-20">
-                                    <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
+                                <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-20 backdrop-blur-sm">
+                                    <div className="flex flex-col items-center gap-4">
+                                        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                                        <span className="text-primary font-sans-tech text-xs animate-pulse">Loading Assets...</span>
+                                    </div>
                                 </div>
                             )}
 
@@ -227,43 +229,59 @@ export default function DataViewer() {
                                 <div className="flex flex-col min-h-full">
                                     {/* Welcome / Root Header */}
                                     {pathSegments.length === 0 && (
-                                        <div className="px-8 py-12 flex flex-col items-center justify-center text-center border-b border-slate-900 bg-gradient-to-b from-slate-900/20 to-transparent">
-                                            <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">Datara Explorer</h1>
-                                            <p className="text-slate-400 max-w-md mx-auto">
-                                                Navigate through your hierarchical datasets. Select a category below to begin or import new data.
+                                        <div className="px-8 py-16 flex flex-col items-center justify-center text-center border-b border-border bg-gradient-to-b from-primary/5 to-transparent">
+                                            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-6 border border-primary/20">
+                                                <Database className="w-8 h-8 text-primary" />
+                                            </div>
+                                            <h1 className="text-4xl font-sans-tech font-bold text-foreground mb-4 tracking-tight">DATARA <span className="text-primary">EXPLORER</span></h1>
+                                            <p className="text-muted-foreground max-w-md mx-auto font-sans-tech text-sm leading-relaxed">
+                                                Select a data module below to begin inspection.
                                             </p>
                                         </div>
                                     )}
 
                                     {/* Folder Grid */}
                                     <div className="p-8">
-                                        {pathSegments.length > 0 && <h2 className="text-lg font-medium text-slate-300 mb-6 px-1 max-w-5xl mx-auto">Subdirectories</h2>}
+                                        {pathSegments.length > 0 && (
+                                            <div className="flex items-center gap-2 mb-6 max-w-5xl mx-auto">
+                                                <div className="w-1 h-4 bg-primary"></div>
+                                                <h2 className="text-lg font-sans-tech font-bold text-muted-foreground uppercase tracking-widest">Subdirectories</h2>
+                                            </div>
+                                        )}
 
                                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-5xl mx-auto">
                                             {filteredContent.map((folder: any) => (
                                                 <div
                                                     key={folder.name}
                                                     onClick={() => handleFolderClick(folder.name)}
-                                                    className="group cursor-pointer flex flex-col items-center gap-6 p-10 rounded-2xl bg-slate-900/40 border border-slate-800 hover:border-orange-500/50 hover:bg-slate-900/80 transition-all hover:shadow-2xl hover:shadow-orange-500/10"
+                                                    className="group cursor-pointer relative p-8 bg-card/20 border border-border hover:border-primary/50 hover:bg-card/40 transition-all duration-300 overflow-hidden"
                                                 >
-                                                    <div className="p-5 bg-slate-800/50 rounded-full group-hover:bg-orange-500/10 transition-colors">
-                                                        <Folder className="w-16 h-16 text-slate-500 group-hover:text-orange-500 fill-current transition-colors" />
+                                                    {/* Decorative corners */}
+                                                    <div className="absolute top-0 left-0 w-3 h-3 border-t border-l border-border group-hover:border-primary transition-colors"></div>
+                                                    <div className="absolute top-0 right-0 w-3 h-3 border-t border-r border-border group-hover:border-primary transition-colors"></div>
+                                                    <div className="absolute bottom-0 left-0 w-3 h-3 border-b border-l border-border group-hover:border-primary transition-colors"></div>
+                                                    <div className="absolute bottom-0 right-0 w-3 h-3 border-b border-r border-border group-hover:border-primary transition-colors"></div>
+
+                                                    <div className="flex flex-col items-center gap-6 relative z-10">
+                                                        <div className="p-4 bg-background/50 rounded-sm border border-border group-hover:border-primary/30 group-hover:shadow-[0_0_15px_rgba(249,115,22,0.1)] transition-all">
+                                                            <Folder className="w-12 h-12 text-muted-foreground group-hover:text-primary transition-colors" />
+                                                        </div>
+                                                        <span className="text-lg font-sans-tech font-bold text-foreground group-hover:text-primary transition-colors text-center break-words w-full uppercase tracking-wider">
+                                                            {folder.name}
+                                                        </span>
                                                     </div>
-                                                    <span className="text-xl font-medium text-slate-300 group-hover:text-white text-center break-words w-full">
-                                                        {folder.name}
-                                                    </span>
                                                 </div>
                                             ))}
 
                                             {filteredContent.length === 0 && !loading && (
-                                                <div className="col-span-full flex flex-col items-center justify-center py-20 text-slate-500 border-2 border-dashed border-slate-800 rounded-xl">
-                                                    <Folder className="w-16 h-16 mb-4 opacity-20" />
-                                                    <p className="text-lg">No folders found in this directory</p>
+                                                <div className="col-span-full flex flex-col items-center justify-center py-20 text-muted-foreground border border-dashed border-border bg-card/10 rounded-sm">
+                                                    <AlertCircle className="w-12 h-12 mb-4 text-muted-foreground/50" />
+                                                    <p className="text-lg font-sans-tech">No data found</p>
                                                     <button
                                                         onClick={() => setIsUploadModalOpen(true)}
-                                                        className="mt-6 text-orange-500 hover:text-orange-400 font-medium text-lg"
+                                                        className="mt-6 text-primary hover:text-primary-glow font-sans-tech font-medium text-sm underline decoration-dotted underline-offset-4"
                                                     >
-                                                        Upload Data Here
+                                                        Upload Data
                                                     </button>
                                                 </div>
                                             )}
