@@ -229,7 +229,8 @@ def process_video():
 
     gdrive_link = data.get("gdrive_link")
     output_name = data.get("output_name")
-    
+    upload_type = data.get("upload_type", "video") # video | folder
+
     if not gdrive_link:
         return {"error": "No Google Drive link provided"}, 400
         
@@ -246,49 +247,114 @@ def process_video():
     UPLOAD_FOLDER = "uploads"
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     
-    # Generate temporary filename
+    # Generate temporary filename/dirname
     ts = int(datetime.now().timestamp())
-    video_filename = f"video_{ts}.mp4"
-    video_path = os.path.join(UPLOAD_FOLDER, video_filename)
+    
+    # OUTPUT NAME LOGIC
+    # Ideally output_name matches the hierarchical path e.g. automotive/bmw/frontGrille
+    # For local processing, we use the basename of that (frontGrille) to avoid deep nesting in 'dataset_list'
+    # BUT wait, the upload script uses the input directory structure IF it's recursive?
+    # No, upload script takes --input_dir.
+    # We should stick to:
+    # Local: dataset_list/<basename>/orig/... files
+    # Remote: <output_name>/orig/... files
+    
+    if output_name:
+        dataset_basename = os.path.basename(output_name) # frontGrille
+    else:
+        dataset_basename = f"dataset_{ts}"
+
+    # Prepare local processing dir
+    local_process_dir = os.path.join("dataset_list", dataset_basename) # dataset_list/frontGrille
+    if os.path.exists(local_process_dir):
+        shutil.rmtree(local_process_dir)
+    os.makedirs(os.path.join(local_process_dir, "orig"), exist_ok=True)
 
     try:
-        print(f"⬇️ Downloading from GDrive: {gdrive_link}")
-        # fuzzy=True allows extracting ID from view links
-        downloaded_path = gdown.download(gdrive_link, video_path, quiet=False, fuzzy=True)
+        print(f"⬇️ Downloading from GDrive ({upload_type}): {gdrive_link}")
         
-        if not downloaded_path:
-             return {"error": "Download failed or link invalid"}, 400
+        if upload_type == "folder":
+            # DOWNLOAD FOLDER
+            # Create a temp download dir
+            temp_download_dir = os.path.join(UPLOAD_FOLDER, f"temp_folder_{ts}")
+            os.makedirs(temp_download_dir, exist_ok=True)
+            
+            downloaded = gdown.download_folder(gdrive_link, output=temp_download_dir, quiet=False, use_cookies=False)
+            
+            if not downloaded:
+                 return {"error": "Folder download failed or link invalid"}, 400
 
-        # Update path in case gdown changed it (unlikely with output arg but good to be safe)
-        video_path = downloaded_path
-        
-        # Logic to align directory naming
-        if output_name:
-             video_basename = output_name
+            print(f"📂 Processing images from folder...")
+            
+            # Find and rename images to local_process_dir/orig
+            # Support common image formats
+            valid_exts = ('.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.webp')
+            
+            image_files = []
+            for root, dirs, files in os.walk(temp_download_dir):
+                for file in files:
+                    if file.lower().endswith(valid_exts):
+                        image_files.append(os.path.join(root, file))
+            
+            image_files.sort() # Ensure deterministic order
+            
+            count = 0
+            pad_width = len(str(len(image_files)))
+            
+            for img_path in image_files:
+                ext = os.path.splitext(img_path)[1].lower()
+                new_filename = f"{dataset_basename}_{count:0{pad_width}d}{ext}"
+                dest_path = os.path.join(local_process_dir, "orig", new_filename)
+                
+                shutil.copy2(img_path, dest_path)
+                count += 1
+                
+            print(f"✅ Prepared {count} images in {local_process_dir}/orig")
+            
+            # Cleanup temp download
+            shutil.rmtree(temp_download_dir)
+
         else:
-             video_basename = os.path.splitext(os.path.basename(video_path))[0]
+            # VIDEO FLOW
+            video_filename = f"video_{ts}.mp4"
+            video_path = os.path.join(UPLOAD_FOLDER, video_filename)
+            
+            # fuzzy=True allows extracting ID from view links
+            downloaded_path = gdown.download(gdrive_link, video_path, quiet=False, fuzzy=True)
+            
+            if not downloaded_path:
+                 return {"error": "Download failed or link invalid"}, 400
+                 
+            # 1. Process Video (Generate Frames)
+            # generate_orig_frames writes to dataset_list/<dataset_basename>/orig
+            # note: generate_orig_frames expects just the name, it builds path relative to its location
+            # We already created the dir, but the script might expect to create it.
+            
+            print(f"🔄 Processing video: {dataset_basename}")
+            cmd_gen = [
+                sys.executable, "generate_orig_frames.py",
+                "--video_path", downloaded_path,
+                "--output_name", dataset_basename, 
+                "--target_fps", "2"
+            ]
+            print(f"Running gen: {cmd_gen}")
+            subprocess.check_call(cmd_gen)
+            
+            # Cleanup video
+            if os.path.exists(downloaded_path):
+                os.remove(downloaded_path)
 
-        output_dir = os.path.join("dataset_list", video_basename)
 
-        print(f"🔄 Processing video: {video_basename}")
+        # 2. Upload Frames to Azure and Cosmos DB (Common for both flows)
+        # dataset_list/<dataset_basename>/orig should now contain the images
         
-        # 1. Process Video (Generate Frames)
-        cmd_gen = [
-            sys.executable, "generate_orig_frames.py",
-            "--video_path", video_path,
-            "--output_name", video_basename,
-            "--target_fps", "2"
-        ]
-        print(f"Running gen: {cmd_gen}")
-        subprocess.check_call(cmd_gen)
-        
-        # 2. Upload Frames to Azure and Cosmos DB
-        # Matching container name 'test'
         cmd_upload = [
             sys.executable, "upload_frames_to_azure.py",
             "--container_name", "test",
-            "--output_name", video_basename,
-            "--input_dir", os.path.join("dataset_list", video_basename),
+            # The script uses output_name as the blob prefix: automotive/bmw/frontGrille
+            "--output_name", output_name if output_name else dataset_basename,
+            # The script looks in input_dir/view (e.g. dataset_list/frontGrille/orig)
+            "--input_dir", local_process_dir,
             "--view", "orig",
             "--date", date_val or "",
             "--tags", json.dumps(misc_tags)
@@ -296,11 +362,11 @@ def process_video():
         print(f"Running upload: {cmd_upload}")
         subprocess.check_call(cmd_upload)
         
-        if os.path.exists(output_dir):
-            shutil.rmtree(output_dir)
-        
-        if os.path.exists(video_path):
-            os.remove(video_path)
+        # Cleanup
+        if os.path.exists(local_process_dir):
+            shutil.rmtree(local_process_dir)
+            
+        return {"message": "Data processed and uploaded successfully"}
             
         return {"message": "Video processed and uploaded successfully"}
 

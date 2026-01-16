@@ -15,6 +15,7 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
     const [selectedCategory, setSelectedCategory] = useState("");
     const [brandName, setBrandName] = useState("");
     const [datasetName, setDatasetName] = useState("");
+    const [uploadType, setUploadType] = useState<'video' | 'folder'>('video');
 
     const [isUploading, setIsUploading] = useState(false);
 
@@ -62,6 +63,7 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
         const payload = {
             gdrive_link: gdriveLink,
             output_name: finalOutputName,
+            upload_type: uploadType,
             date: date,
             tags: tags
         };
@@ -86,6 +88,7 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
                 setBrandName("");
                 setDatasetName("");
                 setTags([]);
+                setUploadType('video');
             } else {
                 throw new Error(data.error || "Upload failed");
             }
@@ -109,24 +112,51 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
                 <div className="mb-6">
                     <h2 className="text-xl font-bold text-white flex items-center gap-2">
                         <Upload className="w-5 h-5 text-orange-500" />
-                        Import from Google Drive
+                        Import Data
                     </h2>
                     <p className="text-sm text-slate-400 mt-1">
-                        Provide a public Google Drive link to process.
+                        Import videos or folders of images from Google Drive.
                     </p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
+
+                    {/* Upload Type Selector */}
+                    <div className="bg-slate-950 p-1 rounded-lg flex border border-slate-800">
+                        <button
+                            type="button"
+                            onClick={() => setUploadType('video')}
+                            className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${uploadType === 'video'
+                                    ? 'bg-orange-600 text-white shadow-sm'
+                                    : 'text-slate-400 hover:text-slate-200'
+                                }`}
+                        >
+                            Video File
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setUploadType('folder')}
+                            className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${uploadType === 'folder'
+                                    ? 'bg-orange-600 text-white shadow-sm'
+                                    : 'text-slate-400 hover:text-slate-200'
+                                }`}
+                        >
+                            Images Folder
+                        </button>
+                    </div>
+
                     {/* GDrive Link */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-300">Google Drive Link</label>
+                        <label className="text-sm font-medium text-slate-300">
+                            {uploadType === 'video' ? 'Google Drive Video Link' : 'Google Drive Folder Link'}
+                        </label>
                         <div className="relative">
                             <LinkIcon className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
                             <input
                                 type="text"
                                 value={gdriveLink}
                                 onChange={(e) => setGdriveLink(e.target.value)}
-                                placeholder="https://drive.google.com/file/d/..."
+                                placeholder={uploadType === 'video' ? "https://drive.google.com/file/d/..." : "https://drive.google.com/drive/folders/..."}
                                 className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 pl-9 text-sm text-white focus:outline-none focus:border-orange-500"
                                 required
                             />
