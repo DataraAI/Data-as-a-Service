@@ -16,7 +16,7 @@ load_dotenv()
 
 account_name = "datara04749"
 account_url = f"https://{account_name}.blob.core.windows.net/"
-container_name = "test"
+container_name = "data"
 
 # Parse Account Key from Connection String
 conn_str = os.getenv("BLOB_CONNECTION_STRING")
@@ -335,7 +335,7 @@ def process_video():
                 sys.executable, "generate_orig_frames.py",
                 "--video_path", downloaded_path,
                 "--output_name", dataset_basename, 
-                "--target_fps", "2"
+                "--target_fps", "30"
             ]
             print(f"Running gen: {cmd_gen}")
             subprocess.check_call(cmd_gen)
@@ -350,7 +350,7 @@ def process_video():
         
         cmd_upload = [
             sys.executable, "upload_frames_to_azure.py",
-            "--container_name", "test",
+            "--container_name", container_name,
             # The script uses output_name as the blob prefix: automotive/bmw/frontGrille
             "--output_name", output_name if output_name else dataset_basename,
             # The script looks in input_dir/view (e.g. dataset_list/frontGrille/orig)
