@@ -16,8 +16,8 @@ check_port() {
 
 # Check if ports are available
 echo "Checking port availability..."
-if ! check_port 5000; then
-    echo "❌ Backend port 5000 is already in use. Please stop the existing process or change the port."
+if ! check_port 5050; then
+    echo "❌ Backend port 5050 is already in use. Please stop the existing process or change the port."
     exit 1
 fi
 
@@ -34,7 +34,8 @@ fi
 # Start backend
 echo "🔧 Starting backend server..."
 cd backend
-python app.py &
+# python app.py &
+python3 bmw.py &
 BACKEND_PID=$!
 
 # Wait a moment for backend to start
@@ -49,7 +50,7 @@ FRONTEND_PID=$!
 echo ""
 echo "✅ DataraAI Application is starting up!"
 echo ""
-echo "📊 Backend API: http://127.0.0.1:5000"
+echo "📊 Backend API: http://127.0.0.1:5050"
 echo "🎨 Frontend: http://127.0.0.1:8080"
 echo "🔍 FiftyOne: http://127.0.0.1:5151"
 echo ""

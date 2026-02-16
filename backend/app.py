@@ -5,7 +5,7 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import fiftyone as fo
 from fiftyone import Sample, Classification
-from PIL import Image
+# from PIL import Image
 from dotenv import load_dotenv
 
 # ----------------------------
@@ -144,4 +144,4 @@ def get_stats():
 # Run Flask
 # ----------------------------
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5000, debug=True)
+    app.run(host="127.0.0.1", port=5050, debug=True)

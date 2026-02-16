@@ -65,7 +65,7 @@ sleep 30
 
 # Check if services are running
 print_status "Checking service health..."
-if curl -f http://localhost:5000/health > /dev/null 2>&1; then
+if curl -f http://localhost:5050/health > /dev/null 2>&1; then
     print_status "✅ Backend is healthy"
 else
     print_error "❌ Backend is not responding"

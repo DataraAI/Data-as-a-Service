@@ -5,7 +5,7 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import fiftyone as fo
 from fiftyone import Sample, Classification
-from PIL import Image
+# from PIL import Image
 from dotenv import load_dotenv
 
 # ----------------------------
@@ -153,6 +153,6 @@ def health_check():
 # Run Flask
 # ----------------------------
 if __name__ == "__main__":
-    port = int(os.getenv('PORT', 5000))
+    port = int(os.getenv('PORT', 5050))
     debug = os.getenv('FLASK_ENV') != 'production'
     app.run(host="0.0.0.0", port=port, debug=debug)

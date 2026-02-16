@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 
 const PHOTOPRISM_API = "http://localhost:2342/api/v1";
-const BACKEND_API = "http://localhost:5000"; // Your Flask app
+const BACKEND_API = "http://localhost:5050"; // Your Flask app
 
 const PhotoPrismGallery = () => {
   const [photos, setPhotos] = useState([]);
