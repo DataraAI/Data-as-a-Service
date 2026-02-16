@@ -56,6 +56,7 @@ export function Sidebar({ onFilterChange, availableTags, visibleTags, onToggleTa
                             <div className="relative">
                                 <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
                                 <input
+                                    id="filter_samples"
                                     type="text"
                                     placeholder="Filter samples..."
                                     className="w-full bg-input border border-border rounded-sm py-1.5 pl-8 pr-2 text-xs focus:border-primary focus:outline-none placeholder-muted-foreground text-foreground font-sans-tech"
@@ -89,24 +90,28 @@ export function Sidebar({ onFilterChange, availableTags, visibleTags, onToggleTa
                         <div className="px-4 pb-4 space-y-3 bg-background/30">
                             <div className="grid grid-cols-2 gap-2">
                                 <div>
-                                    <label className="text-[10px] text-muted-foreground font-sans-tech mb-1 block uppercase tracking-wider">Min Frame</label>
-                                    <input
-                                        type="number"
-                                        placeholder="0"
-                                        value={frameRange.min ?? ''}
-                                        onChange={(e) => onFrameRangeChange(e.target.value ? parseInt(e.target.value) : null, frameRange.max)}
-                                        className="w-full bg-input border border-border rounded-sm py-1.5 px-2 text-xs focus:border-primary focus:outline-none placeholder-muted-foreground text-foreground font-sans-tech"
-                                    />
+                                    <label className="text-[10px] text-muted-foreground font-sans-tech mb-1 block uppercase tracking-wider">Min Frame
+                                        <input
+                                            id="min_frame"
+                                            type="number"
+                                            placeholder="0"
+                                            value={frameRange.min ?? ''}
+                                            onChange={(e) => onFrameRangeChange(e.target.value ? parseInt(e.target.value) : null, frameRange.max)}
+                                            className="w-full bg-input border border-border rounded-sm py-1.5 px-2 text-xs focus:border-primary focus:outline-none placeholder-muted-foreground text-foreground font-sans-tech"
+                                        />
+                                    </label>
                                 </div>
                                 <div>
-                                    <label className="text-[10px] text-muted-foreground font-sans-tech mb-1 block uppercase tracking-wider">Max Frame</label>
-                                    <input
-                                        type="number"
-                                        placeholder="100"
-                                        value={frameRange.max ?? ''}
-                                        onChange={(e) => onFrameRangeChange(frameRange.min, e.target.value ? parseInt(e.target.value) : null)}
-                                        className="w-full bg-input border border-border rounded-sm py-1.5 px-2 text-xs focus:border-primary focus:outline-none placeholder-muted-foreground text-foreground font-sans-tech"
-                                    />
+                                    <label className="text-[10px] text-muted-foreground font-sans-tech mb-1 block uppercase tracking-wider">Max Frame
+                                        <input
+                                            id="max_frame"
+                                            type="number"
+                                            placeholder="100"
+                                            value={frameRange.max ?? ''}
+                                            onChange={(e) => onFrameRangeChange(frameRange.min, e.target.value ? parseInt(e.target.value) : null)}
+                                            className="w-full bg-input border border-border rounded-sm py-1.5 px-2 text-xs focus:border-primary focus:outline-none placeholder-muted-foreground text-foreground font-sans-tech"
+                                        />
+                                    </label>
                                 </div>
                             </div>
                         </div>

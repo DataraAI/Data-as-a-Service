@@ -1,35 +1,51 @@
 import os
-import threading
+# import threading
 import json
 from flask import Flask, jsonify, Response, stream_with_context, request
 from flask_cors import CORS
 from dotenv import load_dotenv
 from azure.identity import DefaultAzureCredential
-from azure.storage.blob import BlobServiceClient, BlobClient, generate_blob_sas, BlobSasPermissions
+from azure.storage.blob import BlobServiceClient, generate_blob_sas, BlobSasPermissions
 from datetime import datetime, timedelta, timezone
 import subprocess
 import shutil
 import sys
 import gdown
 
+from azure.cosmos import CosmosClient
+
+import call_lambda_vm
+
 load_dotenv()
 
 account_name = "datara04749"
 account_url = f"https://{account_name}.blob.core.windows.net/"
-container_name = "data"
+container_name = "roboteyeview"
 
-# Parse Account Key from Connection String
+# 1. Get the connection string
 conn_str = os.getenv("BLOB_CONNECTION_STRING")
-account_key = None
+
+# 2. Setup the Client
 if conn_str:
+    print("✅ Found connection string. Using Key-based authentication.")
+    # PARSE KEY (Required for your SAS Token logic later)
     try:
         data = dict(item.split('=', 1) for item in conn_str.split(';') if item)
         account_key = data.get('AccountKey')
-    except:
-        print("Could not parse AccountKey from connection string")
+    except Exception as e:
+        print(f"⚠️ Could not parse AccountKey: {e}")
+        account_key = None
 
-credential = DefaultAzureCredential()
-blob_service_client = BlobServiceClient(account_url=account_url, credential=credential)
+    # INITIALIZE CLIENT WITH CONNECTION STRING
+    blob_service_client = BlobServiceClient.from_connection_string(conn_str)
+
+else:
+    # Fallback only if no string is provided
+    print("⚠️ No connection string found. Falling back to DefaultAzureCredential.")
+    account_key = None
+    credential = DefaultAzureCredential()
+    blob_service_client = BlobServiceClient(account_url=account_url, credential=credential)
+
 container_client = blob_service_client.get_container_client(container_name)
 
 app = Flask(__name__)
@@ -43,8 +59,6 @@ COSMOS_ENDPOINT = "https://roboteyeview.documents.azure.com:443/"
 COSMOS_DATABASE = "RobotEyeView"
 COSMOS_CONTAINER = "imageTags"
 COSMOS_KEY = os.getenv("COSMOS_DB_KEY")
-
-from azure.cosmos import CosmosClient 
 
 def get_cosmos_metadata_map(dataset_name):
     """
@@ -134,82 +148,82 @@ def get_dataset_images(name):
         # List blobs directly from Azure
         blobs = container_client.list_blobs(name_starts_with=base_prefix)
         for blob in blobs:
-             is_image = blob.name.lower().endswith(('.png', '.jpg', '.jpeg'))
-             is_3d = blob.name.lower().endswith(('.stl', '.obj', ".glb", ".gltf"))
+            is_image = blob.name.lower().endswith(('.png', '.jpg', '.jpeg'))
+            is_3d = blob.name.lower().endswith(('.stl', '.obj', ".glb", ".gltf"))
 
-             if is_image or is_3d:
-                 # Generate SAS Token
-                 sas_token = ""
-                 if account_key:
-                     sas_token = generate_blob_sas(
-                         account_name=account_name,
-                         container_name=container_name,
-                         blob_name=blob.name,
-                         account_key=account_key,
-                         permission=BlobSasPermissions(read=True),
-                         expiry=datetime.now(timezone.utc) + timedelta(hours=1)
-                     )
-                 
-                 # Get specific metadata for this blob
-                 cosmos_doc = metadata_map.get(blob.name, {})
-                 
-                 # Base tags from Cosmos
-                 current_tags = list(cosmos_doc.get("miscTags", []))
-                 
-                 # ... (Tag logic remains same, mostly applicable to images but fine for 3d) ...
-                 if "/orig/" in blob.name:
-                     current_tags.append("exocentric")
-                 elif "/egos/" in blob.name:
-                     current_tags.append("ego_view")
-                     try:
-                         if "_ego_" in blob.name:
-                             fname = os.path.basename(blob.name)
-                             parts = fname.split("_ego_")
-                             if len(parts) > 1:
-                                 ego_name = os.path.splitext(parts[1])[0]
-                                 current_tags.append(f"ego_{ego_name}")
-                     except:
-                         pass
+            if is_image or is_3d:
+                # Generate SAS Token
+                sas_token = ""
+                if account_key:
+                    sas_token = generate_blob_sas(
+                        account_name=account_name,
+                        container_name=container_name,
+                        blob_name=blob.name,
+                        account_key=account_key,
+                        permission=BlobSasPermissions(read=True),
+                        expiry=datetime.now(timezone.utc) + timedelta(hours=1)
+                    )
 
-                 if cosmos_doc.get("clear") is True:
-                     current_tags.append("clear")
-                 elif cosmos_doc.get("clear") is False:
-                     current_tags.append("blurry")
+                # Get specific metadata for this blob
+                cosmos_doc = metadata_map.get(blob.name, {})
+                 
+                # Base tags from Cosmos
+                current_tags = list(cosmos_doc.get("miscTags", []))
+                 
+                # ... (Tag logic remains same, mostly applicable to images but fine for 3d) ...
+                if "/orig/" in blob.name:
+                    current_tags.append("exocentric")
+                elif "/egos/" in blob.name:
+                    current_tags.append("ego_view")
+                    try:
+                        if "_ego_" in blob.name:
+                            fname = os.path.basename(blob.name)
+                            parts = fname.split("_ego_")
+                            if len(parts) > 1:
+                                ego_name = os.path.splitext(parts[1])[0]
+                                current_tags.append(f"ego_{ego_name}")
+                    except Exception:
+                        pass
+
+                if cosmos_doc.get("clear") is True:
+                    current_tags.append("clear")
+                elif cosmos_doc.get("clear") is False:
+                    current_tags.append("blurry")
                      
-                 # Construct full object
-                 final_url = f"{account_url}{container_name}/{blob.name}"
-                 if sas_token:
-                     final_url += f"?{sas_token}"
+                # Construct full object
+                final_url = f"{account_url}{container_name}/{blob.name}"
+                if sas_token:
+                    final_url += f"?{sas_token}"
 
-                 media_type = "3d" if is_3d else "image"
+                media_type = "3d" if is_3d else "image"
 
-                 if media_type == "3d":
-                     print(f"DEBUG 3D URL: {final_url}")
+                if media_type == "3d":
+                    print(f"DEBUG 3D URL: {final_url}")
 
-                 image_data = {
-                     "id": blob.name,
-                     "url": final_url,
-                     "proxy_url": f"/api/proxy/{blob.name}",
-                     "name": os.path.basename(blob.name),
-                     "type": media_type,
-                     "tags": list(set(current_tags)), 
-                     "metadata": {
-                         "uuid": cosmos_doc.get("id"),
-                         "date": cosmos_doc.get("date"),
-                         "uploaded_at": cosmos_doc.get("_ts"),
-                         "frame_id": cosmos_doc.get("frameId"),
-                         "width": cosmos_doc.get("width"),
-                         "height": cosmos_doc.get("height"),
-                         "sharpness": cosmos_doc.get("sharpnessScore"),
-                         "view": cosmos_doc.get("view")
-                     }
-                 }
-                 image_list.append(image_data)
+                image_data = {
+                    "id": blob.name,
+                    "url": final_url,
+                    "proxy_url": f"/api/proxy/{blob.name}",
+                    "name": os.path.basename(blob.name),
+                    "type": media_type,
+                    "tags": list(set(current_tags)), 
+                    "metadata": {
+                        "uuid": cosmos_doc.get("id"),
+                        "date": cosmos_doc.get("date"),
+                        "uploaded_at": cosmos_doc.get("_ts"),
+                        "frame_id": cosmos_doc.get("frameId"),
+                        "width": cosmos_doc.get("width"),
+                        "height": cosmos_doc.get("height"),
+                        "sharpness": cosmos_doc.get("sharpnessScore"),
+                        "view": cosmos_doc.get("view")
+                    }
+                }
+                image_list.append(image_data)
                  
                  
     except Exception as e:
-         print(f"Error fetching dataset {name}: {e}")
-         return jsonify({"error": str(e)}), 500
+        print(f"Error fetching dataset {name}: {e}")
+        return jsonify({"error": str(e)}), 500
          
     return jsonify(image_list)
 
@@ -222,7 +236,6 @@ def get_dataset_images(name):
 
 @app.route("/api/process_video", methods=["POST"])
 def process_video():
-
     data = request.get_json()
     if not data:
          return {"error": "Invalid JSON body"}, 400
@@ -284,7 +297,7 @@ def process_video():
             if not downloaded:
                  return {"error": "Folder download failed or link invalid"}, 400
 
-            print(f"📂 Processing images from folder...")
+            print("📂 Processing images from folder...")
             
             # Find and rename images to local_process_dir/orig
             # Support common image formats
@@ -367,8 +380,6 @@ def process_video():
             shutil.rmtree(local_process_dir)
             
         return {"message": "Data processed and uploaded successfully"}
-            
-        return {"message": "Video processed and uploaded successfully"}
 
     except subprocess.CalledProcessError as e:
         print(f"❌ Script failed: {e}")
@@ -376,6 +387,56 @@ def process_video():
     except Exception as e:
         print(f"❌ Error: {e}")
         return {"error": f"An error occurred: {str(e)}"}, 500
+
+
+@app.route("/api/generate_ego", methods=["POST"])
+def generate_ego():
+    data = request.get_json()
+    if not data:
+        return {"error": "Invalid JSON body"}, 400
+
+    prompt = data.get("prompt")
+    imageURL = data.get("imageURL")
+    # Retrieve Metadata (Date & Tags)
+    date_val = data.get("date")
+    misc_tags = data.get("tags", [])
+
+    blobPath = imageURL[imageURL.index(container_name) : imageURL.index("/orig") + 5]
+    blobPathComponents = blobPath.split("/")
+    # [roboteyeview, automotive, bmw, frontGrille, orig]
+    blobPathComponents[-1] = "egos"
+    # [roboteyeview, automotive, bmw, frontGrille, egos]
+
+    try:
+        print("Getting localImagePath:\n")
+        localImagePath = call_lambda_vm.generate_ego_image(prompt, imageURL, container_name)
+        print(f"Retrieved localImagePath: {localImagePath}\n")
+        if localImagePath is not None:
+            cmd_upload = [
+                sys.executable, "upload_frames_to_azure.py",
+                "--container_name", container_name,
+                # The script uses output_name as the blob prefix: automotive/bmw/frontGrille
+                "--output_name", "/".join(blobPathComponents[1:4]),
+                # (e.g. 'ego_images/container_name/automotive/bmw/frontGrille/')
+                "--input_dir", os.path.dirname(os.path.dirname(localImagePath)),
+                "--view", "egos",
+                "--date", date_val or "",
+                "--tags", json.dumps(misc_tags)
+            ]
+            print(f"Running ego upload: {cmd_upload}")
+            subprocess.check_call(cmd_upload)
+
+            # Cleanup
+            shutil.rmtree("ego_images/" + container_name)
+
+        return {"message": "Ego view processed and uploaded successfully"}
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Script failed: {e}")
+        return {"error": f"Generate ego execution failed: {str(e)}"}, 500
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        return {"error": f"An error occurred: {str(e)}"}, 500
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5151, debug=True, use_reloader=False)

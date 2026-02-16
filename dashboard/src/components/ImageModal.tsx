@@ -1,5 +1,6 @@
-import { useEffect } from 'react';
-import { X, Copy, ChevronLeft, ChevronRight, Info } from 'lucide-react';
+// import { Button } from "@/components/ui/button";
+import { useEffect, useState } from 'react';
+import { X, Loader2, Copy, ChevronLeft, ChevronRight, Info } from 'lucide-react';
 import { ThreeDViewer } from './ThreeDViewer';
 
 interface ImageModalProps {
@@ -7,10 +8,16 @@ interface ImageModalProps {
     onClose: () => void;
     onNext?: () => void;
     onPrev?: () => void;
+    onEgoGenSuccess?: () => void;
 }
 
-export function ImageModal({ image, onClose, onNext, onPrev }: ImageModalProps) {
+export function ImageModal({ image, onClose, onNext, onPrev, onEgoGenSuccess }: ImageModalProps) {
     if (!image) return null;
+
+    // const [removeHumanBoolean, setRemoveHumanBoolean] = useState(true);
+    // const removeHumanBoolean: boolean = true;
+
+    const [selectedCameraWork, setSelectedCameraWork] = useState("Rotate right 45 degrees");
 
     // Keyboard navigation
     useEffect(() => {
@@ -26,6 +33,61 @@ export function ImageModal({ image, onClose, onNext, onPrev }: ImageModalProps) 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
         // Could add toast notification here
+    };
+
+    const [isGeneratingEgo, setIsGeneratingEgo] = useState(false);
+
+    const generateEgoView = async (e: React.FormEvent) => {
+        e.preventDefault();
+        // if (!gdriveLink || !selectedCategory || !brandName || !datasetName) return;
+        if (!selectedCameraWork) return;
+
+        setIsGeneratingEgo(true);
+
+        // const date = new Date().toISOString().slice(0, 10).replace(/-/g, ""); // YYYYMMDD
+
+        // Construct hierarchical path
+        // const finalOutputName = `${selectedCategory}/${brandName}/${datasetName}`;
+        var prompt = selectedCameraWork + ", and remove the human(s).";
+        // if (removeHumanBoolean) {
+            // prompt += ", and remove the human(s)."
+        // }
+
+        const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+        const payload = {
+            prompt: prompt,
+            imageURL: image.url, // sending URL of image, instead of the actual image
+            date: date,
+            tags: ["egocentric", selectedCameraWork, "no human"]
+        };
+        console.log(JSON.stringify(payload));
+
+        try {
+            const response = await fetch("/api/generate_ego", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(payload),
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                alert("Success: Ego view generated and processed!");
+                if (onEgoGenSuccess) onEgoGenSuccess();
+                onClose();
+                // Reset form
+                setSelectedCameraWork("Rotate right 45 degrees");
+                // setRemoveHumanBoolean(true);
+            } else {
+                throw new Error(data.error || "Ego generation failed");
+            }
+        } catch (error: any) {
+            alert(`Error: ${error.message}`);
+        } finally {
+            setIsGeneratingEgo(false);
+        }
     };
 
     return (
@@ -142,6 +204,46 @@ export function ImageModal({ image, onClose, onNext, onPrev }: ImageModalProps) 
                                 </span>
                             </div>
                         </div>
+                    </div>
+
+                    <div>
+                        <div className="flex items-center mb-3">
+                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest font-sans-tech">Egocentric generation</label>
+                        </div>
+
+                        <form onSubmit={generateEgoView} className="space-y-5">
+                            <div className="bg-background/50 rounded-sm border border-border divide-y divide-border text-[11px] font-sans-tech">
+                                {/* Ego params */}
+
+                                {/* Camera work */}
+                                <div className="flex justify-between p-3">
+                                    <span className="text-muted-foreground font-medium">New camera view</span>
+                                    <select
+                                        id="cameraWork"
+                                        name="cameraWork"
+                                        onChange={(e) => setSelectedCameraWork(e.target.value)}
+                                    >
+                                        <option value="Rotate right 45 degrees">Rotate right 45 degrees</option>
+                                        <option value="Rotate right 90 degrees">Rotate right 90 degrees</option>
+                                        <option value="Rotate left 45 degrees">Rotate left 45 degrees</option>
+                                        <option value="Rotate left 90 degrees">Rotate left 90 degrees</option>
+                                        <option value="Rotate up 45 degrees">Rotate up 45 degrees</option>
+                                        <option value="Rotate up 90 degrees">Rotate up 90 degrees</option>
+                                        <option value="Rotate down 45 degrees">Rotate down 45 degrees</option>
+                                        <option value="Rotate down 90 degrees">Rotate down 90 degrees</option>
+                                    </select>
+                                </div>
+
+                            </div>
+                            <button
+                                type="submit"
+                                disabled={isGeneratingEgo}
+                                className="px-6 py-2 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold font-sans-tech rounded-sm flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed uppercase shadow-lg shadow-primary/20"
+                            >
+                                {isGeneratingEgo && <Loader2 className="w-3 h-3 animate-spin" />}
+                                {isGeneratingEgo ? 'Processing...' : 'Generate Ego View'}
+                            </button>
+                        </form>
                     </div>
 
                 </div>

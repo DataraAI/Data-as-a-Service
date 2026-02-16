@@ -27,9 +27,10 @@ import argparse
 from azure.storage.blob import BlobServiceClient, ContentSettings
 from azure.core.exceptions import ResourceExistsError
 from azure.cosmos import CosmosClient
-import sys
+# import sys
 import uuid
 
+from dotenv import load_dotenv
 
 # ----------------------------
 # Cosmos DB Configuration
@@ -100,7 +101,7 @@ args = parser.parse_args()
 # Parse tags
 try:
     misc_tags = json.loads(args.tags)
-except:
+except Exception:
     misc_tags = []
 
 # ----------------------------
@@ -126,7 +127,6 @@ if not os.path.isdir(input_dir):
 # ----------------------------
 # Azure Blob client setup
 # ----------------------------
-from dotenv import load_dotenv
 load_dotenv()
 
 connection_string = args.connection_string or os.getenv("BLOB_CONNECTION_STRING")
@@ -168,14 +168,17 @@ existing_blobs = list(
     container_client.list_blobs(name_starts_with=dataset_prefix)
 )
 
+# This was originally used to check if blob exists, and prevent overriding
+# We'll allow it for now
 if existing_blobs:
-    error_msg = f"⚠️ Dataset view '{dataset_name}/{view}' already exists in container '{args.container_name}'. No files were uploaded."
+    # error_msg = f"⚠️ Dataset view '{dataset_name}/{view}' already exists in container '{args.container_name}'. No files were uploaded."
+    print(f"Dataset view '{dataset_name}/{view}' exists in container '{args.container_name}'.")
     
     # 1. Print directly to standard error (so the parent process sees it as an error)
-    print(error_msg, file=sys.stderr)
+    # print(error_msg, file=sys.stderr)
     
     # 2. Exit with a non-zero code to tell the backend "I failed"
-    sys.exit(1)
+    # sys.exit(1)
 
 # ----------------------------
 # Upload images
@@ -220,7 +223,7 @@ for filename in os.listdir(input_dir):
     # e.g., bmwGrille_001.png -> 001
     try:
         frame_id_val = os.path.splitext(filename)[0].split('_')[-1]
-    except:
+    except Exception:
         frame_id_val = "0"
 
     metadata_item = {

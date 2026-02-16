@@ -13,3 +13,6 @@ frontend/dist/
 # General
 *.log
 .DS_Store
+
+# VM configs
+backend/saas_config.py

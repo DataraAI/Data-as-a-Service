@@ -11,7 +11,7 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
     const [gdriveLink, setGdriveLink] = useState("");
 
     // Hierarchical State
-    const [categories, setCategories] = useState<string[]>([]);
+    // const [categories, setCategories] = useState<string[]>([]);
     const [selectedCategory, setSelectedCategory] = useState("");
     const [brandName, setBrandName] = useState("");
     const [datasetName, setDatasetName] = useState("");
@@ -30,7 +30,7 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
                 const cats = data
                     .filter((d: any) => d.type === 'folder')
                     .map((d: any) => d.name);
-                setCategories(cats);
+                // setCategories(cats);
                 if (cats.length > 0) setSelectedCategory(cats[0]);
             })
             .catch(err => console.error("Failed to fetch categories", err));
@@ -103,7 +103,7 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-md">
             <div className="bg-card border border-border rounded-lg shadow-2xl w-full max-w-lg p-8 relative overflow-hidden">
                 {/* Decorative border at top */}
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary/50 via-primary to-primary/50"></div>
+                <div className="absolute top-0 left-0 right-0 h-1 bg-linear-to-r from-primary/50 via-primary to-primary/50"></div>
 
                 <button
                     onClick={onClose}
