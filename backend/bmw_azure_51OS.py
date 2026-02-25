@@ -18,7 +18,7 @@ import call_lambda_vm
 
 load_dotenv()
 
-account_name = "datara04749"
+account_name = "daasblob"
 account_url = f"https://{account_name}.blob.core.windows.net/"
 container_name = "roboteyeview"
 
@@ -55,9 +55,9 @@ blob_iter = container_client.walk_blobs(name_starts_with="", delimiter="/")
 DATASET_LIST = [item.name.rstrip("/") for item in blob_iter if item.name.endswith("/")]
 
 # Cosmos DB Configuration for the Backend Service (Reader)
-COSMOS_ENDPOINT = "https://roboteyeview.documents.azure.com:443/"
-COSMOS_DATABASE = "RobotEyeView"
-COSMOS_CONTAINER = "imageTags"
+COSMOS_ENDPOINT = "https://daas-blob-annotations.documents.azure.com:443/"
+COSMOS_DATABASE = "daas-blob-annotations"
+COSMOS_CONTAINER = "roboteyeview" # imageTags
 COSMOS_KEY = os.getenv("COSMOS_DB_KEY")
 
 def get_cosmos_metadata_map(dataset_name):
