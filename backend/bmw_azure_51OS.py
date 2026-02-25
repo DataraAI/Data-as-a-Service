@@ -56,7 +56,7 @@ DATASET_LIST = [item.name.rstrip("/") for item in blob_iter if item.name.endswit
 
 # Cosmos DB Configuration for the Backend Service (Reader)
 COSMOS_ENDPOINT = "https://daas-blob-annotations.documents.azure.com:443/"
-COSMOS_DATABASE = "daas-blob-annotations"
+COSMOS_DATABASE = "BlobAnnotations"
 COSMOS_CONTAINER = "roboteyeview" # imageTags
 COSMOS_KEY = os.getenv("COSMOS_DB_KEY")
 

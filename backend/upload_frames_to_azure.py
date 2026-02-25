@@ -35,9 +35,9 @@ from dotenv import load_dotenv
 # ----------------------------
 # Cosmos DB Configuration
 # ----------------------------
-COSMOS_ENDPOINT = "https://roboteyeview.documents.azure.com:443/"
-COSMOS_DATABASE = "RobotEyeView"
-COSMOS_CONTAINER = "imageTags"
+COSMOS_ENDPOINT = "https://daas-blob-annotations.documents.azure.com:443/"
+COSMOS_DATABASE = "BlobAnnotations"
+COSMOS_CONTAINER = "roboteyeview"
 COSMOS_KEY = os.getenv("COSMOS_DB_KEY")
 
 
