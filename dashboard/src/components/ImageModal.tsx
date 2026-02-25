@@ -206,7 +206,7 @@ export function ImageModal({ image, onClose, onNext, onPrev, onEgoGenSuccess }: 
                         </div>
                     </div>
 
-                    <div>
+                    {image.metadata?.view == "exo" ? <div>
                         <div className="flex items-center mb-3">
                             <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest font-sans-tech">Egocentric generation</label>
                         </div>
@@ -244,7 +244,7 @@ export function ImageModal({ image, onClose, onNext, onPrev, onEgoGenSuccess }: 
                                 {isGeneratingEgo ? 'Processing...' : 'Generate Ego View'}
                             </button>
                         </form>
-                    </div>
+                    </div> : ''}
 
                 </div>
             </div>
