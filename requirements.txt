@@ -8,4 +8,4 @@ gdown==5.2.1
 azure-cosmos
 azure-identity
 azure-storage-blob
-opencv-python-headless
+opencv-python
