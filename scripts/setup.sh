@@ -42,13 +42,13 @@ echo -e "${GREEN}✓ npm $(npm --version)${NC}"
 echo -e "${BLUE}\nSetting up Backend...${NC}"
 cd "$PROJECT_ROOT/backend"
 
-if [ ! -d "venv" ]; then
+if [ ! -d ".venv" ]; then
     echo "Creating Python virtual environment..."
-    python3 -m venv venv
+    python3 -m venv .venv
     echo -e "${GREEN}✓ Virtual environment created${NC}"
 fi
 
-source venv/bin/activate
+source .venv/bin/activate
 echo "Installing Python dependencies..."
 pip install --upgrade pip
 pip install -r requirements.txt
@@ -90,7 +90,7 @@ echo "   vim $PROJECT_ROOT/.env"
 echo ""
 echo "2. Start the backend (Terminal 1):"
 echo "   cd $PROJECT_ROOT/backend"
-echo "   source venv/bin/activate"
+echo "   source .venv/bin/activate"
 echo "   python src/app.py"
 echo ""
 echo "3. Start the frontend (Terminal 2):"

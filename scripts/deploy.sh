@@ -15,8 +15,11 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 # Configuration
-REGISTRY="${DOCKER_REGISTRY:-}"
-IMAGE_NAME="${IMAGE_NAME:-datara-ai}"
+REGISTRY="${DOCKER_REGISTRY:-ghcr.io}"
+REGISTRY_USER="${REGISTRY_USER:-$USER}"
+BACKEND_IMAGE="${BACKEND_IMAGE:-datara-backend}"
+DASHBOARD_IMAGE="${DASHBOARD_IMAGE:-datara-dashboard}"
+PROD_IMAGE="${PROD_IMAGE:-datara-ai}"
 IMAGE_TAG="${IMAGE_TAG:-latest}"
 
 echo -e "${BLUE}🚀 DataraAI Deployment${NC}"
@@ -24,6 +27,10 @@ echo "======================================"
 
 # Parse arguments
 ENVIRONMENT="production"
+BUILD_BACKEND=true
+BUILD_DASHBOARD=true
+PUSH_IMAGES=false
+
 for arg in "$@"; do
     case $arg in
         dev|development)
@@ -32,15 +39,27 @@ for arg in "$@"; do
         prod|production)
             ENVIRONMENT="production"
             ;;
+        --push)
+            PUSH_IMAGES=true
+            ;;
+        --backend-only)
+            BUILD_DASHBOARD=false
+            ;;
+        --dashboard-only)
+            BUILD_BACKEND=false
+            ;;
         *)
             echo -e "${RED}Unknown argument: $arg${NC}"
-            echo "Usage: deploy.sh [dev|prod]"
+            echo "Usage: deploy.sh [dev|prod] [--push] [--backend-only|--dashboard-only]"
             exit 1
             ;;
     esac
 done
 
 echo -e "${BLUE}Environment: ${ENVIRONMENT}${NC}"
+if [ "$PUSH_IMAGES" = true ]; then
+    echo -e "${BLUE}Registry: ${REGISTRY}${NC}"
+fi
 
 # Check Docker installation
 if ! command -v docker &> /dev/null; then
@@ -63,11 +82,46 @@ echo -e "${BLUE}\nBuilding Docker images...${NC}"
 cd "$PROJECT_ROOT/docker"
 
 if [ "$ENVIRONMENT" == "development" ]; then
-    docker-compose -f docker-compose.dev.yml build
     COMPOSE_FILE="docker-compose.dev.yml"
+    docker-compose -f "$COMPOSE_FILE" build
 else
-    docker-compose build
-    COMPOSE_FILE="docker-compose.yml"
+    COMPOSE_FILE="docker-compose.prod.yml"
+
+    # Build backend
+    if [ "$BUILD_BACKEND" = true ]; then
+        echo -e "${BLUE}\nBuilding Backend image...${NC}"
+        BACKEND_FULL_IMAGE="${REGISTRY}/${REGISTRY_USER}/${BACKEND_IMAGE}:${IMAGE_TAG}"
+        docker build \
+            -f Dockerfile.backend \
+            -t "${BACKEND_IMAGE}:${IMAGE_TAG}" \
+            -t "${BACKEND_FULL_IMAGE}" \
+            ..
+
+        if [ $? -eq 0 ]; then
+            echo -e "${GREEN}✓ Backend image built: ${BACKEND_FULL_IMAGE}${NC}"
+        else
+            echo -e "${RED}❌ Backend build failed${NC}"
+            exit 1
+        fi
+    fi
+
+    # Build dashboard
+    if [ "$BUILD_DASHBOARD" = true ]; then
+        echo -e "${BLUE}\nBuilding Dashboard image...${NC}"
+        DASHBOARD_FULL_IMAGE="${REGISTRY}/${REGISTRY_USER}/${DASHBOARD_IMAGE}:${IMAGE_TAG}"
+        docker build \
+            -f Dockerfile.dashboard \
+            -t "${DASHBOARD_IMAGE}:${IMAGE_TAG}" \
+            -t "${DASHBOARD_FULL_IMAGE}" \
+            ..
+
+        if [ $? -eq 0 ]; then
+            echo -e "${GREEN}✓ Dashboard image built: ${DASHBOARD_FULL_IMAGE}${NC}"
+        else
+            echo -e "${RED}❌ Dashboard build failed${NC}"
+            exit 1
+        fi
+    fi
 fi
 
 if [ $? -eq 0 ]; then
@@ -130,12 +184,32 @@ echo "Restart:      docker-compose -f $COMPOSE_FILE restart"
 echo ""
 
 # Optional: Push to registry
-if [ -n "$REGISTRY" ]; then
+if [ "$PUSH_IMAGES" = true ]; then
     echo -e "${BLUE}\nPushing images to registry: $REGISTRY${NC}"
-    FULL_IMAGE="${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
-    docker tag "${IMAGE_NAME}:${IMAGE_TAG}" "$FULL_IMAGE"
-    docker push "$FULL_IMAGE"
-    echo -e "${GREEN}✓ Images pushed to registry${NC}"
+
+    if [ "$BUILD_BACKEND" = true ]; then
+        BACKEND_FULL_IMAGE="${REGISTRY}/${REGISTRY_USER}/${BACKEND_IMAGE}:${IMAGE_TAG}"
+        echo -e "${BLUE}Pushing Backend: ${BACKEND_FULL_IMAGE}${NC}"
+        docker push "$BACKEND_FULL_IMAGE"
+        if [ $? -eq 0 ]; then
+            echo -e "${GREEN}✓ Backend pushed successfully${NC}"
+        else
+            echo -e "${RED}❌ Failed to push Backend${NC}"
+            exit 1
+        fi
+    fi
+
+    if [ "$BUILD_DASHBOARD" = true ]; then
+        DASHBOARD_FULL_IMAGE="${REGISTRY}/${REGISTRY_USER}/${DASHBOARD_IMAGE}:${IMAGE_TAG}"
+        echo -e "${BLUE}Pushing Dashboard: ${DASHBOARD_FULL_IMAGE}${NC}"
+        docker push "$DASHBOARD_FULL_IMAGE"
+        if [ $? -eq 0 ]; then
+            echo -e "${GREEN}✓ Dashboard pushed successfully${NC}"
+        else
+            echo -e "${RED}❌ Failed to push Dashboard${NC}"
+            exit 1
+        fi
+    fi
 fi
 
 

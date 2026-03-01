@@ -1,6 +1,6 @@
-# DataraAI - Refactored Architecture
+# DataraAI - AI Platform for Robotics
 
-A comprehensive AI platform for robotics training and deployment with modern frontend, Flask backend, and cloud integration.
+A comprehensive AI platform for robotics training and deployment with modern React frontend, Flask backend, and cloud integration.
 
 ## 🚀 Quick Start
 
@@ -12,18 +12,21 @@ A comprehensive AI platform for robotics training and deployment with modern fro
 ### Development Setup (5 minutes)
 
 ```bash
-# 1. Navigate to refactored directory
-cd refactored
+# 1. Setup backend
+cd backend
+pip install -r requirements.txt
 
-# 2. Run setup script
-chmod +x scripts/setup.sh
-./scripts/setup.sh
+# 2. Setup frontend (in a new terminal)
+cd dashboard
+npm install
 
-# 3. Edit environment variables
-vim .env
+# 3. Start backend
+cd backend
+python app.py
 
-# 4. Start development servers
-./scripts/dev.sh
+# 4. Start frontend (in new terminal)
+cd dashboard
+npm run dev
 ```
 
 **Access the application:**
@@ -43,45 +46,102 @@ docker-compose -f docker-compose.dev.yml up
 
 ## 📁 Project Structure
 
+```
+DataraAI-DAAS/
+├── backend/                        # Python Flask Backend ✅
+│   ├── app.py                      # Main Flask application
+│   ├── requirements.txt            # Python dependencies
+│   ├── README.md                   # Backend documentation
+│   │
+│   ├── datara/                     # Main application package
+│   │   ├── __init__.py
+│   │   ├── config.py               # Configuration management
+│   │   ├── logging.py              # Structured logging
+│   │   │
+│   │   └── services/               # Business logic services
+│   │       ├── __init__.py
+│   │       ├── azure_service.py    # Azure Blob & Cosmos DB
+│   │       ├── dataset_service.py  # Dataset operations
+│   │       └── processing_service.py # Video processing
+│   │
+│   ├── utils/                      # Utility scripts
+│   │   ├── __init__.py
+│   │   ├── generate_orig_frames.py # Video frame extraction
+│   │   ├── upload_frames_to_azure.py # Frame upload utility
+│   │   └── upload_glb_to_azure.py  # 3D model upload utility
+│   │
+│   └── uploads/                    # Uploaded files directory
+│
+├── dashboard/                      # React + TypeScript Frontend ✅
+│   ├── src/
+│   │   ├── main.tsx                # Entry point
+│   │   ├── App.tsx                 # Main app component
+│   │   ├── index.css               # Global styles
+│   │   │
+│   │   ├── pages/
+│   │   │   ├── Home.tsx            # Home page
+│   │   │   └── DataViewer.tsx      # Data viewer page
+│   │   │
+│   │   ├── components/             # Reusable components
+│   │   │   ├── Navigation.tsx
+│   │   │   ├── Sidebar.tsx
+│   │   │   ├── DatasetSelector.tsx
+│   │   │   ├── ImageGrid.tsx
+│   │   │   ├── ImageModal.tsx
+│   │   │   ├── ThreeDViewer.tsx
+│   │   │   ├── UploadModal.tsx
+│   │   │   └── ui/                 # shadcn/ui components
+│   │   │
+│   │   ├── lib/
+│   │   │   └── utils.ts            # Utility functions
+│   │   │
+│   │   └── assets/                 # Static assets
+│   │
+│   ├── package.json                # Node dependencies
+│   ├── vite.config.js              # Vite build config
+│   ├── tsconfig.json               # TypeScript config
+│   └── tailwind.config.js          # Tailwind CSS config
+│
+├── docker/                         # Docker Configuration
+│   ├── Dockerfile                  # Production multi-stage build
+│   ├── docker-compose.yml          # Production services
+│   ├── docker-compose.dev.yml      # Development services
+│   ├── entrypoint.sh               # Service orchestration
+│   └── nginx/                      # Nginx reverse proxy config
+│
+├── scripts/                        # Utility Scripts
+│   ├── setup.sh                    # Development setup
+│   ├── dev.sh                      # Start dev servers
+│   ├── deploy.sh                   # Docker deployment
+│   └── start.sh                    # Start services
+│
+├── docs/                           # Comprehensive Documentation
+│   ├── ARCHITECTURE.md             # System design & data flow
+│   ├── SETUP.md                    # Detailed setup guide
+│   ├── DEPLOYMENT_GUIDE.md         # Production deployment
+│   └── INTEGRATION_README.md       # API integration guide
+│
+├── robotics/                       # Robotics System (Expandable)
+├── config/                         # Configuration
+│   └── .env.example                # Environment variables template
+│
+├── README.md                       # This file
+├── INDEX.md                        # Documentation index
+├── QUICK_REFERENCE.md              # Common commands & tasks
+└── .env                            # Environment variables (not in git)
+```
+
 ### Backend Organization ✅
 
-The backend has been professionally reorganized with modular architecture:
+The backend uses a professional modular architecture:
 
-```
-backend/
-├── app.py                          Main Flask application
-├── README.md                       Backend documentation (400+ lines) ✅ NEW!
-├── requirements.txt                Python dependencies
-│
-├── datara/                         Main application package (modular)
-│   ├── __init__.py
-│   ├── config.py                  Configuration management
-│   ├── logging.py                 Structured logging
-│   │
-│   └── services/                  Business logic services
-│       ├── __init__.py
-│       ├── azure_service.py       Azure Blob & Cosmos DB
-│       ├── dataset_service.py     Dataset operations
-│       └── processing_service.py  Video processing
-│
-├── utils/                          Utility scripts ✅ ORGANIZED!
-│   ├── __init__.py
-│   ├── generate_orig_frames.py    Video frame extraction
-│   ├── upload_frames_to_azure.py  Frame upload utility
-│   └── upload_glb_to_azure.py     3D model upload utility
-│
-└── dataset_list/
-    └── uploads/
-```
-
-**Backend Highlights:**
+**Highlights:**
 - ✅ **Modular Architecture** - Separated concerns (services, utilities, configs)
-- ✅ **Professional Organization** - Industry-standard Python project structure
-- ✅ **Comprehensive Documentation** - 400+ line README with API examples
+- ✅ **Professional Organization** - Industry-standard Python structure
+- ✅ **Comprehensive Logging** - Structured logging with config management
 - ✅ **Azure Integration** - Blob Storage and Cosmos DB support
-- ✅ **7 REST API Endpoints** - Health, datasets, processing, stats
+- ✅ **REST API Endpoints** - Health checks, datasets, processing, stats
 - ✅ **Video Processing** - FFmpeg integration for frame extraction
-- ✅ **Google Drive Support** - Direct video downloads
 - ✅ **Error Handling** - Robust error management and logging
 
 **Backend Services:**
@@ -99,67 +159,17 @@ cd backend
 pip install -r requirements.txt
 
 # Run
-python app.py                    # Development
-gunicorn app:create_app()        # Production
-docker run ... datara-backend    # Docker
+python app.py                      # Development
+gunicorn app:app                   # Production
+docker run ... datara-backend      # Docker
 
-# Test
+# Test API
 curl http://localhost:5000/health
 curl http://localhost:5000/api/stats
-
-# For details
-cat README.md
 ```
 
 **See full backend documentation:** `backend/README.md`
 
----
-
-```
-refactored/
-├── backend/                    # Python Flask Backend
-│   ├── src/
-│   │   ├── app.py             # Main Flask application
-│   │   ├── routes/            # API endpoints
-│   │   ├── config/            # Configuration management
-│   │   ├── utils/             # Helper utilities
-│   │   ├── models/            # ML model training
-│   │   └── services/          # External integrations
-│   └── requirements.txt        # Python dependencies
-│
-├── **frontend/                   # React + TypeScript Dashboard Frontend
-│   ├── src/
-│   │   ├── pages/             # Page components
-│   │   ├── components/        # UI components
-│   │   ├── lib/               # Utilities & helpers
-│   │   ├── assets/            # Static assets
-│   │   └── main.tsx           # Entry point
-│   ├── package.json           # Node dependencies
-│   └── vite.config.js         # Vite build configuration
-│
-├── robotics/                  # Robotics System (Expandable)
-├── docker/                    # Docker Configuration
-│   ├── Dockerfile             # Production multi-stage build
-│   ├── docker-compose.yml     # Production services
-│   ├── docker-compose.dev.yml # Development services
-│   ├── entrypoint.sh          # Service orchestration
-│   └── nginx/                 # Nginx reverse proxy config
-│
-├── scripts/                   # Utility Scripts
-│   ├── setup.sh              # Development setup
-│   ├── dev.sh                # Start dev servers
-│   └── deploy.sh             # Docker deployment
-│
-├── docs/                      # Comprehensive Documentation
-│   ├── PROJECT_STRUCTURE.md   # This structure explained
-│   ├── ARCHITECTURE.md        # System design & data flow
-│   ├── SETUP.md               # Detailed setup guide
-│   ├── DEPLOYMENT_GUIDE.md    # Production deployment
-│   └── ...                    # Other guides
-│
-└── config/                    # Configuration Templates
-    └── .env.example          # Environment variables template
-```
 
 ## 🎯 Key Features
 
@@ -195,7 +205,6 @@ Comprehensive guides are available in the `/docs` folder:
 
 - **[SETUP.md](docs/SETUP.md)** - Development environment setup
 - **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** - System design & integration
-- **[PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)** - Directory layout explained
 - **[DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md)** - Production deployment
 - **[INTEGRATION_README.md](docs/INTEGRATION_README.md)** - Backend integration
 

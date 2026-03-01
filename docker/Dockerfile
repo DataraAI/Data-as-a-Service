@@ -1,11 +1,11 @@
 # Multi-stage build for DataraAI
 # Stage 1: Build Frontend
-FROM node:18-alpine AS frontend-builder
+FROM node:18-alpine AS dashboard-builder
 
-WORKDIR /build/frontend
-COPY frontend/package*.json ./
+WORKDIR /build/dashboard
+COPY dashboard/package*.json ./
 RUN npm ci --only=production && npm run build 2>/dev/null || npm install && npm run build
-COPY frontend/ .
+COPY dashboard/ .
 RUN npm run build
 
 # Stage 2: Backend Base Image
@@ -40,14 +40,14 @@ EXPOSE 5000
 CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "--timeout", "300", "src.app:app"]
 
 # Stage 3: Frontend Stage
-FROM node:18-alpine AS frontend
+FROM node:18-alpine AS dashboard
 
-WORKDIR /app/frontend
+WORKDIR /app/dashboard
 
-# Copy built frontend from builder
-COPY --from=frontend-builder /build/frontend/dist ./dist
-COPY --from=frontend-builder /build/frontend/package*.json ./
-COPY --from=frontend-builder /build/frontend/vite.config.ts ./
+# Copy built dashboard from builder
+COPY --from=dashboard-builder /build/dashboard/dist ./dist
+COPY --from=dashboard-builder /build/dashboard/package*.json ./
+COPY --from=dashboard-builder /build/dashboard/vite.config.ts ./
 
 RUN npm install --only=production
 
@@ -55,31 +55,31 @@ EXPOSE 8080
 
 CMD ["npm", "run", "preview"]
 
-# Stage 4: Robotics Stage (if applicable)
-FROM python:3.11-slim AS robotics
-
-RUN apt-get update && apt-get install -y \
-    libgl1-mesa-glx \
-    libglib2.0-0 \
-    libsm6 \
-    libxext6 \
-    libxrender-dev \
-    libgomp1 \
-    && rm -rf /var/lib/apt/lists/*
-
-WORKDIR /app/robotics
-
-# Copy robotics requirements if they exist
-COPY backend/requirements.txt requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt || true
-
-COPY robotics/ .
-
-ENV PYTHONUNBUFFERED=1
-
-EXPOSE 5002
-
-CMD ["python", "app.py"]
+# # Stage 4: Robotics Stage (if applicable)
+# FROM python:3.11-slim AS robotics
+#
+# RUN apt-get update && apt-get install -y \
+#     libgl1-mesa-glx \
+#     libglib2.0-0 \
+#     libsm6 \
+#     libxext6 \
+#     libxrender-dev \
+#     libgomp1 \
+#     && rm -rf /var/lib/apt/lists/*
+#
+# WORKDIR /app/robotics
+#
+# # Copy robotics requirements if they exist
+# COPY backend/requirements.txt requirements.txt
+# RUN pip install --no-cache-dir -r requirements.txt || true
+#
+# COPY robotics/ .
+#
+# ENV PYTHONUNBUFFERED=1
+#
+# EXPOSE 5002
+#
+# CMD ["python", "app.py"]
 
 # Stage 5: Production Image (Combined)
 FROM python:3.11-slim AS production
@@ -110,8 +110,8 @@ RUN pip install --no-cache-dir -r /tmp/requirements.txt
 # Copy backend code
 COPY --from=backend /app/backend/src ./backend/src
 
-# Copy frontend built files
-COPY --from=frontend-builder /build/frontend/dist ./frontend/dist
+# Copy dashboard built files
+COPY --from=dashboard-builder /build/dashboard/dist ./dashboard/dist
 
 # Copy robotics code
 COPY robotics/ ./robotics/
@@ -126,6 +126,8 @@ COPY docker/nginx/nginx.conf /etc/nginx/nginx.conf
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app/backend
 
-EXPOSE 5000 5002 8080 80 443
+# EXPOSE 5000 5002 8080 80 443
+EXPOSE 5000 8080 80 443
+
 
 ENTRYPOINT ["/entrypoint.sh"]
