@@ -3,7 +3,7 @@ backend/__pycache__/
 backend/*.pyc
 backend/venv/
 backend/.env
-backend/dataset_list/*
+backend/utils/dataset_list/*
 .venv/*
 
 # Node
@@ -16,8 +16,13 @@ package-lock.json
 dashboard/package-lock.json
 
 # General
+.env
 *.log
 .DS_Store
+.idea/
+.vscode/
 
 # VM configs
 backend/saas_config.py
+/backend/pnpm-lock.yaml
+/dashboard/pnpm-lock.yaml

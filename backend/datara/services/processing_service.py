@@ -1,0 +1,319 @@
+"""Video and image processing service"""
+
+import os
+import json
+import sys
+import shutil
+import subprocess
+from datetime import datetime
+from typing import Dict, Any
+
+import gdown
+
+from datara.logging import logger
+
+# Get the backend directory path and utils path
+BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+UTILS_DIR = os.path.join(BACKEND_DIR, "utils")
+
+
+class ProcessingService:
+    """Service for processing videos and generating ego views"""
+
+    def __init__(self, azure_service, dataset_service):
+        """
+        Initialize processing service
+
+        Args:
+            azure_service: Azure service instance
+            dataset_service: Dataset service instance
+        """
+        self.azure_service = azure_service
+        self.dataset_service = dataset_service
+        self.upload_folder = "uploads"
+        os.makedirs(self.upload_folder, exist_ok=True)
+
+    def process_video(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Process video from Google Drive and upload to Azure
+
+        Args:
+            data: Request data containing gdrive_link, output_name, etc.
+
+        Returns:
+            Processing result
+        """
+        gdrive_link = data.get("gdrive_link")
+        output_name = data.get("output_name")
+        upload_type = data.get("upload_type", "video")
+
+        if not gdrive_link:
+            raise ValueError("No Google Drive link provided")
+
+        # Check if dataset already exists
+        if output_name:
+            try:
+                existing_blobs = list(
+                    self.azure_service.container_client.list_blobs(
+                        name_starts_with=f"{output_name}/",
+                        results_per_page=1
+                    )
+                )
+                if existing_blobs:
+                    raise ValueError(f"Dataset '{output_name}' already exists")
+            except Exception as e:
+                logger.error(f"Error checking existing dataset: {e}")
+                raise
+
+        # Get metadata
+        date_val = data.get("date")
+        misc_tags = data.get("tags", [])
+
+        # Setup local processing directory
+        ts = int(datetime.now().timestamp())
+
+        if output_name:
+            dataset_basename = os.path.basename(output_name)
+        else:
+            dataset_basename = f"dataset_{ts}"
+
+        local_process_dir = os.path.join("dataset_list", dataset_basename)
+
+        try:
+            if os.path.exists(local_process_dir):
+                shutil.rmtree(local_process_dir)
+            os.makedirs(os.path.join(local_process_dir, "orig"), exist_ok=True)
+
+            if upload_type == "folder":
+                self._process_folder(gdrive_link, local_process_dir, dataset_basename)
+            else:
+                self._process_video_file(gdrive_link, local_process_dir, dataset_basename, ts)
+
+            # Upload to Azure
+            self._upload_to_azure(
+                local_process_dir,
+                output_name or dataset_basename,
+                date_val,
+                misc_tags
+            )
+
+            # Cleanup
+            if os.path.exists(local_process_dir):
+                shutil.rmtree(local_process_dir)
+
+            logger.info(f"Video processing completed successfully: {output_name}")
+            return {"message": "Data processed and uploaded successfully"}
+
+        except Exception as e:
+            logger.error(f"Error processing video: {e}", exc_info=True)
+            if os.path.exists(local_process_dir):
+                shutil.rmtree(local_process_dir)
+            raise
+
+    def _process_folder(self, gdrive_link: str, local_process_dir: str, dataset_basename: str) -> None:
+        """
+        Process folder from Google Drive
+
+        Args:
+            gdrive_link: Google Drive folder link
+            local_process_dir: Local directory for processing
+            dataset_basename: Dataset base name
+        """
+        ts = int(datetime.now().timestamp())
+        temp_download_dir = os.path.join(self.upload_folder, f"temp_folder_{ts}")
+        os.makedirs(temp_download_dir, exist_ok=True)
+
+        try:
+            logger.info(f"Downloading folder from GDrive: {gdrive_link}")
+            downloaded = gdown.download_folder(
+                gdrive_link,
+                output=temp_download_dir,
+                quiet=False,
+                use_cookies=False
+            )
+
+            if not downloaded:
+                raise ValueError("Folder download failed or link invalid")
+
+            # Find and process images
+            valid_exts = ('.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.webp')
+            image_files = []
+
+            for root, dirs, files in os.walk(temp_download_dir):
+                for file in files:
+                    if file.lower().endswith(valid_exts):
+                        image_files.append(os.path.join(root, file))
+
+            image_files.sort()
+
+            # Copy images to processing directory
+            count = 0
+            pad_width = len(str(len(image_files)))
+
+            for img_path in image_files:
+                ext = os.path.splitext(img_path)[1].lower()
+                new_filename = f"{dataset_basename}_{count:0{pad_width}d}{ext}"
+                dest_path = os.path.join(local_process_dir, "orig", new_filename)
+                shutil.copy2(img_path, dest_path)
+                count += 1
+
+            logger.info(f"Processed {count} images from folder")
+
+        finally:
+            if os.path.exists(temp_download_dir):
+                shutil.rmtree(temp_download_dir)
+
+    def _process_video_file(
+        self,
+        gdrive_link: str,
+        local_process_dir: str,
+        dataset_basename: str,
+        ts: int
+    ) -> None:
+        """
+        Process video file from Google Drive
+
+        Args:
+            gdrive_link: Google Drive video link
+            local_process_dir: Local directory for processing
+            dataset_basename: Dataset base name
+            ts: Timestamp
+        """
+        video_filename = f"video_{ts}.mp4"
+        video_path = os.path.join(self.upload_folder, video_filename)
+
+        try:
+            logger.info(f"Downloading video from GDrive: {gdrive_link}")
+            downloaded_path = gdown.download(
+                gdrive_link,
+                video_path,
+                quiet=False,
+                fuzzy=True
+            )
+
+            if not downloaded_path:
+                raise ValueError("Download failed or link invalid")
+
+            # Generate frames from video
+            logger.info(f"Generating frames from video: {dataset_basename}")
+            cmd = [
+                sys.executable,
+                os.path.join(UTILS_DIR, "generate_orig_frames.py"),
+                "--video_path", downloaded_path,
+                "--output_name", dataset_basename,
+                "--target_fps", "30"
+            ]
+
+            subprocess.check_call(cmd)
+            logger.info("Frame generation completed")
+
+        finally:
+            if os.path.exists(video_path):
+                os.remove(video_path)
+
+    def _upload_to_azure(
+        self,
+        local_process_dir: str,
+        output_name: str,
+        date_val: str,
+        misc_tags: list
+    ) -> None:
+        """
+        Upload processed images to Azure
+
+        Args:
+            local_process_dir: Local processing directory
+            output_name: Output name in Azure
+            date_val: Date metadata
+            misc_tags: Miscellaneous tags
+        """
+        logger.info(f"Uploading to Azure: {output_name}")
+
+        cmd = [
+            sys.executable,
+            os.path.join(UTILS_DIR, "upload_frames_to_azure.py"),
+            "--container_name", self.azure_service.container_name,
+            "--output_name", output_name,
+            "--input_dir", local_process_dir,
+            "--view", "orig",
+            "--date", date_val or "",
+            "--tags", json.dumps(misc_tags)
+        ]
+
+        subprocess.check_call(cmd)
+        logger.info("Upload to Azure completed")
+
+    def generate_ego(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Generate ego view from original image
+
+        Args:
+            data: Request data containing imageURL, prompt, etc.
+
+        Returns:
+            Generation result
+        """
+        try:
+            prompt = data.get("prompt")
+            image_url = data.get("imageURL")
+            date_val = data.get("date")
+            misc_tags = data.get("tags", [])
+
+            if not image_url:
+                raise ValueError("No imageURL provided")
+
+            logger.info(f"Generating ego view with prompt: {prompt}")
+
+            # Extract path components from URL
+            container_name = self.azure_service.container_name
+            blob_path_start = image_url.index(container_name)
+            blob_path_end = image_url.index("/orig") + 5
+            blob_path = image_url[blob_path_start:blob_path_end]
+
+            path_components = blob_path.split("/")
+            path_components[-1] = "egos"
+
+            # Import and call ego generation (assuming call_lambda_vm exists)
+            local_image_path = None
+            try:
+                from datara.services import call_lambda_vm
+                local_image_path = call_lambda_vm.generate_ego_image(
+                    prompt,
+                    image_url,
+                    container_name
+                )
+            except (ImportError, AttributeError):
+                logger.warning("call_lambda_vm module not found, skipping ego generation")
+                return {"message": "Ego generation module not available"}
+            except Exception as e:
+                logger.error(f"Error in ego generation: {e}")
+                return {"message": f"Ego generation failed: {str(e)}"}
+
+            if local_image_path:
+                # Upload ego images
+                cmd = [
+                    sys.executable,
+                    os.path.join(UTILS_DIR, "upload_frames_to_azure.py"),
+                    "--container_name", container_name,
+                    "--output_name", "/".join(path_components[1:4]),
+                    "--input_dir", os.path.dirname(os.path.dirname(local_image_path)),
+                    "--view", "egos",
+                    "--date", date_val or "",
+                    "--tags", json.dumps(misc_tags)
+                ]
+
+                subprocess.check_call(cmd)
+
+                # Cleanup
+                ego_dir = f"ego_images/{container_name}"
+                if os.path.exists(ego_dir):
+                    shutil.rmtree(ego_dir)
+
+                logger.info("Ego view generation completed")
+
+            return {"message": "Ego view processed and uploaded successfully"}
+
+        except Exception as e:
+            logger.error(f"Error generating ego: {e}", exc_info=True)
+            raise
+
