@@ -238,7 +238,7 @@ def get_dataset_images(name):
 def process_video():
     data = request.get_json()
     if not data:
-         return {"error": "Invalid JSON body"}, 400
+        return {"error": "Invalid JSON body"}, 400
 
     gdrive_link = data.get("gdrive_link")
     output_name = data.get("output_name")
