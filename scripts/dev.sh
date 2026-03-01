@@ -34,7 +34,7 @@ trap cleanup SIGINT SIGTERM
 # Start Backend
 echo -e "${BLUE}Starting Backend...${NC}"
 cd "$PROJECT_ROOT/backend"
-source venv/bin/activate
+source .venv/bin/activate
 python app.py > backend.log 2>&1 &
 BACKEND_PID=$!
 echo -e "${GREEN}✓ Backend started (PID: $BACKEND_PID)${NC}"

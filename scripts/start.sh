@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # DataraAI Application Startup Script
-# Starts backend and dashboard frontend
+# Starts backend and dashboard dashboard
 
 set -e
 
@@ -55,23 +55,23 @@ fi
 
 # Check port availability
 echo -e "${BLUE}Checking port availability...${NC}"
-if ! check_port 5000; then
-    echo -e "${RED}❌ Backend port 5000 is already in use. Please stop the existing process.${NC}"
+if ! check_port 5151; then
+    echo -e "${RED}❌ Backend port 5151 is already in use. Please stop the existing process.${NC}"
     exit 1
 fi
 
 if ! check_port 5173; then
-    echo -e "${YELLOW}⚠ Frontend port 5173 is already in use, will try next available port${NC}"
+    echo -e "${YELLOW}⚠ dashboard port 5173 is already in use, will try next available port${NC}"
+fi
+
+# Activate virtual environment if it exists
+if [ -d ".venv" ]; then
+    source .venv/bin/activate
 fi
 
 # Start backend
 echo -e "${BLUE}🔧 Starting backend server...${NC}"
 cd "$PROJECT_ROOT/backend"
-
-# Activate virtual environment if it exists
-if [ -d "venv" ]; then
-    source venv/bin/activate
-fi
 
 python app.py > backend.log 2>&1 &
 BACKEND_PID=$!
@@ -81,23 +81,23 @@ echo "   Logs: $PROJECT_ROOT/backend/backend.log"
 # Wait for backend to start
 sleep 3
 
-# Start frontend
-echo -e "${BLUE}🎨 Starting frontend development server...${NC}"
-cd "$PROJECT_ROOT/frontend"
-npm run dev > frontend.log 2>&1 &
+# Start dashboard
+echo -e "${BLUE}🎨 Starting dashboard development server...${NC}"
+cd "$PROJECT_ROOT/dashboard"
+npm run dev > dashboard.log 2>&1 &
 FRONTEND_PID=$!
-echo -e "${GREEN}✅ Frontend started (PID: $FRONTEND_PID)${NC}"
-echo "   Logs: $PROJECT_ROOT/frontend/frontend.log"
+echo -e "${GREEN}✅ dashboard started (PID: $FRONTEND_PID)${NC}"
+echo "   Logs: $PROJECT_ROOT/dashboard/dashboard.log"
 
 echo ""
 echo -e "${GREEN}======================================"
 echo "✅ DataraAI Application is running!"
 echo "======================================${NC}"
 echo ""
-echo -e "${BLUE}📊 Backend API:${NC}    http://127.0.0.1:5000"
-echo -e "${BLUE}📊 Health Check:${NC}  http://127.0.0.1:5000/health"
-echo -e "${BLUE}📊 API Stats:${NC}     http://127.0.0.1:5000/api/stats"
-echo -e "${BLUE}🎨 Frontend:${NC}     http://localhost:5173"
+echo -e "${BLUE}📊 Backend API:${NC}    http://127.0.0.1:5151"
+echo -e "${BLUE}📊 Health Check:${NC}  http://127.0.0.1:5151/health"
+echo -e "${BLUE}📊 API Stats:${NC}     http://127.0.0.1:5151/api/stats"
+echo -e "${BLUE}🎨 dashboard:${NC}     http://localhost:5173"
 echo ""
 echo -e "${YELLOW}Press Ctrl+C to stop all services${NC}"
 echo ""

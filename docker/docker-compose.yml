@@ -12,15 +12,15 @@ services:
       - ./uploads:/app/uploads
     restart: unless-stopped
 
-  robotics:
-    build: .
-    ports:
-      - "5002:5002"
-    environment:
-      - FLASK_ENV=production
-    volumes:
-      - ./robotics:/app/robotics
-    restart: unless-stopped
+#  robotics:
+#    build: .
+#    ports:
+#      - "5002:5002"
+#    environment:
+#      - FLASK_ENV=production
+#    volumes:
+#      - ./robotics:/app/robotics
+#    restart: unless-stopped
 
   frontend:
     build: .

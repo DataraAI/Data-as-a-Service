@@ -69,10 +69,10 @@ fi
 # ==========================================
 # Start Frontend (Static Server)
 # ==========================================
-if [ -d "/app/frontend/dist" ]; then
+if [ -d "/app/dashboard/dist" ]; then
     echo "Starting Frontend (Static Server)..."
-    cd /app/frontend/dist
-    python -m http.server 8080 > /app/logs/frontend.log 2>&1 &
+    cd /app/dashboard/dist
+    python -m http.server 8080 > /app/logs/dashboard.log 2>&1 &
     FRONTEND_PID=$!
     echo "Frontend started with PID $FRONTEND_PID"
     wait_for_service localhost 8080 "Frontend" || true

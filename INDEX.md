@@ -1,6 +1,6 @@
-# 📖 DataraAI Refactored - Documentation Index
+# 📖 DataraAI - Documentation Index
 
-**Project Location:** `/Users/pj/Projects/python/DataraAI-DAAS/refactored/`
+**Project Location:** `/Users/pj/Projects/python/DataraAI-DAAS/`
 
 ---
 
@@ -9,17 +9,17 @@
 ### For First-Time Users
 1. **[README.md](README.md)** - Project overview (5 min read)
 2. **[docs/SETUP.md](docs/SETUP.md)** - Development setup guide (10 min read)
-3. Run: `./scripts/setup.sh` and `./scripts/start.sh`
+3. Run: `pip install -r backend/requirements.txt` and `cd dashboard && npm install`
 
 ### For Developers
-1. **[PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)** - File organization
-2. **[QUICK_REFERENCE.md](QUICK_REFERENCE.md)** - Common commands
-3. **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** - System design
+1. **[QUICK_REFERENCE.md](QUICK_REFERENCE.md)** - Common commands
+2. **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** - System design
+3. **[backend/README.md](backend/README.md)** - Backend details
 
 ### For DevOps/Deployment
 1. **[docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md)** - Production deployment
-2. **[MIGRATION_GUIDE.md](MIGRATION_GUIDE.md)** - Migrating from old structure
-3. **[scripts/deploy.sh](scripts/deploy.sh)** - Automated Docker deployment
+2. **[scripts/deploy.sh](scripts/deploy.sh)** - Automated Docker deployment
+3. **[docker/docker-compose.yml](docker/docker-compose.yml)** - Service configuration
 
 ---
 
@@ -27,17 +27,16 @@
 
 ### Quick Reference
 - **[QUICK_REFERENCE.md](QUICK_REFERENCE.md)** - Commands, ports, common tasks
-- **[.env.example](config/.env.example)** - Configuration options
+- **[config/.env.example](config/.env.example)** - Configuration options
 
 ### Setup & Installation
 - **[docs/SETUP.md](docs/SETUP.md)** - Development environment setup
 - **[README.md](README.md)** - Project quick start
-- **[scripts/setup.sh](scripts/setup.sh)** - Automated setup script
+- **[backend/README.md](backend/README.md)** - Backend documentation
 
 ### Architecture & Design
 - **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** - System design and integration
-- **[PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)** - Directory organization
-- **[BACKEND_REFACTORING_COMPLETE.md](BACKEND_REFACTORING_COMPLETE.md)** - Backend details
+- **[backend/README.md](backend/README.md)** - Backend services and API details
 
 ### Deployment & Operations
 - **[docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md)** - Production deployment
@@ -46,17 +45,6 @@
 
 ### API & Integration
 - **[docs/INTEGRATION_README.md](docs/INTEGRATION_README.md)** - API integration guide
-- **[docs/MONGODB_AND_TRAINING_GUIDE.md](docs/MONGODB_AND_TRAINING_GUIDE.md)** - Database setup
-
-### Migration & Refactoring
-- **[MIGRATION_GUIDE.md](MIGRATION_GUIDE.md)** - Migrating from old structure
-- **[BACKEND_REFACTORING_COMPLETE.md](BACKEND_REFACTORING_COMPLETE.md)** - What was refactored
-- **[COMPLETE_CHECKLIST.md](COMPLETE_CHECKLIST.md)** - Completion verification
-
-### Project Summaries
-- **[PROJECT_COMPLETE.md](PROJECT_COMPLETE.md)** - Overall completion summary
-- **[REFACTORING_SUMMARY.md](REFACTORING_SUMMARY.md)** - Refactoring details
-- **[COMPLETE_CHECKLIST.md](COMPLETE_CHECKLIST.md)** - Verification checklist
 
 ---
 
@@ -75,24 +63,29 @@
 ## 📂 Directory Guide
 
 ```
-refactored/
+DataraAI-DAAS/
 ├── README.md                         ← START HERE (project overview)
-├── PROJECT_STRUCTURE.md              ← File organization guide
 ├── QUICK_REFERENCE.md                ← Common commands & tasks
-├── MIGRATION_GUIDE.md                ← Moving from old structure
+├── INDEX.md                          ← This file
 │
 ├── backend/                          # Python Flask backend
 │   ├── app.py                        # Main application
-│   ├── pyproject.toml                # Python package config
 │   ├── requirements.txt              # Python dependencies
+│   ├── README.md                     # Backend documentation
 │   └── datara/                       # Main package
-│       ├── config.py                 # Configuration (Pydantic)
+│       ├── config.py                 # Configuration
 │       ├── logging.py                # Structured logging
-│       └── services/                 # Services
+│       ├── services/                 # Business logic services
+│       │   ├── azure_service.py     
+│       │   ├── dataset_service.py    
+│       │   └── processing_service.py
+│       └── utils/                    # Utilities
 │
-├── frontend/                         # React dashboard
+├── dashboard/                        # React + TypeScript frontend
 │   ├── src/                          # React source
-│   └── package.json                  # Node dependencies
+│   ├── package.json                  # Node dependencies
+│   ├── vite.config.js                # Vite config
+│   └── tailwind.config.js            # Tailwind config
 │
 ├── docker/                           # Docker setup
 │   ├── Dockerfile                    # Production build
@@ -151,7 +144,6 @@ refactored/
 
 ### Configuration
 - **Environment Variables:** [config/.env.example](config/.env.example)
-- **Python Packaging:** [backend/pyproject.toml](backend/pyproject.toml)
 - **Docker Services:** [docker/docker-compose.yml](docker/docker-compose.yml)
 
 ### Application Code
@@ -160,9 +152,9 @@ refactored/
 - **Services:** [backend/datara/services/](backend/datara/services/)
 
 ### Frontend
-- **Main Entry:** [frontend/src/main.tsx](frontend/src/main.tsx)
-- **App Component:** [frontend/src/App.tsx](frontend/src/App.tsx)
-- **Config:** [frontend/vite.config.js](frontend/vite.config.js)
+- **Main Entry:** [dashboard/src/main.tsx](dashboard/src/main.tsx)
+- **App Component:** [dashboard/src/App.tsx](dashboard/src/App.tsx)
+- **Config:** [dashboard/vite.config.js](dashboard/vite.config.js)
 
 ---
 
@@ -182,17 +174,12 @@ refactored/
 **Deploy to production**
 → Follow [docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md)
 
-**Set up the database**
-→ Read [docs/MONGODB_AND_TRAINING_GUIDE.md](docs/MONGODB_AND_TRAINING_GUIDE.md)
-
 **Migrate from old project**
 → Follow [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md)
 
 **Find a command**
 → Check [QUICK_REFERENCE.md](QUICK_REFERENCE.md)
 
-**Understand file structure**
-→ See [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)
 
 ---
 
@@ -210,7 +197,6 @@ refactored/
 
 ### Learning Resources
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - System design
-- [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) - Code organization
 - [docs/INTEGRATION_README.md](docs/INTEGRATION_README.md) - API details
 
 ---
@@ -241,8 +227,8 @@ If all works, you're ready to go! ✅
 
 ---
 
-**Last Updated:** February 28, 2026  
-**Location:** `/Users/pj/Projects/python/DataraAI-DAAS/refactored/`
+**Last Updated:** March 1, 2026  
+**Location:** `/Users/pj/Projects/python/DataraAI-DAAS/`
 
 ---
 

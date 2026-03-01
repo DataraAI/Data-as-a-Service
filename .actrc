@@ -1,0 +1,45 @@
+# Act Configuration File
+# For testing GitHub Actions workflows locally
+# Install act: https://github.com/nektos/act
+# Usage: act (runs all workflows) or act workflow-name
+
+# Docker image to use for running jobs
+# Using ubuntu-latest equivalent
+container-architecture: linux/amd64
+
+# Default event to use when running workflows
+eventpath: .github/events/default.json
+
+# Environment variables for all jobs
+env: |
+  REGISTRY=ghcr.io
+  GITHUB_OWNER=${{ github.repository_owner }}
+
+# Docker network to use (helpful for multi-service tests)
+network: datara-network
+
+# Verbosity level: debug, info, warn, error
+log-level: info
+
+# Platform mapping for docker run
+# This ensures consistent behavior across different host OS
+platforms:
+  ubuntu-latest: ghcr.io/catthehacker/ubuntu:full-latest
+  ubuntu-22.04: ghcr.io/catthehacker/ubuntu:full-22.04
+  ubuntu-20.04: ghcr.io/catthehacker/ubuntu:full-20.04
+  macos-latest: ghcr.io/catthehacker/macos:full-latest
+  macos-12: ghcr.io/catthehacker/macos:full-12
+  windows-latest: ghcr.io/catthehacker/windows:full-latest
+  windows-2022: ghcr.io/catthehacker/windows:full-2022
+
+# Bind mount for docker socket (allows docker commands in actions)
+# Uncomment if you need to run docker commands within the workflow
+bind: true
+
+# Reuse containers to speed up subsequent runs
+# Disabled by default - enable for faster tests
+reuse: false
+
+# Force push strategy (allows multiple pushes to same image)
+force-push-strategy: rebase
+
