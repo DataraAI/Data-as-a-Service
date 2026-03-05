@@ -1,0 +1,29 @@
+services:
+  backend:
+    ports:
+      - "5000:5151"
+    environment:
+      - FLASK_ENV=production
+    volumes:
+      - ./dataset:/app/dataset
+      - ./uploads:/app/uploads
+    restart: unless-stopped
+
+  dashboard:
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+#  caddy:
+#    image: caddy:alpine
+#    ports:
+#      - "80:80"
+#      - "443:443"
+#    volumes:
+#      - ./Caddyfile:/etc/caddy/Caddyfile
+#      - ./data:/data
+#      - ./config:/config
+#    depends_on:
+#      - dashboard
+#      - backend
+#    restart: unless-stopped

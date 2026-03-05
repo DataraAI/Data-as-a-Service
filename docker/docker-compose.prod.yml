@@ -4,7 +4,7 @@ services:
   backend:
     build:
       context: ..
-      dockerfile: docker/Dockerfile.backend
+      dockerfile: Dockerfile-backend
       target: production
     container_name: datara-backend
     ports:
@@ -26,7 +26,7 @@ services:
   dashboard:
     build:
       context: ..
-      dockerfile: docker/Dockerfile.dashboard
+      dockerfile: Dockerfile-dashboard
       target: production
     container_name: datara-dashboard
     ports:

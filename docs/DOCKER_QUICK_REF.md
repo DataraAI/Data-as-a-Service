@@ -50,10 +50,10 @@ docker-compose -f docker-compose.prod.yml up -d
 
 ```bash
 # Backend
-docker build -f docker/Dockerfile.backend -t datara-backend:latest .
+docker build -f docker/Dockerfile-backend -t datara-backend:latest .
 
 # Dashboard
-docker build -f docker/Dockerfile.dashboard -t datara-dashboard:latest .
+docker build -f docker/Dockerfile-dashboard -t datara-dashboard:latest .
 ```
 
 ### Push to GHCR
@@ -213,7 +213,7 @@ cat .github/workflows/docker-build.yml | head -20
 ls -la docker/Dockerfile.*
 
 # Check for errors
-docker build --dry-run -f docker/Dockerfile.backend .
+docker build --dry-run -f docker/Dockerfile-backend .
 ```
 
 ### Enable Actions

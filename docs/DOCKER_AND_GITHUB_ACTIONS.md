@@ -330,10 +330,10 @@ ghcr.io/{github-username}/datara-dashboard:v1.0.0
 
 ```bash
 # Backend only
-docker build -f docker/Dockerfile.backend -t datara-backend:latest .
+docker build -f docker/Dockerfile-backend -t datara-backend:latest .
 
 # Dashboard only
-docker build -f docker/Dockerfile.dashboard -t datara-dashboard:latest .
+docker build -f docker/Dockerfile-dashboard -t datara-dashboard:latest .
 ```
 
 ### Push to GHCR Manually

@@ -19,7 +19,7 @@
 ### For DevOps/Deployment
 1. **[docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md)** - Production deployment
 2. **[scripts/deploy.sh](scripts/deploy.sh)** - Automated Docker deployment
-3. **[docker/docker-compose.yml](docker/docker-compose.yml)** - Service configuration
+3. **[docker/docker-compose.yml](docker-compose.yml)** - Service configuration
 
 ---
 
@@ -41,7 +41,7 @@
 ### Deployment & Operations
 - **[docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md)** - Production deployment
 - **[scripts/deploy.sh](scripts/deploy.sh)** - Docker deployment script
-- **[docker/docker-compose.yml](docker/docker-compose.yml)** - Service configuration
+- **[docker/docker-compose.yml](docker-compose.yml)** - Service configuration
 
 ### API & Integration
 - **[docs/INTEGRATION_README.md](docs/INTEGRATION_README.md)** - API integration guide
@@ -144,7 +144,7 @@ DataraAI-DAAS/
 
 ### Configuration
 - **Environment Variables:** [config/.env.example](config/.env.example)
-- **Docker Services:** [docker/docker-compose.yml](docker/docker-compose.yml)
+- **Docker Services:** [docker/docker-compose.yml](docker-compose.yml)
 
 ### Application Code
 - **Main App:** [backend/app.py](backend/app.py)
