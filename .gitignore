@@ -1,5 +1,7 @@
 # Python
 backend/__pycache__/
+backend/datara/__pycache__/
+backend/datara/services/__pycache__/
 backend/*.pyc
 backend/venv/
 backend/.env
