@@ -1,25 +1,25 @@
 name: Build and Publish to GHCR
 
 on:
-  push:
-    branches:
-      - main
-      - develop
-    paths:
-      - 'backend/**'
-      - 'dashboard/**'
-      - 'docker/Dockerfile.backend'
-      - 'docker/Dockerfile.dashboard'
-      - '.github/workflows/docker-build.yml'
-  pull_request:
-    branches:
-      - main
-      - develop
-    paths:
-      - 'backend/**'
-      - 'dashboard/**'
-      - 'docker/Dockerfile.backend'
-      - 'docker/Dockerfile.dashboard'
+#  push:
+#    branches:
+#      - main
+#      - develop
+#    paths:
+#      - 'backend/**'
+#      - 'dashboard/**'
+#      - '../../docker/Dockerfile-backend'
+#      - '../../docker/Dockerfile-dashboard'
+#      - '.github/workflows/docker-build.yml'
+#  pull_request:
+#    branches:
+#      - main
+#      - develop
+#    paths:
+#      - 'backend/**'
+#      - 'dashboard/**'
+#      - '../../docker/Dockerfile-backend'
+#      - '../../docker/Dockerfile-dashboard'
   workflow_dispatch:
 
 env:
@@ -63,7 +63,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./docker/Dockerfile.backend
+          file: ./docker/Dockerfile-backend
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -106,7 +106,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./docker/Dockerfile.dashboard
+          file: ./docker/Dockerfile-dashboard
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

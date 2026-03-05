@@ -118,10 +118,10 @@ docker-compose -f docker-compose.prod.yml up -d
 ```bash
 # Build backend for production
 cd docker
-docker build -f Dockerfile.backend -t datara-backend:latest ..
+docker build -f Dockerfile-backend -t datara-backend:latest ..
 
 # Build dashboard for production
-docker build -f Dockerfile.dashboard -t datara-dashboard:latest ..
+docker build -f Dockerfile-dashboard -t datara-dashboard:latest ..
 ```
 
 ### Push to GHCR
@@ -366,7 +366,7 @@ Used by Docker Compose for service readiness checks.
 
 ```bash
 # Watch local build
-docker build -f docker/Dockerfile.backend . --progress=plain
+docker build -f docker/Dockerfile-backend . --progress=plain
 
 # Check image layers
 docker history datara-backend:latest

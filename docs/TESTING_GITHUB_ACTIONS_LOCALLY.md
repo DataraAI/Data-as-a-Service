@@ -268,7 +268,7 @@ To test with locally built images:
 
 ```bash
 # Build locally first
-docker build -f docker/Dockerfile.backend -t datara-backend:latest .
+docker build -f docker/Dockerfile-backend -t datara-backend:latest .
 
 # Then act will use the local image
 act -j build-backend
