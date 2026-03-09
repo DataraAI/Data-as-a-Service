@@ -36,6 +36,34 @@ export function ImageModal({ image, onClose, onNext, onPrev, onEgoGenSuccess }: 
     };
 
     const [isGeneratingEgo, setIsGeneratingEgo] = useState(false);
+    const [cornerCasePrompt, setCornerCasePrompt] = useState("");
+    const [isAddingCornerCase, setIsAddingCornerCase] = useState(false);
+
+    const addCornerCase = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const text = cornerCasePrompt.trim();
+        if (!text) return;
+
+        setIsAddingCornerCase(true);
+        try {
+            const response = await fetch("/api/corner_case", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text }),
+            });
+            const data = await response.json();
+            if (response.ok) {
+                alert(data.message || "Corner case submitted successfully.");
+                setCornerCasePrompt("");
+            } else {
+                throw new Error(data.error || "Corner case request failed");
+            }
+        } catch (error: any) {
+            alert(`Error: ${error.message}`);
+        } finally {
+            setIsAddingCornerCase(false);
+        }
+    };
 
     const generateEgoView = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -206,45 +234,71 @@ export function ImageModal({ image, onClose, onNext, onPrev, onEgoGenSuccess }: 
                         </div>
                     </div>
 
-                    {image.metadata?.view == "exo" ? <div>
-                        <div className="flex items-center mb-3">
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest font-sans-tech">Egocentric generation</label>
+                    {/* Corner case — only for ego images */}
+                    {image.metadata?.view === "egos" ? (
+                        <div>
+                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-2 font-sans-tech">Add corner case</label>
+                            <form onSubmit={addCornerCase} className="space-y-3">
+                                <input
+                                    type="text"
+                                    value={cornerCasePrompt}
+                                    onChange={(e) => setCornerCasePrompt(e.target.value)}
+                                    placeholder="Enter in an object you wish to insert with respect to this image."
+                                    className="w-full px-3 py-2 text-sm bg-input rounded-sm border border-border focus:border-primary/50 focus:outline-none font-sans-tech placeholder:text-muted-foreground"
+                                />
+                                <button
+                                    type="submit"
+                                    disabled={!cornerCasePrompt.trim() || isAddingCornerCase}
+                                    className="px-6 py-2 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold font-sans-tech rounded-sm flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed uppercase shadow-lg shadow-primary/20"
+                                >
+                                    {isAddingCornerCase && <Loader2 className="w-3 h-3 animate-spin" />}
+                                    {isAddingCornerCase ? "Submitting..." : "Add corner case"}
+                                </button>
+                            </form>
                         </div>
+                    ) : null}
 
-                        <form onSubmit={generateEgoView} className="space-y-5">
-                            <div className="bg-background/50 rounded-sm border border-border divide-y divide-border text-[11px] font-sans-tech">
-                                {/* Ego params */}
-
-                                {/* Camera work */}
-                                <div className="flex justify-between p-3">
-                                    <span className="text-muted-foreground font-medium">New camera view</span>
-                                    <select
-                                        id="cameraWork"
-                                        name="cameraWork"
-                                        onChange={(e) => setSelectedCameraWork(e.target.value)}
-                                    >
-                                        <option value="Rotate right 45 degrees">Rotate right 45 degrees</option>
-                                        <option value="Rotate right 90 degrees">Rotate right 90 degrees</option>
-                                        <option value="Rotate left 45 degrees">Rotate left 45 degrees</option>
-                                        <option value="Rotate left 90 degrees">Rotate left 90 degrees</option>
-                                        <option value="Rotate up 45 degrees">Rotate up 45 degrees</option>
-                                        <option value="Rotate up 90 degrees">Rotate up 90 degrees</option>
-                                        <option value="Rotate down 45 degrees">Rotate down 45 degrees</option>
-                                        <option value="Rotate down 90 degrees">Rotate down 90 degrees</option>
-                                    </select>
-                                </div>
-
+                    {image.metadata?.view == "exo" ? (
+                        <div>
+                            <div className="flex items-center mb-3">
+                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest font-sans-tech">Egocentric generation</label>
                             </div>
-                            <button
-                                type="submit"
-                                disabled={isGeneratingEgo}
-                                className="px-6 py-2 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold font-sans-tech rounded-sm flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed uppercase shadow-lg shadow-primary/20"
-                            >
-                                {isGeneratingEgo && <Loader2 className="w-3 h-3 animate-spin" />}
-                                {isGeneratingEgo ? 'Processing...' : 'Generate Ego View'}
-                            </button>
-                        </form>
-                    </div> : ''}
+
+                            <form onSubmit={generateEgoView} className="space-y-5">
+                                <div className="bg-background/50 rounded-sm border border-border divide-y divide-border text-[11px] font-sans-tech">
+                                    {/* Ego params */}
+
+                                    {/* Camera work */}
+                                    <div className="flex justify-between p-3">
+                                        <span className="text-muted-foreground font-medium">New camera view</span>
+                                        <select
+                                            id="cameraWork"
+                                            name="cameraWork"
+                                            onChange={(e) => setSelectedCameraWork(e.target.value)}
+                                        >
+                                            <option value="Rotate right 45 degrees">Rotate right 45 degrees</option>
+                                            <option value="Rotate right 90 degrees">Rotate right 90 degrees</option>
+                                            <option value="Rotate left 45 degrees">Rotate left 45 degrees</option>
+                                            <option value="Rotate left 90 degrees">Rotate left 90 degrees</option>
+                                            <option value="Rotate up 45 degrees">Rotate up 45 degrees</option>
+                                            <option value="Rotate up 90 degrees">Rotate up 90 degrees</option>
+                                            <option value="Rotate down 45 degrees">Rotate down 45 degrees</option>
+                                            <option value="Rotate down 90 degrees">Rotate down 90 degrees</option>
+                                        </select>
+                                    </div>
+
+                                </div>
+                                <button
+                                    type="submit"
+                                    disabled={isGeneratingEgo}
+                                    className="px-6 py-2 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold font-sans-tech rounded-sm flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed uppercase shadow-lg shadow-primary/20"
+                                >
+                                    {isGeneratingEgo && <Loader2 className="w-3 h-3 animate-spin" />}
+                                    {isGeneratingEgo ? 'Processing...' : 'Generate Ego View'}
+                                </button>
+                            </form>
+                        </div>
+                    ) : ''}
 
                 </div>
             </div>

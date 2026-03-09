@@ -438,5 +438,25 @@ def generate_ego():
         return {"error": f"An error occurred: {str(e)}"}, 500
 
 
+@app.route("/api/corner_case", methods=["POST"])
+def corner_case():
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Invalid JSON body"}), 400
+
+    text = data.get("text")
+    if text is None:
+        return jsonify({"error": "Missing 'text' in request body"}), 400
+
+    try:
+        result = call_lambda_vm.invoke_corner_case(text)
+        if result is None:
+            return jsonify({"error": "Corner case invocation failed"}), 500
+        return jsonify({"message": "OK", "result": result})
+    except Exception as e:
+        print(f"Corner case error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5151, debug=True, use_reloader=False)
