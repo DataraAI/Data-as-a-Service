@@ -96,7 +96,11 @@ def invoke_corner_case(text, image_url, container_name):
     safe_url = _shell_escape(image_url)
     safe_container = _shell_escape(container_name)
     command = (
+<<<<<<< HEAD
         f'python ~/corner_case_tool.py --text "{safe_text}" '
+=======
+        f'python ~/Corner_case_tool.py --prompt "{safe_text}" '
+>>>>>>> a6b16bc (Adding the UI components needed to call the corner case generation.)
         f'--imageURL "{safe_url}" --container_name "{safe_container}"'
     )
     prefix = f"corner_case_image/{container_name}"
