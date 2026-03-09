@@ -9,9 +9,10 @@ interface ImageModalProps {
     onNext?: () => void;
     onPrev?: () => void;
     onEgoGenSuccess?: () => void;
+    onCornerCaseSuccess?: () => void;
 }
 
-export function ImageModal({ image, onClose, onNext, onPrev, onEgoGenSuccess }: ImageModalProps) {
+export function ImageModal({ image, onClose, onNext, onPrev, onEgoGenSuccess, onCornerCaseSuccess }: ImageModalProps) {
     if (!image) return null;
 
     // const [removeHumanBoolean, setRemoveHumanBoolean] = useState(true);
@@ -44,16 +45,29 @@ export function ImageModal({ image, onClose, onNext, onPrev, onEgoGenSuccess }: 
         const text = cornerCasePrompt.trim();
         if (!text) return;
 
+        const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+        const baseTags = ["egocentric", selectedCameraWork, "no human"];
+        const tags = [...baseTags, text];
+
         setIsAddingCornerCase(true);
         try {
             const response = await fetch("/api/corner_case", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ text }),
+                body: JSON.stringify({
+                    text,
+                    imageURL: image.url,
+                    tags,
+                    date,
+                }),
             });
             const data = await response.json();
             if (response.ok) {
                 alert(data.message || "Corner case submitted successfully.");
+                setCornerCasePrompt("");
+                if (onCornerCaseSuccess) onCornerCaseSuccess();
+                onClose();
+                // Reset form
                 setCornerCasePrompt("");
             } else {
                 throw new Error(data.error || "Corner case request failed");

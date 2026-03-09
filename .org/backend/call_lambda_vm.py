@@ -76,22 +76,55 @@ def generate_ego_image(prompt, imageURL, container_name):
         return None
 
 
-def invoke_corner_case(text):
+def _shell_escape(s):
+    """Escape a string for safe use inside double-quoted bash argument."""
+    return s.replace("\\", "\\\\").replace('"', '\\"').replace("$", "\\$").replace("`", "\\`")
+
+
+def invoke_corner_case(text, image_url, container_name):
     """
-    Invoke corner-case handling on the Lambda VM with the given text input.
-    Returns the command output as string, or None on failure.
+    Invoke corner-case handling on the Lambda VM. Runs corner_case_tool.py with
+    the given text, image URL, and container name. On success, the tool prints
+    the new image path (starting with "corner_case_image/<container_name>").
+    This function then SFTPs that file down, deletes it on the VM, and returns
+    the local path. Returns None on failure.
     """
-    if not text:
+    if not text or not image_url or not container_name:
         return None
-    safe_text = text.replace('"', '\\"').replace('$', '\\$')
-    command = f'python ~/Software-as-a-Service/corner_case_tool.py --prompt "{safe_text}"'
+
+    safe_text = _shell_escape(text)
+    safe_url = _shell_escape(image_url)
+    safe_container = _shell_escape(container_name)
+    command = (
+        f'python ~/corner_case_tool.py --text "{safe_text}" '
+        f'--imageURL "{safe_url}" --container_name "{safe_container}"'
+    )
+    prefix = f"corner_case_image/{container_name}"
 
     try:
         with _ssh_session() as ssh_client:
             stdout, stderr = _run_command(ssh_client, command)
             if stderr:
                 print(f"corner_case stderr: {stderr}")
-            return stdout or None
+
+            remote_path = (stdout.strip().split("\n")[-1].strip() if stdout else "") or ""
+            if not remote_path.startswith(prefix):
+                print(f"Corner case tool failed or returned invalid path: {remote_path}")
+                return None
+
+            local_path = remote_path  # save under same relative path locally
+            sftp = ssh_client.open_sftp()
+            try:
+                os.makedirs(os.path.dirname(local_path), exist_ok=True)
+                sftp.get(remote_path, local_path)
+                if not os.path.exists(local_path):
+                    return None
+                print(f"Successfully saved corner case image to '{local_path}'")
+                _run_command(ssh_client, f"rm -rf corner_case_image/{container_name}")
+            finally:
+                sftp.close()
+
+            return local_path
     except Exception as e:
         print(f"An error occurred: {e}")
         return None
