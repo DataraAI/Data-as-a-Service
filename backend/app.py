@@ -135,14 +135,33 @@ def register_routes(app: Flask) -> None:
         """Generate ego view from original image"""
         try:
             data = request.get_json()
+            logger.info(f"processing_service.generate_ego() called with data: {data}")
             if not data:
                 return {"error": "Invalid JSON body"}, 400
 
             result = processing_service.generate_ego(data)
+            if result[1] != 200:
+                return {"error": result[0]}, result[1] # return error message and status code
             logger.info("Ego view generated successfully")
-            return jsonify(result)
+            return jsonify(result[0]), result[1] # return success message and status code
         except Exception as e:
             logger.error(f"Error generating ego: {e}", exc_info=True)
+            return {"error": f"An error occurred: {str(e)}"}, 500
+    
+    @app.route("/api/generate_corner_case", methods=["POST"])
+    def generate_corner_case():
+        """Generate corner case from original image"""
+        try:
+            data = request.get_json()
+            if not data:
+                return {"error": "Invalid JSON body"}, 400
+            result = processing_service.generate_corner_case(data)
+            if result[1] != 200:
+                return {"error": result[0]}, result[1] # return error message and status code
+            logger.info("Corner case generated successfully")
+            return jsonify(result[0]), result[1] # return success message and status code
+        except Exception as e:
+            logger.error(f"Error generating corner case: {e}", exc_info=True)
             return {"error": f"An error occurred: {str(e)}"}, 500
 
     @app.route("/api/stats", methods=["GET"])

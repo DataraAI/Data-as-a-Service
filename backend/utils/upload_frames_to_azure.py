@@ -64,13 +64,13 @@ parser.add_argument(
     "--input_dir",
     type=str,
     required=True,
-    help="Base dataset directory (contains orig/ and egos/)"
+    help="Base dataset directory (contains orig/, egos/, and corner_images_controlnet/)"
 )
 
 parser.add_argument(
     "--view",
     type=str,
-    choices=["orig", "egos"],
+    choices=["orig", "egos", "corner_images_controlnet"],
     default="orig",
     help="Dataset view to upload (default: orig)"
 )

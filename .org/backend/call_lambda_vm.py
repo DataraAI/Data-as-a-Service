@@ -23,13 +23,13 @@ def _ssh_session():
         client.connect(hostname=hostname, username=username, pkey=key)
         yield client
     except paramiko.SSHException as e:
-        print(f"SSH connection error: {e}")
+        logger.error(f"SSH connection error: {e}")
         raise
     except FileNotFoundError:
-        print(f"Key file not found at: {key_filename}")
+        logger.error(f"Key file not found at: {key_filename}")
         raise
     except paramiko.AuthenticationException:
-        print("Authentication failed, please check your credentials.")
+        logger.error("Authentication failed, please check your credentials.")
         raise
     finally:
         client.close()
@@ -48,6 +48,7 @@ def generate_ego_image(prompt, imageURL, container_name):
     command += ' --prompt "' + prompt + '"'
     command += ' --imageURL "' + imageURL + '"'
     command += ' --container_name "' + container_name + '"'
+    logger.info(f"command: {command}")
 
     try:
         with _ssh_session() as ssh_client:
@@ -63,7 +64,7 @@ def generate_ego_image(prompt, imageURL, container_name):
                 os.makedirs(os.path.dirname(local_image_path), exist_ok=True)
                 sftp.get(ego_image_path, local_image_path)
                 if os.path.exists(local_image_path):
-                    print(f"Successfully saved to '{local_image_path}'")
+                    logger.info(f"Successfully saved to '{local_image_path}'")
                 else:
                     local_image_path = None
                 _run_command(ssh_client, "rm -rf ego_images/" + container_name)
@@ -72,7 +73,7 @@ def generate_ego_image(prompt, imageURL, container_name):
 
             return local_image_path
     except Exception as e:
-        print(f"An error occurred: {e}")
+        logger.error(f"An error occurred: {e}")
         return None
 
 
@@ -85,7 +86,7 @@ def invoke_corner_case(text, image_url, container_name):
     """
     Invoke corner-case handling on the Lambda VM. Runs corner_case_tool.py with
     the given text, image URL, and container name. On success, the tool prints
-    the new image path (starting with "corner_case_image/<container_name>").
+    the new image path (starting with "/corner_images_controlnet/<container_name>").
     This function then SFTPs that file down, deletes it on the VM, and returns
     the local path. Returns None on failure.
     """
@@ -96,24 +97,20 @@ def invoke_corner_case(text, image_url, container_name):
     safe_url = _shell_escape(image_url)
     safe_container = _shell_escape(container_name)
     command = (
-<<<<<<< HEAD
-        f'python ~/corner_case_tool.py --text "{safe_text}" '
-=======
         f'python ~/Corner_case_tool.py --prompt "{safe_text}" '
->>>>>>> a6b16bc (Adding the UI components needed to call the corner case generation.)
         f'--imageURL "{safe_url}" --container_name "{safe_container}"'
     )
-    prefix = f"corner_case_image/{container_name}"
+    prefix = f"/corner_images_controlnet/{container_name}"
 
     try:
         with _ssh_session() as ssh_client:
             stdout, stderr = _run_command(ssh_client, command)
             if stderr:
-                print(f"corner_case stderr: {stderr}")
+                logger.error(f"corner_case stderr: {stderr}")
 
             remote_path = (stdout.strip().split("\n")[-1].strip() if stdout else "") or ""
             if not remote_path.startswith(prefix):
-                print(f"Corner case tool failed or returned invalid path: {remote_path}")
+                logger.error(f"Corner case tool failed or returned invalid path: {remote_path}")
                 return None
 
             local_path = remote_path  # save under same relative path locally
@@ -123,12 +120,12 @@ def invoke_corner_case(text, image_url, container_name):
                 sftp.get(remote_path, local_path)
                 if not os.path.exists(local_path):
                     return None
-                print(f"Successfully saved corner case image to '{local_path}'")
+                logger.info(f"Successfully saved corner case image to '{local_path}'")
                 _run_command(ssh_client, f"rm -rf corner_case_image/{container_name}")
             finally:
                 sftp.close()
 
             return local_path
     except Exception as e:
-        print(f"An error occurred: {e}")
+        logger.error(f"An error occurred: {e}")
         return None

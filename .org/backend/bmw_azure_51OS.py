@@ -438,8 +438,8 @@ def generate_ego():
         return {"error": f"An error occurred: {str(e)}"}, 500
 
 
-@app.route("/api/corner_case", methods=["POST"])
-def corner_case():
+@app.route("/api/generate_corner_case", methods=["POST"])
+def generate_corner_case():
     data = request.get_json()
     if not data:
         return jsonify({"error": "Invalid JSON body"}), 400

@@ -42,20 +42,20 @@ export function ImageModal({ image, onClose, onNext, onPrev, onEgoGenSuccess, on
 
     const addCornerCase = async (e: React.FormEvent) => {
         e.preventDefault();
-        const text = cornerCasePrompt.trim();
-        if (!text) return;
+        const prompt = cornerCasePrompt.trim();
+        if (!prompt) return;
 
         const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
         const baseTags = ["egocentric", selectedCameraWork, "no human"];
-        const tags = [...baseTags, text];
+        const tags = [...baseTags, prompt];
 
         setIsAddingCornerCase(true);
         try {
-            const response = await fetch("/api/corner_case", {
+            const response = await fetch("/api/generate_corner_case", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    text,
+                    prompt: prompt,
                     imageURL: image.url,
                     tags,
                     date,
