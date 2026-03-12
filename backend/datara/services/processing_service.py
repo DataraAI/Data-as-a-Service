@@ -8,6 +8,7 @@ import subprocess
 from datetime import datetime
 from typing import Dict, Any
 
+import cv2
 import gdown
 
 from datara.logging import logger
@@ -15,6 +16,8 @@ from datara.logging import logger
 # Get the backend directory path and utils path
 BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 UTILS_DIR = os.path.join(BACKEND_DIR, "utils")
+# All upload scripts receive input_dir under this base (backend/utils/dataset_list)
+DATASET_LIST_DIR = os.path.join(UTILS_DIR, "dataset_list")
 
 
 class ProcessingService:
@@ -77,7 +80,7 @@ class ProcessingService:
         else:
             dataset_basename = f"dataset_{ts}"
 
-        local_process_dir = os.path.join("dataset_list", dataset_basename)
+        local_process_dir = os.path.join(DATASET_LIST_DIR, dataset_basename)
 
         try:
             if os.path.exists(local_process_dir):
@@ -89,7 +92,7 @@ class ProcessingService:
             else:
                 self._process_video_file(gdrive_link, local_process_dir, dataset_basename, ts)
 
-            # Upload to Azure
+            # Upload to Azure (input_dir is backend/utils/dataset_list/<dataset_basename>)
             self._upload_to_azure(
                 local_process_dir,
                 output_name or dataset_basename,
@@ -194,14 +197,24 @@ class ProcessingService:
             if not downloaded_path:
                 raise ValueError("Download failed or link invalid")
 
-            # Generate frames from video
+            # Use video's native FPS so we don't downsample (e.g. 60 fps video stays 60 fps)
+            cap = cv2.VideoCapture(downloaded_path)
+            try:
+                video_fps = cap.get(cv2.CAP_PROP_FPS)
+                target_fps = float(video_fps) if video_fps and video_fps > 0 else 30.0
+                logger.info(f"Video FPS: {target_fps:.2f}")
+            finally:
+                cap.release()
+
+            # Generate frames from video (--output_dir = backend/utils/dataset_list/<name>)
             logger.info(f"Generating frames from video: {dataset_basename}")
             cmd = [
                 sys.executable,
                 os.path.join(UTILS_DIR, "generate_orig_frames.py"),
                 "--video_path", downloaded_path,
                 "--output_name", dataset_basename,
-                "--target_fps", "30"
+                "--target_fps", str(target_fps),
+                "--output_dir", local_process_dir,
             ]
 
             subprocess.check_call(cmd)
@@ -290,21 +303,29 @@ class ProcessingService:
                 return {"message": f"Ego generation failed: {str(e)}"}
 
             if local_image_path:
-                # Upload ego images
+                # Place ego image under backend/utils/dataset_list/<path>/egos for upload
+                output_name_ego = "/".join(path_components[1:4])
+                ego_input_dir = os.path.join(DATASET_LIST_DIR, output_name_ego)
+                ego_egos_dir = os.path.join(ego_input_dir, "egos")
+                os.makedirs(ego_egos_dir, exist_ok=True)
+                ego_dest = os.path.join(ego_egos_dir, os.path.basename(local_image_path))
+                shutil.copy2(local_image_path, ego_dest)
+
                 cmd = [
                     sys.executable,
                     os.path.join(UTILS_DIR, "upload_frames_to_azure.py"),
                     "--container_name", container_name,
-                    "--output_name", "/".join(path_components[1:4]),
-                    "--input_dir", os.path.dirname(os.path.dirname(local_image_path)),
+                    "--output_name", output_name_ego,
+                    "--input_dir", ego_input_dir,
                     "--view", "egos",
                     "--date", date_val or "",
                     "--tags", json.dumps(misc_tags)
                 ]
-
                 subprocess.check_call(cmd)
 
                 # Cleanup
+                if os.path.exists(ego_input_dir):
+                    shutil.rmtree(ego_input_dir)
                 ego_dir = f"ego_images/{container_name}"
                 if os.path.exists(ego_dir):
                     shutil.rmtree(ego_dir)
