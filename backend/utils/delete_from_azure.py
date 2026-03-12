@@ -2,39 +2,51 @@
 Delete dataset assets from Azure Blob Storage and Cosmos DB.
 
 Examples:
-    python backend/utils/delete_from_azure.py --dataset bmw_front --dry_run
-    python backend/utils/delete_from_azure.py --dataset bmw_front --view orig --dry_run
-    python backend/utils/delete_from_azure.py --tag grille
-    python backend/utils/delete_from_azure.py --dataset bmw_front --tag grille --view egos
+    python backend/utils/delete_from_azure.py \
+        --dataset bmw_front \
+        --dry_run
+    python backend/utils/delete_from_azure.py \
+        --dataset bmw_front \
+        --view orig \
+        --dry_run
+    python backend/utils/delete_from_azure.py \
+        --tag grille
+    python backend/utils/delete_from_azure.py \
+        --dataset bmw_front \
+        --tag grille \
+        --view egos
+    python backend/utils/delete_from_azure.py \
+        --dataset_prefix automotive/bmw \
+        --dry_run
 
 Safety:
-- Requires at least one filter: --dataset, --tag, or --view
+- Requires at least one filter: --dataset, --dataset_prefix, --tag, or --view
+- --dataset_prefix: delete path and all subdirectories (datasetName = prefix OR STARTSWITH(datasetName, prefix + "/"))
 - Queries Cosmos DB first and only deletes matching blobs/documents
 - Supports dry-run mode
 """
 
 import argparse
 import os
+import sys
 from typing import Any, Dict, List, Optional, Tuple
 
-from dotenv import load_dotenv
-from azure.storage.blob import BlobServiceClient
 from azure.core.exceptions import ResourceNotFoundError
-from azure.cosmos import CosmosClient
 from azure.cosmos.exceptions import CosmosResourceNotFoundError
 
-
-COSMOS_ENDPOINT_DEFAULT = "https://daas-blob-annotations.documents.azure.com:443/"
-COSMOS_DATABASE = "BlobAnnotations"
-COSMOS_CONTAINER = "roboteyeview"
-BLOB_CONTAINER_DEFAULT = "roboteyeview"
+# Allow running as python backend/utils/delete_from_azure.py
+_BACKEND = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _BACKEND not in sys.path:
+    sys.path.insert(0, _BACKEND)
+from utils import azure_client
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Delete matching data from Azure Blob Storage and Cosmos DB"
     )
-    parser.add_argument("--dataset", type=str, default="", help="Match c.datasetName")
+    parser.add_argument("--dataset", type=str, default="", help="Match c.datasetName (exact)")
+    parser.add_argument("--dataset_prefix", type=str, default="", help="Match path and subpaths: datasetName = prefix OR STARTSWITH(datasetName, prefix + '/')")
     parser.add_argument("--tag", type=str, default="", help="Match a value inside c.miscTags")
     parser.add_argument(
         "--view",
@@ -52,10 +64,10 @@ def parse_args() -> argparse.Namespace:
 
 
 def require_filter(args: argparse.Namespace) -> None:
-    if not args.dataset and not args.tag and not args.view:
+    if not args.dataset and not getattr(args, "dataset_prefix", "") and not args.tag and not args.view:
         raise ValueError(
             "Refusing to run without filters. Provide at least one of: "
-            "--dataset, --tag, --view"
+            "--dataset, --dataset_prefix, --tag, --view"
         )
 
 
@@ -87,29 +99,7 @@ def build_cosmos_query(dataset: str, tag: str, view: str) -> Tuple[str, List[Dic
 
 
 def build_clients() -> Tuple[Any, Any]:
-    load_dotenv()
-
-    connection_string = os.getenv("BLOB_CONNECTION_STRING") or os.getenv("AZURE_STORAGE_CONNECTION_STRING")
-    if not connection_string:
-        raise ValueError(
-            "Missing blob connection string. Set BLOB_CONNECTION_STRING or AZURE_STORAGE_CONNECTION_STRING."
-        )
-
-    cosmos_endpoint = os.getenv("COSMOS_ENDPOINT") or os.getenv("AZURE_COSMOS_ENDPOINT") or COSMOS_ENDPOINT_DEFAULT
-    cosmos_key = os.getenv("COSMOS_DB_KEY") or os.getenv("AZURE_COSMOS_KEY")
-    if not cosmos_key:
-        raise ValueError("Missing Cosmos key. Set COSMOS_DB_KEY or AZURE_COSMOS_KEY.")
-
-    container_name = os.getenv("AZURE_BLOB_CONTAINER", BLOB_CONTAINER_DEFAULT)
-
-    blob_service_client = BlobServiceClient.from_connection_string(connection_string)
-    blob_container = blob_service_client.get_container_client(container_name)
-
-    cosmos_client = CosmosClient(cosmos_endpoint, credential=cosmos_key)
-    cosmos_database = cosmos_client.get_database_client(COSMOS_DATABASE)
-    cosmos_container = cosmos_database.get_container_client(COSMOS_CONTAINER)
-
-    return blob_container, cosmos_container
+    return azure_client.get_azure_clients()
 
 
 def get_partition_key_field(cosmos_container: Any) -> Optional[str]:
@@ -140,6 +130,23 @@ def query_matching_docs(
     view: str,
 ) -> List[Dict[str, Any]]:
     query, parameters = build_cosmos_query(dataset=dataset, tag=tag, view=view)
+    return list(
+        cosmos_container.query_items(
+            query=query,
+            parameters=parameters,
+            enable_cross_partition_query=True,
+        )
+    )
+
+
+def query_matching_docs_by_prefix(
+    cosmos_container: Any,
+    dataset_prefix: str,
+) -> List[Dict[str, Any]]:
+    """Query Cosmos for docs where datasetName = prefix or datasetName starts with prefix + '/'."""
+    prefix_slash = dataset_prefix.rstrip("/") + "/"
+    query = "SELECT * FROM c WHERE c.datasetName = @prefix OR STARTSWITH(c.datasetName, @prefixSlash)"
+    parameters = [{"name": "@prefix", "value": dataset_prefix.rstrip("/")}, {"name": "@prefixSlash", "value": prefix_slash}]
     return list(
         cosmos_container.query_items(
             query=query,
@@ -226,7 +233,8 @@ def print_final_summary(
     cosmos_summary: Dict[str, int],
 ) -> None:
     print("\n=== Final Summary ===")
-    print(f"dataset filter: {args.dataset or '(none)'}")
+    print(f"dataset filter:       {args.dataset or '(none)'}")
+    print(f"dataset_prefix filter: {getattr(args, 'dataset_prefix', '') or '(none)'}")
     print(f"tag filter:     {args.tag or '(none)'}")
     print(f"view filter:    {args.view or '(none)'}")
     print(f"mode:           {'DRY RUN' if args.dry_run else 'LIVE DELETE'}")
@@ -256,12 +264,16 @@ def main() -> None:
 
     blob_container, cosmos_container = build_clients()
 
-    docs = query_matching_docs(
-        cosmos_container=cosmos_container,
-        dataset=args.dataset,
-        tag=args.tag,
-        view=args.view,
-    )
+    dataset_prefix = getattr(args, "dataset_prefix", "").strip().rstrip("/")
+    if dataset_prefix:
+        docs = query_matching_docs_by_prefix(cosmos_container, dataset_prefix)
+    else:
+        docs = query_matching_docs(
+            cosmos_container=cosmos_container,
+            dataset=args.dataset,
+            tag=args.tag,
+            view=args.view,
+        )
 
     if not docs:
         print("No matching Cosmos documents found. Nothing to delete.")

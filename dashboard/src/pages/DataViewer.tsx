@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { UploadModal } from '../components/UploadModal';
-import { Loader2, RefreshCw, Folder, Database, Terminal, AlertCircle } from 'lucide-react';
+import { Loader2, RefreshCw, Folder, Database, Terminal, AlertCircle, MoreVertical, Trash2 } from 'lucide-react';
 import { ImageGrid } from '../components/ImageGrid';
 import { ImageModal } from '../components/ImageModal';
 import Navigation from '../components/Navigation';
@@ -24,6 +24,9 @@ export default function DataViewer() {
     const [selectedImage, setSelectedImage] = useState(null);
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const [filterText, setFilterText] = useState('');
+    const [folderDropdownOpen, setFolderDropdownOpen] = useState<string | null>(null);
+    const [deleteModalFolder, setDeleteModalFolder] = useState<{ name: string; full_path: string } | null>(null);
+    const [deleteInProgress, setDeleteInProgress] = useState(false);
 
     // Tag State
     const [availableTags, setAvailableTags] = useState<string[]>([]);
@@ -109,14 +112,27 @@ export default function DataViewer() {
     };
 
     const handleFolderClick = (folderName: string) => {
-        // Navigate deeper
-        // current: /viewer/automotive
-        // click: bmw
-        // next: /viewer/automotive/bmw
         const nextPath = location.pathname.endsWith('/')
             ? `${location.pathname}${folderName}`
             : `${location.pathname}/${folderName}`;
         navigate(nextPath);
+    };
+
+    const handleDeleteFolder = async () => {
+        if (!deleteModalFolder) return;
+        setDeleteInProgress(true);
+        try {
+            await axios.post("/api/delete_dataset", { path: deleteModalFolder.full_path });
+            setDeleteModalFolder(null);
+            setFolderDropdownOpen(null);
+            const path = currentBackendPath ? currentBackendPath + "/" : "";
+            const res = await axios.get("/api/datasets", { params: { path } });
+            setFolders(res.data);
+        } catch (err: any) {
+            alert(err?.response?.data?.error || err?.message || "Delete failed");
+        } finally {
+            setDeleteInProgress(false);
+        }
     };
 
     // Filter Logic (for Images)
@@ -280,10 +296,40 @@ export default function DataViewer() {
                                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-5xl mx-auto">
                                             {filteredContent.map((folder: any) => (
                                                 <div
-                                                    key={folder.name}
+                                                    key={folder.full_path}
                                                     onClick={() => handleFolderClick(folder.name)}
-                                                    className="group cursor-pointer relative p-8 bg-card/20 border border-border hover:border-primary/50 hover:bg-card/40 transition-all duration-300 overflow-hidden"
+                                                    className="group cursor-pointer relative p-8 bg-card/20 border border-border hover:border-primary/50 hover:bg-card/40 transition-all duration-300 overflow-visible"
                                                 >
+                                                    {/* Folder actions dropdown */}
+                                                    <div className="absolute top-3 right-3 z-20" onClick={(e) => e.stopPropagation()}>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setFolderDropdownOpen(folderDropdownOpen === folder.full_path ? null : folder.full_path)}
+                                                            className="p-1.5 rounded-sm text-muted-foreground hover:text-foreground hover:bg-primary/10 transition-colors"
+                                                            aria-label="Folder options"
+                                                        >
+                                                            <MoreVertical className="w-5 h-5" />
+                                                        </button>
+                                                        {folderDropdownOpen === folder.full_path && (
+                                                            <>
+                                                                <div className="fixed inset-0 z-10" onClick={() => setFolderDropdownOpen(null)} aria-hidden />
+                                                                <div className="absolute right-0 mt-1 py-1 w-40 bg-card border border-border rounded-sm shadow-lg z-20">
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            setDeleteModalFolder({ name: folder.name, full_path: folder.full_path });
+                                                                            setFolderDropdownOpen(null);
+                                                                        }}
+                                                                        className="w-full px-3 py-2 text-left text-sm font-sans-tech text-destructive hover:bg-destructive/10 flex items-center gap-2"
+                                                                    >
+                                                                        <Trash2 className="w-4 h-4" />
+                                                                        Delete
+                                                                    </button>
+                                                                </div>
+                                                            </>
+                                                        )}
+                                                    </div>
+
                                                     {/* Decorative corners */}
                                                     <div className="absolute top-0 left-0 w-3 h-3 border-t border-l border-border group-hover:border-primary transition-colors"></div>
                                                     <div className="absolute top-0 right-0 w-3 h-3 border-t border-r border-border group-hover:border-primary transition-colors"></div>
@@ -350,6 +396,37 @@ export default function DataViewer() {
                     onClose={() => setIsUploadModalOpen(false)}
                     onSuccess={() => {/* refresh */ }}
                 />
+
+                {/* Delete folder confirmation modal */}
+                {deleteModalFolder && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
+                        <div className="bg-card border border-border rounded-lg shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+                            <h3 className="text-lg font-sans-tech font-bold text-foreground mb-2">Delete path and subdirectories?</h3>
+                            <p className="text-sm text-muted-foreground font-sans-tech mb-1">
+                                You are about to delete <span className="text-foreground font-medium">{deleteModalFolder.full_path}</span> and all of its contents.
+                            </p>
+                            <p className="text-xs text-destructive/90 font-sans-tech mb-6">This action cannot be undone.</p>
+                            <div className="flex justify-end gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setDeleteModalFolder(null)}
+                                    className="px-4 py-2 text-sm font-sans-tech font-medium text-muted-foreground hover:text-foreground border border-border rounded-sm transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleDeleteFolder}
+                                    disabled={deleteInProgress}
+                                    className="px-4 py-2 text-sm font-sans-tech font-medium text-primary-foreground bg-destructive hover:bg-destructive/90 rounded-sm transition-colors disabled:opacity-50 flex items-center gap-2"
+                                >
+                                    {deleteInProgress && <Loader2 className="w-4 h-4 animate-spin" />}
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     )

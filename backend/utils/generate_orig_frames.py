@@ -7,11 +7,13 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--video_path", type=str, required=True, help="input mp4 path")
 parser.add_argument("--output_name", type=str, required=True, help="output name for the directory")
 parser.add_argument("--target_fps", type=float, default=1.0, help="how many frames to save per second of video")
+parser.add_argument("--output_dir", type=str, default="", help="optional: directory to write frames (must contain orig/); if not set, uses utils/dataset_list/<output_name>")
 
 args = parser.parse_args()
 video_path = args.video_path
 output_name = args.output_name
 target_fps = args.target_fps
+output_dir_arg = args.output_dir.strip()
 
 if '~' in video_path:
     video_path = video_path.replace("~", os.path.expanduser("~"))
@@ -44,8 +46,11 @@ else:
 pad_width = len(str(expected_output_count))
 # --- FPS LOGIC END ---
 
-directory_name = os.path.dirname(os.path.abspath(__file__))
-output_dir = os.path.join(directory_name, "dataset_list", f"{output_name}")
+if output_dir_arg:
+    output_dir = os.path.abspath(os.path.expanduser(output_dir_arg))
+else:
+    directory_name = os.path.dirname(os.path.abspath(__file__))
+    output_dir = os.path.join(directory_name, "dataset_list", f"{output_name}")
 
 os.makedirs(os.path.join(output_dir, "orig"), exist_ok=True)
 
