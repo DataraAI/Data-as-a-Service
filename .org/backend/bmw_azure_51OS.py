@@ -438,5 +438,66 @@ def generate_ego():
         return {"error": f"An error occurred: {str(e)}"}, 500
 
 
+@app.route("/api/generate_corner_case", methods=["POST"])
+def generate_corner_case():
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Invalid JSON body"}), 400
+
+    text = data.get("text")
+    image_url = data.get("imageURL")
+    tags = data.get("tags", [])
+    date_val = data.get("date", "")
+
+    if not text:
+        return jsonify({"error": "Missing 'text' in request body"}), 400
+    if not image_url:
+        return jsonify({"error": "Missing 'imageURL' in request body"}), 400
+
+    try:
+        local_image_path = call_lambda_vm.invoke_corner_case(text, image_url, container_name)
+        if local_image_path is None:
+            return jsonify({"error": "Corner case invocation failed"}), 500
+
+        # Derive output_name from ego image URL (e.g. .../egos/file.jpg -> automotive/bmw/frontGrille)
+        blob_path = image_url[image_url.index(container_name) : image_url.index("/egos") + 5]
+        blob_path_components = blob_path.split("/")
+        output_name = "/".join(blob_path_components[1:4])
+
+        # Prepare upload: upload script expects input_dir with a "egos" subfolder containing the image(s)
+        upload_base = os.path.dirname(local_image_path)
+        egos_dir = os.path.join(upload_base, "egos")
+        os.makedirs(egos_dir, exist_ok=True)
+        dest_path = os.path.join(egos_dir, os.path.basename(local_image_path))
+        shutil.copy2(local_image_path, dest_path)
+
+        cmd_upload = [
+            sys.executable, "upload_frames_to_azure.py",
+            "--container_name", container_name,
+            "--output_name", output_name,
+            "--input_dir", upload_base,
+            "--view", "egos",
+            "--date", date_val or "",
+            "--tags", json.dumps(tags),
+        ]
+        print(f"Running corner case upload: {cmd_upload}")
+        subprocess.check_call(cmd_upload)
+
+        # Cleanup local files after successful upload
+        for p in (local_image_path, dest_path):
+            if os.path.exists(p):
+                os.remove(p)
+        if os.path.isdir(upload_base):
+            shutil.rmtree(upload_base)
+
+        return jsonify({"message": "Corner case image generated and uploaded successfully"})
+    except subprocess.CalledProcessError as e:
+        print(f"Corner case upload script failed: {e}")
+        return jsonify({"error": f"Upload failed: {str(e)}"}), 500
+    except Exception as e:
+        print(f"Corner case error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5151, debug=True, use_reloader=False)

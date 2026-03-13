@@ -6,6 +6,7 @@ backend/utils/__pycache__/
 backend/*.pyc
 backend/venv/
 backend/.env
+backend/utils/__pycache__/
 backend/utils/dataset_list/*
 .venv/*
 

@@ -16,8 +16,12 @@ from datara.logging import logger
 # Get the backend directory path and utils path
 BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 UTILS_DIR = os.path.join(BACKEND_DIR, "utils")
+<<<<<<< HEAD
+DATASET_LIST_DIR = os.path.join(BACKEND_DIR, "dataset_list")
+=======
 # All upload scripts receive input_dir under this base (backend/utils/dataset_list)
 DATASET_LIST_DIR = os.path.join(UTILS_DIR, "dataset_list")
+>>>>>>> main
 
 
 class ProcessingService:
@@ -256,7 +260,7 @@ class ProcessingService:
         subprocess.check_call(cmd)
         logger.info("Upload to Azure completed")
 
-    def generate_ego(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def generate_ego(self, data: Dict[str, Any]) -> tuple[str, int]:
         """
         Generate ego view from original image
 
@@ -266,6 +270,7 @@ class ProcessingService:
         Returns:
             Generation result
         """
+        logger.info(f"generate_ego() called with data: {data}")
         try:
             prompt = data.get("prompt")
             image_url = data.get("imageURL")
@@ -285,56 +290,134 @@ class ProcessingService:
 
             path_components = blob_path.split("/")
             path_components[-1] = "egos"
+            output_name = "/".join(path_components[1:4])
 
-            # Import and call ego generation (assuming call_lambda_vm exists)
+            # Import and call ego generation (saves under dataset_list/{output_name}/egos/)
             local_image_path = None
+            logger.info("Calling lambda VM for ego generation")
             try:
                 from datara.services import call_lambda_vm
-                local_image_path = call_lambda_vm.generate_ego_image(
+                logger.info(f"Generating ego view with prompt: {prompt}")
+                logger.info(f"Image URL: {image_url}")
+                logger.info(f"Container name: {container_name}")
+                local_image_path, status_code = call_lambda_vm.generate_ego_image(
                     prompt,
                     image_url,
-                    container_name
+                    container_name,
+                    output_name,
                 )
             except (ImportError, AttributeError):
                 logger.warning("call_lambda_vm module not found, skipping ego generation")
-                return {"message": "Ego generation module not available"}
+                return {"message": "Ego generation module not available"}, 500
             except Exception as e:
                 logger.error(f"Error in ego generation: {e}")
-                return {"message": f"Ego generation failed: {str(e)}"}
+                return {"message": f"Ego generation failed: {str(e)}"}, 500
 
-            if local_image_path:
-                # Place ego image under backend/utils/dataset_list/<path>/egos for upload
-                output_name_ego = "/".join(path_components[1:4])
-                ego_input_dir = os.path.join(DATASET_LIST_DIR, output_name_ego)
-                ego_egos_dir = os.path.join(ego_input_dir, "egos")
-                os.makedirs(ego_egos_dir, exist_ok=True)
-                ego_dest = os.path.join(ego_egos_dir, os.path.basename(local_image_path))
-                shutil.copy2(local_image_path, ego_dest)
-
+            if status_code == 200 and local_image_path:
+                # Upload ego images from dataset_list to cloud
+                input_dir = os.path.join(DATASET_LIST_DIR, output_name)
                 cmd = [
                     sys.executable,
                     os.path.join(UTILS_DIR, "upload_frames_to_azure.py"),
                     "--container_name", container_name,
-                    "--output_name", output_name_ego,
-                    "--input_dir", ego_input_dir,
+                    "--output_name", output_name,
+                    "--input_dir", input_dir,
                     "--view", "egos",
                     "--date", date_val or "",
-                    "--tags", json.dumps(misc_tags)
+                    "--tags", json.dumps(misc_tags),
                 ]
                 subprocess.check_call(cmd)
 
-                # Cleanup
-                if os.path.exists(ego_input_dir):
-                    shutil.rmtree(ego_input_dir)
-                ego_dir = f"ego_images/{container_name}"
-                if os.path.exists(ego_dir):
-                    shutil.rmtree(ego_dir)
-
+                # Cleanup local dataset_list/egos for this output
+                ego_local_dir = os.path.join(DATASET_LIST_DIR, output_name, "egos")
+                if os.path.exists(ego_local_dir):
+                    shutil.rmtree(ego_local_dir)
                 logger.info("Ego view generation completed")
+            elif status_code != 200:
+                return {"message": "Error generating ego view"}, status_code
 
-            return {"message": "Ego view processed and uploaded successfully"}
+            return {"message": "Ego view processed and uploaded successfully"}, 200
 
         except Exception as e:
             logger.error(f"Error generating ego: {e}", exc_info=True)
-            raise
+            return {"message": f"Ego generation failed: {str(e)}"}, 500
 
+    def generate_corner_case(self, data: Dict[str, Any]) -> tuple[str, int]:
+        """
+        Generate corner case from original image
+
+        Args:
+            data: Request data containing imageURL, prompt, etc.
+
+        Returns:
+            Generation result
+        """
+        logger.info(f"generate_corner_case() called with data: {data}")
+
+        try:
+            prompt = data.get("prompt")
+            image_url = data.get("imageURL")
+            tags = data.get("tags", [])
+            date_val = data.get("date", "")
+
+            if not prompt:
+                return {"error": "Missing 'prompt' in request body"}, 400
+            if not image_url:
+                return {"error": "Missing 'imageURL' in request body"}, 400
+
+            logger.info(f"Generating corner case with prompt: {prompt}")
+
+            # Extract path components from URL
+            container_name = self.azure_service.container_name
+            blob_path_start = image_url.index(container_name)
+            blob_path_end = image_url.index("/egos") + 5
+            blob_path = image_url[blob_path_start:blob_path_end]
+
+            path_components = blob_path.split("/")
+            path_components[-1] = "corner_images_controlnet"
+            output_name = "/".join(path_components[1:4])
+            container_name = self.azure_service.container_name
+
+            try:
+                from datara.services import call_lambda_vm
+                local_path, status_code = call_lambda_vm.invoke_corner_case(
+                    prompt, image_url, container_name, output_name
+                )
+            except (ImportError, AttributeError):
+                logger.warning("call_lambda_vm module not found, skipping corner case generation")
+                return {"message": "Corner case generation module not available"}, 500
+            except Exception as e:
+                logger.error(f"Error in corner case generation: {e}")
+                return {"message": f"Corner case generation failed: {str(e)}"}, 500
+
+            if status_code != 200 or not local_path:
+                return {"error": "Corner case invocation failed"}, status_code or 500
+
+            # Upload corner_images_controlnet from dataset_list to cloud
+            input_dir = os.path.join(DATASET_LIST_DIR, output_name)
+            cmd = [
+                sys.executable,
+                os.path.join(UTILS_DIR, "upload_frames_to_azure.py"),
+                "--container_name", container_name,
+                "--output_name", output_name,
+                "--input_dir", input_dir,
+                "--view", "corner_images_controlnet",
+                "--date", date_val or "",
+                "--tags", json.dumps(tags),
+            ]
+            subprocess.check_call(cmd)
+
+            # Cleanup local dataset_list/corner_images_controlnet for this output
+            corner_local_dir = os.path.join(DATASET_LIST_DIR, output_name, "corner_images_controlnet")
+            if os.path.exists(corner_local_dir):
+                shutil.rmtree(corner_local_dir)
+            logger.info("Corner case generation completed")
+
+
+            return {"message": "Corner case generation completed successfully"}, 200
+        except subprocess.CalledProcessError as e:
+            print(f"Corner case upload script failed: {e}")
+            return {"error": f"Corner case generation failed: {str(e)}"}, 500
+        except Exception as e:
+            print(f"Corner case error: {e}")
+            return {"error": f"Corner case generation failed: {str(e)}"}, 500
