@@ -5,6 +5,9 @@ Main Flask application for robotics training and deployment.
 Handles Azure Blob Storage integration and dataset management.
 """
 
+import os
+import subprocess
+import sys
 from datetime import datetime, timezone
 
 from flask import Flask, jsonify, Response, stream_with_context, request
@@ -163,6 +166,34 @@ def register_routes(app: Flask) -> None:
         except Exception as e:
             logger.error(f"Error generating corner case: {e}", exc_info=True)
             return {"error": f"An error occurred: {str(e)}"}, 500
+
+    @app.route("/api/delete_dataset", methods=["POST"])
+    def delete_dataset():
+        """Delete a dataset path and its subdirectories via delete_from_azure.py script."""
+        try:
+            data = request.get_json() or {}
+            path = data.get("path") or (request.form.get("path") if request.form else None)
+            if not path or not str(path).strip():
+                return jsonify({"error": "Missing or empty 'path'"}), 400
+            path = str(path).strip().rstrip("/")
+            backend_dir = os.path.dirname(os.path.abspath(__file__))
+            utils_dir = os.path.join(backend_dir, "utils")
+            script_path = os.path.join(utils_dir, "delete_from_azure.py")
+            result = subprocess.run(
+                [sys.executable, script_path, "--dataset_prefix", path],
+                capture_output=True,
+                text=True,
+                cwd=backend_dir,
+            )
+            if result.returncode != 0:
+                err = (result.stderr or result.stdout or "Unknown error").strip()
+                logger.warning(f"delete_from_azure failed: {err}")
+                return jsonify({"error": err or "Delete script failed"}), 500
+            logger.info(f"Dataset deleted via script: {path}")
+            return jsonify({"message": "Dataset and subdirectories deleted"})
+        except Exception as e:
+            logger.error(f"Error deleting dataset: {e}", exc_info=True)
+            return jsonify({"error": str(e)}), 500
 
     @app.route("/api/stats", methods=["GET"])
     def get_stats():
