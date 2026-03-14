@@ -39,6 +39,8 @@ export function ImageModal({ image, onClose, onNext, onPrev, onEgoGenSuccess, on
     const [isGeneratingEgo, setIsGeneratingEgo] = useState(false);
     const [cornerCasePrompt, setCornerCasePrompt] = useState("");
     const [isAddingCornerCase, setIsAddingCornerCase] = useState(false);
+    const [vlmTagsPrompt, setVlmTagsPrompt] = useState("");
+    const [isCreatingVlmTags, setIsCreatingVlmTags] = useState(false);
 
     const addCornerCase = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -76,6 +78,33 @@ export function ImageModal({ image, onClose, onNext, onPrev, onEgoGenSuccess, on
             alert(`Error: ${error.message}`);
         } finally {
             setIsAddingCornerCase(false);
+        }
+    };
+
+    const createVlmTags = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const prompt = vlmTagsPrompt.trim();
+        if (!prompt) return;
+
+        setIsCreatingVlmTags(true);
+        try {
+            const response = await fetch("/api/create_vlm_tags", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ prompt, imageURL: image.url }),
+            });
+            const data = await response.json();
+            if (response.ok) {
+                alert(data.message || "VLM tags created successfully.");
+                setVlmTagsPrompt("");
+                onClose();
+            } else {
+                throw new Error(data.error || "Create VLM tags failed");
+            }
+        } catch (error: any) {
+            alert(`Error: ${error.message}`);
+        } finally {
+            setIsCreatingVlmTags(false);
         }
     };
 
@@ -247,6 +276,30 @@ export function ImageModal({ image, onClose, onNext, onPrev, onEgoGenSuccess, on
                             </div>
                         </div>
                     </div>
+
+                    {/* VLM tags — for ego or corner case images */}
+                    {(image.metadata?.view === "egos" || image.metadata?.view === "corner_images_controlnet") ? (
+                        <div>
+                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-2 font-sans-tech">Create VLM tags</label>
+                            <form onSubmit={createVlmTags} className="space-y-3">
+                                <input
+                                    type="text"
+                                    value={vlmTagsPrompt}
+                                    onChange={(e) => setVlmTagsPrompt(e.target.value)}
+                                    placeholder="Enter prompt for VLM tagging"
+                                    className="w-full px-3 py-2 text-sm bg-input rounded-sm border border-border focus:border-primary/50 focus:outline-none font-sans-tech placeholder:text-muted-foreground"
+                                />
+                                <button
+                                    type="submit"
+                                    disabled={!vlmTagsPrompt.trim() || isCreatingVlmTags}
+                                    className="px-6 py-2 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold font-sans-tech rounded-sm flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed uppercase shadow-lg shadow-primary/20"
+                                >
+                                    {isCreatingVlmTags && <Loader2 className="w-3 h-3 animate-spin" />}
+                                    {isCreatingVlmTags ? "Creating..." : "Create VLM tags"}
+                                </button>
+                            </form>
+                        </div>
+                    ) : null}
 
                     {/* Corner case — only for ego images */}
                     {image.metadata?.view === "egos" ? (

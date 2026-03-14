@@ -6,9 +6,9 @@ import paramiko
 
 import saas_config
 
-# Save ego/corner outputs under backend/dataset_list for upload_frames_to_azure
+# Save ego/corner outputs under backend/utils/dataset_list for upload_frames_to_azure
 BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DATASET_LIST_DIR = os.path.join(BACKEND_DIR, "dataset_list")
+DATASET_LIST_DIR = os.path.join(BACKEND_DIR, "utils", "dataset_list")
 
 
 @contextmanager
@@ -53,7 +53,7 @@ def _run_command(client, command):
 def generate_ego_image(prompt, imageURL, container_name, output_name):
     """
     Run ego image generation on the Lambda VM and save the result under
-    backend/dataset_list/{output_name}/egos/. Returns (local_path, status_code).
+    backend/utils/dataset_list/{output_name}/egos/. Returns (local_path, status_code).
     """
     command = (
         "python ~/Software-as-a-Service/image_prompt_tool.py"
@@ -102,11 +102,58 @@ def _shell_escape(s):
     return s.replace("\\", "\\\\").replace('"', '\\"').replace("$", "\\$").replace("`", "\\`")
 
 
+def run_vlm_tags(prompt: str, image_url: str):
+    """
+    Run the VLM image tagging script on the Lambda VM. Runs qwen_vlm_image.py with
+    the given prompt and egoURL. Fetches the output JSON file locally, then removes
+    it from the VM. Returns (local_json_path, status_code). On failure returns (None, status_code).
+    """
+    if not prompt or not image_url:
+        return None, 400
+
+    safe_prompt = _shell_escape(prompt)
+    safe_url = _shell_escape(image_url)
+    command = (
+        'python "$HOME/Software-as-a-Service/Post Annotation/qwen_vlm_image.py" '
+        f'--prompt "{safe_prompt}" --egoURL "{safe_url}"'
+    )
+    logger.info(f"call_lambda_vm.run_vlm_tags() command: {command}")
+
+    try:
+        with _ssh_session() as ssh_client:
+            stdout, stderr = _run_command(ssh_client, command)
+            remote_json_path = (stdout.strip().split("\n")[-1].strip() if stdout else "") or ""
+
+            if not remote_json_path or not remote_json_path.endswith(".json"):
+                logger.error(f"VLM script failed or returned invalid path: {stderr or stdout}")
+                return None, 500
+
+            # Fetch JSON file locally to a temp path under backend
+            os.makedirs(DATASET_LIST_DIR, exist_ok=True)
+            local_json_path = os.path.join(DATASET_LIST_DIR, os.path.basename(remote_json_path))
+
+            sftp = ssh_client.open_sftp()
+            try:
+                sftp.get(remote_json_path, local_json_path)
+            finally:
+                sftp.close()
+
+            # Remove the file from the Lambda VM
+            _run_command(ssh_client, f"rm -f '{remote_json_path}'")
+
+            if os.path.exists(local_json_path):
+                return local_json_path, 200
+            return None, 500
+    except Exception as e:
+        logger.error(f"run_vlm_tags error: {e}")
+        return None, 500
+
+
 def invoke_corner_case(text, image_url, container_name, output_name):
     """
     Invoke corner-case handling on the Lambda VM. Runs corner_case_tool.py with
     the given text, image URL, and container name. On success, SFTPs the result
-    down and saves it under backend/dataset_list/{output_name}/corner_images_controlnet/.
+    down and saves it under backend/utils/dataset_list/{output_name}/corner_images_controlnet/.
     Returns (local_path, status_code).
     """
     if not text or not image_url or not container_name:
