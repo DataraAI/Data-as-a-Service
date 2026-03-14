@@ -167,6 +167,22 @@ def register_routes(app: Flask) -> None:
             logger.error(f"Error generating corner case: {e}", exc_info=True)
             return {"error": f"An error occurred: {str(e)}"}, 500
 
+    @app.route("/api/create_vlm_tags", methods=["POST"])
+    def create_vlm_tags():
+        """Create VLM tags for an ego or corner case image via Lambda VM and append to Cosmos DB."""
+        try:
+            data = request.get_json()
+            if not data:
+                return jsonify({"error": "Invalid JSON body"}), 400
+            result = processing_service.create_vlm_tags(data)
+            if result[1] != 200:
+                return jsonify({"error": result[0]}), result[1]
+            logger.info("VLM tags created successfully")
+            return jsonify(result[0]), result[1]
+        except Exception as e:
+            logger.error(f"Error creating VLM tags: {e}", exc_info=True)
+            return jsonify({"error": str(e)}), 500
+
     @app.route("/api/delete_dataset", methods=["POST"])
     def delete_dataset():
         """Delete a dataset path and its subdirectories via delete_from_azure.py script."""

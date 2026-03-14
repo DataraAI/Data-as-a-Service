@@ -16,12 +16,8 @@ from datara.logging import logger
 # Get the backend directory path and utils path
 BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 UTILS_DIR = os.path.join(BACKEND_DIR, "utils")
-<<<<<<< HEAD
-DATASET_LIST_DIR = os.path.join(BACKEND_DIR, "dataset_list")
-=======
 # All upload scripts receive input_dir under this base (backend/utils/dataset_list)
 DATASET_LIST_DIR = os.path.join(UTILS_DIR, "dataset_list")
->>>>>>> main
 
 
 class ProcessingService:
@@ -421,3 +417,55 @@ class ProcessingService:
         except Exception as e:
             print(f"Corner case error: {e}")
             return {"error": f"Corner case generation failed: {str(e)}"}, 500
+
+    def create_vlm_tags(self, data: Dict[str, Any]) -> tuple[str, int]:
+        """
+        Create VLM tags for an ego or corner case image: call Lambda VM to produce
+        a JSON with VLM_tags, then append those tags to the image's Cosmos DB document.
+        """
+        logger.info(f"create_vlm_tags() called with data: {data}")
+        try:
+            prompt = data.get("prompt")
+            image_url = data.get("imageURL")
+
+            if not prompt or not str(prompt).strip():
+                return {"error": "Missing or empty 'prompt' in request body"}, 400
+            if not image_url or not str(image_url).strip():
+                return {"error": "Missing or empty 'imageURL' in request body"}, 400
+
+            prompt = str(prompt).strip()
+            image_url = str(image_url).strip()
+
+            try:
+                from datara.services import call_lambda_vm
+                local_json_path, status_code = call_lambda_vm.run_vlm_tags(prompt, image_url)
+            except (ImportError, AttributeError):
+                logger.warning("call_lambda_vm module not found")
+                return {"error": "VLM tags module not available"}, 500
+            except Exception as e:
+                logger.error(f"Error in run_vlm_tags: {e}")
+                return {"error": f"VLM tags generation failed: {str(e)}"}, 500
+
+            if status_code != 200 or not local_json_path or not os.path.exists(local_json_path):
+                return {"error": "VLM tags invocation failed or no JSON produced"}, status_code or 500
+
+            try:
+                append_script = os.path.join(UTILS_DIR, "append_tags_to_image.py")
+                subprocess.check_call(
+                    [sys.executable, append_script, "--egoURL", image_url, "--json_path", local_json_path],
+                    cwd=BACKEND_DIR,
+                )
+            finally:
+                if os.path.exists(local_json_path):
+                    try:
+                        os.remove(local_json_path)
+                    except OSError:
+                        pass
+
+            return {"message": "VLM tags created and appended successfully"}, 200
+        except subprocess.CalledProcessError as e:
+            logger.error(f"append_tags_to_image failed: {e}")
+            return {"error": f"Appending tags failed: {str(e)}"}, 500
+        except Exception as e:
+            logger.error(f"create_vlm_tags error: {e}", exc_info=True)
+            return {"error": str(e)}, 500
