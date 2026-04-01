@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { Search, ChevronDown, ChevronRight, Plus, Hash, FileText } from 'lucide-react';
-import { Button } from "@/components/ui/button.tsx";
+import { Button } from "@/components/ui/button";
 
 interface SidebarProps {
-    filters: any;
-    onFilterChange: (key: string, value: any) => void;
+    onFilterChange: (key: string, value: string) => void;
     availableTags: string[];
     visibleTags: Set<string>;
     onToggleTag: (tag: string) => void;
@@ -13,15 +12,27 @@ interface SidebarProps {
     onUploadClick: () => void;
     frameRange: { min: number | null; max: number | null };
     onFrameRangeChange: (min: number | null, max: number | null) => void;
+    matchingTagSuggestions: string[];
+    onSelectTagSuggestion: (tag: string) => void;
 }
 
-type SectionKey = 'filter' | 'tags' | 'metadata' | 'labels' | 'primitives' | 'frames';
+type SectionKey = 'filter' | 'labels' | 'primitives' | 'frames';
 
-export function Sidebar({ onFilterChange, availableTags, visibleTags, onToggleTag, visiblePrimitives, onTogglePrimitive, onUploadClick, frameRange, onFrameRangeChange }: SidebarProps) {
+export function Sidebar({
+    onFilterChange,
+    availableTags,
+    visibleTags,
+    onToggleTag,
+    visiblePrimitives,
+    onTogglePrimitive,
+    onUploadClick,
+    frameRange,
+    onFrameRangeChange,
+    matchingTagSuggestions,
+    onSelectTagSuggestion
+}: SidebarProps) {
     const [expandedSections, setExpandedSections] = useState<Record<SectionKey, boolean>>({
         filter: true,
-        tags: true,
-        metadata: false,
         labels: true,
         primitives: false,
         frames: true
@@ -41,14 +52,14 @@ export function Sidebar({ onFilterChange, availableTags, visibleTags, onToggleTa
 
             <div className="flex-1 overflow-y-auto custom-scrollbar">
 
-                {/* FILTER Section */}
+                {/* SEARCH Section */}
                 <div className="border-b border-border">
                     <button
                         onClick={() => toggleSection('filter')}
                         className="flex items-center w-full px-4 py-3 hover:bg-background/80 transition-colors group"
                     >
                         {expandedSections.filter ? <ChevronDown className="w-3 h-3 mr-2 text-primary" /> : <ChevronRight className="w-3 h-3 mr-2" />}
-                        <span className="font-sans-tech font-bold tracking-wider text-foreground group-hover:text-primary transition-colors">Filters</span>
+                        <span className="font-sans-tech font-bold tracking-wider text-foreground group-hover:text-primary transition-colors">Search</span>
                     </button>
 
                     {expandedSections.filter && (
@@ -58,11 +69,29 @@ export function Sidebar({ onFilterChange, availableTags, visibleTags, onToggleTa
                                 <input
                                     id="filter_samples"
                                     type="text"
-                                    placeholder="Filter samples..."
+                                    placeholder="Search by image title or label"
                                     className="w-full bg-input border border-border rounded-sm py-1.5 pl-8 pr-2 text-xs focus:border-primary focus:outline-none placeholder-muted-foreground text-foreground font-sans-tech"
                                     onChange={(e) => onFilterChange('text', e.target.value)}
                                 />
                             </div>
+
+                            {matchingTagSuggestions.length > 0 && (
+                                <div className="border border-border rounded-sm bg-background/80 overflow-hidden">
+                                    <div className="max-h-36 overflow-y-auto custom-scrollbar">
+                                        {matchingTagSuggestions.map((tag) => (
+                                            <button
+                                                key={tag}
+                                                type="button"
+                                                onClick={() => onSelectTagSuggestion(tag)}
+                                                className="w-full text-left px-3 py-2 text-xs font-sans-tech text-muted-foreground hover:text-foreground hover:bg-background/50 transition-colors border-b border-border last:border-b-0"
+                                            >
+                                                {tag}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
                             <Button
                                 onClick={onUploadClick}
                                 size="sm"
