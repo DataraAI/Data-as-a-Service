@@ -9,19 +9,38 @@ import { ImageModal } from '../components/ImageModal';
 import Navigation from '../components/Navigation';
 import { Breadcrumbs } from '../components/Breadcrumbs';
 
+interface FolderItem {
+    name: string;
+    full_path: string;
+}
+
+interface ImageMetadata {
+    frame_id?: string | number | null;
+    [key: string]: unknown;
+}
+
+interface ImageItem {
+    id?: string;
+    name: string;
+    tags?: string[];
+    frame_id?: string | number | null;
+    metadata?: ImageMetadata;
+    [key: string]: unknown;
+}
+
 export default function DataViewer() {
     const location = useLocation();
     const navigate = useNavigate();
 
     // -- State --
     // Folders view (Levels 0, 1, 2)
-    const [folders, setFolders] = useState<any[]>([]);
+    const [folders, setFolders] = useState<FolderItem[]>([]);
 
     // Images view (Level 3 - Leaf)
-    const [images, setImages] = useState([]);
+    const [images, setImages] = useState<ImageItem[]>([]);
 
     const [loading, setLoading] = useState(false);
-    const [selectedImage, setSelectedImage] = useState(null);
+    const [selectedImage, setSelectedImage] = useState<ImageItem | null>(null);
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const [filterText, setFilterText] = useState('');
     const [folderDropdownOpen, setFolderDropdownOpen] = useState<string | null>(null);
@@ -56,22 +75,33 @@ export default function DataViewer() {
     // e.g. ['automotive', 'bmw'] -> "automotive/bmw/"
     const currentBackendPath = pathSegments.length > 0 ? pathSegments.join('/') : '';
 
+    const matchingTagSuggestions = useMemo(() => {
+        const query = filterText.trim().toLowerCase();
+
+        if (!query) return [];
+
+        return availableTags
+            .filter(tag => !visibleTags.has(tag))
+            .filter(tag => tag.toLowerCase().startsWith(query))
+            .sort((a, b) => a.localeCompare(b));
+    }, [availableTags, visibleTags, filterText]);
+
     // -- Effects --
 
     useEffect(() => {
         setLoading(true);
-        setFilterText(''); // Reset filter on nav
+        setFilterText(''); // Reset search on nav
 
         if (isLeaf) {
             // Fetch IMAGES (Dataset View)
             // Use currentBackendPath as the dataset name
-            axios.get(`/api/dataset/${currentBackendPath}`)
+            axios.get<ImageItem[]>(`/api/dataset/${currentBackendPath}`)
                 .then(res => {
                     setImages(res.data);
 
                     // Extract all tags
                     const tags = new Set<string>();
-                    res.data.forEach((img: any) => {
+                    res.data.forEach((img) => {
                         if (img.tags) img.tags.forEach((t: string) => tags.add(t));
                     });
                     setAvailableTags(Array.from(tags).sort());
@@ -82,7 +112,7 @@ export default function DataViewer() {
 
         } else {
             // Fetch FOLDERS (Directory View)
-            axios.get(`/api/datasets`, { params: { path: currentBackendPath } })
+            axios.get<FolderItem[]>(`/api/datasets`, { params: { path: currentBackendPath } })
                 .then(res => {
                     setFolders(res.data);
                 })
@@ -102,6 +132,13 @@ export default function DataViewer() {
         if (newVisible.has(tag)) newVisible.delete(tag);
         else newVisible.add(tag);
         setVisibleTags(newVisible);
+    };
+
+    const handleSelectTagSuggestion = (tag: string) => {
+        const newVisible = new Set(visibleTags);
+        newVisible.add(tag);
+        setVisibleTags(newVisible);
+        setFilterText('');
     };
 
     const togglePrimitive = (prim: string) => {
@@ -126,7 +163,7 @@ export default function DataViewer() {
             setDeleteModalFolder(null);
             setFolderDropdownOpen(null);
             const path = currentBackendPath ? currentBackendPath + "/" : "";
-            const res = await axios.get("/api/datasets", { params: { path } });
+            const res = await axios.get<FolderItem[]>("/api/datasets", { params: { path } });
             setFolders(res.data);
         } catch (err: any) {
             alert(err?.response?.data?.error || err?.message || "Delete failed");
@@ -137,52 +174,53 @@ export default function DataViewer() {
 
     // Filter Logic (for Images)
     // For folders, we can also basic filter
-    const filteredContent = useMemo(() => {
-        if (isLeaf) {
-            // Filter Images
-            let result = images;
-            if (filterText) {
-                const lower = filterText.toLowerCase();
-                result = result.filter((img: any) => img.name.toLowerCase().includes(lower));
-            }
-            if (visibleTags.size > 0) {
-                result = result.filter((img: any) =>
-                    img.tags && img.tags.some((t: string) => visibleTags.has(t))
-                );
-            }
-            if (frameRange.min !== null || frameRange.max !== null) {
-                result = result.filter((img: any) => {
-                    // Robustly get frame_id
-                    let rawFrameId = img.frame_id ?? img.metadata?.frame_id;
+    const filteredImages = useMemo(() => {
+        let result = images;
 
-                    // Parse if string
-                    let frameId: number | null = null;
-                    if (typeof rawFrameId === 'number') {
-                        frameId = rawFrameId;
-                    } else if (typeof rawFrameId === 'string' && !isNaN(parseInt(rawFrameId))) {
-                        frameId = parseInt(rawFrameId);
-                    }
-
-                    // If we can't determine a frame ID, usually we should hide it if a filter is active?
-                    // Or keep it? If the user is filtering "Frames 1-10", they want to see Frames 1-10.
-                    // Items without frames effectively don't match that criteria.
-                    if (frameId === null) return false;
-
-                    const min = frameRange.min ?? -Infinity;
-                    const max = frameRange.max ?? Infinity;
-                    return frameId >= min && frameId <= max;
-                });
-            }
-            return result;
-        } else {
-            // Filter Folders
-            if (filterText) {
-                const lower = filterText.toLowerCase();
-                return folders.filter(f => f.name.toLowerCase().includes(lower));
-            }
-            return folders;
+        if (filterText) {
+            const lower = filterText.toLowerCase();
+            result = result.filter((img) => img.name.toLowerCase().includes(lower));
         }
-    }, [isLeaf, images, folders, filterText, visibleTags, frameRange]);
+
+        if (visibleTags.size > 0) {
+            result = result.filter((img) =>
+                img.tags?.some((t) => visibleTags.has(t)) ?? false
+            );
+        }
+
+        if (frameRange.min !== null || frameRange.max !== null) {
+            result = result.filter((img) => {
+                const rawFrameId = img.frame_id ?? img.metadata?.frame_id;
+
+                let frameId: number | null = null;
+                if (typeof rawFrameId === 'number') {
+                    frameId = rawFrameId;
+                } else if (typeof rawFrameId === 'string') {
+                    const parsed = Number.parseInt(rawFrameId, 10);
+                    if (!Number.isNaN(parsed)) {
+                        frameId = parsed;
+                    }
+                }
+
+                if (frameId === null) return false;
+
+                const min = frameRange.min ?? -Infinity;
+                const max = frameRange.max ?? Infinity;
+                return frameId >= min && frameId <= max;
+            });
+        }
+
+        return result;
+    }, [images, filterText, visibleTags, frameRange]);
+
+    const filteredFolders = useMemo(() => {
+        if (!filterText) return folders;
+
+        const lower = filterText.toLowerCase();
+        return folders.filter((folder) => folder.name.toLowerCase().includes(lower));
+    }, [folders, filterText]);
+
+    const itemCount = isLeaf ? filteredImages.length : filteredFolders.length;
 
 
     return (
@@ -219,11 +257,12 @@ export default function DataViewer() {
                             onToggleTag={toggleTag}
                             visiblePrimitives={visiblePrimitives}
                             onTogglePrimitive={togglePrimitive}
-                            filters={{}}
                             onFilterChange={(_key, val) => setFilterText(val)}
                             onUploadClick={() => setIsUploadModalOpen(true)}
                             frameRange={frameRange}
                             onFrameRangeChange={(min, max) => setFrameRange({ min, max })}
+                            matchingTagSuggestions={matchingTagSuggestions}
+                            onSelectTagSuggestion={handleSelectTagSuggestion}
                         />
                     )}
 
@@ -235,7 +274,7 @@ export default function DataViewer() {
                             <div className="flex items-center space-x-4">
                                 <div className="flex items-center bg-card border border-border rounded-sm px-2 py-1 text-xs">
                                     <span className="text-muted-foreground mr-2 font-sans-tech">Items:</span>
-                                    <span className="text-foreground font-sans-tech">{filteredContent.length}</span>
+                                    <span className="text-foreground font-sans-tech">{itemCount}</span>
                                 </div>
                                 <div className="h-4 w-px bg-border"></div>
                                 <button
@@ -294,7 +333,7 @@ export default function DataViewer() {
                                         )}
 
                                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-5xl mx-auto">
-                                            {filteredContent.map((folder: any) => (
+                                            {filteredFolders.map((folder) => (
                                                 <div
                                                     key={folder.full_path}
                                                     onClick={() => handleFolderClick(folder.name)}
@@ -347,7 +386,7 @@ export default function DataViewer() {
                                                 </div>
                                             ))}
 
-                                            {filteredContent.length === 0 && !loading && (
+                                            {filteredFolders.length === 0 && !loading && (
                                                 <div className="col-span-full flex flex-col items-center justify-center py-20 text-muted-foreground border border-dashed border-border bg-card/10 rounded-sm">
                                                     <AlertCircle className="w-12 h-12 mb-4 text-muted-foreground/50" />
                                                     <p className="text-lg font-sans-tech">No data found</p>
@@ -365,7 +404,7 @@ export default function DataViewer() {
                             ) : (
                                 /* Image Grid */
                                 <ImageGrid
-                                    images={filteredContent}
+                                    images={filteredImages}
                                     onImageClick={setSelectedImage}
                                     visibleTags={visibleTags}
                                     visiblePrimitives={visiblePrimitives}
@@ -381,12 +420,12 @@ export default function DataViewer() {
                         image={selectedImage}
                         onClose={() => setSelectedImage(null)}
                         onNext={() => {
-                            const idx = filteredContent.indexOf(selectedImage);
-                            if (idx < filteredContent.length - 1) setSelectedImage(filteredContent[idx + 1]);
+                            const idx = filteredImages.indexOf(selectedImage);
+                            if (idx < filteredImages.length - 1) setSelectedImage(filteredImages[idx + 1]);
                         }}
                         onPrev={() => {
-                            const idx = filteredContent.indexOf(selectedImage);
-                            if (idx > 0) setSelectedImage(filteredContent[idx - 1]);
+                            const idx = filteredImages.indexOf(selectedImage);
+                            if (idx > 0) setSelectedImage(filteredImages[idx - 1]);
                         }}
                     />
                 )}
