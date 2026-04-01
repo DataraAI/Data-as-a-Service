@@ -1,7 +1,8 @@
 """Dataset management service"""
 
 import os
-from typing import List, Dict, Any
+import re
+from typing import List, Dict, Any, Optional
 
 from datara.logging import logger
 
@@ -33,6 +34,40 @@ class DatasetService:
         except Exception as e:
             logger.error(f"Error listing datasets: {e}")
             raise
+
+    @staticmethod
+    def _extract_frame_id_value(*candidates: Optional[Any]) -> Optional[str]:
+        """
+        Try to recover a usable frame ID from several candidate values.
+
+        Priority:
+        1. stored Cosmos frameId if numeric
+        2. Cosmos frameName
+        3. blob filename
+
+        This is needed because some ego/corner image filenames include prompt
+        suffixes, and older uploads may have stored a non-numeric frameId like
+        'degrees' instead of the original frame number.
+        """
+        for candidate in candidates:
+            if candidate is None:
+                continue
+
+            text = str(candidate).strip()
+            if not text:
+                continue
+
+            base = os.path.basename(text)
+            stem = os.path.splitext(base)[0]
+
+            if stem.isdigit():
+                return stem
+
+            match = re.search(r"_(\d+)(?:_|$)", stem)
+            if match:
+                return match.group(1)
+
+        return None
 
     def get_dataset_images(self, dataset_name: str) -> List[Dict[str, Any]]:
         """
@@ -72,6 +107,13 @@ class DatasetService:
                 # Get metadata
                 cosmos_doc = metadata_map.get(blob.name, {})
 
+                # Recover frame ID robustly
+                recovered_frame_id = self._extract_frame_id_value(
+                    cosmos_doc.get("frameId"),
+                    cosmos_doc.get("frameName"),
+                    blob.name,
+                )
+
                 # Process tags
                 tags = list(cosmos_doc.get("miscTags", []))
 
@@ -81,12 +123,21 @@ class DatasetService:
                 elif "/egos/" in blob.name:
                     tags.append("ego_view")
                     try:
-                        if "_ego_" in blob.name:
-                            fname = os.path.basename(blob.name)
-                            parts = fname.split("_ego_")
-                            if len(parts) > 1:
-                                ego_name = os.path.splitext(parts[1])[0]
+                        fname = os.path.basename(blob.name)
+                        stem = os.path.splitext(fname)[0]
+
+                        if "_ego_" in stem:
+                            ego_name = stem.split("_ego_", 1)[1]
+                            if ego_name:
                                 tags.append(f"ego_{ego_name}")
+                        else:
+                            # Fallback for current naming style:
+                            # frontGrille_000_Rotate_right_45_degrees
+                            match = re.search(r"_(\d+)_(.+)$", stem)
+                            if match:
+                                ego_name = match.group(2)
+                                if ego_name:
+                                    tags.append(f"ego_{ego_name}")
                     except Exception:
                         pass
 
@@ -110,7 +161,7 @@ class DatasetService:
                         "uuid": cosmos_doc.get("id"),
                         "date": cosmos_doc.get("date"),
                         "uploaded_at": cosmos_doc.get("_ts"),
-                        "frame_id": cosmos_doc.get("frameId"),
+                        "frame_id": recovered_frame_id,
                         "width": cosmos_doc.get("width"),
                         "height": cosmos_doc.get("height"),
                         "sharpness": cosmos_doc.get("sharpnessScore"),
@@ -126,4 +177,3 @@ class DatasetService:
         except Exception as e:
             logger.error(f"Error getting images for dataset {dataset_name}: {e}")
             raise
-

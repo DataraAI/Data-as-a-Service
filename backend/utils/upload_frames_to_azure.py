@@ -22,8 +22,10 @@ Notes:
 import argparse
 import json
 import os
+import re
 import sys
 import uuid
+from typing import Optional
 
 import cv2
 import numpy as np
@@ -55,6 +57,31 @@ def laplacian_sharpness_score(image_bgr: np.ndarray) -> float:
     gray = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2GRAY)
     lap = cv2.Laplacian(gray, cv2.CV_64F)
     return float(lap.var())
+
+
+def extract_frame_id_from_filename(filename: str) -> Optional[str]:
+    """
+    Extract the original frame ID from a filename.
+
+    Works for:
+    - frontGrille_000.png                    -> 000
+    - frontGrille_000_Rotate_right_45.png   -> 000
+    - some_name_12_prompt_variant.png       -> 12
+
+    We intentionally extract the FIRST underscore-delimited numeric token,
+    not the last one, because later suffixes may contain prompt text or numbers.
+    """
+    base = os.path.basename(filename)
+    stem = os.path.splitext(base)[0]
+
+    if stem.isdigit():
+        return stem
+
+    match = re.search(r"_(\d+)(?:_|$)", stem)
+    if match:
+        return match.group(1)
+
+    return None
 
 
 def main() -> None:
@@ -113,14 +140,11 @@ def main() -> None:
             )
 
         cosmos_view = "exo" if view == "orig" else view
-        frame_id = uuid.uuid4().hex
-        try:
-            frame_id_val = os.path.splitext(filename)[0].split("_")[-1]
-        except Exception:
-            frame_id_val = "0"
+        document_id = uuid.uuid4().hex
+        frame_id_val = extract_frame_id_from_filename(filename)
 
         metadata_item = {
-            "id": frame_id,
+            "id": document_id,
             "containerName": args.container_name,
             "datasetName": args.output_name,
             "view": cosmos_view,
@@ -134,6 +158,7 @@ def main() -> None:
             "sharpnessScore": sharpness_score,
             "clear": is_clear,
         }
+
         try:
             cosmos_container.upsert_item(metadata_item)
         except Exception as e:
@@ -143,7 +168,7 @@ def main() -> None:
         print(f"Uploaded ({uploaded_count}): {blob_name}")
 
     print(
-        f"✅ Upload complete — {uploaded_count} images uploaded "
+        f"Upload complete - {uploaded_count} images uploaded "
         f"from '{dataset_name}/{view}' to '{args.container_name}'"
     )
     print(f"{uploaded_count} documents created in Cosmos DB")
