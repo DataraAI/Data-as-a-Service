@@ -3,6 +3,7 @@ import { Search, ChevronDown, ChevronRight, Plus, Hash, FileText } from 'lucide-
 import { Button } from "@/components/ui/button";
 
 interface SidebarProps {
+    filterText: string;
     onFilterChange: (key: string, value: string) => void;
     availableTags: string[];
     visibleTags: Set<string>;
@@ -19,6 +20,7 @@ interface SidebarProps {
 type SectionKey = 'filter' | 'labels' | 'primitives' | 'frames';
 
 export function Sidebar({
+    filterText,
     onFilterChange,
     availableTags,
     visibleTags,
@@ -69,6 +71,7 @@ export function Sidebar({
                                 <input
                                     id="filter_samples"
                                     type="text"
+                                    value={filterText}
                                     placeholder="Search by image title or label"
                                     className="w-full bg-input border border-border rounded-sm py-1.5 pl-8 pr-2 text-xs focus:border-primary focus:outline-none placeholder-muted-foreground text-foreground font-sans-tech"
                                     onChange={(e) => onFilterChange('text', e.target.value)}
@@ -161,7 +164,6 @@ export function Sidebar({
                         <div className="px-2 pb-2 space-y-0.5 bg-background/30">
                             {availableTags.map((tag, idx) => {
                                 const isVisible = visibleTags.has(tag);
-                                // Technical palette
                                 const colors = ['bg-orange-500', 'bg-blue-500', 'bg-emerald-500', 'bg-purple-500', 'bg-rose-500', 'bg-amber-500'];
                                 const colorClass = colors[idx % colors.length];
 
@@ -178,11 +180,10 @@ export function Sidebar({
                                             <span className={`transition-colors font-sans-tech ${isVisible ? 'text-foreground' : 'text-muted-foreground'}`}>{tag}</span>
                                         </div>
                                         <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            {/* Placeholder for count or actions */}
                                             <span className="text-muted-foreground text-[10px] font-sans-tech">100</span>
                                         </div>
                                     </div>
-                                )
+                                );
                             })}
                             {availableTags.length === 0 && (
                                 <div className="px-4 py-2 text-muted-foreground italic font-sans-tech text-[10px]">No labels found</div>
@@ -227,7 +228,6 @@ export function Sidebar({
                         </div>
                     )}
                 </div>
-
             </div>
 
             {/* Bottom Info */}
@@ -237,4 +237,5 @@ export function Sidebar({
             </div>
         </div>
     );
+}
 }
