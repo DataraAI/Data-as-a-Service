@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { UploadModal } from '../components/UploadModal';
-import { Loader2, RefreshCw, Folder, Database, Terminal, AlertCircle, MoreVertical, Trash2, Search, ChevronRight } from 'lucide-react';
+import { Loader2, RefreshCw, Folder, Database, Terminal, AlertCircle, MoreVertical, Trash2, Search } from 'lucide-react';
 import { ImageGrid } from '../components/ImageGrid';
 import { ImageModal } from '../components/ImageModal';
 import Navigation from '../components/Navigation';
@@ -174,7 +174,7 @@ export default function DataViewer() {
     // -- Effects --
     useEffect(() => {
         setLoading(true);
-        setFilterText('');
+        setFilterText(''); // Reset search on nav
 
         if (isLeaf) {
             axios.get<ImageItem[]>(`/api/dataset/${currentBackendPath}`)
@@ -274,13 +274,13 @@ export default function DataViewer() {
         const queryTerms = getPathSearchTerms(pathSearchText).filter(term => term.length >= 2);
 
         return (
-            <div className="flex flex-wrap items-center gap-1 text-left">
+            <span className="text-sm font-sans-tech">
                 {segments.map((segment, index) => {
                     const isMatch = queryTerms.some(term => segment.toLowerCase().includes(term));
 
                     return (
-                        <div key={`${fullPath}-${segment}-${index}`} className="flex items-center gap-1">
-                            {index > 0 && <ChevronRight className="w-3 h-3 text-muted-foreground/50" />}
+                        <span key={`${fullPath}-${segment}-${index}`}>
+                            {index > 0 && <span className="text-muted-foreground/60">/</span>}
                             <span
                                 className={
                                     isMatch
@@ -290,14 +290,14 @@ export default function DataViewer() {
                             >
                                 {segment}
                             </span>
-                        </div>
+                        </span>
                     );
                 })}
-            </div>
+            </span>
         );
     };
 
-    // Filter Logic (for Images)
+    // Filter Logic
     const filteredImages = useMemo(() => {
         let result = images;
 
@@ -352,7 +352,6 @@ export default function DataViewer() {
             <Navigation />
             <div className="flex flex-col flex-1 overflow-hidden pt-16 relative z-10">
 
-                {/* Header Bar */}
                 <div className="h-12 bg-background/80 backdrop-blur-md border-b border-border flex items-center px-4 justify-between z-20 shrink-0">
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2 text-sm">
@@ -370,9 +369,9 @@ export default function DataViewer() {
                 </div>
 
                 <div className="flex flex-1 overflow-hidden">
-                    {/* Sidebar - Only show when viewing images (Leaf) */}
                     {isLeaf && (
                         <Sidebar
+                            filterText={filterText}
                             availableTags={availableTags}
                             visibleTags={visibleTags}
                             onToggleTag={toggleTag}
@@ -387,10 +386,7 @@ export default function DataViewer() {
                         />
                     )}
 
-                    {/* Main Content */}
                     <div className="flex-1 flex flex-col min-w-0 bg-background/50">
-
-                        {/* Toolbar */}
                         <div className="h-10 border-b border-border bg-card/10 flex items-center px-4 justify-between">
                             <div className="flex items-center space-x-4">
                                 <div className="flex items-center bg-card border border-border rounded-sm px-2 py-1 text-xs">
@@ -418,7 +414,6 @@ export default function DataViewer() {
                             )}
                         </div>
 
-                        {/* Content Area */}
                         <div className="flex-1 overflow-y-auto relative p-0 custom-scrollbar bg-background/30">
                             {loading && (
                                 <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-20 backdrop-blur-sm">
@@ -431,7 +426,6 @@ export default function DataViewer() {
 
                             {!isLeaf ? (
                                 <div className="flex flex-col min-h-full">
-                                    {/* Welcome / Root Header */}
                                     {pathSegments.length === 0 && (
                                         <div className="px-8 py-16 flex flex-col items-center justify-center text-center border-b border-border bg-gradient-to-b from-primary/5 to-transparent">
                                             <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-6 border border-primary/20">
@@ -451,7 +445,7 @@ export default function DataViewer() {
                                                         type="text"
                                                         value={pathSearchText}
                                                         onChange={(e) => setPathSearchText(e.target.value)}
-                                                        placeholder="Search folders or paths, e.g. BMW or carautomation/BMW/frontgrille"
+                                                        placeholder="Search folders or paths, e.g. BMW or carautomation/bmw/frontgrille"
                                                         className="w-full h-12 rounded-sm border border-primary/40 bg-background/90 text-foreground pl-11 pr-4 font-sans-tech text-sm focus:outline-none focus:border-primary shadow-lg shadow-primary/10 placeholder:text-muted-foreground"
                                                     />
                                                     {pathSearchLoading && (
@@ -470,12 +464,7 @@ export default function DataViewer() {
                                                                         onClick={() => handlePathSuggestionClick(suggestion.full_path)}
                                                                         className="w-full px-4 py-3 hover:bg-primary/10 transition-colors text-left"
                                                                     >
-                                                                        <div className="text-xs uppercase tracking-wider text-muted-foreground font-sans-tech mb-1">
-                                                                            Go to folder
-                                                                        </div>
-                                                                        <div className="text-sm font-sans-tech">
-                                                                            {renderHighlightedPath(suggestion.full_path)}
-                                                                        </div>
+                                                                        {renderHighlightedPath(suggestion.full_path)}
                                                                     </button>
                                                                 ))}
                                                             </div>
@@ -490,7 +479,6 @@ export default function DataViewer() {
                                         </div>
                                     )}
 
-                                    {/* Folder Grid */}
                                     <div className="p-8">
                                         {pathSegments.length > 0 && (
                                             <div className="flex items-center gap-2 mb-6 max-w-5xl mx-auto">
@@ -506,7 +494,6 @@ export default function DataViewer() {
                                                     onClick={() => handleFolderClick(folder.name)}
                                                     className="group cursor-pointer relative p-8 bg-card/20 border border-border hover:border-primary/50 hover:bg-card/40 transition-all duration-300 overflow-visible"
                                                 >
-                                                    {/* Folder actions dropdown */}
                                                     <div className="absolute top-3 right-3 z-20" onClick={(e) => e.stopPropagation()}>
                                                         <button
                                                             type="button"
@@ -536,7 +523,6 @@ export default function DataViewer() {
                                                         )}
                                                     </div>
 
-                                                    {/* Decorative corners */}
                                                     <div className="absolute top-0 left-0 w-3 h-3 border-t border-l border-border group-hover:border-primary transition-colors"></div>
                                                     <div className="absolute top-0 right-0 w-3 h-3 border-t border-r border-border group-hover:border-primary transition-colors"></div>
                                                     <div className="absolute bottom-0 left-0 w-3 h-3 border-b border-l border-border group-hover:border-primary transition-colors"></div>
@@ -569,7 +555,6 @@ export default function DataViewer() {
                                     </div>
                                 </div>
                             ) : (
-                                /* Image Grid */
                                 <ImageGrid
                                     images={filteredImages}
                                     onImageClick={setSelectedImage}
@@ -581,7 +566,6 @@ export default function DataViewer() {
                     </div>
                 </div>
 
-                {/* Modals */}
                 {selectedImage && (
                     <ImageModal
                         image={selectedImage}
@@ -603,7 +587,6 @@ export default function DataViewer() {
                     onSuccess={() => {/* refresh */ }}
                 />
 
-                {/* Delete folder confirmation modal */}
                 {deleteModalFolder && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
                         <div className="bg-card border border-border rounded-lg shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
