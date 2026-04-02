@@ -252,6 +252,7 @@ export default function DataViewer() {
                 <div className="flex flex-1 overflow-hidden">
                     {isLeaf && (
                         <Sidebar
+                            filterText={filterText}
                             availableTags={availableTags}
                             visibleTags={visibleTags}
                             onToggleTag={toggleTag}
