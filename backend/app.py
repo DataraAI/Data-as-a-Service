@@ -86,6 +86,17 @@ def register_routes(app: Flask) -> None:
             logger.error(f"Error listing datasets: {e}")
             return jsonify({"error": str(e)}), 500
 
+    @app.route("/api/dataset-paths", methods=["GET"])
+    def get_dataset_paths():
+        """List all folder paths recursively for folder navigation search"""
+        try:
+            paths = dataset_service.list_all_dataset_paths()
+            logger.info(f"Listed {len(paths)} recursive dataset paths")
+            return jsonify(paths)
+        except Exception as e:
+            logger.error(f"Error listing recursive dataset paths: {e}")
+            return jsonify({"error": str(e)}), 500
+
     @app.route("/api/dataset/<path:name>", methods=["GET"])
     def get_dataset_images(name):
         """Get images and metadata for a dataset"""
@@ -95,17 +106,6 @@ def register_routes(app: Flask) -> None:
             return jsonify(images)
         except Exception as e:
             logger.error(f"Error fetching dataset {name}: {e}")
-            return jsonify({"error": str(e)}), 500
-
-    @app.route("/api/global-images", methods=["GET"])
-    def get_global_images():
-        """Get all images and metadata across all datasets"""
-        try:
-            images = dataset_service.get_all_images()
-            logger.info(f"Retrieved {len(images)} items for global search")
-            return jsonify(images)
-        except Exception as e:
-            logger.error(f"Error fetching global images: {e}")
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/proxy/<path:blob_name>", methods=["GET"])
