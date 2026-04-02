@@ -35,6 +35,34 @@ class DatasetService:
             logger.error(f"Error listing datasets: {e}")
             raise
 
+    def list_all_dataset_paths(self) -> List[Dict[str, Any]]:
+        """
+        Recursively list all folder paths in the dataset tree.
+
+        Returns:
+            List of folder items with name/full_path/type
+        """
+        try:
+            all_paths: List[Dict[str, Any]] = []
+            seen: set[str] = set()
+
+            def walk(path: str = "") -> None:
+                items = self.list_datasets(path)
+                for item in items:
+                    full_path = item.get("full_path")
+                    if not full_path or full_path in seen:
+                        continue
+
+                    seen.add(full_path)
+                    all_paths.append(item)
+                    walk(full_path)
+
+            walk("")
+            return all_paths
+        except Exception as e:
+            logger.error(f"Error recursively listing dataset paths: {e}")
+            raise
+
     @staticmethod
     def _extract_frame_id_value(*candidates: Optional[Any]) -> Optional[str]:
         """

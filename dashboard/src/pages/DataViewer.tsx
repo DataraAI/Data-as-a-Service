@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { UploadModal } from '../components/UploadModal';
-import { Loader2, RefreshCw, Folder, Database, Terminal, AlertCircle, MoreVertical, Trash2 } from 'lucide-react';
+import { Loader2, RefreshCw, Folder, Database, Terminal, AlertCircle, MoreVertical, Trash2, Search } from 'lucide-react';
 import { ImageGrid } from '../components/ImageGrid';
 import { ImageModal } from '../components/ImageModal';
 import Navigation from '../components/Navigation';
@@ -28,15 +28,86 @@ interface ImageItem {
     [key: string]: unknown;
 }
 
+function normalizePathSearchValue(value: string): string {
+    return value
+        .toLowerCase()
+        .replace(/\\/g, '/')
+        .replace(/\s*>\s*/g, '/')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function getPathSearchTerms(query: string): string[] {
+    return normalizePathSearchValue(query)
+        .split(/[\/\s]+/)
+        .map(term => term.trim())
+        .filter(Boolean);
+}
+
+function getSuggestionScore(fullPath: string, query: string): number | null {
+    const normalizedPath = normalizePathSearchValue(fullPath);
+    const normalizedQuery = normalizePathSearchValue(query);
+    const queryTerms = getPathSearchTerms(query);
+
+    if (!normalizedQuery || queryTerms.length === 0) {
+        return null;
+    }
+
+    if (!queryTerms.every(term => normalizedPath.includes(term))) {
+        return null;
+    }
+
+    const segments = normalizedPath.split('/').filter(Boolean);
+    const finalSegment = segments[segments.length - 1] ?? '';
+
+    if (normalizedQuery.length >= 2 && finalSegment === normalizedQuery) {
+        return 0;
+    }
+
+    if (normalizedQuery.length >= 2 && finalSegment.startsWith(normalizedQuery)) {
+        return 1;
+    }
+
+    if (normalizedQuery.length >= 2 && finalSegment.includes(normalizedQuery)) {
+        return 2;
+    }
+
+    if (normalizedQuery.includes('/') && normalizedPath.includes(normalizedQuery)) {
+        return 3;
+    }
+
+    let bestStartsWithDistance = Infinity;
+    let bestIncludesDistance = Infinity;
+
+    segments.forEach((segment, index) => {
+        const distanceFromEnd = segments.length - 1 - index;
+
+        if (queryTerms.some(term => segment.startsWith(term))) {
+            bestStartsWithDistance = Math.min(bestStartsWithDistance, distanceFromEnd);
+        }
+
+        if (queryTerms.some(term => segment.includes(term))) {
+            bestIncludesDistance = Math.min(bestIncludesDistance, distanceFromEnd);
+        }
+    });
+
+    if (bestStartsWithDistance !== Infinity) {
+        return 10 + bestStartsWithDistance;
+    }
+
+    if (bestIncludesDistance !== Infinity) {
+        return 20 + bestIncludesDistance;
+    }
+
+    return 50 + segments.length;
+}
+
 export default function DataViewer() {
     const location = useLocation();
     const navigate = useNavigate();
 
     // -- State --
-    // Folders view (Levels 0, 1, 2)
     const [folders, setFolders] = useState<FolderItem[]>([]);
-
-    // Images view (Level 3 - Leaf)
     const [images, setImages] = useState<ImageItem[]>([]);
 
     const [loading, setLoading] = useState(false);
@@ -46,6 +117,10 @@ export default function DataViewer() {
     const [folderDropdownOpen, setFolderDropdownOpen] = useState<string | null>(null);
     const [deleteModalFolder, setDeleteModalFolder] = useState<{ name: string; full_path: string } | null>(null);
     const [deleteInProgress, setDeleteInProgress] = useState(false);
+
+    const [pathSearchText, setPathSearchText] = useState('');
+    const [allFolderPaths, setAllFolderPaths] = useState<FolderItem[]>([]);
+    const [pathSearchLoading, setPathSearchLoading] = useState(false);
 
     // Tag State
     const [availableTags, setAvailableTags] = useState<string[]>([]);
@@ -58,21 +133,12 @@ export default function DataViewer() {
     const [frameRange, setFrameRange] = useState<{ min: number | null; max: number | null }>({ min: null, max: null });
 
     // -- Derived State --
-    // Parse path: /viewer/automotive/bmw -> ['automotive', 'bmw']
     const pathSegments = useMemo(() => {
         return location.pathname.split('/').filter(p => p && p !== 'viewer');
     }, [location.pathname]);
 
-    // Determine current level
-    // 0: Root (Categories)
-    // 1: Category (Brands)
-    // 2: Brand (Components/Datasets) -> Showing list of datasets
-    // 3: Dataset (Images) -> Showing Image Grid
     const depth = pathSegments.length;
     const isLeaf = depth >= 3;
-
-    // Construct the backend path query
-    // e.g. ['automotive', 'bmw'] -> "automotive/bmw/"
     const currentBackendPath = pathSegments.length > 0 ? pathSegments.join('/') : '';
 
     const matchingTagSuggestions = useMemo(() => {
@@ -86,20 +152,35 @@ export default function DataViewer() {
             .sort((a, b) => a.localeCompare(b));
     }, [availableTags, visibleTags, filterText]);
 
-    // -- Effects --
+    const pathSuggestions = useMemo(() => {
+        const query = pathSearchText.trim();
 
+        if (!query) return [];
+
+        return allFolderPaths
+            .map((item) => ({
+                item,
+                score: getSuggestionScore(item.full_path, query),
+            }))
+            .filter((entry): entry is { item: FolderItem; score: number } => entry.score !== null)
+            .sort((a, b) => {
+                if (a.score !== b.score) return a.score - b.score;
+                return a.item.full_path.localeCompare(b.item.full_path);
+            })
+            .slice(0, 7)
+            .map(entry => entry.item);
+    }, [allFolderPaths, pathSearchText]);
+
+    // -- Effects --
     useEffect(() => {
         setLoading(true);
         setFilterText(''); // Reset search on nav
 
         if (isLeaf) {
-            // Fetch IMAGES (Dataset View)
-            // Use currentBackendPath as the dataset name
             axios.get<ImageItem[]>(`/api/dataset/${currentBackendPath}`)
                 .then(res => {
                     setImages(res.data);
 
-                    // Extract all tags
                     const tags = new Set<string>();
                     res.data.forEach((img) => {
                         if (img.tags) img.tags.forEach((t: string) => tags.add(t));
@@ -107,26 +188,37 @@ export default function DataViewer() {
                     setAvailableTags(Array.from(tags).sort());
                     setVisibleTags(new Set());
                 })
-                .catch(err => console.error("Error fetching images:", err))
+                .catch(err => console.error('Error fetching images:', err))
                 .finally(() => setLoading(false));
 
         } else {
-            // Fetch FOLDERS (Directory View)
-            axios.get<FolderItem[]>(`/api/datasets`, { params: { path: currentBackendPath } })
+            axios.get<FolderItem[]>('/api/datasets', { params: { path: currentBackendPath } })
                 .then(res => {
                     setFolders(res.data);
                 })
-                .catch(err => console.error("Error fetching folders:", err))
+                .catch(err => console.error('Error fetching folders:', err))
                 .finally(() => setLoading(false));
 
-            // Clear images state
             setImages([]);
         }
     }, [location.pathname, isLeaf, currentBackendPath]);
 
+    useEffect(() => {
+        if (pathSegments.length !== 0) {
+            setPathSearchText('');
+            return;
+        }
+
+        setPathSearchLoading(true);
+        axios.get<FolderItem[]>('/api/dataset-paths')
+            .then(res => {
+                setAllFolderPaths(res.data);
+            })
+            .catch(err => console.error('Error fetching dataset paths:', err))
+            .finally(() => setPathSearchLoading(false));
+    }, [pathSegments.length]);
 
     // -- Handlers --
-
     const toggleTag = (tag: string) => {
         const newVisible = new Set(visibleTags);
         if (newVisible.has(tag)) newVisible.delete(tag);
@@ -155,25 +247,57 @@ export default function DataViewer() {
         navigate(nextPath);
     };
 
+    const handlePathSuggestionClick = (fullPath: string) => {
+        setPathSearchText('');
+        navigate(`/viewer/${fullPath}`);
+    };
+
     const handleDeleteFolder = async () => {
         if (!deleteModalFolder) return;
         setDeleteInProgress(true);
         try {
-            await axios.post("/api/delete_dataset", { path: deleteModalFolder.full_path });
+            await axios.post('/api/delete_dataset', { path: deleteModalFolder.full_path });
             setDeleteModalFolder(null);
             setFolderDropdownOpen(null);
-            const path = currentBackendPath ? currentBackendPath + "/" : "";
-            const res = await axios.get<FolderItem[]>("/api/datasets", { params: { path } });
+            const path = currentBackendPath ? currentBackendPath + '/' : '';
+            const res = await axios.get<FolderItem[]>('/api/datasets', { params: { path } });
             setFolders(res.data);
         } catch (err: any) {
-            alert(err?.response?.data?.error || err?.message || "Delete failed");
+            alert(err?.response?.data?.error || err?.message || 'Delete failed');
         } finally {
             setDeleteInProgress(false);
         }
     };
 
-    // Filter Logic (for Images)
-    // For folders, we can also basic filter
+    const renderHighlightedPath = (fullPath: string) => {
+        const segments = fullPath.split('/').filter(Boolean);
+        const queryTerms = getPathSearchTerms(pathSearchText).filter(term => term.length >= 2);
+
+        return (
+            <span className="text-sm font-sans-tech">
+                {segments.map((segment, index) => {
+                    const isMatch = queryTerms.some(term => segment.toLowerCase().includes(term));
+
+                    return (
+                        <span key={`${fullPath}-${segment}-${index}`}>
+                            {index > 0 && <span className="text-muted-foreground/60">/</span>}
+                            <span
+                                className={
+                                    isMatch
+                                        ? 'text-primary underline decoration-primary/70 underline-offset-4 font-bold'
+                                        : 'text-foreground'
+                                }
+                            >
+                                {segment}
+                            </span>
+                        </span>
+                    );
+                })}
+            </span>
+        );
+    };
+
+    // Filter Logic
     const filteredImages = useMemo(() => {
         let result = images;
 
@@ -222,19 +346,16 @@ export default function DataViewer() {
 
     const itemCount = isLeaf ? filteredImages.length : filteredFolders.length;
 
-
     return (
         <div className="flex flex-col h-screen text-foreground bg-background font-sans-tech overflow-hidden relative">
             <div className="absolute inset-0 bg-grid-pattern opacity-[0.05] pointer-events-none"></div>
             <Navigation />
             <div className="flex flex-col flex-1 overflow-hidden pt-16 relative z-10">
 
-                {/* Header Bar */}
                 <div className="h-12 bg-background/80 backdrop-blur-md border-b border-border flex items-center px-4 justify-between z-20 shrink-0">
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2 text-sm">
                             <Link to="/viewer" className="font-sans-tech font-bold text-primary hidden md:block hover:text-primary-glow transition-colors">DATARA EXPLORER</Link>
-                            {/* <span className="text-muted-foreground">/</span> */}
                             <Breadcrumbs />
                         </div>
                     </div>
@@ -247,11 +368,10 @@ export default function DataViewer() {
                     </div>
                 </div>
 
-
                 <div className="flex flex-1 overflow-hidden">
-                    {/* Sidebar - Only show when viewing images (Leaf) */}
                     {isLeaf && (
                         <Sidebar
+                            filterText={filterText}
                             availableTags={availableTags}
                             visibleTags={visibleTags}
                             onToggleTag={toggleTag}
@@ -266,10 +386,7 @@ export default function DataViewer() {
                         />
                     )}
 
-                    {/* Main Content */}
                     <div className="flex-1 flex flex-col min-w-0 bg-background/50">
-
-                        {/* Toolbar - Only show when viewing images or if we want search on folders too */}
                         <div className="h-10 border-b border-border bg-card/10 flex items-center px-4 justify-between">
                             <div className="flex items-center space-x-4">
                                 <div className="flex items-center bg-card border border-border rounded-sm px-2 py-1 text-xs">
@@ -278,7 +395,7 @@ export default function DataViewer() {
                                 </div>
                                 <div className="h-4 w-px bg-border"></div>
                                 <button
-                                    onClick={() => window.location.reload()} // Simple refresh
+                                    onClick={() => window.location.reload()}
                                     className="text-muted-foreground hover:text-foreground transition-colors flex items-center text-xs gap-1 font-sans-tech"
                                 >
                                     <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
@@ -297,7 +414,6 @@ export default function DataViewer() {
                             )}
                         </div>
 
-                        {/* Content Area */}
                         <div className="flex-1 overflow-y-auto relative p-0 custom-scrollbar bg-background/30">
                             {loading && (
                                 <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-20 backdrop-blur-sm">
@@ -310,20 +426,59 @@ export default function DataViewer() {
 
                             {!isLeaf ? (
                                 <div className="flex flex-col min-h-full">
-                                    {/* Welcome / Root Header */}
                                     {pathSegments.length === 0 && (
                                         <div className="px-8 py-16 flex flex-col items-center justify-center text-center border-b border-border bg-gradient-to-b from-primary/5 to-transparent">
                                             <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-6 border border-primary/20">
                                                 <Database className="w-8 h-8 text-primary" />
                                             </div>
-                                            <h1 className="text-4xl font-sans-tech font-bold text-foreground mb-4 tracking-tight">DATARA <span className="text-primary">EXPLORER</span></h1>
-                                            <p className="text-muted-foreground max-w-md mx-auto font-sans-tech text-sm leading-relaxed">
-                                                Select a data module below to begin inspection.
+                                            <h1 className="text-4xl font-sans-tech font-bold text-foreground mb-4 tracking-tight">
+                                                DATARA <span className="text-primary">EXPLORER</span>
+                                            </h1>
+                                            <p className="text-muted-foreground max-w-2xl mx-auto font-sans-tech text-sm leading-relaxed">
+                                                Select a data module below to begin inspection, or use the search bar below to quickly navigate to a folder path.
                                             </p>
+
+                                            <div className="relative mt-8 w-full max-w-2xl">
+                                                <div className="relative">
+                                                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-primary" />
+                                                    <input
+                                                        type="text"
+                                                        value={pathSearchText}
+                                                        onChange={(e) => setPathSearchText(e.target.value)}
+                                                        placeholder="Search folders or paths, e.g. BMW or carautomation/bmw/frontgrille"
+                                                        className="w-full h-12 rounded-sm border border-primary/40 bg-background/90 text-foreground pl-11 pr-4 font-sans-tech text-sm focus:outline-none focus:border-primary shadow-lg shadow-primary/10 placeholder:text-muted-foreground"
+                                                    />
+                                                    {pathSearchLoading && (
+                                                        <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-primary animate-spin" />
+                                                    )}
+                                                </div>
+
+                                                {pathSearchText.trim() !== '' && (
+                                                    <div className="mt-2 border border-primary/20 rounded-sm bg-card/95 backdrop-blur-sm overflow-hidden shadow-xl shadow-black/20 text-left">
+                                                        {pathSuggestions.length > 0 ? (
+                                                            <div className="divide-y divide-border">
+                                                                {pathSuggestions.map((suggestion) => (
+                                                                    <button
+                                                                        key={suggestion.full_path}
+                                                                        type="button"
+                                                                        onClick={() => handlePathSuggestionClick(suggestion.full_path)}
+                                                                        className="w-full px-4 py-3 hover:bg-primary/10 transition-colors text-left"
+                                                                    >
+                                                                        {renderHighlightedPath(suggestion.full_path)}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        ) : (
+                                                            <div className="px-4 py-3 text-sm text-muted-foreground font-sans-tech">
+                                                                No matching paths found
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     )}
 
-                                    {/* Folder Grid */}
                                     <div className="p-8">
                                         {pathSegments.length > 0 && (
                                             <div className="flex items-center gap-2 mb-6 max-w-5xl mx-auto">
@@ -339,7 +494,6 @@ export default function DataViewer() {
                                                     onClick={() => handleFolderClick(folder.name)}
                                                     className="group cursor-pointer relative p-8 bg-card/20 border border-border hover:border-primary/50 hover:bg-card/40 transition-all duration-300 overflow-visible"
                                                 >
-                                                    {/* Folder actions dropdown */}
                                                     <div className="absolute top-3 right-3 z-20" onClick={(e) => e.stopPropagation()}>
                                                         <button
                                                             type="button"
@@ -369,7 +523,6 @@ export default function DataViewer() {
                                                         )}
                                                     </div>
 
-                                                    {/* Decorative corners */}
                                                     <div className="absolute top-0 left-0 w-3 h-3 border-t border-l border-border group-hover:border-primary transition-colors"></div>
                                                     <div className="absolute top-0 right-0 w-3 h-3 border-t border-r border-border group-hover:border-primary transition-colors"></div>
                                                     <div className="absolute bottom-0 left-0 w-3 h-3 border-b border-l border-border group-hover:border-primary transition-colors"></div>
@@ -402,7 +555,6 @@ export default function DataViewer() {
                                     </div>
                                 </div>
                             ) : (
-                                /* Image Grid */
                                 <ImageGrid
                                     images={filteredImages}
                                     onImageClick={setSelectedImage}
@@ -414,7 +566,6 @@ export default function DataViewer() {
                     </div>
                 </div>
 
-                {/* Modals */}
                 {selectedImage && (
                     <ImageModal
                         image={selectedImage}
@@ -436,7 +587,6 @@ export default function DataViewer() {
                     onSuccess={() => {/* refresh */ }}
                 />
 
-                {/* Delete folder confirmation modal */}
                 {deleteModalFolder && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
                         <div className="bg-card border border-border rounded-lg shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
@@ -468,5 +618,5 @@ export default function DataViewer() {
                 )}
             </div>
         </div>
-    )
+    );
 }
