@@ -33,10 +33,7 @@ export default function DataViewer() {
     const navigate = useNavigate();
 
     // -- State --
-    // Folders view (Levels 0, 1, 2)
     const [folders, setFolders] = useState<FolderItem[]>([]);
-
-    // Images view (Level 3 - Leaf)
     const [images, setImages] = useState<ImageItem[]>([]);
 
     const [loading, setLoading] = useState(false);
@@ -78,6 +75,55 @@ export default function DataViewer() {
             .filter(tag => tag.toLowerCase().startsWith(query))
             .sort((a, b) => a.localeCompare(b));
     }, [availableTags, visibleTags, filterText]);
+
+    // Filter Logic (for Images)
+    const filteredImages = useMemo(() => {
+        let result = images;
+
+        if (filterText) {
+            const lower = filterText.toLowerCase();
+            result = result.filter((img) => (img.name ?? '').toLowerCase().includes(lower));
+        }
+
+        if (visibleTags.size > 0) {
+            result = result.filter((img) =>
+                img.tags?.some((t) => visibleTags.has(t)) ?? false
+            );
+        }
+
+        if (frameRange.min !== null || frameRange.max !== null) {
+            result = result.filter((img) => {
+                const rawFrameId = img.frame_id ?? img.metadata?.frame_id;
+
+                let frameId: number | null = null;
+                if (typeof rawFrameId === 'number') {
+                    frameId = rawFrameId;
+                } else if (typeof rawFrameId === 'string') {
+                    const parsed = Number.parseInt(rawFrameId, 10);
+                    if (!Number.isNaN(parsed)) {
+                        frameId = parsed;
+                    }
+                }
+
+                if (frameId === null) return false;
+
+                const min = frameRange.min ?? -Infinity;
+                const max = frameRange.max ?? Infinity;
+                return frameId >= min && frameId <= max;
+            });
+        }
+
+        return result;
+    }, [images, filterText, visibleTags, frameRange]);
+
+    const filteredFolders = useMemo(() => {
+        if (!filterText) return folders;
+
+        const lower = filterText.toLowerCase();
+        return folders.filter((folder) => (folder.name ?? '').toLowerCase().includes(lower));
+    }, [folders, filterText]);
+
+    const itemCount = isLeaf ? filteredImages.length : filteredFolders.length;
 
     // -- Effects --
     useEffect(() => {
@@ -178,55 +224,6 @@ export default function DataViewer() {
     const handleRefresh = () => {
         setRefreshNonce((value) => value + 1);
     };
-
-    // Filter Logic (for Images)
-    const filteredImages = useMemo(() => {
-        let result = images;
-
-        if (filterText) {
-            const lower = filterText.toLowerCase();
-            result = result.filter((img) => (img.name ?? '').toLowerCase().includes(lower));
-        }
-
-        if (visibleTags.size > 0) {
-            result = result.filter((img) =>
-                img.tags?.some((t) => visibleTags.has(t)) ?? false
-            );
-        }
-
-        if (frameRange.min !== null || frameRange.max !== null) {
-            result = result.filter((img) => {
-                const rawFrameId = img.frame_id ?? img.metadata?.frame_id;
-
-                let frameId: number | null = null;
-                if (typeof rawFrameId === 'number') {
-                    frameId = rawFrameId;
-                } else if (typeof rawFrameId === 'string') {
-                    const parsed = Number.parseInt(rawFrameId, 10);
-                    if (!Number.isNaN(parsed)) {
-                        frameId = parsed;
-                    }
-                }
-
-                if (frameId === null) return false;
-
-                const min = frameRange.min ?? -Infinity;
-                const max = frameRange.max ?? Infinity;
-                return frameId >= min && frameId <= max;
-            });
-        }
-
-        return result;
-    }, [images, filterText, visibleTags, frameRange]);
-
-    const filteredFolders = useMemo(() => {
-        if (!filterText) return folders;
-
-        const lower = filterText.toLowerCase();
-        return folders.filter((folder) => (folder.name ?? '').toLowerCase().includes(lower));
-    }, [folders, filterText]);
-
-    const itemCount = isLeaf ? filteredImages.length : filteredFolders.length;
 
     return (
         <div className="flex flex-col h-screen text-foreground bg-background font-sans-tech overflow-hidden relative">
