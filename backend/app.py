@@ -97,6 +97,17 @@ def register_routes(app: Flask) -> None:
             logger.error(f"Error fetching dataset {name}: {e}")
             return jsonify({"error": str(e)}), 500
 
+    @app.route("/api/global-images", methods=["GET"])
+    def get_global_images():
+        """Get all images and metadata across all datasets"""
+        try:
+            images = dataset_service.get_all_images()
+            logger.info(f"Retrieved {len(images)} items for global search")
+            return jsonify(images)
+        except Exception as e:
+            logger.error(f"Error fetching global images: {e}")
+            return jsonify({"error": str(e)}), 500
+
     @app.route("/api/proxy/<path:blob_name>", methods=["GET"])
     def proxy_blob(blob_name):
         """Proxy Azure Blob Storage content"""
@@ -144,13 +155,13 @@ def register_routes(app: Flask) -> None:
 
             result = processing_service.generate_ego(data)
             if result[1] != 200:
-                return {"error": result[0]}, result[1] # return error message and status code
+                return {"error": result[0]}, result[1]
             logger.info("Ego view generated successfully")
-            return jsonify(result[0]), result[1] # return success message and status code
+            return jsonify(result[0]), result[1]
         except Exception as e:
             logger.error(f"Error generating ego: {e}", exc_info=True)
             return {"error": f"An error occurred: {str(e)}"}, 500
-    
+
     @app.route("/api/generate_corner_case", methods=["POST"])
     def generate_corner_case():
         """Generate corner case from original image"""
@@ -160,9 +171,9 @@ def register_routes(app: Flask) -> None:
                 return {"error": "Invalid JSON body"}, 400
             result = processing_service.generate_corner_case(data)
             if result[1] != 200:
-                return {"error": result[0]}, result[1] # return error message and status code
+                return {"error": result[0]}, result[1]
             logger.info("Corner case generated successfully")
-            return jsonify(result[0]), result[1] # return success message and status code
+            return jsonify(result[0]), result[1]
         except Exception as e:
             logger.error(f"Error generating corner case: {e}", exc_info=True)
             return {"error": f"An error occurred: {str(e)}"}, 500
@@ -270,4 +281,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
