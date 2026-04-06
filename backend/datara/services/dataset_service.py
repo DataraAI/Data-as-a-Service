@@ -35,47 +35,10 @@ class DatasetService:
             logger.error(f"Error listing datasets: {e}")
             raise
 
-    def list_all_dataset_paths(self) -> List[Dict[str, Any]]:
-        """
-        Recursively list all folder paths in the dataset tree.
-
-        Returns:
-            List of folder items with name/full_path/type
-        """
-        try:
-            all_paths: List[Dict[str, Any]] = []
-            seen: set[str] = set()
-
-            def walk(path: str = "") -> None:
-                items = self.list_datasets(path)
-                for item in items:
-                    full_path = item.get("full_path")
-                    if not full_path or full_path in seen:
-                        continue
-
-                    seen.add(full_path)
-                    all_paths.append(item)
-                    walk(full_path)
-
-            walk("")
-            return all_paths
-        except Exception as e:
-            logger.error(f"Error recursively listing dataset paths: {e}")
-            raise
-
     @staticmethod
     def _extract_frame_id_value(*candidates: Optional[Any]) -> Optional[str]:
         """
         Try to recover a usable frame ID from several candidate values.
-
-        Priority:
-        1. stored Cosmos frameId if numeric
-        2. Cosmos frameName
-        3. blob filename
-
-        This is needed because some ego/corner image filenames include prompt
-        suffixes, and older uploads may have stored a non-numeric frameId like
-        'degrees' instead of the original frame number.
         """
         for candidate in candidates:
             if candidate is None:
@@ -97,6 +60,49 @@ class DatasetService:
 
         return None
 
+    @staticmethod
+    def _clean_tag_list(value: Any) -> List[str]:
+        if value is None:
+            return []
+
+        if isinstance(value, dict):
+            tags: List[str] = []
+            for _, nested in value.items():
+                tags.extend(DatasetService._clean_tag_list(nested))
+            return list(dict.fromkeys(tags))
+
+        if isinstance(value, (list, tuple, set)):
+            items = [str(item).strip() for item in value if str(item).strip()]
+            return list(dict.fromkeys(items))
+
+        text = str(value).strip()
+        return [text] if text else []
+
+    @staticmethod
+    def _normalise_vlm_history(value: Any) -> Dict[str, List[str]]:
+        if not isinstance(value, dict):
+            return {}
+
+        out: Dict[str, List[str]] = {}
+        for prompt_label, prompt_tags in value.items():
+            label = str(prompt_label).strip()
+            if not label:
+                continue
+            out[label] = DatasetService._clean_tag_list(prompt_tags)
+        return out
+
+    @staticmethod
+    def _normalise_string_map(value: Any) -> Dict[str, str]:
+        if not isinstance(value, dict):
+            return {}
+        out: Dict[str, str] = {}
+        for key, item in value.items():
+            key_text = str(key).strip()
+            item_text = str(item).strip()
+            if key_text and item_text:
+                out[key_text] = item_text
+        return out
+
     def get_dataset_images(self, dataset_name: str) -> List[Dict[str, Any]]:
         """
         Get images and metadata for a dataset
@@ -108,44 +114,45 @@ class DatasetService:
             List of image data with metadata
         """
         try:
-            # Fetch metadata from Cosmos DB
             metadata_map = self.azure_service.get_cosmos_metadata(dataset_name)
 
             image_list = []
             base_prefix = f"{dataset_name}/"
 
-            # List blobs for dataset
             blobs = self.azure_service.list_blobs(base_prefix)
 
             for blob in blobs:
-                # Check if image or 3D model
-                is_image = blob.name.lower().endswith(('.png', '.jpg', '.jpeg'))
-                is_3d = blob.name.lower().endswith(('.stl', '.obj', '.glb', '.gltf'))
+                is_image = blob.name.lower().endswith((".png", ".jpg", ".jpeg"))
+                is_3d = blob.name.lower().endswith((".stl", ".obj", ".glb", ".gltf"))
 
                 if not (is_image or is_3d):
                     continue
 
-                # Generate SAS URL
                 try:
                     url = self.azure_service.generate_sas_url(blob.name)
                 except Exception as e:
                     logger.warning(f"Could not generate SAS URL for {blob.name}: {e}")
                     url = f"{self.azure_service.account_url}{self.azure_service.container_name}/{blob.name}"
 
-                # Get metadata
                 cosmos_doc = metadata_map.get(blob.name, {})
 
-                # Recover frame ID robustly
                 recovered_frame_id = self._extract_frame_id_value(
                     cosmos_doc.get("frameId"),
                     cosmos_doc.get("frameName"),
                     blob.name,
                 )
 
-                # Process tags
                 tags = list(cosmos_doc.get("miscTags", []))
 
-                # Add view tags
+                latest_vlm_tags = self._clean_tag_list(cosmos_doc.get("VLM_tags"))
+                tags.extend(latest_vlm_tags)
+
+                vlm_history = self._normalise_vlm_history(cosmos_doc.get("VLM_tags_by_prompt"))
+                for prompt_label, prompt_tags in vlm_history.items():
+                    for prompt_tag in prompt_tags:
+                        tags.append(prompt_tag)
+                        tags.append(f"{prompt_label}: {prompt_tag}")
+
                 if "/orig/" in blob.name:
                     tags.append("exocentric")
                 elif "/egos/" in blob.name:
@@ -159,8 +166,6 @@ class DatasetService:
                             if ego_name:
                                 tags.append(f"ego_{ego_name}")
                         else:
-                            # Fallback for current naming style:
-                            # frontGrille_000_Rotate_right_45_degrees
                             match = re.search(r"_(\d+)_(.+)$", stem)
                             if match:
                                 ego_name = match.group(2)
@@ -169,13 +174,11 @@ class DatasetService:
                     except Exception:
                         pass
 
-                # Add quality tags
                 if cosmos_doc.get("clear") is True:
                     tags.append("clear")
                 elif cosmos_doc.get("clear") is False:
                     tags.append("blurry")
 
-                # Construct image data
                 media_type = "3d" if is_3d else "image"
 
                 image_data = {
@@ -184,7 +187,7 @@ class DatasetService:
                     "proxy_url": f"/api/proxy/{blob.name}",
                     "name": os.path.basename(blob.name),
                     "type": media_type,
-                    "tags": list(set(tags)),
+                    "tags": list(dict.fromkeys(tags)),
                     "metadata": {
                         "uuid": cosmos_doc.get("id"),
                         "date": cosmos_doc.get("date"),
@@ -193,8 +196,13 @@ class DatasetService:
                         "width": cosmos_doc.get("width"),
                         "height": cosmos_doc.get("height"),
                         "sharpness": cosmos_doc.get("sharpnessScore"),
-                        "view": cosmos_doc.get("view")
-                    }
+                        "view": cosmos_doc.get("view"),
+                        "task": cosmos_doc.get("task"),
+                        "vlm_tags": latest_vlm_tags,
+                        "vlm_tags_by_prompt": vlm_history,
+                        "vlm_effective_prompts": self._normalise_string_map(cosmos_doc.get("VLM_effective_prompts")),
+                        "vlm_last_prompt_label": cosmos_doc.get("VLM_last_prompt_label"),
+                    },
                 }
 
                 image_list.append(image_data)
