@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Upload, X, Loader2, Plus, Link as LinkIcon, Folder, FileVideo } from 'lucide-react';
 
 interface UploadModalProps {
@@ -9,9 +9,6 @@ interface UploadModalProps {
 
 export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
     const [gdriveLink, setGdriveLink] = useState("");
-
-    // Hierarchical State
-    // const [categories, setCategories] = useState<string[]>([]);
     const [selectedCategory, setSelectedCategory] = useState("");
     const [brandName, setBrandName] = useState("");
     const [datasetName, setDatasetName] = useState("");
@@ -21,28 +18,31 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
 
     const [tags, setTags] = useState<string[]>([]);
     const [currentTag, setCurrentTag] = useState("");
+    const [task, setTask] = useState("");
 
-    // Fetch Categories on mount
-    useState(() => {
+    useEffect(() => {
         fetch('/api/datasets?path=')
             .then(res => res.json())
             .then(data => {
                 const cats = data
                     .filter((d: any) => d.type === 'folder')
                     .map((d: any) => d.name);
-                // setCategories(cats);
                 if (cats.length > 0) setSelectedCategory(cats[0]);
             })
             .catch(err => console.error("Failed to fetch categories", err));
-    }); // Using useState as mount effect since React 18 strict mode double invoke fix/habit, or just useEffect
+    }, []);
 
     if (!isOpen) return null;
 
     const handleAddTag = () => {
-        if (currentTag.trim()) {
-            setTags([...tags, currentTag.trim()]);
+        const nextTag = currentTag.trim();
+        if (!nextTag) return;
+        if (tags.includes(nextTag)) {
             setCurrentTag("");
+            return;
         }
+        setTags([...tags, nextTag]);
+        setCurrentTag("");
     };
 
     const handleRemoveTag = (index: number) => {
@@ -55,17 +55,16 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
 
         setIsUploading(true);
 
-        const date = new Date().toISOString().slice(0, 10).replace(/-/g, ""); // YYYYMMDD
-
-        // Construct hierarchical path
+        const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
         const finalOutputName = `${selectedCategory}/${brandName}/${datasetName}`;
 
         const payload = {
             gdrive_link: gdriveLink,
             output_name: finalOutputName,
             upload_type: uploadType,
-            date: date,
-            tags: tags
+            date,
+            tags,
+            task: task.trim(),
         };
 
         try {
@@ -80,14 +79,15 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
             const data = await response.json();
 
             if (response.ok) {
-                alert("Success: Video uploaded and processed!");
+                alert("Success: Data uploaded and processed!");
                 if (onSuccess) onSuccess();
                 onClose();
-                // Reset form
                 setGdriveLink("");
                 setBrandName("");
                 setDatasetName("");
                 setTags([]);
+                setCurrentTag("");
+                setTask("");
                 setUploadType('video');
             } else {
                 throw new Error(data.error || "Upload failed");
@@ -102,7 +102,6 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-md">
             <div className="bg-card border border-border rounded-lg shadow-2xl w-full max-w-lg p-8 relative overflow-hidden">
-                {/* Decorative border at top */}
                 <div className="absolute top-0 left-0 right-0 h-1 bg-linear-to-r from-primary/50 via-primary to-primary/50"></div>
 
                 <button
@@ -126,7 +125,6 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
 
                 <form onSubmit={handleSubmit} className="space-y-5">
 
-                    {/* Upload Type Selector */}
                     <div className="bg-input p-1 rounded-sm flex border border-border">
                         <button
                             type="button"
@@ -152,7 +150,6 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
                         </button>
                     </div>
 
-                    {/* GDrive Link */}
                     <div className="space-y-2">
                         <label className="text-xs font-bold text-muted-foreground font-sans-tech">
                             {uploadType === 'video' ? 'Drive Link (Video)' : 'Drive Link (Folder)'}
@@ -171,7 +168,6 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
-                        {/* Level 1: Category */}
                         <div className="space-y-2">
                             <label className="text-xs font-bold text-muted-foreground font-sans-tech">Category</label>
                             <div className="relative">
@@ -187,7 +183,6 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
                             </div>
                         </div>
 
-                        {/* Level 2: Brand */}
                         <div className="space-y-2">
                             <label className="text-xs font-bold text-muted-foreground font-sans-tech">Brand / Subdir</label>
                             <input
@@ -202,7 +197,6 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
                         </div>
                     </div>
 
-                    {/* Level 3: Dataset Name */}
                     <div className="space-y-2">
                         <label className="text-xs font-bold text-muted-foreground font-sans-tech">Dataset Name (Output)</label>
                         <input
@@ -216,8 +210,20 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
                         />
                     </div>
 
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold text-muted-foreground font-sans-tech">Task Context</label>
+                        <input
+                            type="text"
+                            value={task}
+                            onChange={(e) => setTask(e.target.value)}
+                            placeholder="e.g. front grille for the car. Leave blank to auto-generate from the dataset name."
+                            className="w-full bg-input border border-border rounded-sm px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary font-sans-tech"
+                        />
+                        <p className="text-[11px] text-muted-foreground font-sans-tech leading-relaxed">
+                            DaaS stores this on the frame metadata and can prepend it to preset VLM prompts, for example task completion prompts.
+                        </p>
+                    </div>
 
-                    {/* Tags */}
                     <div className="space-y-2">
                         <label className="text-xs font-bold text-muted-foreground font-sans-tech">Metadata Tags</label>
                         <div className="flex gap-2">
