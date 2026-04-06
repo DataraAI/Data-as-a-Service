@@ -172,10 +172,7 @@ export function ImageModal({ image, onClose, onNext, onPrev, onEgoGenSuccess, on
 
     return (
         <div className="fixed inset-0 z-50 flex bg-background/95 backdrop-blur-md">
-            <div
-                className="w-16 flex items-center justify-center hover:bg-primary/5 cursor-pointer transition-colors group"
-                onClick={onPrev}
-            >
+            <div className="w-16 flex items-center justify-center hover:bg-primary/5 cursor-pointer transition-colors group" onClick={onPrev}>
                 <ChevronLeft className="w-8 h-8 text-muted-foreground group-hover:text-primary transition-colors" />
             </div>
 
@@ -193,10 +190,7 @@ export function ImageModal({ image, onClose, onNext, onPrev, onEgoGenSuccess, on
                 )}
             </div>
 
-            <div
-                className="w-16 flex items-center justify-center hover:bg-primary/5 cursor-pointer transition-colors group"
-                onClick={onNext}
-            >
+            <div className="w-16 flex items-center justify-center hover:bg-primary/5 cursor-pointer transition-colors group" onClick={onNext}>
                 <ChevronRight className="w-8 h-8 text-muted-foreground group-hover:text-primary transition-colors" />
             </div>
 
@@ -241,27 +235,21 @@ export function ImageModal({ image, onClose, onNext, onPrev, onEgoGenSuccess, on
                             <div className="flex justify-between p-3 gap-3">
                                 <span className="text-muted-foreground font-medium">Date Captured</span>
                                 <span className="text-foreground font-sans-tech text-right">
-                                    {image.metadata?.date
-                                        ? `${image.metadata.date.substring(0, 4)}-${image.metadata.date.substring(4, 6)}-${image.metadata.date.substring(6, 8)}`
-                                        : 'N/A'}
+                                    {image.metadata?.date ? `${image.metadata.date.substring(0, 4)}-${image.metadata.date.substring(4, 6)}-${image.metadata.date.substring(6, 8)}` : 'N/A'}
                                 </span>
                             </div>
 
                             <div className="flex justify-between p-3 gap-3">
                                 <span className="text-muted-foreground font-medium">Date Uploaded</span>
                                 <span className="text-foreground font-sans-tech text-right">
-                                    {image.metadata?.uploaded_at
-                                        ? new Date(image.metadata.uploaded_at * 1000).toLocaleString()
-                                        : 'N/A'}
+                                    {image.metadata?.uploaded_at ? new Date(image.metadata.uploaded_at * 1000).toLocaleString() : 'N/A'}
                                 </span>
                             </div>
 
                             <div className="flex justify-between p-3 gap-3">
                                 <span className="text-muted-foreground font-medium">Sharpness Score</span>
                                 <span className="text-foreground font-sans-tech text-right">
-                                    {typeof image.metadata?.sharpness === 'number'
-                                        ? image.metadata.sharpness.toFixed(2)
-                                        : 'N/A'}
+                                    {typeof image.metadata?.sharpness === 'number' ? image.metadata.sharpness.toFixed(2) : 'N/A'}
                                 </span>
                             </div>
 
@@ -316,47 +304,16 @@ export function ImageModal({ image, onClose, onNext, onPrev, onEgoGenSuccess, on
                             <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-2 font-sans-tech">Create VLM tags</label>
                             <form onSubmit={createVlmTags} className="space-y-3">
                                 <div className="bg-input p-1 rounded-sm flex border border-border">
-                                    <button
-                                        type="button"
-                                        onClick={() => setVlmPromptMode('preset')}
-                                        className={`flex-1 py-2 text-sm font-medium font-sans-tech rounded-sm transition-all ${vlmPromptMode === 'preset'
-                                            ? 'bg-card text-primary shadow-sm border border-border/50'
-                                            : 'text-muted-foreground hover:text-foreground'
-                                            }`}
-                                    >
-                                        Dropdown
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setVlmPromptMode('custom')}
-                                        className={`flex-1 py-2 text-sm font-medium font-sans-tech rounded-sm transition-all ${vlmPromptMode === 'custom'
-                                            ? 'bg-card text-primary shadow-sm border border-border/50'
-                                            : 'text-muted-foreground hover:text-foreground'
-                                            }`}
-                                    >
-                                        Custom input
-                                    </button>
+                                    <button type="button" onClick={() => setVlmPromptMode('preset')} className={`flex-1 py-2 text-sm font-medium font-sans-tech rounded-sm transition-all ${vlmPromptMode === 'preset' ? 'bg-card text-primary shadow-sm border border-border/50' : 'text-muted-foreground hover:text-foreground'}`}>Dropdown</button>
+                                    <button type="button" onClick={() => setVlmPromptMode('custom')} className={`flex-1 py-2 text-sm font-medium font-sans-tech rounded-sm transition-all ${vlmPromptMode === 'custom' ? 'bg-card text-primary shadow-sm border border-border/50' : 'text-muted-foreground hover:text-foreground'}`}>Custom input</button>
                                 </div>
 
                                 {vlmPromptMode === 'preset' ? (
-                                    <>
-                                        <select
-                                            value={selectedVlmPreset}
-                                            onChange={(e) => setSelectedVlmPreset(e.target.value)}
-                                            className="w-full px-3 py-2 text-sm bg-input rounded-sm border border-border focus:border-primary/50 focus:outline-none font-sans-tech"
-                                        >
-                                            {VLM_PRESET_OPTIONS.map((option) => (
-                                                <option key={option.value} value={option.value}>
-                                                    {option.label}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        {selectedVlmPreset === 'task_completed' && (
-                                            <p className="text-[11px] text-muted-foreground font-sans-tech leading-relaxed">
-                                                If this image has stored task context, DaaS prepends it before sending the preset prompt to the unchanged SaaS VLM script.
-                                            </p>
-                                        )}
-                                    </>
+                                    <select value={selectedVlmPreset} onChange={(e) => setSelectedVlmPreset(e.target.value)} className="w-full px-3 py-2 text-sm bg-input rounded-sm border border-border focus:border-primary/50 focus:outline-none font-sans-tech">
+                                        {VLM_PRESET_OPTIONS.map((option) => (
+                                            <option key={option.value} value={option.value}>{option.label}</option>
+                                        ))}
+                                    </select>
                                 ) : (
                                     <input
                                         type="text"
@@ -367,11 +324,7 @@ export function ImageModal({ image, onClose, onNext, onPrev, onEgoGenSuccess, on
                                     />
                                 )}
 
-                                <button
-                                    type="submit"
-                                    disabled={(vlmPromptMode === 'custom' && !customVlmPrompt.trim()) || isCreatingVlmTags}
-                                    className="px-6 py-2 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold font-sans-tech rounded-sm flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed uppercase shadow-lg shadow-primary/20"
-                                >
+                                <button type="submit" disabled={(vlmPromptMode === 'custom' && !customVlmPrompt.trim()) || isCreatingVlmTags} className="px-6 py-2 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold font-sans-tech rounded-sm flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed uppercase shadow-lg shadow-primary/20">
                                     {isCreatingVlmTags && <Loader2 className="w-3 h-3 animate-spin" />}
                                     {isCreatingVlmTags ? "Creating..." : "Create VLM tags"}
                                 </button>
@@ -383,18 +336,8 @@ export function ImageModal({ image, onClose, onNext, onPrev, onEgoGenSuccess, on
                         <div>
                             <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-2 font-sans-tech">Add corner case</label>
                             <form onSubmit={addCornerCase} className="space-y-3">
-                                <input
-                                    type="text"
-                                    value={cornerCasePrompt}
-                                    onChange={(e) => setCornerCasePrompt(e.target.value)}
-                                    placeholder="Enter an object or effect you wish to insert with respect to this image."
-                                    className="w-full px-3 py-2 text-sm bg-input rounded-sm border border-border focus:border-primary/50 focus:outline-none font-sans-tech placeholder:text-muted-foreground"
-                                />
-                                <button
-                                    type="submit"
-                                    disabled={!cornerCasePrompt.trim() || isAddingCornerCase}
-                                    className="px-6 py-2 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold font-sans-tech rounded-sm flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed uppercase shadow-lg shadow-primary/20"
-                                >
+                                <input type="text" value={cornerCasePrompt} onChange={(e) => setCornerCasePrompt(e.target.value)} placeholder="Enter an object or effect you wish to insert with respect to this image." className="w-full px-3 py-2 text-sm bg-input rounded-sm border border-border focus:border-primary/50 focus:outline-none font-sans-tech placeholder:text-muted-foreground" />
+                                <button type="submit" disabled={!cornerCasePrompt.trim() || isAddingCornerCase} className="px-6 py-2 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold font-sans-tech rounded-sm flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed uppercase shadow-lg shadow-primary/20">
                                     {isAddingCornerCase && <Loader2 className="w-3 h-3 animate-spin" />}
                                     {isAddingCornerCase ? "Submitting..." : "Add corner case"}
                                 </button>
@@ -412,12 +355,7 @@ export function ImageModal({ image, onClose, onNext, onPrev, onEgoGenSuccess, on
                                 <div className="bg-background/50 rounded-sm border border-border divide-y divide-border text-[11px] font-sans-tech">
                                     <div className="flex justify-between p-3">
                                         <span className="text-muted-foreground font-medium">New camera view</span>
-                                        <select
-                                            id="cameraWork"
-                                            name="cameraWork"
-                                            value={selectedCameraWork}
-                                            onChange={(e) => setSelectedCameraWork(e.target.value)}
-                                        >
+                                        <select id="cameraWork" name="cameraWork" value={selectedCameraWork} onChange={(e) => setSelectedCameraWork(e.target.value)}>
                                             <option value="Rotate right 45 degrees">Rotate right 45 degrees</option>
                                             <option value="Rotate right 90 degrees">Rotate right 90 degrees</option>
                                             <option value="Rotate left 45 degrees">Rotate left 45 degrees</option>
@@ -429,11 +367,7 @@ export function ImageModal({ image, onClose, onNext, onPrev, onEgoGenSuccess, on
                                         </select>
                                     </div>
                                 </div>
-                                <button
-                                    type="submit"
-                                    disabled={isGeneratingEgo}
-                                    className="px-6 py-2 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold font-sans-tech rounded-sm flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed uppercase shadow-lg shadow-primary/20"
-                                >
+                                <button type="submit" disabled={isGeneratingEgo} className="px-6 py-2 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold font-sans-tech rounded-sm flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed uppercase shadow-lg shadow-primary/20">
                                     {isGeneratingEgo && <Loader2 className="w-3 h-3 animate-spin" />}
                                     {isGeneratingEgo ? 'Processing...' : 'Generate Ego View'}
                                 </button>

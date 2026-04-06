@@ -9,6 +9,7 @@ interface UploadModalProps {
 
 export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
     const [gdriveLink, setGdriveLink] = useState("");
+
     const [selectedCategory, setSelectedCategory] = useState("");
     const [brandName, setBrandName] = useState("");
     const [datasetName, setDatasetName] = useState("");
@@ -219,9 +220,6 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
                             placeholder="e.g. front grille for the car. Leave blank to auto-generate from the dataset name."
                             className="w-full bg-input border border-border rounded-sm px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary font-sans-tech"
                         />
-                        <p className="text-[11px] text-muted-foreground font-sans-tech leading-relaxed">
-                            DaaS stores this on the frame metadata and can prepend it to preset VLM prompts, for example task completion prompts.
-                        </p>
                     </div>
 
                     <div className="space-y-2">
