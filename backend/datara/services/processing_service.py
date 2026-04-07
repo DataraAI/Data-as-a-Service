@@ -48,7 +48,7 @@ class ProcessingService:
                 existing_blobs = list(
                     self.azure_service.container_client.list_blobs(
                         name_starts_with=f"{output_name}/",
-                        results_per_page=1
+                        results_per_page=1,
                     )
                 )
                 if existing_blobs:
@@ -61,12 +61,7 @@ class ProcessingService:
         misc_tags = data.get("tags", [])
 
         ts = int(datetime.now().timestamp())
-
-        if output_name:
-            dataset_basename = os.path.basename(output_name)
-        else:
-            dataset_basename = f"dataset_{ts}"
-
+        dataset_basename = os.path.basename(output_name) if output_name else f"dataset_{ts}"
         local_process_dir = os.path.join(DATASET_LIST_DIR, dataset_basename)
 
         try:
@@ -148,7 +143,7 @@ class ProcessingService:
         gdrive_link: str,
         local_process_dir: str,
         dataset_basename: str,
-        ts: int
+        ts: int,
     ) -> None:
         video_filename = f"video_{ts}.mp4"
         video_path = os.path.join(self.upload_folder, video_filename)
@@ -159,7 +154,7 @@ class ProcessingService:
                 gdrive_link,
                 video_path,
                 quiet=False,
-                fuzzy=True
+                fuzzy=True,
             )
 
             if not downloaded_path:
@@ -177,10 +172,14 @@ class ProcessingService:
             cmd = [
                 sys.executable,
                 os.path.join(UTILS_DIR, "generate_orig_frames.py"),
-                "--video_path", downloaded_path,
-                "--output_name", dataset_basename,
-                "--target_fps", str(target_fps),
-                "--output_dir", local_process_dir,
+                "--video_path",
+                downloaded_path,
+                "--output_name",
+                dataset_basename,
+                "--target_fps",
+                str(target_fps),
+                "--output_dir",
+                local_process_dir,
             ]
 
             subprocess.check_call(cmd)
@@ -204,13 +203,20 @@ class ProcessingService:
         cmd = [
             sys.executable,
             os.path.join(UTILS_DIR, "upload_frames_to_azure.py"),
-            "--container_name", self.azure_service.container_name,
-            "--output_name", output_name,
-            "--input_dir", local_process_dir,
-            "--view", "orig",
-            "--date", date_val or "",
-            "--tags", json.dumps(misc_tags),
-            "--task", task or "",
+            "--container_name",
+            self.azure_service.container_name,
+            "--output_name",
+            output_name,
+            "--input_dir",
+            local_process_dir,
+            "--view",
+            "orig",
+            "--date",
+            date_val or "",
+            "--tags",
+            json.dumps(misc_tags),
+            "--task",
+            task or "",
         ]
 
         if create_video_annotation:
@@ -316,6 +322,7 @@ class ProcessingService:
             logger.info("Calling lambda VM for ego generation")
             try:
                 from datara.services import call_lambda_vm
+
                 local_image_path, status_code = call_lambda_vm.generate_ego_image(
                     prompt,
                     image_url,
@@ -334,13 +341,20 @@ class ProcessingService:
                 cmd = [
                     sys.executable,
                     os.path.join(UTILS_DIR, "upload_frames_to_azure.py"),
-                    "--container_name", container_name,
-                    "--output_name", output_name,
-                    "--input_dir", input_dir,
-                    "--view", "egos",
-                    "--date", date_val or "",
-                    "--tags", json.dumps(misc_tags),
-                    "--task", task,
+                    "--container_name",
+                    container_name,
+                    "--output_name",
+                    output_name,
+                    "--input_dir",
+                    input_dir,
+                    "--view",
+                    "egos",
+                    "--date",
+                    date_val or "",
+                    "--tags",
+                    json.dumps(misc_tags),
+                    "--task",
+                    task,
                 ]
                 subprocess.check_call(cmd)
 
@@ -387,6 +401,7 @@ class ProcessingService:
 
             try:
                 from datara.services import call_lambda_vm
+
                 local_path, status_code = call_lambda_vm.invoke_corner_case(
                     prompt, image_url, container_name, output_name
                 )
@@ -404,13 +419,20 @@ class ProcessingService:
             cmd = [
                 sys.executable,
                 os.path.join(UTILS_DIR, "upload_frames_to_azure.py"),
-                "--container_name", container_name,
-                "--output_name", output_name,
-                "--input_dir", input_dir,
-                "--view", "corner_images_controlnet",
-                "--date", date_val or "",
-                "--tags", json.dumps(tags),
-                "--task", task,
+                "--container_name",
+                container_name,
+                "--output_name",
+                output_name,
+                "--input_dir",
+                input_dir,
+                "--view",
+                "corner_images_controlnet",
+                "--date",
+                date_val or "",
+                "--tags",
+                json.dumps(tags),
+                "--task",
+                task,
             ]
             subprocess.check_call(cmd)
 
@@ -431,7 +453,7 @@ class ProcessingService:
         """
         Create VLM tags for an image, using the existing SaaS script unchanged.
         DaaS resolves presets/task context, then wraps the returned flat tag list
-        into a richer prompt-keyed history in Cosmos.
+        into grouped prompt history in Cosmos.
         """
         logger.info(f"create_vlm_tags() called with data: {data}")
         try:
@@ -466,10 +488,14 @@ class ProcessingService:
                     [
                         sys.executable,
                         append_script,
-                        "--egoURL", image_url,
-                        "--json_path", local_json_path,
-                        "--prompt_label", prompt_label,
-                        "--effective_prompt", effective_prompt,
+                        "--egoURL",
+                        image_url,
+                        "--json_path",
+                        local_json_path,
+                        "--prompt_label",
+                        prompt_label,
+                        "--effective_prompt",
+                        effective_prompt,
                     ],
                     cwd=BACKEND_DIR,
                 )

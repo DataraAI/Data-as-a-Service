@@ -7,28 +7,20 @@ from typing import List, Dict, Any, Optional
 from datara.logging import logger
 
 
+PRESET_VLM_LABELS = [
+    "Describe the image.",
+    "Has the task been completed?",
+    "What are the sensor modalities detected?",
+]
+
+
 class DatasetService:
     """Service for dataset operations"""
 
     def __init__(self, azure_service):
-        """
-        Initialize dataset service
-
-        Args:
-            azure_service: Azure service instance
-        """
         self.azure_service = azure_service
 
     def list_datasets(self, path: str = "") -> List[Dict[str, Any]]:
-        """
-        List datasets
-
-        Args:
-            path: Optional path prefix
-
-        Returns:
-            List of datasets
-        """
         try:
             return self.azure_service.list_datasets(path)
         except Exception as e:
@@ -37,9 +29,6 @@ class DatasetService:
 
     @staticmethod
     def _extract_frame_id_value(*candidates: Optional[Any]) -> Optional[str]:
-        """
-        Try to recover a usable frame ID from several candidate values.
-        """
         for candidate in candidates:
             if candidate is None:
                 continue
@@ -65,60 +54,106 @@ class DatasetService:
         if value is None:
             return []
 
+        if isinstance(value, (list, tuple, set)):
+            items = [str(item).strip() for item in value if str(item).strip()]
+            return list(dict.fromkeys(items))
+
         if isinstance(value, dict):
             tags: List[str] = []
             for _, nested in value.items():
                 tags.extend(DatasetService._clean_tag_list(nested))
             return list(dict.fromkeys(tags))
 
-        if isinstance(value, (list, tuple, set)):
-            items = [str(item).strip() for item in value if str(item).strip()]
-            return list(dict.fromkeys(items))
-
         text = str(value).strip()
         return [text] if text else []
 
     @staticmethod
-    def _normalise_vlm_history(value: Any) -> Dict[str, List[str]]:
-        if not isinstance(value, dict):
-            return {}
-
-        out: Dict[str, List[str]] = {}
-        for prompt_label, prompt_tags in value.items():
-            label = str(prompt_label).strip()
-            if not label:
-                continue
-            out[label] = DatasetService._clean_tag_list(prompt_tags)
-        return out
+    def _base_vlm_structure() -> Dict[str, Any]:
+        return {
+            "last_prompt_label": None,
+            "runs": {
+                prompt_label: {
+                    "effective_prompt": prompt_label,
+                    "tags": [],
+                }
+                for prompt_label in PRESET_VLM_LABELS
+            },
+        }
 
     @staticmethod
-    def _normalise_string_map(value: Any) -> Dict[str, str]:
-        if not isinstance(value, dict):
-            return {}
-        out: Dict[str, str] = {}
-        for key, item in value.items():
-            key_text = str(key).strip()
-            item_text = str(item).strip()
-            if key_text and item_text:
-                out[key_text] = item_text
-        return out
+    def _migrate_legacy_vlm(doc: Dict[str, Any]) -> Dict[str, Any]:
+        base = DatasetService._base_vlm_structure()
+
+        by_prompt = doc.get("VLM_tags_by_prompt")
+        if isinstance(by_prompt, dict):
+            for prompt_label, raw_tags in by_prompt.items():
+                label = str(prompt_label).strip()
+                if not label:
+                    continue
+                if label not in base["runs"]:
+                    base["runs"][label] = {"effective_prompt": label, "tags": []}
+                base["runs"][label]["tags"] = DatasetService._clean_tag_list(raw_tags)
+
+        effective_prompts = doc.get("VLM_effective_prompts")
+        if isinstance(effective_prompts, dict):
+            for prompt_label, prompt_text in effective_prompts.items():
+                label = str(prompt_label).strip()
+                if not label:
+                    continue
+                if label not in base["runs"]:
+                    base["runs"][label] = {"effective_prompt": label, "tags": []}
+                base["runs"][label]["effective_prompt"] = str(prompt_text).strip() or label
+
+        last_prompt_label = doc.get("VLM_last_prompt_label")
+        if isinstance(last_prompt_label, str) and last_prompt_label.strip():
+            base["last_prompt_label"] = last_prompt_label.strip()
+
+        if base["last_prompt_label"]:
+            label = base["last_prompt_label"]
+            if not base["runs"].get(label, {}).get("tags"):
+                flat_tags = DatasetService._clean_tag_list(doc.get("VLM_tags"))
+                if flat_tags:
+                    if label not in base["runs"]:
+                        base["runs"][label] = {"effective_prompt": label, "tags": []}
+                    base["runs"][label]["tags"] = flat_tags
+
+        return base
+
+    @staticmethod
+    def _normalise_vlm(value: Any, fallback_doc: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        if isinstance(value, dict):
+            runs = value.get("runs")
+            if isinstance(runs, dict):
+                base = DatasetService._base_vlm_structure()
+                for prompt_label, run in runs.items():
+                    label = str(prompt_label).strip()
+                    if not label:
+                        continue
+                    if isinstance(run, dict):
+                        effective_prompt = str(run.get("effective_prompt", label)).strip() or label
+                        tags = DatasetService._clean_tag_list(run.get("tags"))
+                    else:
+                        effective_prompt = label
+                        tags = []
+                    base["runs"][label] = {
+                        "effective_prompt": effective_prompt,
+                        "tags": tags,
+                    }
+                last_prompt_label = value.get("last_prompt_label")
+                if isinstance(last_prompt_label, str) and last_prompt_label.strip():
+                    base["last_prompt_label"] = last_prompt_label.strip()
+                return base
+
+        if fallback_doc is not None:
+            return DatasetService._migrate_legacy_vlm(fallback_doc)
+
+        return DatasetService._base_vlm_structure()
 
     def get_dataset_images(self, dataset_name: str) -> List[Dict[str, Any]]:
-        """
-        Get images and metadata for a dataset
-
-        Args:
-            dataset_name: Name of dataset
-
-        Returns:
-            List of image data with metadata
-        """
         try:
             metadata_map = self.azure_service.get_cosmos_metadata(dataset_name)
-
             image_list = []
             base_prefix = f"{dataset_name}/"
-
             blobs = self.azure_service.list_blobs(base_prefix)
 
             for blob in blobs:
@@ -135,6 +170,7 @@ class DatasetService:
                     url = f"{self.azure_service.account_url}{self.azure_service.container_name}/{blob.name}"
 
                 cosmos_doc = metadata_map.get(blob.name, {})
+                vlm = self._normalise_vlm(cosmos_doc.get("vlm"), fallback_doc=cosmos_doc)
 
                 recovered_frame_id = self._extract_frame_id_value(
                     cosmos_doc.get("frameId"),
@@ -144,13 +180,10 @@ class DatasetService:
 
                 tags = list(cosmos_doc.get("miscTags", []))
 
-                latest_vlm_tags = self._clean_tag_list(cosmos_doc.get("VLM_tags"))
-                tags.extend(latest_vlm_tags)
-
-                vlm_history = self._normalise_vlm_history(cosmos_doc.get("VLM_tags_by_prompt"))
-                for prompt_label, prompt_tags in vlm_history.items():
+                # Only prompt-scoped VLM tags are added to img.tags. These are what the accordion on the left filters on.
+                for prompt_label, run in vlm["runs"].items():
+                    prompt_tags = self._clean_tag_list(run.get("tags"))
                     for prompt_tag in prompt_tags:
-                        tags.append(prompt_tag)
                         tags.append(f"{prompt_label}: {prompt_tag}")
 
                 if "/orig/" in blob.name:
@@ -198,10 +231,7 @@ class DatasetService:
                         "sharpness": cosmos_doc.get("sharpnessScore"),
                         "view": cosmos_doc.get("view"),
                         "task": cosmos_doc.get("task"),
-                        "vlm_tags": latest_vlm_tags,
-                        "vlm_tags_by_prompt": vlm_history,
-                        "vlm_effective_prompts": self._normalise_string_map(cosmos_doc.get("VLM_effective_prompts")),
-                        "vlm_last_prompt_label": cosmos_doc.get("VLM_last_prompt_label"),
+                        "vlm": vlm,
                     },
                 }
 
