@@ -7,28 +7,76 @@ from typing import List, Dict, Any, Optional
 from datara.logging import logger
 
 
-PRESET_VLM_LABELS = [
-    "Describe the image.",
-    "Has the task been completed?",
-    "What are the sensor modalities detected?",
-]
-
-
 class DatasetService:
     """Service for dataset operations"""
 
     def __init__(self, azure_service):
+        """
+        Initialize dataset service
+
+        Args:
+            azure_service: Azure service instance
+        """
         self.azure_service = azure_service
 
     def list_datasets(self, path: str = "") -> List[Dict[str, Any]]:
+        """
+        List datasets
+
+        Args:
+            path: Optional path prefix
+
+        Returns:
+            List of datasets
+        """
         try:
             return self.azure_service.list_datasets(path)
         except Exception as e:
             logger.error(f"Error listing datasets: {e}")
             raise
 
+    def list_all_dataset_paths(self) -> List[Dict[str, Any]]:
+        """
+        Recursively list all folder paths in the dataset tree.
+
+        Returns:
+            List of folder items with name/full_path/type
+        """
+        try:
+            all_paths: List[Dict[str, Any]] = []
+            seen: set[str] = set()
+
+            def walk(path: str = "") -> None:
+                items = self.list_datasets(path)
+                for item in items:
+                    full_path = item.get("full_path")
+                    if not full_path or full_path in seen:
+                        continue
+
+                    seen.add(full_path)
+                    all_paths.append(item)
+                    walk(full_path)
+
+            walk("")
+            return all_paths
+        except Exception as e:
+            logger.error(f"Error recursively listing dataset paths: {e}")
+            raise
+
     @staticmethod
     def _extract_frame_id_value(*candidates: Optional[Any]) -> Optional[str]:
+        """
+        Try to recover a usable frame ID from several candidate values.
+
+        Priority:
+        1. stored Cosmos frameId if numeric
+        2. Cosmos frameName
+        3. blob filename
+
+        This is needed because some ego/corner image filenames include prompt
+        suffixes, and older uploads may have stored a non-numeric frameId like
+        'degrees' instead of the original frame number.
+        """
         for candidate in candidates:
             if candidate is None:
                 continue
@@ -49,143 +97,55 @@ class DatasetService:
 
         return None
 
-    @staticmethod
-    def _clean_tag_list(value: Any) -> List[str]:
-        if value is None:
-            return []
-
-        if isinstance(value, (list, tuple, set)):
-            items = [str(item).strip() for item in value if str(item).strip()]
-            return list(dict.fromkeys(items))
-
-        if isinstance(value, dict):
-            tags: List[str] = []
-            for _, nested in value.items():
-                tags.extend(DatasetService._clean_tag_list(nested))
-            return list(dict.fromkeys(tags))
-
-        text = str(value).strip()
-        return [text] if text else []
-
-    @staticmethod
-    def _base_vlm_structure() -> Dict[str, Any]:
-        return {
-            "last_prompt_label": None,
-            "runs": {
-                prompt_label: {
-                    "effective_prompt": prompt_label,
-                    "tags": [],
-                }
-                for prompt_label in PRESET_VLM_LABELS
-            },
-        }
-
-    @staticmethod
-    def _migrate_legacy_vlm(doc: Dict[str, Any]) -> Dict[str, Any]:
-        base = DatasetService._base_vlm_structure()
-
-        by_prompt = doc.get("VLM_tags_by_prompt")
-        if isinstance(by_prompt, dict):
-            for prompt_label, raw_tags in by_prompt.items():
-                label = str(prompt_label).strip()
-                if not label:
-                    continue
-                if label not in base["runs"]:
-                    base["runs"][label] = {"effective_prompt": label, "tags": []}
-                base["runs"][label]["tags"] = DatasetService._clean_tag_list(raw_tags)
-
-        effective_prompts = doc.get("VLM_effective_prompts")
-        if isinstance(effective_prompts, dict):
-            for prompt_label, prompt_text in effective_prompts.items():
-                label = str(prompt_label).strip()
-                if not label:
-                    continue
-                if label not in base["runs"]:
-                    base["runs"][label] = {"effective_prompt": label, "tags": []}
-                base["runs"][label]["effective_prompt"] = str(prompt_text).strip() or label
-
-        last_prompt_label = doc.get("VLM_last_prompt_label")
-        if isinstance(last_prompt_label, str) and last_prompt_label.strip():
-            base["last_prompt_label"] = last_prompt_label.strip()
-
-        if base["last_prompt_label"]:
-            label = base["last_prompt_label"]
-            if not base["runs"].get(label, {}).get("tags"):
-                flat_tags = DatasetService._clean_tag_list(doc.get("VLM_tags"))
-                if flat_tags:
-                    if label not in base["runs"]:
-                        base["runs"][label] = {"effective_prompt": label, "tags": []}
-                    base["runs"][label]["tags"] = flat_tags
-
-        return base
-
-    @staticmethod
-    def _normalise_vlm(value: Any, fallback_doc: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        if isinstance(value, dict):
-            runs = value.get("runs")
-            if isinstance(runs, dict):
-                base = DatasetService._base_vlm_structure()
-                for prompt_label, run in runs.items():
-                    label = str(prompt_label).strip()
-                    if not label:
-                        continue
-                    if isinstance(run, dict):
-                        effective_prompt = str(run.get("effective_prompt", label)).strip() or label
-                        tags = DatasetService._clean_tag_list(run.get("tags"))
-                    else:
-                        effective_prompt = label
-                        tags = []
-                    base["runs"][label] = {
-                        "effective_prompt": effective_prompt,
-                        "tags": tags,
-                    }
-                last_prompt_label = value.get("last_prompt_label")
-                if isinstance(last_prompt_label, str) and last_prompt_label.strip():
-                    base["last_prompt_label"] = last_prompt_label.strip()
-                return base
-
-        if fallback_doc is not None:
-            return DatasetService._migrate_legacy_vlm(fallback_doc)
-
-        return DatasetService._base_vlm_structure()
-
     def get_dataset_images(self, dataset_name: str) -> List[Dict[str, Any]]:
+        """
+        Get images and metadata for a dataset
+
+        Args:
+            dataset_name: Name of dataset
+
+        Returns:
+            List of image data with metadata
+        """
         try:
+            # Fetch metadata from Cosmos DB
             metadata_map = self.azure_service.get_cosmos_metadata(dataset_name)
+
             image_list = []
             base_prefix = f"{dataset_name}/"
+
+            # List blobs for dataset
             blobs = self.azure_service.list_blobs(base_prefix)
 
             for blob in blobs:
-                is_image = blob.name.lower().endswith((".png", ".jpg", ".jpeg"))
-                is_3d = blob.name.lower().endswith((".stl", ".obj", ".glb", ".gltf"))
+                # Check if image or 3D model
+                is_image = blob.name.lower().endswith(('.png', '.jpg', '.jpeg'))
+                is_3d = blob.name.lower().endswith(('.stl', '.obj', '.glb', '.gltf'))
 
                 if not (is_image or is_3d):
                     continue
 
+                # Generate SAS URL
                 try:
                     url = self.azure_service.generate_sas_url(blob.name)
                 except Exception as e:
                     logger.warning(f"Could not generate SAS URL for {blob.name}: {e}")
                     url = f"{self.azure_service.account_url}{self.azure_service.container_name}/{blob.name}"
 
+                # Get metadata
                 cosmos_doc = metadata_map.get(blob.name, {})
-                vlm = self._normalise_vlm(cosmos_doc.get("vlm"), fallback_doc=cosmos_doc)
 
+                # Recover frame ID robustly
                 recovered_frame_id = self._extract_frame_id_value(
                     cosmos_doc.get("frameId"),
                     cosmos_doc.get("frameName"),
                     blob.name,
                 )
 
+                # Process tags
                 tags = list(cosmos_doc.get("miscTags", []))
 
-                # Only prompt-scoped VLM tags are added to img.tags. These are what the accordion on the left filters on.
-                for prompt_label, run in vlm["runs"].items():
-                    prompt_tags = self._clean_tag_list(run.get("tags"))
-                    for prompt_tag in prompt_tags:
-                        tags.append(f"{prompt_label}: {prompt_tag}")
-
+                # Add view tags
                 if "/orig/" in blob.name:
                     tags.append("exocentric")
                 elif "/egos/" in blob.name:
@@ -199,6 +159,8 @@ class DatasetService:
                             if ego_name:
                                 tags.append(f"ego_{ego_name}")
                         else:
+                            # Fallback for current naming style:
+                            # frontGrille_000_Rotate_right_45_degrees
                             match = re.search(r"_(\d+)_(.+)$", stem)
                             if match:
                                 ego_name = match.group(2)
@@ -207,11 +169,13 @@ class DatasetService:
                     except Exception:
                         pass
 
+                # Add quality tags
                 if cosmos_doc.get("clear") is True:
                     tags.append("clear")
                 elif cosmos_doc.get("clear") is False:
                     tags.append("blurry")
 
+                # Construct image data
                 media_type = "3d" if is_3d else "image"
 
                 image_data = {
@@ -220,7 +184,7 @@ class DatasetService:
                     "proxy_url": f"/api/proxy/{blob.name}",
                     "name": os.path.basename(blob.name),
                     "type": media_type,
-                    "tags": list(dict.fromkeys(tags)),
+                    "tags": list(set(tags)),
                     "metadata": {
                         "uuid": cosmos_doc.get("id"),
                         "date": cosmos_doc.get("date"),
@@ -229,10 +193,8 @@ class DatasetService:
                         "width": cosmos_doc.get("width"),
                         "height": cosmos_doc.get("height"),
                         "sharpness": cosmos_doc.get("sharpnessScore"),
-                        "view": cosmos_doc.get("view"),
-                        "task": cosmos_doc.get("task"),
-                        "vlm": vlm,
-                    },
+                        "view": cosmos_doc.get("view")
+                    }
                 }
 
                 image_list.append(image_data)
