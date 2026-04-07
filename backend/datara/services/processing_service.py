@@ -6,60 +6,49 @@ import sys
 import shutil
 import subprocess
 from datetime import datetime
-from typing import Dict, Any
+from typing import Dict, Any, Optional, Tuple
+from urllib.parse import urlparse
 
 import cv2
 import gdown
 
 from datara.logging import logger
 
-# Get the backend directory path and utils path
 BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 UTILS_DIR = os.path.join(BACKEND_DIR, "utils")
-# All upload scripts receive input_dir under this base (backend/utils/dataset_list)
 DATASET_LIST_DIR = os.path.join(UTILS_DIR, "dataset_list")
 
 
 class ProcessingService:
     """Service for processing videos and generating ego views"""
 
-    def __init__(self, azure_service, dataset_service):
-        """
-        Initialize processing service
+    PRESET_VLM_PROMPTS = {
+        "describe_image": "Describe the image.",
+        "task_completed": "Has the task been completed?",
+        "sensor_modalities": "What are the sensor modalities detected?",
+    }
 
-        Args:
-            azure_service: Azure service instance
-            dataset_service: Dataset service instance
-        """
+    def __init__(self, azure_service, dataset_service):
         self.azure_service = azure_service
         self.dataset_service = dataset_service
         self.upload_folder = "uploads"
         os.makedirs(self.upload_folder, exist_ok=True)
 
     def process_video(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Process video from Google Drive and upload to Azure
-
-        Args:
-            data: Request data containing gdrive_link, output_name, etc.
-
-        Returns:
-            Processing result
-        """
         gdrive_link = data.get("gdrive_link")
         output_name = data.get("output_name")
         upload_type = data.get("upload_type", "video")
+        task = str(data.get("task", "") or "").strip()
 
         if not gdrive_link:
             raise ValueError("No Google Drive link provided")
 
-        # Check if dataset already exists
         if output_name:
             try:
                 existing_blobs = list(
                     self.azure_service.container_client.list_blobs(
                         name_starts_with=f"{output_name}/",
-                        results_per_page=1
+                        results_per_page=1,
                     )
                 )
                 if existing_blobs:
@@ -68,18 +57,11 @@ class ProcessingService:
                 logger.error(f"Error checking existing dataset: {e}")
                 raise
 
-        # Get metadata
         date_val = data.get("date")
         misc_tags = data.get("tags", [])
 
-        # Setup local processing directory
         ts = int(datetime.now().timestamp())
-
-        if output_name:
-            dataset_basename = os.path.basename(output_name)
-        else:
-            dataset_basename = f"dataset_{ts}"
-
+        dataset_basename = os.path.basename(output_name) if output_name else f"dataset_{ts}"
         local_process_dir = os.path.join(DATASET_LIST_DIR, dataset_basename)
 
         try:
@@ -92,15 +74,15 @@ class ProcessingService:
             else:
                 self._process_video_file(gdrive_link, local_process_dir, dataset_basename, ts)
 
-            # Upload to Azure (input_dir is backend/utils/dataset_list/<dataset_basename>)
             self._upload_to_azure(
-                local_process_dir,
-                output_name or dataset_basename,
-                date_val,
-                misc_tags
+                local_process_dir=local_process_dir,
+                output_name=output_name or dataset_basename,
+                date_val=date_val,
+                misc_tags=misc_tags,
+                task=task,
+                create_video_annotation=(upload_type == "video"),
             )
 
-            # Cleanup
             if os.path.exists(local_process_dir):
                 shutil.rmtree(local_process_dir)
 
@@ -114,14 +96,6 @@ class ProcessingService:
             raise
 
     def _process_folder(self, gdrive_link: str, local_process_dir: str, dataset_basename: str) -> None:
-        """
-        Process folder from Google Drive
-
-        Args:
-            gdrive_link: Google Drive folder link
-            local_process_dir: Local directory for processing
-            dataset_basename: Dataset base name
-        """
         ts = int(datetime.now().timestamp())
         temp_download_dir = os.path.join(self.upload_folder, f"temp_folder_{ts}")
         os.makedirs(temp_download_dir, exist_ok=True)
@@ -132,14 +106,13 @@ class ProcessingService:
                 gdrive_link,
                 output=temp_download_dir,
                 quiet=False,
-                use_cookies=False
+                use_cookies=False,
             )
 
             if not downloaded:
                 raise ValueError("Folder download failed or link invalid")
 
-            # Find and process images
-            valid_exts = ('.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.webp')
+            valid_exts = (".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".webp")
             image_files = []
 
             for root, dirs, files in os.walk(temp_download_dir):
@@ -149,9 +122,8 @@ class ProcessingService:
 
             image_files.sort()
 
-            # Copy images to processing directory
             count = 0
-            pad_width = len(str(len(image_files)))
+            pad_width = len(str(len(image_files))) if image_files else 1
 
             for img_path in image_files:
                 ext = os.path.splitext(img_path)[1].lower()
@@ -171,17 +143,8 @@ class ProcessingService:
         gdrive_link: str,
         local_process_dir: str,
         dataset_basename: str,
-        ts: int
+        ts: int,
     ) -> None:
-        """
-        Process video file from Google Drive
-
-        Args:
-            gdrive_link: Google Drive video link
-            local_process_dir: Local directory for processing
-            dataset_basename: Dataset base name
-            ts: Timestamp
-        """
         video_filename = f"video_{ts}.mp4"
         video_path = os.path.join(self.upload_folder, video_filename)
 
@@ -191,13 +154,12 @@ class ProcessingService:
                 gdrive_link,
                 video_path,
                 quiet=False,
-                fuzzy=True
+                fuzzy=True,
             )
 
             if not downloaded_path:
                 raise ValueError("Download failed or link invalid")
 
-            # Use video's native FPS so we don't downsample (e.g. 60 fps video stays 60 fps)
             cap = cv2.VideoCapture(downloaded_path)
             try:
                 video_fps = cap.get(cv2.CAP_PROP_FPS)
@@ -206,15 +168,18 @@ class ProcessingService:
             finally:
                 cap.release()
 
-            # Generate frames from video (--output_dir = backend/utils/dataset_list/<name>)
             logger.info(f"Generating frames from video: {dataset_basename}")
             cmd = [
                 sys.executable,
                 os.path.join(UTILS_DIR, "generate_orig_frames.py"),
-                "--video_path", downloaded_path,
-                "--output_name", dataset_basename,
-                "--target_fps", str(target_fps),
-                "--output_dir", local_process_dir,
+                "--video_path",
+                downloaded_path,
+                "--output_name",
+                dataset_basename,
+                "--target_fps",
+                str(target_fps),
+                "--output_dir",
+                local_process_dir,
             ]
 
             subprocess.check_call(cmd)
@@ -229,43 +194,106 @@ class ProcessingService:
         local_process_dir: str,
         output_name: str,
         date_val: str,
-        misc_tags: list
+        misc_tags: list,
+        task: str = "",
+        create_video_annotation: bool = False,
     ) -> None:
-        """
-        Upload processed images to Azure
-
-        Args:
-            local_process_dir: Local processing directory
-            output_name: Output name in Azure
-            date_val: Date metadata
-            misc_tags: Miscellaneous tags
-        """
         logger.info(f"Uploading to Azure: {output_name}")
 
         cmd = [
             sys.executable,
             os.path.join(UTILS_DIR, "upload_frames_to_azure.py"),
-            "--container_name", self.azure_service.container_name,
-            "--output_name", output_name,
-            "--input_dir", local_process_dir,
-            "--view", "orig",
-            "--date", date_val or "",
-            "--tags", json.dumps(misc_tags)
+            "--container_name",
+            self.azure_service.container_name,
+            "--output_name",
+            output_name,
+            "--input_dir",
+            local_process_dir,
+            "--view",
+            "orig",
+            "--date",
+            date_val or "",
+            "--tags",
+            json.dumps(misc_tags),
+            "--task",
+            task or "",
         ]
+
+        if create_video_annotation:
+            cmd.append("--create_video_annotation")
 
         subprocess.check_call(cmd)
         logger.info("Upload to Azure completed")
 
+    @staticmethod
+    def _blob_path_from_url(url: str) -> Tuple[str, str]:
+        parsed = urlparse(url)
+        path = (parsed.path or "").strip("/")
+        parts = path.split("/", 1)
+        if len(parts) != 2:
+            raise ValueError(f"Cannot parse blob path from URL: {url}")
+        return parts[0], parts[1]
+
+    def _get_cosmos_doc_for_image(self, image_url: str) -> Optional[Dict[str, Any]]:
+        if not self.azure_service.cosmos_client:
+            logger.warning("Cosmos DB not configured, cannot fetch image metadata")
+            return None
+
+        container_name, blob_path = self._blob_path_from_url(image_url)
+        database = self.azure_service.cosmos_client.get_database_client(self.azure_service.cosmos_database)
+        container = database.get_container_client(self.azure_service.cosmos_container)
+
+        query = "SELECT * FROM c WHERE c.containerName = @cn AND c.blobPath = @bp"
+        items = list(
+            container.query_items(
+                query=query,
+                parameters=[
+                    {"name": "@cn", "value": container_name},
+                    {"name": "@bp", "value": blob_path},
+                ],
+                enable_cross_partition_query=True,
+            )
+        )
+        return items[0] if items else None
+
+    @staticmethod
+    def _normalise_sentence(text: str) -> str:
+        text = str(text or "").strip()
+        if not text:
+            return ""
+        if text[-1] not in ".!?":
+            text += "."
+        return text
+
+    def _resolve_vlm_prompt(self, data: Dict[str, Any], cosmos_doc: Optional[Dict[str, Any]]) -> Tuple[str, str]:
+        prompt_mode = str(data.get("prompt_mode", "") or "").strip().lower()
+        prompt_preset = str(data.get("prompt_preset", "") or "").strip()
+        custom_prompt = str(data.get("custom_prompt", "") or "").strip()
+        legacy_prompt = str(data.get("prompt", "") or "").strip()
+        task = str((cosmos_doc or {}).get("task", "") or "").strip()
+
+        if prompt_mode == "custom" or (not prompt_preset and (custom_prompt or legacy_prompt)):
+            prompt_label = custom_prompt or legacy_prompt
+            if not prompt_label:
+                raise ValueError("Missing custom prompt")
+            return prompt_label, prompt_label
+
+        if not prompt_preset:
+            prompt_preset = "describe_image"
+
+        if prompt_preset not in self.PRESET_VLM_PROMPTS:
+            raise ValueError(f"Unsupported VLM preset: {prompt_preset}")
+
+        prompt_label = self.PRESET_VLM_PROMPTS[prompt_preset]
+        effective_prompt = prompt_label
+
+        if prompt_preset == "task_completed" and task:
+            task_sentence = self._normalise_sentence(task)
+            effective_prompt = f"The task is the following: {task_sentence} {prompt_label}"
+
+        return prompt_label, effective_prompt
+
     def generate_ego(self, data: Dict[str, Any]) -> tuple[str, int]:
-        """
-        Generate ego view from original image
-
-        Args:
-            data: Request data containing imageURL, prompt, etc.
-
-        Returns:
-            Generation result
-        """
         logger.info(f"generate_ego() called with data: {data}")
         try:
             prompt = data.get("prompt")
@@ -278,7 +306,6 @@ class ProcessingService:
 
             logger.info(f"Generating ego view with prompt: {prompt}")
 
-            # Extract path components from URL
             container_name = self.azure_service.container_name
             blob_path_start = image_url.index(container_name)
             blob_path_end = image_url.index("/orig") + 5
@@ -288,14 +315,14 @@ class ProcessingService:
             path_components[-1] = "egos"
             output_name = "/".join(path_components[1:4])
 
-            # Import and call ego generation (saves under dataset_list/{output_name}/egos/)
+            source_doc = self._get_cosmos_doc_for_image(image_url) or {}
+            task = str(source_doc.get("task", "") or "").strip()
+
             local_image_path = None
             logger.info("Calling lambda VM for ego generation")
             try:
                 from datara.services import call_lambda_vm
-                logger.info(f"Generating ego view with prompt: {prompt}")
-                logger.info(f"Image URL: {image_url}")
-                logger.info(f"Container name: {container_name}")
+
                 local_image_path, status_code = call_lambda_vm.generate_ego_image(
                     prompt,
                     image_url,
@@ -310,21 +337,27 @@ class ProcessingService:
                 return {"message": f"Ego generation failed: {str(e)}"}, 500
 
             if status_code == 200 and local_image_path:
-                # Upload ego images from dataset_list to cloud
                 input_dir = os.path.join(DATASET_LIST_DIR, output_name)
                 cmd = [
                     sys.executable,
                     os.path.join(UTILS_DIR, "upload_frames_to_azure.py"),
-                    "--container_name", container_name,
-                    "--output_name", output_name,
-                    "--input_dir", input_dir,
-                    "--view", "egos",
-                    "--date", date_val or "",
-                    "--tags", json.dumps(misc_tags),
+                    "--container_name",
+                    container_name,
+                    "--output_name",
+                    output_name,
+                    "--input_dir",
+                    input_dir,
+                    "--view",
+                    "egos",
+                    "--date",
+                    date_val or "",
+                    "--tags",
+                    json.dumps(misc_tags),
+                    "--task",
+                    task,
                 ]
                 subprocess.check_call(cmd)
 
-                # Cleanup local dataset_list/egos for this output
                 ego_local_dir = os.path.join(DATASET_LIST_DIR, output_name, "egos")
                 if os.path.exists(ego_local_dir):
                     shutil.rmtree(ego_local_dir)
@@ -339,15 +372,6 @@ class ProcessingService:
             return {"message": f"Ego generation failed: {str(e)}"}, 500
 
     def generate_corner_case(self, data: Dict[str, Any]) -> tuple[str, int]:
-        """
-        Generate corner case from original image
-
-        Args:
-            data: Request data containing imageURL, prompt, etc.
-
-        Returns:
-            Generation result
-        """
         logger.info(f"generate_corner_case() called with data: {data}")
 
         try:
@@ -363,7 +387,6 @@ class ProcessingService:
 
             logger.info(f"Generating corner case with prompt: {prompt}")
 
-            # Extract path components from URL
             container_name = self.azure_service.container_name
             blob_path_start = image_url.index(container_name)
             blob_path_end = image_url.index("/egos") + 5
@@ -372,10 +395,13 @@ class ProcessingService:
             path_components = blob_path.split("/")
             path_components[-1] = "corner_images_controlnet"
             output_name = "/".join(path_components[1:4])
-            container_name = self.azure_service.container_name
+
+            source_doc = self._get_cosmos_doc_for_image(image_url) or {}
+            task = str(source_doc.get("task", "") or "").strip()
 
             try:
                 from datara.services import call_lambda_vm
+
                 local_path, status_code = call_lambda_vm.invoke_corner_case(
                     prompt, image_url, container_name, output_name
                 )
@@ -389,26 +415,31 @@ class ProcessingService:
             if status_code != 200 or not local_path:
                 return {"error": "Corner case invocation failed"}, status_code or 500
 
-            # Upload corner_images_controlnet from dataset_list to cloud
             input_dir = os.path.join(DATASET_LIST_DIR, output_name)
             cmd = [
                 sys.executable,
                 os.path.join(UTILS_DIR, "upload_frames_to_azure.py"),
-                "--container_name", container_name,
-                "--output_name", output_name,
-                "--input_dir", input_dir,
-                "--view", "corner_images_controlnet",
-                "--date", date_val or "",
-                "--tags", json.dumps(tags),
+                "--container_name",
+                container_name,
+                "--output_name",
+                output_name,
+                "--input_dir",
+                input_dir,
+                "--view",
+                "corner_images_controlnet",
+                "--date",
+                date_val or "",
+                "--tags",
+                json.dumps(tags),
+                "--task",
+                task,
             ]
             subprocess.check_call(cmd)
 
-            # Cleanup local dataset_list/corner_images_controlnet for this output
             corner_local_dir = os.path.join(DATASET_LIST_DIR, output_name, "corner_images_controlnet")
             if os.path.exists(corner_local_dir):
                 shutil.rmtree(corner_local_dir)
             logger.info("Corner case generation completed")
-
 
             return {"message": "Corner case generation completed successfully"}, 200
         except subprocess.CalledProcessError as e:
@@ -420,25 +451,27 @@ class ProcessingService:
 
     def create_vlm_tags(self, data: Dict[str, Any]) -> tuple[str, int]:
         """
-        Create VLM tags for an ego or corner case image: call Lambda VM to produce
-        a JSON with VLM_tags, then append those tags to the image's Cosmos DB document.
+        Create VLM tags for an image, using the existing SaaS script unchanged.
+        DaaS resolves presets/task context, then wraps the returned flat tag list
+        into grouped prompt history in Cosmos.
         """
         logger.info(f"create_vlm_tags() called with data: {data}")
         try:
-            prompt = data.get("prompt")
             image_url = data.get("imageURL")
 
-            if not prompt or not str(prompt).strip():
-                return {"error": "Missing or empty 'prompt' in request body"}, 400
             if not image_url or not str(image_url).strip():
                 return {"error": "Missing or empty 'imageURL' in request body"}, 400
 
-            prompt = str(prompt).strip()
             image_url = str(image_url).strip()
+            cosmos_doc = self._get_cosmos_doc_for_image(image_url)
+
+            prompt_label, effective_prompt = self._resolve_vlm_prompt(data, cosmos_doc)
+            logger.info(f"Resolved VLM prompt label: {prompt_label}")
+            logger.info(f"Resolved VLM effective prompt: {effective_prompt}")
 
             try:
                 from datara.services import call_lambda_vm
-                local_json_path, status_code = call_lambda_vm.run_vlm_tags(prompt, image_url)
+                local_json_path, status_code = call_lambda_vm.run_vlm_tags(effective_prompt, image_url)
             except (ImportError, AttributeError):
                 logger.warning("call_lambda_vm module not found")
                 return {"error": "VLM tags module not available"}, 500
@@ -452,7 +485,18 @@ class ProcessingService:
             try:
                 append_script = os.path.join(UTILS_DIR, "append_tags_to_image.py")
                 subprocess.check_call(
-                    [sys.executable, append_script, "--egoURL", image_url, "--json_path", local_json_path],
+                    [
+                        sys.executable,
+                        append_script,
+                        "--egoURL",
+                        image_url,
+                        "--json_path",
+                        local_json_path,
+                        "--prompt_label",
+                        prompt_label,
+                        "--effective_prompt",
+                        effective_prompt,
+                    ],
                     cwd=BACKEND_DIR,
                 )
             finally:
@@ -463,6 +507,9 @@ class ProcessingService:
                         pass
 
             return {"message": "VLM tags created and appended successfully"}, 200
+        except ValueError as e:
+            logger.error(f"create_vlm_tags validation error: {e}")
+            return {"error": str(e)}, 400
         except subprocess.CalledProcessError as e:
             logger.error(f"append_tags_to_image failed: {e}")
             return {"error": f"Appending tags failed: {str(e)}"}, 500
