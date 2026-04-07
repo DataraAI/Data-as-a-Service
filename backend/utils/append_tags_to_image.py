@@ -1,38 +1,52 @@
 """
 Store VLM tags from a JSON file on the Cosmos DB document for an image (by egoURL),
-while keeping a prompt-keyed history entirely in DaaS.
+while keeping prompt-grouped history entirely in DaaS.
 
-Usage:
-  python append_tags_to_image.py \
-      --egoURL <image_blob_url> \
-      --json_path <path_to_json> \
-      --prompt_label "Has the task been completed?" \
-      --effective_prompt "The task is the following: front grille for the car. Has the task been completed?"
-
-The JSON file produced by the existing SaaS VLM script is expected to contain:
+The unchanged SaaS script is expected to produce:
 {
-  "VLM_tags": ["black", "car", ...]
+  "VLM_tags": ["..."]
 }
 
-This script wraps those flat tags into richer DaaS-owned fields:
-- VLM_tags: latest normalized flat list (backwards-compatible)
-- VLM_tags_by_prompt: prompt-label keyed history
-- VLM_effective_prompts: prompt-label -> exact effective prompt sent to the model
-- VLM_last_prompt_label: label of the most recent prompt
+This script writes the grouped schema:
+{
+  "vlm": {
+    "last_prompt_label": "Has the task been completed?",
+    "runs": {
+      "Describe the image.": {"effective_prompt": "Describe the image.", "tags": []},
+      "Has the task been completed?": {"effective_prompt": "The task is the following: ...", "tags": ["completed"]},
+      "What are the sensor modalities detected?": {"effective_prompt": "What are the sensor modalities detected?", "tags": []}
+    }
+  }
+}
+
+It also migrates the older DaaS VLM fields into the new grouped schema when present.
 """
 
 import argparse
 import json
 import os
 import sys
-from urllib.parse import urlparse
 from typing import Any, Dict, List
+from urllib.parse import urlparse
 
-# Allow running as python backend/utils/append_tags_to_image.py
 _BACKEND = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _BACKEND not in sys.path:
     sys.path.insert(0, _BACKEND)
 from utils import azure_client
+
+
+PRESET_VLM_LABELS = [
+    "Describe the image.",
+    "Has the task been completed?",
+    "What are the sensor modalities detected?",
+]
+
+LEGACY_KEYS = [
+    "VLM_tags",
+    "VLM_tags_by_prompt",
+    "VLM_effective_prompts",
+    "VLM_last_prompt_label",
+]
 
 
 def parse_args():
@@ -59,48 +73,105 @@ def _clean_tag_list(value: Any) -> List[str]:
     if value is None:
         return []
 
-    if isinstance(value, dict):
-        cleaned: List[str] = []
-        for _, nested in value.items():
-            cleaned.extend(_clean_tag_list(nested))
-        return list(dict.fromkeys(cleaned))
-
     if isinstance(value, (list, tuple, set)):
         items = [str(item).strip() for item in value if str(item).strip()]
         return list(dict.fromkeys(items))
+
+    if isinstance(value, dict):
+        tags: List[str] = []
+        for _, nested in value.items():
+            tags.extend(_clean_tag_list(nested))
+        return list(dict.fromkeys(tags))
 
     text = str(value).strip()
     return [text] if text else []
 
 
-def _normalise_vlm_history(value: Any) -> Dict[str, List[str]]:
-    if isinstance(value, dict):
-        out: Dict[str, List[str]] = {}
-        for prompt_label, prompt_tags in value.items():
+def _base_vlm_structure() -> Dict[str, Any]:
+    return {
+        "last_prompt_label": None,
+        "runs": {
+            prompt_label: {
+                "effective_prompt": prompt_label,
+                "tags": [],
+            }
+            for prompt_label in PRESET_VLM_LABELS
+        },
+    }
+
+
+def _migrate_legacy_vlm(value: Dict[str, Any]) -> Dict[str, Any]:
+    base = _base_vlm_structure()
+
+    last_prompt_label = value.get("VLM_last_prompt_label")
+    if isinstance(last_prompt_label, str) and last_prompt_label.strip():
+        base["last_prompt_label"] = last_prompt_label.strip()
+
+    by_prompt = value.get("VLM_tags_by_prompt")
+    if isinstance(by_prompt, dict):
+        for prompt_label, raw_tags in by_prompt.items():
             label = str(prompt_label).strip()
             if not label:
                 continue
-            out[label] = _clean_tag_list(prompt_tags)
-        return out
-    return {}
+            tags = _clean_tag_list(raw_tags)
+            if label not in base["runs"]:
+                base["runs"][label] = {"effective_prompt": label, "tags": []}
+            base["runs"][label]["tags"] = tags
+
+    effective_prompts = value.get("VLM_effective_prompts")
+    if isinstance(effective_prompts, dict):
+        for prompt_label, prompt_text in effective_prompts.items():
+            label = str(prompt_label).strip()
+            if not label:
+                continue
+            text = str(prompt_text).strip() or label
+            if label not in base["runs"]:
+                base["runs"][label] = {"effective_prompt": label, "tags": []}
+            base["runs"][label]["effective_prompt"] = text
+
+    # If the legacy shape only had the latest flat list, attach it to the last prompt label if possible.
+    if base["last_prompt_label"] and not base["runs"].get(base["last_prompt_label"], {}).get("tags"):
+        flat_tags = _clean_tag_list(value.get("VLM_tags"))
+        if flat_tags:
+            label = base["last_prompt_label"]
+            if label not in base["runs"]:
+                base["runs"][label] = {"effective_prompt": label, "tags": []}
+            base["runs"][label]["tags"] = flat_tags
+
+    return base
 
 
-def _normalise_string_map(value: Any) -> Dict[str, str]:
-    if not isinstance(value, dict):
-        return {}
-    out: Dict[str, str] = {}
-    for key, item in value.items():
-        key_text = str(key).strip()
-        item_text = str(item).strip()
-        if key_text and item_text:
-            out[key_text] = item_text
-    return out
+def _normalise_vlm(value: Any, fallback_doc: Dict[str, Any] | None = None) -> Dict[str, Any]:
+    if isinstance(value, dict):
+        runs = value.get("runs")
+        if isinstance(runs, dict):
+            base = _base_vlm_structure()
+            for prompt_label, run in runs.items():
+                label = str(prompt_label).strip()
+                if not label:
+                    continue
+                if isinstance(run, dict):
+                    effective_prompt = str(run.get("effective_prompt", label)).strip() or label
+                    tags = _clean_tag_list(run.get("tags"))
+                else:
+                    effective_prompt = label
+                    tags = []
+                base["runs"][label] = {
+                    "effective_prompt": effective_prompt,
+                    "tags": tags,
+                }
+            last_prompt_label = value.get("last_prompt_label")
+            if isinstance(last_prompt_label, str) and last_prompt_label.strip():
+                base["last_prompt_label"] = last_prompt_label.strip()
+            return base
+
+    if fallback_doc:
+        return _migrate_legacy_vlm(fallback_doc)
+
+    return _base_vlm_structure()
 
 
 def _normalise_by_prompt(prompt_label: str, flat_tags: List[str]) -> List[str]:
-    """
-    Prompt-aware post-processing performed in DaaS, since the SaaS script remains unchanged.
-    """
     label = prompt_label.strip().lower()
     flat_lower = [tag.lower() for tag in flat_tags]
 
@@ -154,7 +225,7 @@ def main():
         sys.exit(1)
 
     prompt_label = str(args.prompt_label).strip()
-    effective_prompt = str(args.effective_prompt).strip()
+    effective_prompt = str(args.effective_prompt).strip() or prompt_label
     normalised_tags = _normalise_by_prompt(prompt_label, flat_vlm_tags)
 
     try:
@@ -180,21 +251,22 @@ def main():
         print(f"No Cosmos document found for container={container_name}, blobPath={blob_path}", file=sys.stderr)
         sys.exit(1)
 
-    if len(items) > 1:
-        print(f"Multiple documents matched; using first. container={container_name}, blobPath={blob_path}", file=sys.stderr)
-
     doc = items[0]
+    vlm = _normalise_vlm(doc.get("vlm"), fallback_doc=doc)
 
-    prompt_history = _normalise_vlm_history(doc.get("VLM_tags_by_prompt"))
-    effective_prompts = _normalise_string_map(doc.get("VLM_effective_prompts"))
+    if prompt_label not in vlm["runs"]:
+        vlm["runs"][prompt_label] = {"effective_prompt": prompt_label, "tags": []}
 
-    prompt_history[prompt_label] = normalised_tags
-    effective_prompts[prompt_label] = effective_prompt
+    vlm["runs"][prompt_label]["effective_prompt"] = effective_prompt
+    vlm["runs"][prompt_label]["tags"] = normalised_tags
+    vlm["last_prompt_label"] = prompt_label
 
-    doc["VLM_tags"] = normalised_tags
-    doc["VLM_tags_by_prompt"] = prompt_history
-    doc["VLM_effective_prompts"] = effective_prompts
-    doc["VLM_last_prompt_label"] = prompt_label
+    doc["vlm"] = vlm
+
+    # Remove legacy fields so documents converge to the grouped schema.
+    for key in LEGACY_KEYS:
+        if key in doc:
+            doc.pop(key, None)
 
     cosmos_container.upsert_item(doc)
     print(f"Stored {len(normalised_tags)} VLM tags for prompt '{prompt_label}' on document {doc['id']}")
