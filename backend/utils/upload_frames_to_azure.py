@@ -3,20 +3,22 @@ Upload image datasets to Azure Blob Storage and Cosmos DB.
 
 Usage example:
 
-python backend/upload_frames_to_azure.py \
+python backend/utils/upload_frames_to_azure.py \
   --container_name test-container \
   --output_name test-output \
-  --input_dir backend/dataset_list/bmw_front_bumper \
+  --input_dir backend/utils/dataset_list/bmw_front_bumper \
   --view egos \
   --connection_string "<AZURE_CONNECTION_STRING>" \
   --date "20251231" \
-  --tags '["tag1", "tag2"]'
+  --tags '["tag1", "tag2"]' \
+  --task "front grille for the car."
 
 Notes:
 - Only .jpg/.jpeg/.png files are uploaded
-- orig and egos are treated as independent views
+- orig, egos, and corner_images_controlnet are treated as independent views
 - Fully compatible with Windows, macOS, and Linux
 - Each frame also gets a document in Cosmos DB
+- Optionally, a dataset-level video_annotation document can also be created
 """
 
 import argparse
@@ -25,7 +27,7 @@ import os
 import re
 import sys
 import uuid
-from typing import Optional
+from typing import Optional, Any, Dict
 
 import cv2
 import numpy as np
@@ -38,9 +40,6 @@ if _BACKEND not in sys.path:
 from utils import azure_client
 
 
-# ----------------------------
-# Argument parsing
-# ----------------------------
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Upload dataset images to Azure Blob Storage")
     parser.add_argument("--container_name", type=str, required=True, help="Azure container name")
@@ -50,6 +49,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--connection_string", type=str, required=False, help="Azure Blob Storage connection string (optional if BLOB_CONNECTION_STRING env var is set)")
     parser.add_argument("--date", type=str, default="", help="Upload date (YYYYMMDD)")
     parser.add_argument("--tags", type=str, default="[]", help="JSON array of tags")
+    parser.add_argument("--task", type=str, default="", help="Optional task context stored on the frame metadata")
+    parser.add_argument("--create_video_annotation", action="store_true", help="Create or update a dataset-level video_annotation document")
     return parser.parse_args()
 
 
@@ -67,9 +68,6 @@ def extract_frame_id_from_filename(filename: str) -> Optional[str]:
     - frontGrille_000.png                    -> 000
     - frontGrille_000_Rotate_right_45.png   -> 000
     - some_name_12_prompt_variant.png       -> 12
-
-    We intentionally extract the FIRST underscore-delimited numeric token,
-    not the last one, because later suffixes may contain prompt text or numbers.
     """
     base = os.path.basename(filename)
     stem = os.path.splitext(base)[0]
@@ -84,10 +82,66 @@ def extract_frame_id_from_filename(filename: str) -> Optional[str]:
     return None
 
 
+def _humanise_dataset_name(output_name: str) -> str:
+    dataset_name = os.path.basename(output_name.strip("/"))
+    dataset_name = re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", dataset_name)
+    dataset_name = dataset_name.replace("_", " ").replace("-", " ")
+    dataset_name = re.sub(r"\s+", " ", dataset_name).strip().lower()
+    return dataset_name
+
+
+def resolve_task(task: str, output_name: str) -> str:
+    task_text = str(task or "").strip()
+    if task_text:
+        return task_text
+
+    fallback = _humanise_dataset_name(output_name)
+    if not fallback:
+        return ""
+
+    if fallback[-1] not in ".!?":
+        fallback += "."
+
+    return fallback
+
+
+def _query_existing_frame_doc(cosmos_container, container_name: str, blob_path: str) -> Dict[str, Any]:
+    query = "SELECT * FROM c WHERE c.containerName = @cn AND c.blobPath = @bp"
+    items = list(
+        cosmos_container.query_items(
+            query=query,
+            parameters=[
+                {"name": "@cn", "value": container_name},
+                {"name": "@bp", "value": blob_path},
+            ],
+            enable_cross_partition_query=True,
+        )
+    )
+    return items[0] if items else {}
+
+
+def _query_existing_video_doc(cosmos_container, container_name: str, dataset_name: str) -> Dict[str, Any]:
+    query = "SELECT * FROM c WHERE c.containerName = @cn AND c.datasetName = @dn AND c.docType = @dt"
+    items = list(
+        cosmos_container.query_items(
+            query=query,
+            parameters=[
+                {"name": "@cn", "value": container_name},
+                {"name": "@dn", "value": dataset_name},
+                {"name": "@dt", "value": "video_annotation"},
+            ],
+            enable_cross_partition_query=True,
+        )
+    )
+    return items[0] if items else {}
+
+
 def main() -> None:
     args = parse_args()
     try:
         misc_tags = json.loads(args.tags)
+        if not isinstance(misc_tags, list):
+            misc_tags = []
     except Exception:
         misc_tags = []
 
@@ -95,6 +149,7 @@ def main() -> None:
     dataset_name = os.path.basename(os.path.normpath(base_input_dir))
     view = args.view
     input_dir = os.path.join(base_input_dir, view)
+    resolved_task = resolve_task(args.task, args.output_name)
 
     if not os.path.isdir(input_dir):
         raise FileNotFoundError(f"Directory not found: {input_dir}")
@@ -140,11 +195,12 @@ def main() -> None:
             )
 
         cosmos_view = "exo" if view == "orig" else view
-        document_id = uuid.uuid4().hex
         frame_id_val = extract_frame_id_from_filename(filename)
+        existing_doc = _query_existing_frame_doc(cosmos_container, args.container_name, blob_name)
 
         metadata_item = {
-            "id": document_id,
+            "id": existing_doc.get("id", uuid.uuid4().hex),
+            "docType": "frame_annotation",
             "containerName": args.container_name,
             "datasetName": args.output_name,
             "view": cosmos_view,
@@ -155,6 +211,11 @@ def main() -> None:
             "width": width,
             "height": height,
             "miscTags": misc_tags,
+            "task": resolved_task,
+            "VLM_tags": existing_doc.get("VLM_tags", []),
+            "VLM_tags_by_prompt": existing_doc.get("VLM_tags_by_prompt", {}),
+            "VLM_effective_prompts": existing_doc.get("VLM_effective_prompts", {}),
+            "VLM_last_prompt_label": existing_doc.get("VLM_last_prompt_label"),
             "sharpnessScore": sharpness_score,
             "clear": is_clear,
         }
@@ -167,11 +228,39 @@ def main() -> None:
         uploaded_count += 1
         print(f"Uploaded ({uploaded_count}): {blob_name}")
 
+    if args.create_video_annotation:
+        existing_video_doc = _query_existing_video_doc(cosmos_container, args.container_name, args.output_name)
+        video_annotation = {
+            "id": existing_video_doc.get("id", uuid.uuid4().hex),
+            "docType": "video_annotation",
+            "containerName": args.container_name,
+            "datasetName": args.output_name,
+            "view": "video",
+            "frameName": None,
+            "blobPath": None,
+            "date": args.date,
+            "frameId": None,
+            "width": None,
+            "height": None,
+            "miscTags": misc_tags,
+            "task": resolved_task,
+            "VLM_tags": existing_video_doc.get("VLM_tags", []),
+            "VLM_tags_by_prompt": existing_video_doc.get("VLM_tags_by_prompt", {}),
+            "VLM_effective_prompts": existing_video_doc.get("VLM_effective_prompts", {}),
+            "VLM_last_prompt_label": existing_video_doc.get("VLM_last_prompt_label"),
+            "frameCount": uploaded_count,
+            "sourceType": "video",
+        }
+        try:
+            cosmos_container.upsert_item(video_annotation)
+        except Exception as e:
+            print(f"Failed to create video annotation metadata in Cosmos: {e}")
+
     print(
         f"Upload complete - {uploaded_count} images uploaded "
         f"from '{dataset_name}/{view}' to '{args.container_name}'"
     )
-    print(f"{uploaded_count} documents created in Cosmos DB")
+    print(f"{uploaded_count} frame documents created in Cosmos DB")
 
 
 if __name__ == "__main__":
