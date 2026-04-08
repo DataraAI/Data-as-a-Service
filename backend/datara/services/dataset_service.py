@@ -27,6 +27,13 @@ class DatasetService:
             logger.error(f"Error listing datasets: {e}")
             raise
 
+    def list_all_dataset_paths(self) -> List[str]:
+        try:
+            return self.azure_service.list_all_dataset_paths()
+        except Exception as e:
+            logger.error(f"Error listing all dataset paths: {e}")
+            raise
+
     @staticmethod
     def _extract_frame_id_value(*candidates: Optional[Any]) -> Optional[str]:
         for candidate in candidates:

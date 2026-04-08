@@ -107,6 +107,30 @@ class AzureService:
             logger.error(f"Error listing datasets at {path}: {e}")
             raise
 
+    def list_all_dataset_paths(self) -> List[str]:
+        """
+        Return every virtual folder path in the container (BFS), for catalog search.
+        Paths have no leading or trailing slashes.
+        """
+        seen: set[str] = set()
+        out: List[str] = []
+        stack: List[str] = [""]
+        while stack:
+            current = stack.pop()
+            try:
+                children = self.list_datasets(current)
+            except Exception as e:
+                logger.error(f"Error listing datasets at {current!r}: {e}")
+                raise
+            for item in children:
+                fp = item.get("full_path") or ""
+                if not fp or fp in seen:
+                    continue
+                seen.add(fp)
+                out.append(fp)
+                stack.append(fp)
+        return sorted(out)
+
     def list_blobs(self, prefix: str) -> List[Any]:
         """
         List blobs with given prefix
