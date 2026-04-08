@@ -5,6 +5,7 @@ import { Database, Loader2, Search, FolderOpen } from "lucide-react";
 import Navigation from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
 const SENSOR_MODALITIES = ["video", "audio", "radio", "lidar", "IMU", "thermal"] as const;
@@ -54,11 +55,23 @@ function displayTitle(fullPath: string): string {
   return parts[parts.length - 1] || fullPath;
 }
 
+/** Keep only paths shaped as category/brand/dataset (three segments, no trailing slash). */
+function isDatasetRootPath(p: string): boolean {
+  return p.split("/").filter(Boolean).length === 3;
+}
+
+function pathSegments(p: string): [string, string, string] {
+  const parts = p.split("/").filter(Boolean);
+  return [parts[0] ?? "", parts[1] ?? "", parts[2] ?? ""];
+}
+
 export default function ExploreDatasets() {
   const [paths, setPaths] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [query, setQuery] = useState("");
+  const [searchCategory, setSearchCategory] = useState("");
+  const [searchBrand, setSearchBrand] = useState("");
+  const [searchDataset, setSearchDataset] = useState("");
   const [modalities, setModalities] = useState<Set<string>>(new Set());
   const [annotations, setAnnotations] = useState<Set<string>>(new Set());
 
@@ -69,14 +82,22 @@ export default function ExploreDatasets() {
       const res = await axios.get<string[]>("/api/dataset-paths");
       const raw = res.data;
       const list = Array.isArray(raw)
-        ? raw.map((p) => (typeof p === "string" ? p : String((p as { full_path?: string }).full_path ?? p))).filter(Boolean)
+        ? raw
+            .map((p) => (typeof p === "string" ? p : String((p as { full_path?: string }).full_path ?? p)))
+            .filter(Boolean)
+            .map((p) => p.replace(/\/+$/, ""))
+            .filter(isDatasetRootPath)
         : [];
-      setPaths(list);
+      setPaths([...new Set(list)].sort((a, b) => a.localeCompare(b)));
     } catch (e: unknown) {
       console.error("ExploreDatasets: dataset-paths failed, falling back to root", e);
       try {
         const fallback = await axios.get<{ full_path: string }[]>("/api/datasets", { params: { path: "" } });
-        setPaths((fallback.data ?? []).map((d) => d.full_path).filter(Boolean));
+        setPaths(
+          [...new Set((fallback.data ?? []).map((d) => d.full_path.replace(/\/+$/, "")).filter(isDatasetRootPath))].sort(
+            (a, b) => a.localeCompare(b)
+          )
+        );
       } catch (e2: unknown) {
         const msg =
           (axios.isAxiosError(e2) && e2.response?.data?.error) ||
@@ -94,10 +115,15 @@ export default function ExploreDatasets() {
   }, [fetchPaths]);
 
   const filteredPaths = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const sc = searchCategory.trim().toLowerCase();
+    const sb = searchBrand.trim().toLowerCase();
+    const sd = searchDataset.trim().toLowerCase();
     return paths.filter((p) => {
       const pl = p.toLowerCase();
-      if (q && !pl.includes(q)) return false;
+      const [cat, brand, dataset] = pathSegments(p);
+      if (sc && !cat.toLowerCase().includes(sc)) return false;
+      if (sb && !brand.toLowerCase().includes(sb)) return false;
+      if (sd && !dataset.toLowerCase().includes(sd)) return false;
 
       if (modalities.size > 0) {
         const okMod = [...modalities].some((m) => {
@@ -117,13 +143,24 @@ export default function ExploreDatasets() {
 
       return true;
     });
-  }, [paths, query, modalities, annotations]);
+  }, [paths, searchCategory, searchBrand, searchDataset, modalities, annotations]);
 
   const clearFilters = () => {
     setModalities(new Set());
     setAnnotations(new Set());
-    setQuery("");
+    setSearchCategory("");
+    setSearchBrand("");
+    setSearchDataset("");
   };
+
+  const trimSearchFields = () => {
+    setSearchCategory((s) => s.trim());
+    setSearchBrand((s) => s.trim());
+    setSearchDataset((s) => s.trim());
+  };
+
+  const hasSearchInput =
+    searchCategory.trim() || searchBrand.trim() || searchDataset.trim();
 
   return (
     <div className="min-h-screen flex flex-col text-foreground bg-background font-sans-tech relative">
@@ -138,7 +175,8 @@ export default function ExploreDatasets() {
               Explore <span className="text-primary">Datasets</span>
             </h1>
             <p className="text-sm text-muted-foreground mt-2 max-w-2xl">
-              Browse catalog paths in the roboteyeview storage container. Filter by modality and annotation, then open a path in the data viewer.
+              Browse dataset paths (category / brand / dataset name) in the roboteyeview container. Search each segment,
+              filter by modality and annotation, then open a path in the data viewer.
             </p>
           </div>
         </header>
@@ -146,6 +184,74 @@ export default function ExploreDatasets() {
         <div className="flex-1 flex flex-col md:flex-row min-h-0 max-w-7xl mx-auto w-full">
           <aside className="w-full md:w-[min(100%,280px)] lg:w-1/4 shrink-0 border-b md:border-b-0 md:border-r border-border bg-card/20 overflow-y-auto custom-scrollbar">
             <div className="p-5 space-y-8">
+              <div className="space-y-3">
+                <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Path search
+                </h3>
+                <div className="space-y-2">
+                  <div className="space-y-1">
+                    <Label htmlFor="explore-search-category" className="text-[10px] uppercase tracking-wide text-muted-foreground font-mono-tech">
+                      Category
+                    </Label>
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                      <Input
+                        id="explore-search-category"
+                        type="search"
+                        placeholder="Search category…"
+                        value={searchCategory}
+                        onChange={(e) => setSearchCategory(e.target.value)}
+                        className="pl-8 h-9 text-sm font-sans-tech bg-background/80 border-border rounded-sm"
+                        autoComplete="off"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="explore-search-brand" className="text-[10px] uppercase tracking-wide text-muted-foreground font-mono-tech">
+                      Brand
+                    </Label>
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                      <Input
+                        id="explore-search-brand"
+                        type="search"
+                        placeholder="Search brand…"
+                        value={searchBrand}
+                        onChange={(e) => setSearchBrand(e.target.value)}
+                        className="pl-8 h-9 text-sm font-sans-tech bg-background/80 border-border rounded-sm"
+                        autoComplete="off"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="explore-search-dataset" className="text-[10px] uppercase tracking-wide text-muted-foreground font-mono-tech">
+                      Dataset name
+                    </Label>
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                      <Input
+                        id="explore-search-dataset"
+                        type="search"
+                        placeholder="Search dataset…"
+                        value={searchDataset}
+                        onChange={(e) => setSearchDataset(e.target.value)}
+                        className="pl-8 h-9 text-sm font-sans-tech bg-background/80 border-border rounded-sm"
+                        autoComplete="off"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="w-full font-mono-tech text-xs uppercase tracking-wide"
+                  onClick={trimSearchFields}
+                >
+                  Search
+                </Button>
+              </div>
+
               <div>
                 <h2 className="text-xs font-bold font-mono-tech uppercase tracking-widest text-foreground mb-3">
                   Data attributes and filtering
@@ -201,7 +307,7 @@ export default function ExploreDatasets() {
                 </div>
               </div>
 
-              {(modalities.size > 0 || annotations.size > 0 || query.trim()) && (
+              {(modalities.size > 0 || annotations.size > 0 || hasSearchInput) && (
                 <Button variant="outline" size="sm" className="w-full font-mono-tech text-xs" onClick={clearFilters}>
                   Clear filters
                 </Button>
@@ -210,29 +316,11 @@ export default function ExploreDatasets() {
           </aside>
 
           <section className="flex-1 flex flex-col min-w-0 min-h-0 bg-background/40">
-            <div className="sticky top-16 z-20 shrink-0 border-b border-border bg-background/95 backdrop-blur-md px-4 py-4 md:px-6">
-              <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:gap-3">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-                  <Input
-                    type="search"
-                    placeholder="Search dataset paths…"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    className="pl-10 h-11 font-sans-tech bg-card border-border rounded-sm"
-                    aria-label="Search datasets"
-                  />
-                </div>
-                <Button
-                  type="button"
-                  className="h-11 font-mono-tech text-xs uppercase tracking-wide shrink-0"
-                  onClick={() => setQuery((q) => q.trim())}
-                >
-                  Search
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground font-mono-tech mt-2">
-                {loading ? "Loading…" : `${filteredPaths.length} path${filteredPaths.length === 1 ? "" : "s"} shown`}
+            <div className="sticky top-16 z-20 shrink-0 border-b border-border bg-background/95 backdrop-blur-md px-4 py-3 md:px-6">
+              <p className="text-xs text-muted-foreground font-mono-tech">
+                {loading
+                  ? "Loading…"
+                  : `${filteredPaths.length} path${filteredPaths.length === 1 ? "" : "s"} shown`}
               </p>
             </div>
 
@@ -240,7 +328,7 @@ export default function ExploreDatasets() {
               {loading && (
                 <div className="flex flex-col items-center justify-center py-24 gap-4 text-muted-foreground">
                   <Loader2 className="w-10 h-10 text-primary animate-spin" />
-                  <span className="text-sm font-mono-tech">Loading catalog from Azure…</span>
+                  <span className="text-sm font-mono-tech">Loading datasets…</span>
                 </div>
               )}
 
@@ -284,7 +372,7 @@ export default function ExploreDatasets() {
                         </div>
                         <div className="px-4 py-2 bg-muted/40 border-t border-border flex items-center justify-between gap-2">
                           <span className="text-[10px] font-mono-tech uppercase tracking-wider text-muted-foreground">
-                            roboteyeview / Azure Blob
+                            roboteyeview
                           </span>
                           <span className="text-xs font-mono-tech text-primary group-hover:text-primary-glow flex items-center gap-1">
                             Open in viewer
