@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
 import { Database, Loader2, Search, FolderOpen } from "lucide-react";
+import { DatasetFolderCover } from "@/components/DatasetFolderCover";
 import Navigation from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -360,8 +361,15 @@ export default function ExploreDatasets() {
                         className="group block rounded-sm border border-border bg-card/30 overflow-hidden hover:border-primary/50 hover:bg-card/50 transition-all duration-300 shadow-elegant/0 hover:shadow-elegant"
                       >
                         <div className="flex flex-col sm:flex-row sm:items-stretch min-h-[100px]">
-                          <div className="sm:w-36 shrink-0 bg-primary/10 border-b sm:border-b-0 sm:border-r border-border flex items-center justify-center p-4">
-                            <FolderOpen className="w-10 h-10 text-primary opacity-90 group-hover:scale-105 transition-transform" />
+                          <div className="sm:w-36 shrink-0 bg-primary/10 border-b sm:border-b-0 sm:border-r border-border flex items-center justify-center p-4 overflow-hidden">
+                            <DatasetFolderCover
+                              key={fullPath}
+                              fullPath={fullPath}
+                              FallbackIcon={FolderOpen}
+                              className="flex items-center justify-center w-full max-w-[8rem] sm:max-w-none h-24 sm:h-28"
+                              imgClassName="w-full h-full object-cover rounded-sm group-hover:scale-105 transition-transform duration-300"
+                              iconClassName="w-10 h-10 text-primary opacity-90 group-hover:scale-105 transition-transform"
+                            />
                           </div>
                           <div className="flex-1 p-4 flex flex-col justify-center min-w-0">
                             <p className="text-lg font-bold font-sans-tech uppercase tracking-wide text-foreground group-hover:text-primary transition-colors truncate">
