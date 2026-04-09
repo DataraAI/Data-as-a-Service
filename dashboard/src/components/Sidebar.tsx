@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 
 interface VlmPromptGroup { prompt: string; tags: string[]; }
 interface SidebarProps {
-    filterText: string;
     onFilterChange: (key: string, value: string) => void;
     availableTags: string[];
     visibleTags: Set<string>;
@@ -21,7 +20,7 @@ interface SidebarProps {
 
 type SectionKey = 'filter' | 'labels' | 'primitives' | 'frames';
 
-export function Sidebar({ filterText, onFilterChange, availableTags, visibleTags, onToggleTag, visiblePrimitives, onTogglePrimitive, onUploadClick, frameRange, onFrameRangeChange, matchingTagSuggestions, onSelectTagSuggestion, vlmPromptGroups }: SidebarProps) {
+export function Sidebar({ onFilterChange, availableTags, visibleTags, onToggleTag, visiblePrimitives, onTogglePrimitive, onUploadClick, frameRange, onFrameRangeChange, matchingTagSuggestions, onSelectTagSuggestion, vlmPromptGroups }: SidebarProps) {
     const [expandedSections, setExpandedSections] = useState<Record<SectionKey, boolean>>({ filter: true, labels: true, primitives: false, frames: true });
     const [expandedPromptGroups, setExpandedPromptGroups] = useState<Record<string, boolean>>({});
     const toggleSection = (section: SectionKey) => setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
@@ -34,7 +33,7 @@ export function Sidebar({ filterText, onFilterChange, availableTags, visibleTags
             <div className="flex-1 overflow-y-auto custom-scrollbar">
                 <div className="border-b border-border">
                     <button onClick={() => toggleSection('filter')} className="flex items-center w-full px-4 py-3 hover:bg-background/80 transition-colors group">{expandedSections.filter ? <ChevronDown className="w-3 h-3 mr-2 text-primary" /> : <ChevronRight className="w-3 h-3 mr-2" />}<span className="font-sans-tech font-bold tracking-wider text-foreground group-hover:text-primary transition-colors">Search</span></button>
-                    {expandedSections.filter && <div className="px-4 pb-4 space-y-3 bg-background/30"><div className="relative"><Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" /><input id="filter_samples" type="text" value={filterText} placeholder="Search by image title or label" className="w-full bg-input border border-border rounded-sm py-1.5 pl-8 pr-2 text-xs focus:border-primary focus:outline-none placeholder-muted-foreground text-foreground font-sans-tech" onChange={(e) => onFilterChange('text', e.target.value)} /></div>{matchingTagSuggestions.length > 0 && <div className="border border-border rounded-sm bg-background/80 overflow-hidden"><div className="max-h-36 overflow-y-auto custom-scrollbar">{matchingTagSuggestions.map((tag) => <button key={tag} type="button" onClick={() => onSelectTagSuggestion(tag)} className="w-full text-left px-3 py-2 text-xs font-sans-tech text-muted-foreground hover:text-foreground hover:bg-background/50 transition-colors border-b border-border last:border-b-0">{tag}</button>)}</div></div>}<Button onClick={onUploadClick} size="sm" variant="outline" className="w-full h-8 text-xs border-dashed border-border hover:border-primary text-muted-foreground hover:text-primary font-sans-tech"><Plus className="w-3 h-3 mr-1.5" />Add Stage</Button></div>}
+                    {expandedSections.filter && <div className="px-4 pb-4 space-y-3 bg-background/30"><div className="relative"><Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" /><input id="filter_samples" type="text" placeholder="Search by image title or label" className="w-full bg-input border border-border rounded-sm py-1.5 pl-8 pr-2 text-xs focus:border-primary focus:outline-none placeholder-muted-foreground text-foreground font-sans-tech" onChange={(e) => onFilterChange('text', e.target.value)} /></div>{matchingTagSuggestions.length > 0 && <div className="border border-border rounded-sm bg-background/80 overflow-hidden"><div className="max-h-36 overflow-y-auto custom-scrollbar">{matchingTagSuggestions.map((tag) => <button key={tag} type="button" onClick={() => onSelectTagSuggestion(tag)} className="w-full text-left px-3 py-2 text-xs font-sans-tech text-muted-foreground hover:text-foreground hover:bg-background/50 transition-colors border-b border-border last:border-b-0">{tag}</button>)}</div></div>}<Button onClick={onUploadClick} size="sm" variant="outline" className="w-full h-8 text-xs border-dashed border-border hover:border-primary text-muted-foreground hover:text-primary font-sans-tech"><Plus className="w-3 h-3 mr-1.5" />Add Stage</Button></div>}
                 </div>
                 <div className="border-b border-border">
                     <button onClick={() => toggleSection('frames')} className="flex items-center w-full px-4 py-3 hover:bg-background/80 transition-colors group">{expandedSections.frames ? <ChevronDown className="w-3 h-3 mr-2 text-primary" /> : <ChevronRight className="w-3 h-3 mr-2" />}<span className="font-sans-tech font-bold tracking-wider text-foreground group-hover:text-primary transition-colors">Frame Range</span></button>
