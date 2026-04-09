@@ -8,6 +8,7 @@ const Navigation = () => {
 
   const navItems = [
     { label: "Home", href: "/" },
+    { label: "Explore Datasets", href: "/explore" },
     { label: "View Data", href: "/viewer" },
     { label: "Platform", href: "/platform" },
     { label: "Documentation", href: "/docs" },
