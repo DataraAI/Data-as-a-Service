@@ -48,7 +48,7 @@ class Settings(BaseModel):
     # Dataset Configuration
     dataset_base_path: str = Field(default="dataset")
     upload_folder: str = Field(default="uploads")
-    max_upload_size: int = Field(default=50 * 1024 * 1024)  # 50MB
+    max_upload_size: int = Field(default=2 * 1024 * 1024 * 1024)  # 2GB (local video/folder import)
 
     # Logging Configuration
     log_level: str = Field(default="INFO")

@@ -5,7 +5,9 @@ Main Flask application for robotics training and deployment.
 Handles Azure Blob Storage integration and dataset management.
 """
 
+import json
 import os
+import shutil
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -128,21 +130,103 @@ def register_routes(app: Flask) -> None:
 
     @app.route("/api/process_video", methods=["POST"])
     def process_video():
-        """Process video from Google Drive and upload to Azure"""
+        """Process video or image folder from Google Drive or local multipart upload, then upload to Azure."""
+        if request.content_type and "multipart/form-data" in request.content_type:
+            return _process_video_multipart()
+
         try:
             data = request.get_json()
             if not data:
-                return {"error": "Invalid JSON body"}, 400
+                return jsonify({"error": "Invalid JSON body"}), 400
 
             result = processing_service.process_video(data)
             logger.info(f"Video processed successfully: {result.get('output_name')}")
             return jsonify(result)
         except ValueError as e:
             logger.warning(f"Validation error in process_video: {e}")
-            return {"error": str(e)}, 400
+            return jsonify({"error": str(e)}), 400
         except Exception as e:
             logger.error(f"Error processing video: {e}", exc_info=True)
-            return {"error": f"An error occurred: {str(e)}"}, 500
+            return jsonify({"error": f"An error occurred: {str(e)}"}), 500
+
+    def _process_video_multipart():
+        upload_type = request.form.get("upload_type", "video")
+        output_name = request.form.get("output_name")
+        if not output_name or not str(output_name).strip():
+            return jsonify({"error": "Missing output_name"}), 400
+
+        date_val = request.form.get("date", "")
+        task = request.form.get("task", "")
+        try:
+            tags = json.loads(request.form.get("tags") or "[]")
+            if not isinstance(tags, list):
+                tags = []
+        except json.JSONDecodeError:
+            tags = []
+
+        data = {
+            "output_name": output_name.strip(),
+            "date": date_val,
+            "tags": tags,
+            "task": task,
+            "upload_type": upload_type,
+        }
+
+        ts = int(datetime.now(timezone.utc).timestamp())
+        local_video_path = None
+        temp_image_dir = None
+        upload_root = processing_service.upload_folder
+        os.makedirs(upload_root, exist_ok=True)
+
+        try:
+            if upload_type == "video":
+                f = request.files.get("file")
+                if not f or not f.filename:
+                    return jsonify({"error": "No video file provided"}), 400
+                ext = os.path.splitext(f.filename)[1] or ".mp4"
+                local_video_path = os.path.join(upload_root, f"upload_{ts}{ext}")
+                f.save(local_video_path)
+                result = processing_service.process_video(data, local_video_path=local_video_path)
+            elif upload_type == "folder":
+                file_list = request.files.getlist("files")
+                if not file_list:
+                    return jsonify({"error": "No files provided for image folder"}), 400
+                temp_image_dir = os.path.join(upload_root, f"folder_upload_{ts}")
+                os.makedirs(temp_image_dir, exist_ok=True)
+                for file_storage in file_list:
+                    if not file_storage.filename:
+                        continue
+                    rel = file_storage.filename.replace("\\", "/").strip("/")
+                    if any(part == ".." for part in rel.split("/")):
+                        return jsonify({"error": "Invalid path in upload"}), 400
+                    dest = os.path.join(temp_image_dir, rel)
+                    parent = os.path.dirname(dest)
+                    if parent:
+                        os.makedirs(parent, exist_ok=True)
+                    file_storage.save(dest)
+                result = processing_service.process_video(data, local_image_dir=temp_image_dir)
+            else:
+                return jsonify({"error": "upload_type must be 'video' or 'folder'"}), 400
+
+            logger.info("Local upload processed successfully")
+            return jsonify(result)
+        except ValueError as e:
+            logger.warning(f"Validation error in process_video multipart: {e}")
+            return jsonify({"error": str(e)}), 400
+        except Exception as e:
+            logger.error(f"Error processing local upload: {e}", exc_info=True)
+            return jsonify({"error": f"An error occurred: {str(e)}"}), 500
+        finally:
+            if local_video_path and os.path.isfile(local_video_path):
+                try:
+                    os.remove(local_video_path)
+                except OSError:
+                    pass
+            if temp_image_dir and os.path.isdir(temp_image_dir):
+                try:
+                    shutil.rmtree(temp_image_dir)
+                except OSError:
+                    pass
 
     @app.route("/api/generate_ego", methods=["POST"])
     def generate_ego():

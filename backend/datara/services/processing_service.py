@@ -34,13 +34,27 @@ class ProcessingService:
         self.upload_folder = "uploads"
         os.makedirs(self.upload_folder, exist_ok=True)
 
-    def process_video(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def process_video(
+        self,
+        data: Dict[str, Any],
+        *,
+        local_video_path: Optional[str] = None,
+        local_image_dir: Optional[str] = None,
+    ) -> Dict[str, Any]:
         gdrive_link = data.get("gdrive_link")
         output_name = data.get("output_name")
         upload_type = data.get("upload_type", "video")
         task = str(data.get("task", "") or "").strip()
 
-        if not gdrive_link:
+        has_local = bool(local_video_path or local_image_dir)
+        if local_video_path and local_image_dir:
+            raise ValueError("Cannot use both a local video file and a local image folder")
+        if has_local:
+            if local_video_path and upload_type != "video":
+                raise ValueError("Local file upload requires upload_type 'video'")
+            if local_image_dir and upload_type != "folder":
+                raise ValueError("Local folder upload requires upload_type 'folder'")
+        if not has_local and not gdrive_link:
             raise ValueError("No Google Drive link provided")
 
         if output_name:
@@ -69,7 +83,13 @@ class ProcessingService:
                 shutil.rmtree(local_process_dir)
             os.makedirs(os.path.join(local_process_dir, "orig"), exist_ok=True)
 
-            if upload_type == "folder":
+            if local_video_path:
+                self._ingest_video_path(local_video_path, local_process_dir, dataset_basename)
+            elif local_image_dir:
+                self._ingest_image_directory(
+                    local_image_dir, local_process_dir, dataset_basename, recursive=False
+                )
+            elif upload_type == "folder":
                 self._process_folder(gdrive_link, local_process_dir, dataset_basename)
             else:
                 self._process_video_file(gdrive_link, local_process_dir, dataset_basename, ts)
@@ -95,6 +115,47 @@ class ProcessingService:
                 shutil.rmtree(local_process_dir)
             raise
 
+    def _ingest_image_directory(
+        self,
+        image_source_dir: str,
+        local_process_dir: str,
+        dataset_basename: str,
+        *,
+        recursive: bool = True,
+    ) -> None:
+        valid_exts = (".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".webp")
+        image_files = []
+
+        if recursive:
+            for root, _dirs, files in os.walk(image_source_dir):
+                for file in files:
+                    if file.lower().endswith(valid_exts):
+                        image_files.append(os.path.join(root, file))
+        else:
+            try:
+                with os.scandir(image_source_dir) as it:
+                    for entry in it:
+                        if entry.is_file() and entry.name.lower().endswith(valid_exts):
+                            image_files.append(entry.path)
+            except FileNotFoundError:
+                pass
+
+        image_files.sort()
+        if not image_files:
+            raise ValueError("No supported image files found (.png, .jpg, .jpeg, .bmp, .tiff, .webp)")
+
+        count = 0
+        pad_width = len(str(len(image_files)))
+
+        for img_path in image_files:
+            ext = os.path.splitext(img_path)[1].lower()
+            new_filename = f"{dataset_basename}_{count:0{pad_width}d}{ext}"
+            dest_path = os.path.join(local_process_dir, "orig", new_filename)
+            shutil.copy2(img_path, dest_path)
+            count += 1
+
+        logger.info(f"Processed {count} images from folder")
+
     def _process_folder(self, gdrive_link: str, local_process_dir: str, dataset_basename: str) -> None:
         ts = int(datetime.now().timestamp())
         temp_download_dir = os.path.join(self.upload_folder, f"temp_folder_{ts}")
@@ -112,27 +173,7 @@ class ProcessingService:
             if not downloaded:
                 raise ValueError("Folder download failed or link invalid")
 
-            valid_exts = (".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".webp")
-            image_files = []
-
-            for root, dirs, files in os.walk(temp_download_dir):
-                for file in files:
-                    if file.lower().endswith(valid_exts):
-                        image_files.append(os.path.join(root, file))
-
-            image_files.sort()
-
-            count = 0
-            pad_width = len(str(len(image_files))) if image_files else 1
-
-            for img_path in image_files:
-                ext = os.path.splitext(img_path)[1].lower()
-                new_filename = f"{dataset_basename}_{count:0{pad_width}d}{ext}"
-                dest_path = os.path.join(local_process_dir, "orig", new_filename)
-                shutil.copy2(img_path, dest_path)
-                count += 1
-
-            logger.info(f"Processed {count} images from folder")
+            self._ingest_image_directory(temp_download_dir, local_process_dir, dataset_basename)
 
         finally:
             if os.path.exists(temp_download_dir):
@@ -160,34 +201,39 @@ class ProcessingService:
             if not downloaded_path:
                 raise ValueError("Download failed or link invalid")
 
-            cap = cv2.VideoCapture(downloaded_path)
-            try:
-                video_fps = cap.get(cv2.CAP_PROP_FPS)
-                target_fps = float(video_fps) if video_fps and video_fps > 0 else 30.0
-                logger.info(f"Video FPS: {target_fps:.2f}")
-            finally:
-                cap.release()
-
-            logger.info(f"Generating frames from video: {dataset_basename}")
-            cmd = [
-                sys.executable,
-                os.path.join(UTILS_DIR, "generate_orig_frames.py"),
-                "--video_path",
-                downloaded_path,
-                "--output_name",
-                dataset_basename,
-                "--target_fps",
-                str(target_fps),
-                "--output_dir",
-                local_process_dir,
-            ]
-
-            subprocess.check_call(cmd)
-            logger.info("Frame generation completed")
+            self._ingest_video_path(downloaded_path, local_process_dir, dataset_basename)
 
         finally:
             if os.path.exists(video_path):
                 os.remove(video_path)
+
+    def _ingest_video_path(
+        self, video_path: str, local_process_dir: str, dataset_basename: str
+    ) -> None:
+        cap = cv2.VideoCapture(video_path)
+        try:
+            video_fps = cap.get(cv2.CAP_PROP_FPS)
+            target_fps = float(video_fps) if video_fps and video_fps > 0 else 30.0
+            logger.info(f"Video FPS: {target_fps:.2f}")
+        finally:
+            cap.release()
+
+        logger.info(f"Generating frames from video: {dataset_basename}")
+        cmd = [
+            sys.executable,
+            os.path.join(UTILS_DIR, "generate_orig_frames.py"),
+            "--video_path",
+            video_path,
+            "--output_name",
+            dataset_basename,
+            "--target_fps",
+            str(target_fps),
+            "--output_dir",
+            local_process_dir,
+        ]
+
+        subprocess.check_call(cmd)
+        logger.info("Frame generation completed")
 
     def _upload_to_azure(
         self,
