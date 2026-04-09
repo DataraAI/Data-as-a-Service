@@ -27,6 +27,7 @@ class DatasetService:
             logger.error(f"Error listing datasets: {e}")
             raise
 
+
     def list_all_dataset_paths(self) -> List[Dict[str, Any]]:
         """
         Recursively list all folder paths in the dataset tree.
@@ -182,6 +183,28 @@ class DatasetService:
         return re.sub(r"[^a-z0-9]+", "", value.lower())
 
     @classmethod
+    def _folder_thumbnail_stem_candidates(cls, folder_name: str) -> set[str]:
+        normalised_folder_name = cls._normalise_folder_asset_base(folder_name)
+        alias_map = {
+            "carautomation": {"carAutomation"},
+            "serverrack": {"serverRack"},
+            "washingmachine": {"washingMachine"},
+            "datahall": {"dataHall"},
+        }
+
+        candidates = {
+            normalised_folder_name,
+            "thumbnail",
+            "folder",
+            "cover",
+        }
+
+        for alias in alias_map.get(normalised_folder_name, set()):
+            candidates.add(cls._normalise_folder_asset_base(alias))
+
+        return candidates
+
+    @classmethod
     def _is_folder_thumbnail_blob(cls, blob_name: str, dataset_name: str) -> bool:
         base_prefix = f"{dataset_name.rstrip('/')}/"
         if not blob_name.startswith(base_prefix):
@@ -197,14 +220,8 @@ class DatasetService:
 
         folder_name = os.path.basename(dataset_name.rstrip("/"))
         normalised_stem = cls._normalise_folder_asset_base(stem)
-        normalised_folder_name = cls._normalise_folder_asset_base(folder_name)
 
-        return normalised_stem in {
-            normalised_folder_name,
-            "thumbnail",
-            "folder",
-            "cover",
-        }
+        return normalised_stem in cls._folder_thumbnail_stem_candidates(folder_name)
 
     def get_dataset_images(self, dataset_name: str) -> List[Dict[str, Any]]:
         try:
