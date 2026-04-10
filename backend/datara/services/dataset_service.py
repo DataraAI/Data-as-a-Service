@@ -156,6 +156,35 @@ class DatasetService:
 
         return DatasetService._base_vlm_structure()
 
+    @staticmethod
+    def _normalise_folder_asset_base(value: str) -> str:
+        return re.sub(r"[^a-z0-9]+", "", value.lower())
+
+    @classmethod
+    def _is_folder_thumbnail_blob(cls, blob_name: str, dataset_name: str) -> bool:
+        base_prefix = f"{dataset_name.rstrip('/')}/"
+        if not blob_name.startswith(base_prefix):
+            return False
+
+        relative_path = blob_name[len(base_prefix):]
+        if "/" in relative_path:
+            return False
+
+        stem, ext = os.path.splitext(os.path.basename(relative_path))
+        if ext.lower() not in {".png", ".jpg", ".jpeg", ".webp"}:
+            return False
+
+        folder_name = os.path.basename(dataset_name.rstrip("/"))
+        normalised_stem = cls._normalise_folder_asset_base(stem)
+        normalised_folder_name = cls._normalise_folder_asset_base(folder_name)
+
+        return normalised_stem in {
+            normalised_folder_name,
+            "thumbnail",
+            "folder",
+            "cover",
+        }
+
     def get_dataset_images(self, dataset_name: str) -> List[Dict[str, Any]]:
         try:
             metadata_map = self.azure_service.get_cosmos_metadata(dataset_name)
@@ -164,6 +193,9 @@ class DatasetService:
             blobs = self.azure_service.list_blobs(base_prefix)
 
             for blob in blobs:
+                if self._is_folder_thumbnail_blob(blob.name, dataset_name):
+                    continue
+
                 is_image = blob.name.lower().endswith((".png", ".jpg", ".jpeg"))
                 is_3d = blob.name.lower().endswith((".stl", ".obj", ".glb", ".gltf"))
 
