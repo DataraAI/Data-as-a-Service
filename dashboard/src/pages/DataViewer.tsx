@@ -483,14 +483,14 @@ export default function DataViewer() {
                                                     <div className="absolute bottom-0 left-0 w-3 h-3 border-b border-l border-border group-hover:border-primary transition-colors"></div>
                                                     <div className="absolute bottom-0 right-0 w-3 h-3 border-b border-r border-border group-hover:border-primary transition-colors"></div>
                                                     <div className="flex flex-col items-center gap-6 relative z-10">
-                                                        <div className="p-4 bg-background/50 rounded-sm border border-border group-hover:border-primary/30 group-hover:shadow-[0_0_15px_rgba(249,115,22,0.1)] transition-all overflow-hidden flex items-center justify-center w-[5.5rem] h-[5.5rem]">
+                                                        <div className="w-full h-44 bg-background/50 rounded-sm border border-border group-hover:border-primary/30 group-hover:shadow-[0_0_15px_rgba(249,115,22,0.1)] transition-all overflow-hidden">
                                                             <DatasetFolderCover
                                                                 key={folder.full_path}
                                                                 fullPath={folder.full_path}
                                                                 FallbackIcon={Folder}
                                                                 className="flex items-center justify-center w-full h-full"
-                                                                imgClassName="w-12 h-12 object-cover rounded-sm"
-                                                                iconClassName="w-12 h-12 text-muted-foreground group-hover:text-primary transition-colors"
+                                                                imgClassName="w-full h-full object-cover"
+                                                                iconClassName="w-16 h-16 text-muted-foreground group-hover:text-primary transition-colors"
                                                             />
                                                         </div>
                                                         <span className="text-lg font-sans-tech font-bold text-foreground group-hover:text-primary transition-colors text-center break-words w-full uppercase tracking-wider">
