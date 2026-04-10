@@ -409,7 +409,19 @@ class ProcessingService:
                     shutil.rmtree(ego_local_dir)
                 logger.info("Ego view generation completed")
             elif status_code != 200:
-                return {"message": "Error generating ego view"}, status_code
+                if isinstance(local_image_path, dict):
+                    message = (
+                        local_image_path.get("message")
+                        or local_image_path.get("error")
+                        or "Error generating ego view"
+                    )
+                elif isinstance(local_image_path, str) and local_image_path.strip():
+                    message = local_image_path.strip()
+                else:
+                    message = "Error generating ego view"
+
+                logger.error(f"generate_ego() received non-200 status {status_code}: {message}")
+                return {"message": message}, status_code
 
             return {"message": "Ego view processed and uploaded successfully"}, 200
 
