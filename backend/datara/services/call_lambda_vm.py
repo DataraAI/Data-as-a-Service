@@ -41,19 +41,22 @@ def _ssh_session():
 
 
 def _run_command(client, command):
-    """Execute a command on the SSH client; returns (stdout_str, stderr_str)."""
+    """Execute a command on the SSH client; returns (stdout_str, stderr_str, exit_status)."""
     stdin, stdout, stderr = client.exec_command(command)
-    out = "".join(stdout.readlines()).strip() if stdout else ""
-    err = (stderr.read().decode().strip() if stderr else "") or ""
+    exit_status = stdout.channel.recv_exit_status()
+    out = stdout.read().decode().strip() if stdout else ""
+    err = stderr.read().decode().strip() if stderr else ""
+    logger.info(f"datara services call_lambda_vm._run_command() exit_status: {exit_status}")
     logger.info(f"datara services call_lambda_vm._run_command() command output: {out}")
     logger.info(f"datara services call_lambda_vm._run_command() command error: {err}")
-    return out, err
+    return out, err, exit_status
 
 
 def generate_ego_image(prompt, imageURL, container_name, output_name):
     """
     Run ego image generation on the Lambda VM and save the result under
     backend/utils/dataset_list/{output_name}/egos/. Returns (local_path, status_code).
+    Raises RuntimeError with stderr/stdout context on remote failure.
     """
     command = (
         "python ~/Software-as-a-Service/image_prompt_tool.py"
@@ -66,13 +69,15 @@ def generate_ego_image(prompt, imageURL, container_name, output_name):
     logger.info(f"datara services call_lambda_vm.generate_ego_image() command: {command}")
     try:
         with _ssh_session() as ssh_client:
-            logger.info(f"datara services call_lambda_vm.generate_ego_image() SSH session established")
-            stdout, stderr = _run_command(ssh_client, command)
-            ego_image_path = (stdout.strip().split("\n")[-1].strip() if stdout else "") or ""
+            logger.info("datara services call_lambda_vm.generate_ego_image() SSH session established")
+            stdout, stderr, exit_status = _run_command(ssh_client, command)
 
+            if exit_status != 0:
+                raise RuntimeError(f"Remote ego script failed (exit {exit_status}): {stderr or stdout or 'no output'}")
+
+            ego_image_path = (stdout.strip().split("\n")[-1].strip() if stdout else "") or ""
             if "/ego_images/" not in ego_image_path:
-                logger.error(f"datara services call_lambda_vm.generate_ego_image() command error: {stderr}")
-                return None, 500
+                raise RuntimeError(f"Remote ego script did not return an ego image path. stdout={stdout or 'empty'} stderr={stderr or 'empty'}")
 
             remote_path = ego_image_path
             filename = os.path.basename(remote_path)
@@ -83,23 +88,22 @@ def generate_ego_image(prompt, imageURL, container_name, output_name):
             sftp = ssh_client.open_sftp()
             try:
                 sftp.get(remote_path, local_image_path)
-                if os.path.exists(local_image_path):
-                    print(f"Successfully saved to '{local_image_path}'")
-                else:
-                    local_image_path = None
+                if not os.path.exists(local_image_path):
+                    raise RuntimeError(f"Ego image was not downloaded successfully from {remote_path}")
+                print(f"Successfully saved to '{local_image_path}'")
                 _run_command(ssh_client, "rm -rf ego_images/" + container_name)
             finally:
                 sftp.close()
 
             return local_image_path, 200
     except Exception as e:
-        print(f"An error occurred: {e}")
-        return None, 500
+        logger.error(f"generate_ego_image failed: {e}")
+        raise RuntimeError(str(e))
 
 
 def _shell_escape(s):
     """Escape a string for safe use inside double-quoted bash argument."""
-    return s.replace("\\", "\\\\").replace('"', '\\"').replace("$", "\\$").replace("`", "\\`")
+    return s.replace("\\", "\\\\").replace('"', '\\\"').replace("$", "\\$").replace("`", "\\`")
 
 
 def run_vlm_tags(prompt: str, image_url: str):
@@ -121,14 +125,17 @@ def run_vlm_tags(prompt: str, image_url: str):
 
     try:
         with _ssh_session() as ssh_client:
-            stdout, stderr = _run_command(ssh_client, command)
+            stdout, stderr, exit_status = _run_command(ssh_client, command)
+            if exit_status != 0:
+                logger.error(f"VLM script failed: {stderr or stdout}")
+                return None, 500
+
             remote_json_path = (stdout.strip().split("\n")[-1].strip() if stdout else "") or ""
 
             if not remote_json_path or not remote_json_path.endswith(".json"):
                 logger.error(f"VLM script failed or returned invalid path: {stderr or stdout}")
                 return None, 500
 
-            # Fetch JSON file locally to a temp path under backend
             os.makedirs(DATASET_LIST_DIR, exist_ok=True)
             local_json_path = os.path.join(DATASET_LIST_DIR, os.path.basename(remote_json_path))
 
@@ -138,7 +145,6 @@ def run_vlm_tags(prompt: str, image_url: str):
             finally:
                 sftp.close()
 
-            # Remove the file from the Lambda VM
             _run_command(ssh_client, f"rm -f '{remote_json_path}'")
 
             if os.path.exists(local_json_path):
@@ -170,7 +176,10 @@ def invoke_corner_case(text, image_url, container_name, output_name):
 
     try:
         with _ssh_session() as ssh_client:
-            stdout, _ = _run_command(ssh_client, command)
+            stdout, stderr, exit_status = _run_command(ssh_client, command)
+            if exit_status != 0:
+                print(f"Corner case tool failed: {stderr or stdout}")
+                return None, 500
 
             remote_path = (stdout.strip().split("\n")[-1].strip() if stdout else "") or ""
             if prefix not in remote_path:
