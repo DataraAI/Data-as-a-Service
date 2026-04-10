@@ -235,16 +235,14 @@ def register_routes(app: Flask) -> None:
             data = request.get_json()
             logger.info(f"processing_service.generate_ego() called with data: {data}")
             if not data:
-                return {"error": "Invalid JSON body"}, 400
+                return jsonify({"error": "Invalid JSON body"}), 400
 
-            result = processing_service.generate_ego(data)
-            if result[1] != 200:
-                return {"error": result[0]}, result[1]
-            logger.info("Ego view generated successfully")
-            return jsonify(result[0]), result[1]
+            result, status_code = processing_service.generate_ego(data)
+            logger.info("Ego view generation request completed")
+            return jsonify(result), status_code
         except Exception as e:
             logger.error(f"Error generating ego: {e}", exc_info=True)
-            return {"error": f"An error occurred: {str(e)}"}, 500
+            return jsonify({"error": f"An error occurred: {str(e)}"}), 500
 
     @app.route("/api/generate_corner_case", methods=["POST"])
     def generate_corner_case():
@@ -252,15 +250,14 @@ def register_routes(app: Flask) -> None:
         try:
             data = request.get_json()
             if not data:
-                return {"error": "Invalid JSON body"}, 400
-            result = processing_service.generate_corner_case(data)
-            if result[1] != 200:
-                return {"error": result[0]}, result[1]
-            logger.info("Corner case generated successfully")
-            return jsonify(result[0]), result[1]
+                return jsonify({"error": "Invalid JSON body"}), 400
+
+            result, status_code = processing_service.generate_corner_case(data)
+            logger.info("Corner case generation request completed")
+            return jsonify(result), status_code
         except Exception as e:
             logger.error(f"Error generating corner case: {e}", exc_info=True)
-            return {"error": f"An error occurred: {str(e)}"}, 500
+            return jsonify({"error": f"An error occurred: {str(e)}"}), 500
 
     @app.route("/api/create_vlm_tags", methods=["POST"])
     def create_vlm_tags():
@@ -269,11 +266,10 @@ def register_routes(app: Flask) -> None:
             data = request.get_json()
             if not data:
                 return jsonify({"error": "Invalid JSON body"}), 400
-            result = processing_service.create_vlm_tags(data)
-            if result[1] != 200:
-                return jsonify({"error": result[0]}), result[1]
-            logger.info("VLM tags created successfully")
-            return jsonify(result[0]), result[1]
+
+            result, status_code = processing_service.create_vlm_tags(data)
+            logger.info("Create VLM tags request completed")
+            return jsonify(result), status_code
         except Exception as e:
             logger.error(f"Error creating VLM tags: {e}", exc_info=True)
             return jsonify({"error": str(e)}), 500
