@@ -17,6 +17,13 @@ const VLM_PRESET_OPTIONS = [
     { value: 'sensor_modalities', label: 'What are the sensor modalities detected?' },
 ];
 
+function getApiErrorMessage(data: any, fallback: string): string {
+    if (typeof data?.error === 'string' && data.error.trim()) return data.error;
+    if (typeof data?.error?.message === 'string' && data.error.message.trim()) return data.error.message;
+    if (typeof data?.message === 'string' && data.message.trim()) return data.message;
+    return fallback;
+}
+
 export function ImageModal({ image, onClose, onNext, onPrev, onEgoGenSuccess, onCornerCaseSuccess }: ImageModalProps) {
     if (!image) return null;
 
@@ -69,7 +76,7 @@ export function ImageModal({ image, onClose, onNext, onPrev, onEgoGenSuccess, on
                 if (onCornerCaseSuccess) onCornerCaseSuccess();
                 onClose();
             } else {
-                throw new Error(data.error || 'Corner case request failed');
+                throw new Error(getApiErrorMessage(data, 'Corner case request failed'));
             }
         } catch (error: any) {
             alert(`Error: ${error.message}`);
@@ -99,7 +106,7 @@ export function ImageModal({ image, onClose, onNext, onPrev, onEgoGenSuccess, on
                 setVlmPromptMode('preset');
                 onClose();
             } else {
-                throw new Error(data.error || 'Create VLM tags failed');
+                throw new Error(getApiErrorMessage(data, 'Create VLM tags failed'));
             }
         } catch (error: any) {
             alert(`Error: ${error.message}`);
@@ -128,7 +135,7 @@ export function ImageModal({ image, onClose, onNext, onPrev, onEgoGenSuccess, on
                 onClose();
                 setSelectedCameraWork('Rotate right 45 degrees');
             } else {
-                throw new Error(data.error || 'Ego generation failed');
+                throw new Error(getApiErrorMessage(data, 'Ego generation failed'));
             }
         } catch (error: any) {
             alert(`Error: ${error.message}`);
