@@ -21,15 +21,24 @@ from datara.logging import logger
 from datara.services.azure_service import AzureService
 from datara.services.dataset_service import DatasetService
 from datara.services.processing_service import ProcessingService
+from datara.services.youtube_service import YouTubeService
 
-# Load environment variables
-load_dotenv()
+BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Load environment variables from both standard backend env files.
+load_dotenv(os.path.join(BACKEND_DIR, ".env"))
+load_dotenv(os.path.join(BACKEND_DIR, ".youtube.env"), override=False)
 
 # Initialize services globally
 logger.info("Initializing Azure services...")
 azure_service = AzureService()
 dataset_service = DatasetService(azure_service)
-processing_service = ProcessingService(azure_service, dataset_service)
+youtube_service = YouTubeService()
+processing_service = ProcessingService(
+    azure_service,
+    dataset_service,
+    youtube_service=youtube_service,
+)
 logger.info("Services initialized successfully")
 
 
@@ -127,6 +136,27 @@ def register_routes(app: Flask) -> None:
         except Exception as e:
             logger.error(f"Proxy error for {blob_name}: {e}")
             return jsonify({"error": str(e)}), 404
+
+    @app.route("/api/youtube/search", methods=["POST"])
+    def youtube_search():
+        """Search YouTube videos using the backend API key"""
+        try:
+            data = request.get_json() or {}
+            query = data.get("query")
+            max_results = data.get("max_results", 12)
+
+            results = youtube_service.search_videos(query, max_results=max_results)
+            logger.info("YouTube search completed successfully")
+            return jsonify({"results": results})
+        except ValueError as e:
+            logger.warning(f"YouTube search validation error: {e}")
+            return jsonify({"error": str(e)}), 400
+        except RuntimeError as e:
+            logger.error(f"YouTube search configuration/runtime error: {e}")
+            return jsonify({"error": str(e)}), 500
+        except Exception as e:
+            logger.error(f"Unexpected YouTube search error: {e}", exc_info=True)
+            return jsonify({"error": str(e)}), 500
 
     @app.route("/api/process_video", methods=["POST"])
     def process_video():
@@ -227,6 +257,27 @@ def register_routes(app: Flask) -> None:
                     shutil.rmtree(temp_image_dir)
                 except OSError:
                     pass
+
+    @app.route("/api/process_youtube", methods=["POST"])
+    def process_youtube():
+        """Process a YouTube video clip and upload frames to Azure"""
+        try:
+            data = request.get_json()
+            if not data:
+                return jsonify({"error": "Invalid JSON body"}), 400
+
+            result = processing_service.process_youtube(data)
+            logger.info(f"YouTube video processed successfully: {result.get('output_name')}")
+            return jsonify(result)
+        except ValueError as e:
+            logger.warning(f"Validation error in process_youtube: {e}")
+            return jsonify({"error": str(e)}), 400
+        except RuntimeError as e:
+            logger.error(f"Runtime/configuration error in process_youtube: {e}")
+            return jsonify({"error": str(e)}), 500
+        except Exception as e:
+            logger.error(f"Error processing YouTube video: {e}", exc_info=True)
+            return jsonify({"error": f"An error occurred: {str(e)}"}), 500
 
     @app.route("/api/generate_ego", methods=["POST"])
     def generate_ego():

@@ -1,12 +1,12 @@
 """Video and image processing service"""
 
-import os
 import json
-import sys
+import os
 import shutil
 import subprocess
+import sys
 from datetime import datetime
-from typing import Dict, Any, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 from urllib.parse import urlparse
 
 import cv2
@@ -28,9 +28,10 @@ class ProcessingService:
         "sensor_modalities": "What are the sensor modalities detected?",
     }
 
-    def __init__(self, azure_service, dataset_service):
+    def __init__(self, azure_service, dataset_service, youtube_service=None):
         self.azure_service = azure_service
         self.dataset_service = dataset_service
+        self.youtube_service = youtube_service
         self.upload_folder = "uploads"
         os.makedirs(self.upload_folder, exist_ok=True)
 
@@ -57,32 +58,16 @@ class ProcessingService:
         if not has_local and not gdrive_link:
             raise ValueError("No Google Drive link provided")
 
-        if output_name:
-            try:
-                existing_blobs = list(
-                    self.azure_service.container_client.list_blobs(
-                        name_starts_with=f"{output_name}/",
-                        results_per_page=1,
-                    )
-                )
-                if existing_blobs:
-                    raise ValueError(f"Dataset '{output_name}' already exists")
-            except Exception as e:
-                logger.error(f"Error checking existing dataset: {e}")
-                raise
+        self._assert_output_name_available(output_name)
 
         date_val = data.get("date")
         misc_tags = data.get("tags", [])
 
         ts = int(datetime.now().timestamp())
         dataset_basename = os.path.basename(output_name) if output_name else f"dataset_{ts}"
-        local_process_dir = os.path.join(DATASET_LIST_DIR, dataset_basename)
+        local_process_dir = self._prepare_local_process_dir(dataset_basename)
 
         try:
-            if os.path.exists(local_process_dir):
-                shutil.rmtree(local_process_dir)
-            os.makedirs(os.path.join(local_process_dir, "orig"), exist_ok=True)
-
             if local_video_path:
                 self._ingest_video_path(local_video_path, local_process_dir, dataset_basename)
             elif local_image_dir:
@@ -103,17 +88,138 @@ class ProcessingService:
                 create_video_annotation=(upload_type == "video"),
             )
 
-            if os.path.exists(local_process_dir):
-                shutil.rmtree(local_process_dir)
-
             logger.info(f"Video processing completed successfully: {output_name}")
-            return {"message": "Data processed and uploaded successfully"}
+            return {
+                "message": "Data processed and uploaded successfully",
+                "output_name": output_name or dataset_basename,
+            }
+        finally:
+            self._cleanup_path(local_process_dir)
 
+    def process_youtube(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        if not self.youtube_service:
+            raise RuntimeError("YouTube service is not available on the backend.")
+
+        video_url = str(data.get("video_url") or data.get("youtube_url") or "").strip()
+        output_name = str(data.get("output_name") or "").strip()
+        start_timestamp = data.get("start_timestamp")
+        end_timestamp = data.get("end_timestamp")
+        task = str(data.get("task", "") or "").strip()
+
+        if not video_url:
+            raise ValueError("No YouTube video URL provided.")
+        if not output_name:
+            raise ValueError("Missing output_name.")
+        if start_timestamp in (None, ""):
+            raise ValueError("Missing start_timestamp.")
+        if end_timestamp in (None, ""):
+            raise ValueError("Missing end_timestamp.")
+
+        self._assert_output_name_available(output_name)
+
+        date_val = data.get("date")
+        misc_tags = data.get("tags", [])
+
+        ts = int(datetime.now().timestamp())
+        dataset_basename = os.path.basename(output_name) or f"dataset_{ts}"
+        local_process_dir = self._prepare_local_process_dir(dataset_basename)
+        download_dir = os.path.join(self.upload_folder, f"youtube_download_{ts}")
+        os.makedirs(download_dir, exist_ok=True)
+
+        try:
+            metadata = self.youtube_service.fetch_video_metadata(video_url)
+            downloaded_video_path = self.youtube_service.download_video(video_url, download_dir)
+
+            duration_seconds = self._probe_duration_seconds(downloaded_video_path)
+            if duration_seconds is None:
+                metadata_duration = metadata.get("duration")
+                if isinstance(metadata_duration, (int, float)):
+                    duration_seconds = float(metadata_duration)
+
+            if duration_seconds is None or duration_seconds <= 0:
+                raise RuntimeError("Unable to determine the downloaded video duration.")
+
+            start_seconds = self._parse_timestamp_to_seconds(start_timestamp, "start timestamp")
+            end_seconds = self._parse_timestamp_to_seconds(end_timestamp, "end timestamp")
+
+            if start_seconds >= duration_seconds:
+                raise ValueError("The start timestamp is beyond the end of the video.")
+
+            if end_seconds > duration_seconds:
+                end_seconds = duration_seconds
+
+            if end_seconds <= start_seconds:
+                raise ValueError("The end timestamp must be later than the start timestamp.")
+
+            trimmed_video_path = os.path.join(download_dir, "trimmed_clip.mp4")
+            self._trim_video(
+                downloaded_video_path,
+                trimmed_video_path,
+                start_seconds,
+                end_seconds,
+            )
+            self._ingest_video_path(
+                trimmed_video_path,
+                local_process_dir,
+                dataset_basename,
+            )
+
+            self._upload_to_azure(
+                local_process_dir=local_process_dir,
+                output_name=output_name,
+                date_val=date_val,
+                misc_tags=misc_tags,
+                task=task,
+                create_video_annotation=True,
+            )
+
+            logger.info(f"YouTube processing completed successfully: {output_name}")
+            return {
+                "message": "YouTube video processed and uploaded successfully",
+                "output_name": output_name,
+                "source_title": metadata.get("title"),
+                "clip_start_seconds": start_seconds,
+                "clip_end_seconds": end_seconds,
+            }
+
+        finally:
+            self._cleanup_path(local_process_dir)
+            self._cleanup_path(download_dir)
+
+    def _prepare_local_process_dir(self, dataset_basename: str) -> str:
+        local_process_dir = os.path.join(DATASET_LIST_DIR, dataset_basename)
+        self._cleanup_path(local_process_dir)
+        os.makedirs(os.path.join(local_process_dir, "orig"), exist_ok=True)
+        return local_process_dir
+
+    def _cleanup_path(self, path: Optional[str]) -> None:
+        if not path:
+            return
+        if os.path.isdir(path):
+            shutil.rmtree(path, ignore_errors=True)
+        elif os.path.exists(path):
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+
+    def _assert_output_name_available(self, output_name: Optional[str]) -> None:
+        if not output_name:
+            return
+
+        try:
+            existing_blobs = list(
+                self.azure_service.container_client.list_blobs(
+                    name_starts_with=f"{output_name}/",
+                    results_per_page=1,
+                )
+            )
         except Exception as e:
-            logger.error(f"Error processing video: {e}", exc_info=True)
-            if os.path.exists(local_process_dir):
-                shutil.rmtree(local_process_dir)
+            logger.error(f"Error checking existing dataset: {e}")
             raise
+
+        if existing_blobs:
+            raise ValueError(f"Dataset '{output_name}' already exists")
 
     def _ingest_image_directory(
         self,
@@ -176,8 +282,7 @@ class ProcessingService:
             self._ingest_image_directory(temp_download_dir, local_process_dir, dataset_basename)
 
         finally:
-            if os.path.exists(temp_download_dir):
-                shutil.rmtree(temp_download_dir)
+            self._cleanup_path(temp_download_dir)
 
     def _process_video_file(
         self,
@@ -210,6 +315,9 @@ class ProcessingService:
     def _ingest_video_path(
         self, video_path: str, local_process_dir: str, dataset_basename: str
     ) -> None:
+        if not os.path.exists(video_path):
+            raise FileNotFoundError(f"Video file not found: {video_path}")
+
         cap = cv2.VideoCapture(video_path)
         try:
             video_fps = cap.get(cv2.CAP_PROP_FPS)
@@ -234,6 +342,114 @@ class ProcessingService:
 
         subprocess.check_call(cmd)
         logger.info("Frame generation completed")
+
+    def _parse_timestamp_to_seconds(self, value: Any, field_name: str) -> float:
+        text = str(value or "").strip()
+        if not text:
+            raise ValueError(f"Missing {field_name}.")
+
+        if not all(ch.isdigit() or ch == ":" for ch in text):
+            raise ValueError(
+                f"Invalid {field_name}. Use seconds, mm:ss, or hh:mm:ss."
+            )
+
+        parts = text.split(":")
+        if len(parts) > 3 or any(part == "" for part in parts):
+            raise ValueError(
+                f"Invalid {field_name}. Use seconds, mm:ss, or hh:mm:ss."
+            )
+
+        try:
+            nums = [int(part) for part in parts]
+        except ValueError as exc:
+            raise ValueError(
+                f"Invalid {field_name}. Use seconds, mm:ss, or hh:mm:ss."
+            ) from exc
+
+        if len(nums) == 1:
+            seconds = nums[0]
+        elif len(nums) == 2:
+            minutes, secs = nums
+            if secs >= 60:
+                raise ValueError(
+                    f"Invalid {field_name}. Seconds must be below 60 for mm:ss."
+                )
+            seconds = minutes * 60 + secs
+        else:
+            hours, minutes, secs = nums
+            if minutes >= 60 or secs >= 60:
+                raise ValueError(
+                    f"Invalid {field_name}. Minutes and seconds must be below 60 for hh:mm:ss."
+                )
+            seconds = hours * 3600 + minutes * 60 + secs
+
+        return float(seconds)
+
+    def _probe_duration_seconds(self, video_path: str) -> Optional[float]:
+        command = [
+            "ffprobe",
+            "-v",
+            "error",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "default=noprint_wrappers=1:nokey=1",
+            video_path,
+        ]
+
+        try:
+            result = subprocess.run(command, capture_output=True, text=True)
+        except FileNotFoundError as exc:
+            raise RuntimeError(
+                "ffprobe is not installed on the backend. Install ffmpeg/ffprobe first."
+            ) from exc
+
+        if result.returncode != 0:
+            logger.warning(f"ffprobe could not determine duration for {video_path}: {result.stderr}")
+            return None
+
+        try:
+            duration = float((result.stdout or "").strip())
+        except ValueError:
+            return None
+
+        return duration if duration > 0 else None
+
+    def _trim_video(
+        self,
+        input_path: str,
+        output_path: str,
+        start_seconds: float,
+        end_seconds: float,
+    ) -> None:
+        clip_duration = end_seconds - start_seconds
+        if clip_duration <= 0:
+            raise ValueError("The selected clip duration must be greater than zero.")
+
+        command = [
+            "ffmpeg",
+            "-y",
+            "-ss",
+            str(start_seconds),
+            "-i",
+            input_path,
+            "-t",
+            str(clip_duration),
+            "-c:v",
+            "libx264",
+            "-c:a",
+            "aac",
+            "-movflags",
+            "+faststart",
+            output_path,
+        ]
+
+        try:
+            subprocess.check_call(command)
+        except FileNotFoundError as exc:
+            raise RuntimeError(
+                "ffmpeg is not installed on the backend. Install ffmpeg first."
+            ) from exc
 
     def _upload_to_azure(
         self,

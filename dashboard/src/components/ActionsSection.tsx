@@ -1,19 +1,30 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Database, Upload, ArrowRight, ExternalLink } from "lucide-react";
+import { Database, Upload, ArrowRight, ExternalLink, Globe } from "lucide-react";
 import { Link } from "react-router-dom";
 import { UploadModal } from "@/components/UploadModal";
+import { UploadFromInternetModal } from "@/components/UploadFromInternetModal";
 
 const ActionsSection = () => {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isInternetUploadModalOpen, setIsInternetUploadModalOpen] = useState(false);
 
   const actions = [
+    {
+      icon: Globe,
+      title: "Upload From Internet",
+      description: "Upload from internet for processing",
+      action: () => setIsInternetUploadModalOpen(true),
+      buttonLabel: "UPLOAD VIDEO",
+      variant: "default",
+    },
     {
       icon: Upload,
       title: "Import Dataset",
       description: "Upload a dataset for processing",
       action: () => setIsUploadModalOpen(true),
+      buttonLabel: "IMPORT DATA",
       variant: "default",
     },
     {
@@ -21,6 +32,7 @@ const ActionsSection = () => {
       title: "Dataset Viewer",
       description: "Explore the dataset in our custom viewer",
       href: "/viewer",
+      buttonLabel: "VIEW DATA",
       variant: "secondary",
     },
   ];
@@ -38,25 +50,20 @@ const ActionsSection = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
           {actions.map((action, index) => (
             <Card
               key={index}
               className="p-8 bg-card/10 backdrop-blur-sm border border-border group relative overflow-hidden transition-all hover:border-primary/50"
             >
-              {/* Decorative corners */}
               <div className="absolute top-0 left-0 w-3 h-3 border-t border-l border-primary/30 group-hover:border-primary transition-colors"></div>
               <div className="absolute top-0 right-0 w-3 h-3 border-t border-r border-primary/30 group-hover:border-primary transition-colors"></div>
               <div className="absolute bottom-0 left-0 w-3 h-3 border-b border-l border-primary/30 group-hover:border-primary transition-colors"></div>
               <div className="absolute bottom-0 right-0 w-3 h-3 border-b border-r border-primary/30 group-hover:border-primary transition-colors"></div>
 
               <div className="mb-6 relative z-10">
-                <div
-                  className="w-14 h-14 rounded-sm flex items-center justify-center mb-5 bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-all"
-                >
-                  <action.icon
-                    className="w-7 h-7 text-primary"
-                  />
+                <div className="w-14 h-14 rounded-sm flex items-center justify-center mb-5 bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-all">
+                  <action.icon className="w-7 h-7 text-primary" />
                 </div>
                 <h3 className="text-2xl font-bold font-sans-tech mb-2 text-foreground">
                   {action.title}
@@ -74,7 +81,7 @@ const ActionsSection = () => {
                   size="lg"
                 >
                   <Link to={action.href}>
-                    <span>VIEW DATA</span>
+                    <span>{action.buttonLabel}</span>
                     <ExternalLink className="w-4 h-4 ml-2 group-hover/btn:translate-x-1 transition-transform duration-300" />
                   </Link>
                 </Button>
@@ -84,7 +91,7 @@ const ActionsSection = () => {
                   className="w-full group/btn bg-primary hover:bg-primary/90 text-primary-foreground font-mono-tech"
                   size="lg"
                 >
-                  <span>IMPORT DATA</span>
+                  <span>{action.buttonLabel}</span>
                   <ArrowRight className="w-4 h-4 ml-2 group-hover/btn:translate-x-1 transition-transform duration-300" />
                 </Button>
               )}
@@ -97,7 +104,11 @@ const ActionsSection = () => {
           onClose={() => setIsUploadModalOpen(false)}
         />
 
-        {/* Additional Links Section */}
+        <UploadFromInternetModal
+          isOpen={isInternetUploadModalOpen}
+          onClose={() => setIsInternetUploadModalOpen(false)}
+        />
+
         <div className="mt-20 text-center border-t border-border pt-10">
           <h3 className="text-xl font-bold font-sans-tech mb-8 text-foreground uppercase tracking-wider">
             SYSTEM RESOURCES
