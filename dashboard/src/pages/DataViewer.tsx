@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import axios from 'axios';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
@@ -14,7 +14,6 @@ import {
     Trash2,
     Search,
     ArrowRight,
-    ChevronDown,
 } from 'lucide-react';
 import { ImageGrid } from '../components/ImageGrid';
 import { ImageModal } from '../components/ImageModal';
@@ -34,10 +33,12 @@ interface ImageMetadata { frame_id?: string | number | null; vlm?: VlmMetadata; 
 interface ImageItem { id?: string; name: string; tags?: string[]; frame_id?: string | number | null; metadata?: ImageMetadata; [key: string]: unknown; }
 interface VlmPromptGroup { prompt: string; tags: string[]; }
 
-type VerticalKey = 'carAutomation' | 'humanoid' | 'serverrack' | 'warehouse';
+type CategoryKey = 'carAutomation' | 'serverrack' | 'dexterity' | 'warehouse';
+type StorageKey = 'carAutomation' | 'serverrack' | 'humanoid' | 'warehouse';
 
-interface VerticalConfig {
-    key: VerticalKey;
+interface CategoryConfig {
+    routeKey: CategoryKey;
+    storageKey: StorageKey;
     label: string;
     description: string;
     helperText: string;
@@ -45,48 +46,172 @@ interface VerticalConfig {
     searchDescription: string;
 }
 
-const VERTICALS: VerticalConfig[] = [
+interface ShowcaseImageConfig {
+    previewBlobPath: string;
+    targetFolderPath: string;
+    targetImageName: string;
+    alt: string;
+}
+
+interface PathAlias {
+    displayPrefix: string;
+    backendPrefix: string;
+}
+
+const CATEGORIES: CategoryConfig[] = [
     {
-        key: 'carAutomation',
+        routeKey: 'carAutomation',
+        storageKey: 'carAutomation',
         label: 'Car Automation',
         description: 'Assembly, inspection, and vehicle-production data for robotics workflows across automotive environments.',
-        helperText: 'Browse this vertical to explore automotive data collections, or search directly below to jump to a specific folder path.',
+        helperText: 'Browse this category to explore automotive data collections, or search directly below to jump to a specific folder path.',
         searchTitle: 'Search within Car Automation',
-        searchDescription: 'Find folders, scenes, or specific path matches inside the Car Automation vertical.',
+        searchDescription: 'Find folders, scenes, or specific path matches inside the Car Automation category.',
     },
     {
-        key: 'humanoid',
-        label: 'Humanoid',
-        description: 'Manipulation and embodied task data for human-like robots operating across practical, object-centric scenarios.',
-        helperText: 'Use this vertical for humanoid-focused tasks and embodied interaction data, including task-oriented subdirectories.',
-        searchTitle: 'Search within Humanoid',
-        searchDescription: 'Search only across humanoid-related folders to narrow down the most relevant dataset path quickly.',
-    },
-    {
-        key: 'serverrack',
+        routeKey: 'serverrack',
+        storageKey: 'serverrack',
         label: 'Serverrack',
         description: 'Data-center interaction, port-level operation, and maintenance-focused datasets for rack and cabling tasks.',
         helperText: 'Start here for server-rack workflows, then browse further or search to move directly into a relevant dataset branch.',
         searchTitle: 'Search within Serverrack',
-        searchDescription: 'Search inside the Serverrack vertical for folders related to rack operations, cabling, and maintenance.',
+        searchDescription: 'Search inside the Serverrack category for folders related to rack operations, cabling, and maintenance.',
     },
     {
-        key: 'warehouse',
+        routeKey: 'dexterity',
+        storageKey: 'humanoid',
+        label: 'Dexterity',
+        description: 'Fine-motor manipulation and embodied task data for dexterous robotic systems operating across practical, object-centric scenarios.',
+        helperText: 'Use this category for dexterity-focused tasks and embodied interaction data, including peeling, washing, and practical manipulation workflows.',
+        searchTitle: 'Search within Dexterity',
+        searchDescription: 'Search only across dexterity-related folders to narrow down the most relevant dataset path quickly.',
+    },
+    {
+        routeKey: 'warehouse',
+        storageKey: 'warehouse',
         label: 'Warehouse',
         description: 'Logistics, handling, and storage-operation data for robotic movement, picking, and material flow.',
-        helperText: 'Explore warehouse-oriented robotics data collections, or search within this vertical to find a path faster.',
+        helperText: 'Explore warehouse-oriented robotics data collections, or search within this category to find a path faster.',
         searchTitle: 'Search within Warehouse',
         searchDescription: 'Search only within warehouse data paths to keep results focused and easier to navigate.',
     },
 ];
 
-const SEARCH_ALL_VALUE = 'searchAll';
-
-const HUMANOID_ROOT_ALIASES: Array<{ rawRoot: string; displayRoot: string }> = [
-    { rawRoot: 'peeling', displayRoot: 'humanoid/peeling' },
-    { rawRoot: 'washingMachine', displayRoot: 'humanoid/washingMachine' },
-    { rawRoot: 'washingmachine', displayRoot: 'humanoid/washingMachine' },
+const DISPLAY_PATH_ALIASES: PathAlias[] = [
+    { displayPrefix: 'dexterity/peeling', backendPrefix: 'peeling' },
+    { displayPrefix: 'dexterity/washingMachine', backendPrefix: 'washingMachine' },
+    { displayPrefix: 'dexterity/washingMachine', backendPrefix: 'washingmachine' },
+    { displayPrefix: 'dexterity', backendPrefix: 'humanoid' },
 ];
+
+const LEGACY_SEARCH_PAGE_SEGMENT = 'searchAll';
+
+const CATEGORY_SHOWCASES: Record<CategoryKey, ShowcaseImageConfig[]> = {
+    carAutomation: [
+        {
+            previewBlobPath: 'carAutomation/carAutomation4.png',
+            targetFolderPath: 'carAutomation/BMW/frontGrille',
+            targetImageName: 'frontGrille_016_Rotate_right_90_degrees.png',
+            alt: 'BMW front grille rotation example',
+        },
+        {
+            previewBlobPath: 'carAutomation/carAutomation5.png',
+            targetFolderPath: 'carAutomation/BMW/frontGrille',
+            targetImageName: 'frontGrille_000_Rotate_right_45_degrees.png',
+            alt: 'BMW front grille angled example',
+        },
+        {
+            previewBlobPath: 'carAutomation/carAutomation6.png',
+            targetFolderPath: 'carAutomation/Porsche/frontSeat',
+            targetImageName: 'frontSeat_037_Rotate_left_45_degrees.png',
+            alt: 'Porsche front seat example',
+        },
+        {
+            previewBlobPath: 'carAutomation/carAutomation7.png',
+            targetFolderPath: 'carAutomation/bmw/rearBumper',
+            targetImageName: 'rearBumper_000_Rotate_left_90_degrees.png',
+            alt: 'BMW rear bumper example',
+        },
+    ],
+    serverrack: [
+        {
+            previewBlobPath: 'serverrack/serverrack4.png',
+            targetFolderPath: 'serverrack/Dell/dataRackInstall',
+            targetImageName: 'dataRackInstall_0000.png',
+            alt: 'Serverrack installation example',
+        },
+        {
+            previewBlobPath: 'serverrack/serverrack5.png',
+            targetFolderPath: 'serverrack/Gigabyte/datacenterRack2',
+            targetImageName: 'datacenterRack2_84.png',
+            alt: 'Datacenter rack example',
+        },
+        {
+            previewBlobPath: 'serverrack/serverrack6.png',
+            targetFolderPath: 'serverrack/AnalogDevices/ethernetCable',
+            targetImageName: 'ethernetCable_000.png',
+            alt: 'Ethernet cable example',
+        },
+        {
+            previewBlobPath: 'serverrack/serverrack7.png',
+            targetFolderPath: 'serverrack/NVIDIA/switchTray',
+            targetImageName: 'switchTray_000.png',
+            alt: 'Switch tray example',
+        },
+    ],
+    dexterity: [
+        {
+            previewBlobPath: 'humanoid/humanoid4.png',
+            targetFolderPath: 'humanoid/peeling/none',
+            targetImageName: 'peas_0123.png',
+            alt: 'Dexterity peeling example one',
+        },
+        {
+            previewBlobPath: 'humanoid/humanoid5.png',
+            targetFolderPath: 'humanoid/peeling/none',
+            targetImageName: 'peas_0344.png',
+            alt: 'Dexterity peeling example two',
+        },
+        {
+            previewBlobPath: 'humanoid/humanoid6.png',
+            targetFolderPath: 'humanoid/Awign/washingMachine',
+            targetImageName: 'washingMachine_0077.png',
+            alt: 'Dexterity washing machine example one',
+        },
+        {
+            previewBlobPath: 'humanoid/humanoid7.png',
+            targetFolderPath: 'humanoid/Awign/washingMachine',
+            targetImageName: 'washingMachine_0110.png',
+            alt: 'Dexterity washing machine example two',
+        },
+    ],
+    warehouse: [
+        {
+            previewBlobPath: 'warehouse/warehouse4.png',
+            targetFolderPath: 'warehouse/Symbotic/AVnavigation',
+            targetImageName: 'AVnavigation_000.png',
+            alt: 'Warehouse navigation example one',
+        },
+        {
+            previewBlobPath: 'warehouse/warehouse5.png',
+            targetFolderPath: 'warehouse/Symbotic/AVnavigation',
+            targetImageName: 'AVnavigation_044.png',
+            alt: 'Warehouse navigation example two',
+        },
+        {
+            previewBlobPath: 'warehouse/warehouse6.png',
+            targetFolderPath: 'warehouse/Symbotic/AVnavigation',
+            targetImageName: 'AVnavigation_071.png',
+            alt: 'Warehouse navigation example three',
+        },
+        {
+            previewBlobPath: 'warehouse/warehouse7.png',
+            targetFolderPath: 'warehouse/Symbotic/AVnavigation',
+            targetImageName: 'AVnavigation_095.png',
+            alt: 'Warehouse navigation example four',
+        },
+    ],
+};
 
 function normalizePathSearchValue(value: string) {
     return value
@@ -146,16 +271,18 @@ function replacePathPrefix(path: string, fromPrefix: string, toPrefix: string) {
 }
 
 function mapRawPathToDisplayPath(rawPath: string) {
-    for (const alias of HUMANOID_ROOT_ALIASES) {
-        const mapped = replacePathPrefix(rawPath, alias.rawRoot, alias.displayRoot);
+    const aliases = [...DISPLAY_PATH_ALIASES].sort((a, b) => b.backendPrefix.length - a.backendPrefix.length);
+    for (const alias of aliases) {
+        const mapped = replacePathPrefix(rawPath, alias.backendPrefix, alias.displayPrefix);
         if (mapped) return mapped;
     }
     return rawPath;
 }
 
 function resolveDisplayPathToBackendPath(displayPath: string) {
-    for (const alias of HUMANOID_ROOT_ALIASES) {
-        const mapped = replacePathPrefix(displayPath, alias.displayRoot, alias.rawRoot);
+    const aliases = [...DISPLAY_PATH_ALIASES].sort((a, b) => b.displayPrefix.length - a.displayPrefix.length);
+    for (const alias of aliases) {
+        const mapped = replacePathPrefix(displayPath, alias.displayPrefix, alias.backendPrefix);
         if (mapped) return mapped;
     }
     return displayPath;
@@ -164,7 +291,7 @@ function resolveDisplayPathToBackendPath(displayPath: string) {
 function normalizeFolderPathResults(payload: unknown): FolderItem[] {
     if (!Array.isArray(payload)) return [];
 
-    return payload
+    const normalized = payload
         .map((item) => {
             if (typeof item === 'string') {
                 const fullPath = item.trim().replace(/^\/+|\/+$/g, '');
@@ -192,7 +319,9 @@ function normalizeFolderPathResults(payload: unknown): FolderItem[] {
 
             return null;
         })
-        .filter((item): item is FolderItem => item !== null);
+        .filter(Boolean) as FolderItem[];
+
+    return normalized;
 }
 
 function mapFolderItemToDisplayPath(item: FolderItem): FolderItem {
@@ -214,15 +343,64 @@ function uniqueFolderItems(items: FolderItem[]) {
     });
 }
 
-function getVerticalByKey(value?: string | null) {
-    return VERTICALS.find((vertical) => vertical.key === value) ?? null;
+function getCategoryByRouteKey(value?: string | null) {
+    return CATEGORIES.find((category) => category.routeKey === value) ?? null;
 }
 
-function buildVerticalImagePaths(verticalKey: VerticalKey) {
-    return [0, 1, 2, 3].map((index) => `${verticalKey}/${verticalKey}${index === 0 ? '' : index}.png`);
+function buildCategoryHeroImagePaths(category: CategoryConfig) {
+    return [0, 1, 2, 3].map((index) => `${category.storageKey}/${category.storageKey}${index === 0 ? '' : index}.png`);
 }
 
-function VerticalGalleryImage({ blobPath, alt }: { blobPath: string; alt: string }) {
+function ShowcasePreviewImage({
+    blobPath,
+    alt,
+    onClick,
+}: {
+    blobPath: string;
+    alt: string;
+    onClick: () => void;
+}) {
+    const [failed, setFailed] = useState(false);
+
+    if (failed) {
+        return (
+            <button
+                type="button"
+                onClick={onClick}
+                className="group relative w-full aspect-[5/4] rounded-sm border border-border bg-background/70 flex items-center justify-center overflow-hidden transition-all duration-300 hover:border-primary hover:shadow-[0_0_0_2px_rgba(249,115,22,0.8)]"
+            >
+                <Database className="w-9 h-9 text-primary/60" />
+                <div className="absolute inset-x-0 bottom-0 px-3 py-2 bg-gradient-to-t from-background/95 to-transparent text-left">
+                    <span className="text-[11px] font-sans-tech uppercase tracking-[0.18em] text-primary">Open in viewer</span>
+                </div>
+            </button>
+        );
+    }
+
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className="group relative w-full aspect-[5/4] rounded-sm border border-border bg-background/70 overflow-hidden shadow-xl shadow-black/20 transition-all duration-300 hover:border-primary hover:shadow-[0_0_0_2px_rgba(249,115,22,0.85)] focus:outline-none focus:border-primary focus:shadow-[0_0_0_2px_rgba(249,115,22,0.85)]"
+        >
+            <img
+                src={blobProxyUrl(blobPath)}
+                alt={alt}
+                loading="lazy"
+                decoding="async"
+                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                onError={() => setFailed(true)}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-background/75 via-background/10 to-transparent opacity-80 transition-opacity group-hover:opacity-100" />
+            <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-3 px-3 py-3">
+                <span className="text-[11px] font-sans-tech uppercase tracking-[0.18em] text-primary">Open in viewer</span>
+                <ArrowRight className="w-4 h-4 text-primary transition-transform group-hover:translate-x-1" />
+            </div>
+        </button>
+    );
+}
+
+function CategoryHeroImage({ blobPath, alt }: { blobPath: string; alt: string }) {
     const [failed, setFailed] = useState(false);
 
     if (failed) {
@@ -247,7 +425,7 @@ function VerticalGalleryImage({ blobPath, alt }: { blobPath: string; alt: string
     );
 }
 
-function VerticalSearchPanel({
+function PathSearchPanel({
     title,
     description,
     value,
@@ -268,10 +446,10 @@ function VerticalSearchPanel({
     onFocus: () => void;
     onChange: (value: string) => void;
     onSuggestionClick: (fullPath: string) => void;
-    renderHighlightedPath: (fullPath: string) => JSX.Element;
+    renderHighlightedPath: (fullPath: string) => ReactNode;
 }) {
     return (
-        <div className="mt-10 border border-border bg-card/20 p-6 md:p-8 rounded-sm shadow-xl shadow-black/10">
+        <div className="border border-border bg-card/20 p-6 md:p-8 rounded-sm shadow-xl shadow-black/10">
             <div className="max-w-3xl">
                 <h3 className="text-2xl font-sans-tech font-bold text-foreground mb-2">{title}</h3>
                 <p className="text-sm text-muted-foreground font-sans-tech leading-relaxed">{description}</p>
@@ -329,7 +507,7 @@ export default function DataViewer() {
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const [filterText, setFilterText] = useState('');
     const [folderDropdownOpen, setFolderDropdownOpen] = useState<string | null>(null);
-    const [deleteModalFolder, setDeleteModalFolder] = useState<{ name: string; full_path: string } | null>(null);
+    const [deleteModalFolder, setDeleteModalFolder] = useState<FolderItem | null>(null);
     const [deleteInProgress, setDeleteInProgress] = useState(false);
     const [availableTags, setAvailableTags] = useState<string[]>([]);
     const [visibleTags, setVisibleTags] = useState(new Set<string>());
@@ -340,23 +518,29 @@ export default function DataViewer() {
     const [allFolderPaths, setAllFolderPaths] = useState<FolderItem[]>([]);
     const [pathSearchLoading, setPathSearchLoading] = useState(false);
     const [pathSearchTouched, setPathSearchTouched] = useState(false);
-    const [selectedVerticalRoute, setSelectedVerticalRoute] = useState('');
 
     const pathSegments = useMemo(() => location.pathname.split('/').filter(p => p && p !== 'viewer'), [location.pathname]);
     const currentDisplayPath = pathSegments.length > 0 ? pathSegments.join('/') : '';
     const currentBackendPath = useMemo(() => resolveDisplayPathToBackendPath(currentDisplayPath), [currentDisplayPath]);
-    const activeVertical = useMemo(() => getVerticalByKey(pathSegments[0]), [pathSegments]);
-    const isRootLanding = pathSegments.length === 0;
-    const isGlobalSearchPage = pathSegments.length === 1 && pathSegments[0] === SEARCH_ALL_VALUE;
-    const isVerticalLanding = !!activeVertical && pathSegments.length === 1;
-    const isLeaf = !isRootLanding && !isGlobalSearchPage && pathSegments.length >= 3;
-    const shouldFetchFolders = !isLeaf && !isRootLanding && !isGlobalSearchPage;
-    const supportsPathSearch = isRootLanding || isGlobalSearchPage || isVerticalLanding;
+    const activeCategory = useMemo(() => getCategoryByRouteKey(pathSegments[0]), [pathSegments]);
+    const imageQueryParam = useMemo(() => new URLSearchParams(location.search).get('image')?.trim() ?? '', [location.search]);
+
+    const isLegacySearchPage = pathSegments.length === 1 && pathSegments[0] === LEGACY_SEARCH_PAGE_SEGMENT;
+    const isRootLanding = pathSegments.length === 0 || isLegacySearchPage;
+    const isCategoryLanding = !!activeCategory && pathSegments.length === 1;
+    const isLeaf = !isRootLanding && pathSegments.length >= 3;
+    const shouldFetchFolders = !isLeaf && !isRootLanding;
+    const supportsPathSearch = isRootLanding || isCategoryLanding;
+
+    useEffect(() => {
+        if (isLegacySearchPage) {
+            navigate('/viewer', { replace: true });
+        }
+    }, [isLegacySearchPage, navigate]);
 
     useEffect(() => {
         setPathSearchText('');
         setPathSearchTouched(false);
-        setSelectedVerticalRoute('');
     }, [location.pathname]);
 
     const matchingTagSuggestions = useMemo(() => {
@@ -369,15 +553,15 @@ export default function DataViewer() {
     }, [availableTags, visibleTags, filterText]);
 
     const searchScopePaths = useMemo(() => {
-        if (isVerticalLanding && activeVertical) {
-            const prefix = `${activeVertical.key}/`;
-            return allFolderPaths.filter((item) => item.full_path === activeVertical.key || item.full_path.startsWith(prefix));
+        if (isCategoryLanding && activeCategory) {
+            const prefix = `${activeCategory.routeKey}/`;
+            return allFolderPaths.filter((item) => item.full_path === activeCategory.routeKey || item.full_path.startsWith(prefix));
         }
-        if (isRootLanding || isGlobalSearchPage) {
+        if (isRootLanding) {
             return allFolderPaths;
         }
         return [];
-    }, [allFolderPaths, activeVertical, isGlobalSearchPage, isRootLanding, isVerticalLanding]);
+    }, [allFolderPaths, activeCategory, isCategoryLanding, isRootLanding]);
 
     const pathSuggestions = useMemo(() => {
         const query = pathSearchText.trim();
@@ -410,7 +594,7 @@ export default function DataViewer() {
                         });
                         const runs = img.metadata?.vlm?.runs;
                         if (runs && typeof runs === 'object') {
-                            Object.entries(runs).forEach(([prompt, run]) => {
+                            Object.entries(runs as Record<string, VlmRun>).forEach(([prompt, run]) => {
                                 const runTags = Array.isArray(run?.tags) ? run.tags : [];
                                 if (!runTags.length) return;
                                 if (!promptGroups.has(prompt)) promptGroups.set(prompt, new Set<string>());
@@ -444,21 +628,22 @@ export default function DataViewer() {
                 const folderResponse = await axios.get<FolderItem[]>(`/api/datasets`, { params: { path: currentBackendPath } });
                 let nextFolders = folderResponse.data;
 
-                if (activeVertical?.key === 'humanoid' && pathSegments.length === 1) {
+                if (activeCategory?.routeKey === 'dexterity' && pathSegments.length === 1) {
                     const rootResponse = await axios.get<FolderItem[]>(`/api/datasets`, { params: { path: '' } });
-                    const humanoidExtras = rootResponse.data
-                        .filter((folder) => HUMANOID_ROOT_ALIASES.some((alias) => alias.rawRoot.toLowerCase() === folder.name.toLowerCase()))
+                    const dexterityExtras = rootResponse.data
+                        .filter((folder) => ['peeling', 'washingmachine', 'washingMachine'].includes(folder.name))
                         .map((folder) => ({
                             name: folder.name,
-                            full_path: `humanoid/${folder.name}`,
+                            full_path: folder.full_path,
                             source_path: folder.full_path,
                         }));
-                    nextFolders = uniqueFolderItems([...nextFolders, ...humanoidExtras]);
+                    nextFolders = uniqueFolderItems([...nextFolders, ...dexterityExtras]);
                 }
 
-                setFolders(nextFolders);
+                setFolders(uniqueFolderItems(nextFolders.map(mapFolderItemToDisplayPath)));
             } catch (err) {
                 console.error('Error fetching folders:', err);
+                setFolders([]);
             } finally {
                 setImages([]);
                 setVlmPromptGroups([]);
@@ -467,7 +652,7 @@ export default function DataViewer() {
         };
 
         loadFolders();
-    }, [location.pathname, isLeaf, shouldFetchFolders, currentBackendPath, activeVertical, pathSegments.length]);
+    }, [location.pathname, isLeaf, shouldFetchFolders, currentBackendPath, activeCategory, pathSegments.length]);
 
     useEffect(() => {
         if (!supportsPathSearch || !pathSearchTouched || allFolderPaths.length > 0) return;
@@ -481,6 +666,14 @@ export default function DataViewer() {
             .catch(err => console.error('Error fetching dataset paths:', err))
             .finally(() => setPathSearchLoading(false));
     }, [supportsPathSearch, pathSearchTouched, allFolderPaths.length]);
+
+    useEffect(() => {
+        if (!isLeaf || !imageQueryParam || images.length === 0) return;
+        const match = images.find((img) => img.name === imageQueryParam);
+        if (match) {
+            setSelectedImage(match);
+        }
+    }, [imageQueryParam, images, isLeaf]);
 
     const toggleTag = (tag: string) => {
         const newVisible = new Set(visibleTags);
@@ -502,8 +695,7 @@ export default function DataViewer() {
     };
 
     const handleFolderClick = (folder: FolderItem) => {
-        const nextPath = location.pathname.endsWith('/') ? `${location.pathname}${folder.name}` : `${location.pathname}/${folder.name}`;
-        navigate(nextPath);
+        navigate(`/viewer/${folder.full_path}`);
     };
 
     const handlePathSuggestionClick = (fullPath: string) => {
@@ -511,16 +703,24 @@ export default function DataViewer() {
         navigate(`/viewer/${fullPath}`);
     };
 
+    const handleShowcaseImageClick = (item: ShowcaseImageConfig) => {
+        const displayFolderPath = mapRawPathToDisplayPath(item.targetFolderPath);
+        const params = new URLSearchParams({ image: item.targetImageName });
+        navigate(`/viewer/${displayFolderPath}?${params.toString()}`);
+    };
+
     const handleDeleteFolder = async () => {
         if (!deleteModalFolder) return;
         setDeleteInProgress(true);
         try {
-            await axios.post('/api/delete_dataset', { path: resolveDisplayPathToBackendPath(deleteModalFolder.full_path) });
+            await axios.post('/api/delete_dataset', {
+                path: deleteModalFolder.source_path ?? resolveDisplayPathToBackendPath(deleteModalFolder.full_path),
+            });
             setDeleteModalFolder(null);
             setFolderDropdownOpen(null);
             const path = currentBackendPath ? `${currentBackendPath}/` : '';
             const res = await axios.get<FolderItem[]>('/api/datasets', { params: { path } });
-            setFolders(res.data);
+            setFolders(uniqueFolderItems(res.data.map(mapFolderItemToDisplayPath)));
         } catch (err: any) {
             alert(err?.response?.data?.error || err?.message || 'Delete failed');
         } finally {
@@ -577,18 +777,89 @@ export default function DataViewer() {
     );
 
     const itemCount = useMemo(() => {
-        if (isRootLanding) return VERTICALS.length;
-        if (isGlobalSearchPage) return allFolderPaths.length;
+        if (isRootLanding) return CATEGORIES.length;
         return isLeaf ? filteredImages.length : filteredFolders.length;
-    }, [allFolderPaths.length, filteredFolders.length, filteredImages.length, isGlobalSearchPage, isLeaf, isRootLanding]);
+    }, [filteredFolders.length, filteredImages.length, isLeaf, isRootLanding]);
 
     const scrollToSubdirectories = () => {
-        const section = document.getElementById('vertical-subdirectories');
+        const section = document.getElementById('category-subdirectories');
         if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
 
+    const renderFolderGrid = (items: FolderItem[], maxWidthClass: string) => (
+        <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 ${maxWidthClass} mx-auto`}>
+            {items.map((folder) => (
+                <div
+                    key={folder.full_path}
+                    onClick={() => handleFolderClick(folder)}
+                    className="group cursor-pointer relative p-8 bg-card/20 border border-border hover:border-primary/50 hover:bg-card/40 transition-all duration-300 overflow-visible"
+                >
+                    <div className="absolute top-3 right-3 z-20" onClick={(e) => e.stopPropagation()}>
+                        <button
+                            type="button"
+                            onClick={() => setFolderDropdownOpen(folderDropdownOpen === folder.full_path ? null : folder.full_path)}
+                            className="p-1.5 rounded-sm text-muted-foreground hover:text-foreground hover:bg-primary/10 transition-colors"
+                            aria-label="Folder options"
+                        >
+                            <MoreVertical className="w-5 h-5" />
+                        </button>
+                        {folderDropdownOpen === folder.full_path && (
+                            <>
+                                <div className="fixed inset-0 z-10" onClick={() => setFolderDropdownOpen(null)} aria-hidden />
+                                <div className="absolute right-0 mt-1 py-1 w-40 bg-card border border-border rounded-sm shadow-lg z-20">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setDeleteModalFolder(folder);
+                                            setFolderDropdownOpen(null);
+                                        }}
+                                        className="w-full px-3 py-2 text-left text-sm font-sans-tech text-destructive hover:bg-destructive/10 flex items-center gap-2"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                        Delete
+                                    </button>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                    <div className="absolute top-0 left-0 w-3 h-3 border-t border-l border-border group-hover:border-primary transition-colors"></div>
+                    <div className="absolute top-0 right-0 w-3 h-3 border-t border-r border-border group-hover:border-primary transition-colors"></div>
+                    <div className="absolute bottom-0 left-0 w-3 h-3 border-b border-l border-border group-hover:border-primary transition-colors"></div>
+                    <div className="absolute bottom-0 right-0 w-3 h-3 border-b border-r border-border group-hover:border-primary transition-colors"></div>
+                    <div className="flex flex-col items-center gap-6 relative z-10">
+                        <div className="w-full h-44 bg-background/50 rounded-sm border border-border group-hover:border-primary/30 group-hover:shadow-[0_0_15px_rgba(249,115,22,0.1)] transition-all overflow-hidden">
+                            <DatasetFolderCover
+                                key={folder.full_path}
+                                fullPath={folder.source_path ?? resolveDisplayPathToBackendPath(folder.full_path)}
+                                FallbackIcon={Folder}
+                                className="flex items-center justify-center w-full h-full"
+                                imgClassName="w-full h-full object-cover"
+                                iconClassName="w-16 h-16 text-muted-foreground group-hover:text-primary transition-colors"
+                            />
+                        </div>
+                        <span className="text-lg font-sans-tech font-bold text-foreground group-hover:text-primary transition-colors text-center break-words w-full uppercase tracking-wider">
+                            {folder.name}
+                        </span>
+                    </div>
+                </div>
+            ))}
+            {items.length === 0 && !loading && (
+                <div className="col-span-full flex flex-col items-center justify-center py-20 text-muted-foreground border border-dashed border-border bg-card/10 rounded-sm">
+                    <AlertCircle className="w-12 h-12 mb-4 text-muted-foreground/50" />
+                    <p className="text-lg font-sans-tech">No data found</p>
+                    <button
+                        onClick={() => setIsUploadModalOpen(true)}
+                        className="mt-6 text-primary hover:text-primary-glow font-sans-tech font-medium text-sm underline decoration-dotted underline-offset-4"
+                    >
+                        Upload Data
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+
     const renderRootLanding = () => (
-        <div className="px-8 py-14 md:py-20 max-w-6xl mx-auto w-full">
+        <div className="px-8 py-14 md:py-18 max-w-7xl mx-auto w-full">
             <div className="border border-border bg-gradient-to-br from-primary/10 via-card/40 to-background/80 p-8 md:p-12 rounded-sm shadow-2xl shadow-black/20">
                 <div className="max-w-3xl">
                     <div className="inline-flex items-center gap-2 border border-primary/30 bg-primary/10 px-3 py-1 rounded-sm text-xs font-sans-tech uppercase tracking-[0.24em] text-primary mb-6">
@@ -598,171 +869,147 @@ export default function DataViewer() {
                     <h1 className="text-4xl md:text-5xl font-sans-tech font-bold text-foreground tracking-tight mb-5">
                         RoboDataHub
                     </h1>
-                    <p className="text-muted-foreground font-sans-tech text-sm md:text-base leading-relaxed max-w-2xl">
-                        Explore robotics data through curated verticals, then move directly into the subdirectory structure that matters most for your workflow.
+                    <p className="text-muted-foreground font-sans-tech text-sm md:text-base leading-relaxed max-w-3xl">
+                        Search across the full data library for a quick shortcut, or browse featured categories below through presentation-ready examples that open directly in the viewer.
                     </p>
                 </div>
-                <div className="mt-8 flex flex-col md:flex-row gap-4 md:items-center">
-                    <div className="relative w-full md:max-w-sm">
-                        <select
-                            value={selectedVerticalRoute}
-                            onChange={(e) => {
-                                const value = e.target.value;
-                                setSelectedVerticalRoute(value);
-                                if (!value) return;
-                                navigate(value === SEARCH_ALL_VALUE ? '/viewer/searchAll' : `/viewer/${value}`);
-                            }}
-                            className="w-full h-12 rounded-sm border border-primary/40 bg-background/90 text-foreground pl-4 pr-11 font-sans-tech text-sm focus:outline-none focus:border-primary appearance-none"
-                        >
-                            <option value="">Choose a vertical</option>
-                            {VERTICALS.map((vertical) => (
-                                <option key={vertical.key} value={vertical.key}>{vertical.label}</option>
-                            ))}
-                            <option value={SEARCH_ALL_VALUE}>Search all data</option>
-                        </select>
-                        <ChevronDown className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-primary" />
-                    </div>
-                    <button
-                        type="button"
-                        onClick={() => navigate('/viewer/searchAll')}
-                        className="inline-flex items-center justify-center gap-2 h-12 px-5 rounded-sm border border-primary/30 bg-primary text-primary-foreground font-sans-tech text-sm font-medium hover:bg-primary-glow transition-colors"
-                    >
-                        Search all data
-                        <ArrowRight className="w-4 h-4" />
-                    </button>
+
+                <div className="mt-8">
+                    <PathSearchPanel
+                        title="Global search"
+                        description="Use search to jump straight to a folder path when you already know what you want. It is the fastest way to navigate the full RoboDataHub without clicking through multiple pages."
+                        value={pathSearchText}
+                        loading={pathSearchLoading}
+                        suggestions={pathSuggestions}
+                        placeholder="Search any folder or path, e.g. BMW or carAutomation/BMW/frontGrille"
+                        onFocus={() => setPathSearchTouched(true)}
+                        onChange={(value) => {
+                            setPathSearchTouched(true);
+                            setPathSearchText(value);
+                        }}
+                        onSuggestionClick={handlePathSuggestionClick}
+                        renderHighlightedPath={renderHighlightedPath}
+                    />
                 </div>
             </div>
 
-            <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-8">
-                {VERTICALS.map((vertical) => (
-                    <button
-                        key={vertical.key}
-                        type="button"
-                        onClick={() => navigate(`/viewer/${vertical.key}`)}
-                        className="group text-left border border-border bg-card/20 hover:bg-card/35 hover:border-primary/40 transition-all duration-300 p-6 rounded-sm shadow-lg shadow-black/10"
+            <div className="mt-10 flex flex-col gap-8">
+                {CATEGORIES.map((category) => (
+                    <section
+                        key={category.routeKey}
+                        className="border border-border bg-gradient-to-br from-card/25 via-background/80 to-primary/5 rounded-sm p-6 md:p-8 shadow-2xl shadow-black/10"
                     >
-                        <div className="w-full h-52 rounded-sm overflow-hidden border border-border bg-background/60 mb-6">
-                            <img
-                                src={blobProxyUrl(`${vertical.key}/${vertical.key}.png`)}
-                                alt={vertical.label}
-                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-                                onError={(e) => {
-                                    e.currentTarget.style.display = 'none';
-                                    const fallback = e.currentTarget.nextElementSibling as HTMLElement | null;
-                                    if (fallback) fallback.style.display = 'flex';
-                                }}
-                            />
-                            <div className="hidden w-full h-full items-center justify-center">
-                                <Database className="w-10 h-10 text-primary/60" />
+                        <div className="grid grid-cols-1 xl:grid-cols-[0.92fr_1.5fr] gap-8 xl:gap-10 items-center">
+                            <div>
+                                <div className="inline-flex items-center gap-2 border border-primary/20 bg-primary/10 px-3 py-1 rounded-sm text-[11px] font-sans-tech uppercase tracking-[0.22em] text-primary mb-5">
+                                    Featured category
+                                </div>
+                                <h2 className="text-3xl md:text-4xl font-sans-tech font-bold text-foreground tracking-tight mb-4">
+                                    {category.label}
+                                </h2>
+                                <p className="text-sm md:text-base text-foreground/90 font-sans-tech leading-relaxed max-w-xl mb-4">
+                                    {category.description}
+                                </p>
+                                <p className="text-sm text-muted-foreground font-sans-tech leading-relaxed max-w-xl">
+                                    {category.helperText}
+                                </p>
+                                <div className="mt-7">
+                                    <button
+                                        type="button"
+                                        onClick={() => navigate(`/viewer/${category.routeKey}`)}
+                                        className="inline-flex items-center gap-2 px-5 h-11 rounded-sm bg-primary text-primary-foreground font-sans-tech text-sm font-medium hover:bg-primary-glow transition-colors"
+                                    >
+                                        Enter category
+                                        <ArrowRight className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-4">
+                                {CATEGORY_SHOWCASES[category.routeKey].map((item) => (
+                                    <ShowcasePreviewImage
+                                        key={item.previewBlobPath}
+                                        blobPath={item.previewBlobPath}
+                                        alt={item.alt}
+                                        onClick={() => handleShowcaseImageClick(item)}
+                                    />
+                                ))}
                             </div>
                         </div>
-                        <div className="flex items-center justify-between gap-4 mb-3">
-                            <h2 className="text-2xl font-sans-tech font-bold text-foreground group-hover:text-primary transition-colors">
-                                {vertical.label}
-                            </h2>
-                            <ArrowRight className="w-5 h-5 text-primary transition-transform group-hover:translate-x-1" />
-                        </div>
-                        <p className="text-sm text-muted-foreground font-sans-tech leading-relaxed">
-                            {vertical.description}
-                        </p>
-                    </button>
+                    </section>
                 ))}
             </div>
         </div>
     );
 
-    const renderGlobalSearchPage = () => (
-        <div className="px-8 py-16 max-w-5xl mx-auto w-full">
-            <div className="border border-border bg-gradient-to-b from-primary/8 to-card/20 p-8 md:p-12 rounded-sm shadow-xl shadow-black/10">
-                <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center border border-primary/20 mb-6">
-                    <Search className="w-7 h-7 text-primary" />
-                </div>
-                <h1 className="text-4xl font-sans-tech font-bold text-foreground mb-4 tracking-tight">
-                    Search all data
-                </h1>
-                <p className="text-muted-foreground max-w-3xl font-sans-tech text-sm leading-relaxed">
-                    Search across every available folder path in RoboDataHub. Use this when you already know part of a folder name or want to navigate directly without choosing a vertical first.
-                </p>
-                <VerticalSearchPanel
-                    title="Global path search"
-                    description="Results here are not limited to one vertical. You can search the full dataset structure and jump directly into the exact path you need."
-                    value={pathSearchText}
-                    loading={pathSearchLoading}
-                    suggestions={pathSuggestions}
-                    placeholder="Search any folder or path, e.g. BMW or carAutomation/bmw/frontgrille"
-                    onFocus={() => setPathSearchTouched(true)}
-                    onChange={(value) => {
-                        setPathSearchTouched(true);
-                        setPathSearchText(value);
-                    }}
-                    onSuggestionClick={handlePathSuggestionClick}
-                    renderHighlightedPath={renderHighlightedPath}
-                />
-            </div>
-        </div>
-    );
-
-    const renderVerticalLanding = (vertical: VerticalConfig) => (
-        <div className="px-8 py-14 max-w-6xl mx-auto w-full">
-            <div className="grid grid-cols-1 xl:grid-cols-[1.05fr_1fr] gap-8 xl:gap-12 items-center border border-border bg-gradient-to-br from-card/30 via-background/70 to-primary/5 p-8 md:p-10 rounded-sm shadow-2xl shadow-black/10">
-                <div>
-                    <div className="inline-flex items-center gap-2 border border-primary/30 bg-primary/10 px-3 py-1 rounded-sm text-xs font-sans-tech uppercase tracking-[0.24em] text-primary mb-5">
-                        Vertical
+    const renderCategoryLanding = (category: CategoryConfig) => (
+        <div className="flex flex-col min-h-full">
+            <div className="px-8 py-14 max-w-6xl mx-auto w-full">
+                <div className="grid grid-cols-1 xl:grid-cols-[1.05fr_1fr] gap-8 xl:gap-12 items-center border border-border bg-gradient-to-br from-card/30 via-background/70 to-primary/5 p-8 md:p-10 rounded-sm shadow-2xl shadow-black/10">
+                    <div>
+                        <div className="inline-flex items-center gap-2 border border-primary/30 bg-primary/10 px-3 py-1 rounded-sm text-xs font-sans-tech uppercase tracking-[0.24em] text-primary mb-5">
+                            Category
+                        </div>
+                        <h1 className="text-4xl md:text-5xl font-sans-tech font-bold text-foreground tracking-tight mb-5">
+                            {category.label}
+                        </h1>
+                        <p className="text-base md:text-lg text-foreground/90 font-sans-tech leading-relaxed max-w-2xl mb-4">
+                            {category.description}
+                        </p>
+                        <p className="text-sm text-muted-foreground font-sans-tech leading-relaxed max-w-2xl">
+                            {category.helperText}
+                        </p>
+                        <div className="mt-8 flex flex-wrap gap-3">
+                            <button
+                                type="button"
+                                onClick={scrollToSubdirectories}
+                                className="inline-flex items-center gap-2 px-5 h-11 rounded-sm bg-primary text-primary-foreground font-sans-tech text-sm font-medium hover:bg-primary-glow transition-colors"
+                            >
+                                Enter category
+                                <ArrowRight className="w-4 h-4" />
+                            </button>
+                        </div>
                     </div>
-                    <h1 className="text-4xl md:text-5xl font-sans-tech font-bold text-foreground tracking-tight mb-5">
-                        {vertical.label}
-                    </h1>
-                    <p className="text-base md:text-lg text-foreground/90 font-sans-tech leading-relaxed max-w-2xl mb-4">
-                        {vertical.description}
-                    </p>
-                    <p className="text-sm text-muted-foreground font-sans-tech leading-relaxed max-w-2xl">
-                        {vertical.helperText}
-                    </p>
-                    <div className="mt-8 flex flex-wrap gap-3">
-                        <button
-                            type="button"
-                            onClick={scrollToSubdirectories}
-                            className="inline-flex items-center gap-2 px-5 h-11 rounded-sm bg-primary text-primary-foreground font-sans-tech text-sm font-medium hover:bg-primary-glow transition-colors"
-                        >
-                            Enter vertical
-                            <ArrowRight className="w-4 h-4" />
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => navigate('/viewer/searchAll')}
-                            className="inline-flex items-center gap-2 px-5 h-11 rounded-sm border border-primary/30 bg-background/60 text-foreground font-sans-tech text-sm font-medium hover:border-primary/50 hover:bg-card/30 transition-colors"
-                        >
-                            Search all data
-                        </button>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        {buildCategoryHeroImagePaths(category).map((blobPath, index) => (
+                            <CategoryHeroImage
+                                key={blobPath}
+                                blobPath={blobPath}
+                                alt={`${category.label} preview ${index + 1}`}
+                            />
+                        ))}
                     </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                    {buildVerticalImagePaths(vertical.key).map((blobPath, index) => (
-                        <VerticalGalleryImage
-                            key={blobPath}
-                            blobPath={blobPath}
-                            alt={`${vertical.label} preview ${index + 1}`}
-                        />
-                    ))}
+                <div className="mt-10">
+                    <PathSearchPanel
+                        title={category.searchTitle}
+                        description={category.searchDescription}
+                        value={pathSearchText}
+                        loading={pathSearchLoading}
+                        suggestions={pathSuggestions}
+                        placeholder={`Search ${category.routeKey} paths, e.g. ${category.routeKey}/bmw`}
+                        onFocus={() => setPathSearchTouched(true)}
+                        onChange={(value) => {
+                            setPathSearchTouched(true);
+                            setPathSearchText(value);
+                        }}
+                        onSuggestionClick={handlePathSuggestionClick}
+                        renderHighlightedPath={renderHighlightedPath}
+                    />
                 </div>
             </div>
 
-            <VerticalSearchPanel
-                title={vertical.searchTitle}
-                description={vertical.searchDescription}
-                value={pathSearchText}
-                loading={pathSearchLoading}
-                suggestions={pathSuggestions}
-                placeholder={`Search ${vertical.key} paths, e.g. ${vertical.key}/bmw`}
-                onFocus={() => setPathSearchTouched(true)}
-                onChange={(value) => {
-                    setPathSearchTouched(true);
-                    setPathSearchText(value);
-                }}
-                onSuggestionClick={handlePathSuggestionClick}
-                renderHighlightedPath={renderHighlightedPath}
-            />
+            <div className="px-8 pb-12" id="category-subdirectories">
+                <div className="flex items-center gap-2 mb-6 max-w-6xl mx-auto">
+                    <div className="w-1 h-4 bg-primary"></div>
+                    <h2 className="text-lg font-sans-tech font-bold text-muted-foreground uppercase tracking-widest">
+                        {category.label} Subdirectories
+                    </h2>
+                </div>
+                {renderFolderGrid(filteredFolders, 'max-w-6xl')}
+            </div>
         </div>
     );
 
@@ -804,6 +1051,7 @@ export default function DataViewer() {
                             vlmPromptGroups={vlmPromptGroups}
                         />
                     )}
+
                     <div className="flex-1 flex flex-col min-w-0 bg-background/50">
                         <div className="h-10 border-b border-border bg-card/10 flex items-center px-4 justify-between">
                             <div className="flex items-center space-x-4">
@@ -830,6 +1078,7 @@ export default function DataViewer() {
                                 </button>
                             )}
                         </div>
+
                         <div className="flex-1 overflow-y-auto relative p-0 custom-scrollbar bg-background/30">
                             {loading && (
                                 <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-20 backdrop-blur-sm">
@@ -842,92 +1091,9 @@ export default function DataViewer() {
 
                             {isRootLanding && renderRootLanding()}
 
-                            {isGlobalSearchPage && renderGlobalSearchPage()}
+                            {isCategoryLanding && activeCategory && renderCategoryLanding(activeCategory)}
 
-                            {isVerticalLanding && activeVertical && (
-                                <div className="flex flex-col min-h-full">
-                                    {renderVerticalLanding(activeVertical)}
-                                    <div className="px-8 pb-12" id="vertical-subdirectories">
-                                        <div className="flex items-center gap-2 mb-6 max-w-6xl mx-auto">
-                                            <div className="w-1 h-4 bg-primary"></div>
-                                            <h2 className="text-lg font-sans-tech font-bold text-muted-foreground uppercase tracking-widest">
-                                                {activeVertical.label} Subdirectories
-                                            </h2>
-                                        </div>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
-                                            {filteredFolders.map((folder) => (
-                                                <div
-                                                    key={folder.full_path}
-                                                    onClick={() => handleFolderClick(folder)}
-                                                    className="group cursor-pointer relative p-8 bg-card/20 border border-border hover:border-primary/50 hover:bg-card/40 transition-all duration-300 overflow-visible"
-                                                >
-                                                    <div className="absolute top-3 right-3 z-20" onClick={(e) => e.stopPropagation()}>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setFolderDropdownOpen(folderDropdownOpen === folder.full_path ? null : folder.full_path)}
-                                                            className="p-1.5 rounded-sm text-muted-foreground hover:text-foreground hover:bg-primary/10 transition-colors"
-                                                            aria-label="Folder options"
-                                                        >
-                                                            <MoreVertical className="w-5 h-5" />
-                                                        </button>
-                                                        {folderDropdownOpen === folder.full_path && (
-                                                            <>
-                                                                <div className="fixed inset-0 z-10" onClick={() => setFolderDropdownOpen(null)} aria-hidden />
-                                                                <div className="absolute right-0 mt-1 py-1 w-40 bg-card border border-border rounded-sm shadow-lg z-20">
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => {
-                                                                            setDeleteModalFolder({ name: folder.name, full_path: folder.full_path });
-                                                                            setFolderDropdownOpen(null);
-                                                                        }}
-                                                                        className="w-full px-3 py-2 text-left text-sm font-sans-tech text-destructive hover:bg-destructive/10 flex items-center gap-2"
-                                                                    >
-                                                                        <Trash2 className="w-4 h-4" />
-                                                                        Delete
-                                                                    </button>
-                                                                </div>
-                                                            </>
-                                                        )}
-                                                    </div>
-                                                    <div className="absolute top-0 left-0 w-3 h-3 border-t border-l border-border group-hover:border-primary transition-colors"></div>
-                                                    <div className="absolute top-0 right-0 w-3 h-3 border-t border-r border-border group-hover:border-primary transition-colors"></div>
-                                                    <div className="absolute bottom-0 left-0 w-3 h-3 border-b border-l border-border group-hover:border-primary transition-colors"></div>
-                                                    <div className="absolute bottom-0 right-0 w-3 h-3 border-b border-r border-border group-hover:border-primary transition-colors"></div>
-                                                    <div className="flex flex-col items-center gap-6 relative z-10">
-                                                        <div className="w-full h-44 bg-background/50 rounded-sm border border-border group-hover:border-primary/30 group-hover:shadow-[0_0_15px_rgba(249,115,22,0.1)] transition-all overflow-hidden">
-                                                            <DatasetFolderCover
-                                                                key={folder.full_path}
-                                                                fullPath={folder.source_path ?? folder.full_path}
-                                                                FallbackIcon={Folder}
-                                                                className="flex items-center justify-center w-full h-full"
-                                                                imgClassName="w-full h-full object-cover"
-                                                                iconClassName="w-16 h-16 text-muted-foreground group-hover:text-primary transition-colors"
-                                                            />
-                                                        </div>
-                                                        <span className="text-lg font-sans-tech font-bold text-foreground group-hover:text-primary transition-colors text-center break-words w-full uppercase tracking-wider">
-                                                            {folder.name}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                            {filteredFolders.length === 0 && !loading && (
-                                                <div className="col-span-full flex flex-col items-center justify-center py-20 text-muted-foreground border border-dashed border-border bg-card/10 rounded-sm">
-                                                    <AlertCircle className="w-12 h-12 mb-4 text-muted-foreground/50" />
-                                                    <p className="text-lg font-sans-tech">No data found</p>
-                                                    <button
-                                                        onClick={() => setIsUploadModalOpen(true)}
-                                                        className="mt-6 text-primary hover:text-primary-glow font-sans-tech font-medium text-sm underline decoration-dotted underline-offset-4"
-                                                    >
-                                                        Upload Data
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {!isRootLanding && !isGlobalSearchPage && !isVerticalLanding && !isLeaf && (
+                            {!isRootLanding && !isCategoryLanding && !isLeaf && (
                                 <div className="flex flex-col min-h-full">
                                     <div className="p-8">
                                         {pathSegments.length > 0 && (
@@ -938,75 +1104,7 @@ export default function DataViewer() {
                                                 </h2>
                                             </div>
                                         )}
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-5xl mx-auto">
-                                            {filteredFolders.map((folder) => (
-                                                <div
-                                                    key={folder.full_path}
-                                                    onClick={() => handleFolderClick(folder)}
-                                                    className="group cursor-pointer relative p-8 bg-card/20 border border-border hover:border-primary/50 hover:bg-card/40 transition-all duration-300 overflow-visible"
-                                                >
-                                                    <div className="absolute top-3 right-3 z-20" onClick={(e) => e.stopPropagation()}>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setFolderDropdownOpen(folderDropdownOpen === folder.full_path ? null : folder.full_path)}
-                                                            className="p-1.5 rounded-sm text-muted-foreground hover:text-foreground hover:bg-primary/10 transition-colors"
-                                                            aria-label="Folder options"
-                                                        >
-                                                            <MoreVertical className="w-5 h-5" />
-                                                        </button>
-                                                        {folderDropdownOpen === folder.full_path && (
-                                                            <>
-                                                                <div className="fixed inset-0 z-10" onClick={() => setFolderDropdownOpen(null)} aria-hidden />
-                                                                <div className="absolute right-0 mt-1 py-1 w-40 bg-card border border-border rounded-sm shadow-lg z-20">
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => {
-                                                                            setDeleteModalFolder({ name: folder.name, full_path: folder.full_path });
-                                                                            setFolderDropdownOpen(null);
-                                                                        }}
-                                                                        className="w-full px-3 py-2 text-left text-sm font-sans-tech text-destructive hover:bg-destructive/10 flex items-center gap-2"
-                                                                    >
-                                                                        <Trash2 className="w-4 h-4" />
-                                                                        Delete
-                                                                    </button>
-                                                                </div>
-                                                            </>
-                                                        )}
-                                                    </div>
-                                                    <div className="absolute top-0 left-0 w-3 h-3 border-t border-l border-border group-hover:border-primary transition-colors"></div>
-                                                    <div className="absolute top-0 right-0 w-3 h-3 border-t border-r border-border group-hover:border-primary transition-colors"></div>
-                                                    <div className="absolute bottom-0 left-0 w-3 h-3 border-b border-l border-border group-hover:border-primary transition-colors"></div>
-                                                    <div className="absolute bottom-0 right-0 w-3 h-3 border-b border-r border-border group-hover:border-primary transition-colors"></div>
-                                                    <div className="flex flex-col items-center gap-6 relative z-10">
-                                                        <div className="w-full h-44 bg-background/50 rounded-sm border border-border group-hover:border-primary/30 group-hover:shadow-[0_0_15px_rgba(249,115,22,0.1)] transition-all overflow-hidden">
-                                                            <DatasetFolderCover
-                                                                key={folder.full_path}
-                                                                fullPath={folder.source_path ?? folder.full_path}
-                                                                FallbackIcon={Folder}
-                                                                className="flex items-center justify-center w-full h-full"
-                                                                imgClassName="w-full h-full object-cover"
-                                                                iconClassName="w-16 h-16 text-muted-foreground group-hover:text-primary transition-colors"
-                                                            />
-                                                        </div>
-                                                        <span className="text-lg font-sans-tech font-bold text-foreground group-hover:text-primary transition-colors text-center break-words w-full uppercase tracking-wider">
-                                                            {folder.name}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                            {filteredFolders.length === 0 && !loading && (
-                                                <div className="col-span-full flex flex-col items-center justify-center py-20 text-muted-foreground border border-dashed border-border bg-card/10 rounded-sm">
-                                                    <AlertCircle className="w-12 h-12 mb-4 text-muted-foreground/50" />
-                                                    <p className="text-lg font-sans-tech">No data found</p>
-                                                    <button
-                                                        onClick={() => setIsUploadModalOpen(true)}
-                                                        className="mt-6 text-primary hover:text-primary-glow font-sans-tech font-medium text-sm underline decoration-dotted underline-offset-4"
-                                                    >
-                                                        Upload Data
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </div>
+                                        {renderFolderGrid(filteredFolders, 'max-w-5xl')}
                                     </div>
                                 </div>
                             )}
@@ -1017,6 +1115,7 @@ export default function DataViewer() {
                         </div>
                     </div>
                 </div>
+
                 {selectedImage && (
                     <ImageModal
                         image={selectedImage}
@@ -1031,7 +1130,9 @@ export default function DataViewer() {
                         }}
                     />
                 )}
+
                 <UploadModal isOpen={isUploadModalOpen} onClose={() => setIsUploadModalOpen(false)} onSuccess={() => { }} />
+
                 {deleteModalFolder && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
                         <div className="bg-card border border-border rounded-lg shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
