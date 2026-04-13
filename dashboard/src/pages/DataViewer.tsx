@@ -860,38 +860,34 @@ export default function DataViewer() {
 
     const renderRootLanding = () => (
         <div className="px-8 py-14 md:py-18 max-w-7xl mx-auto w-full">
-            <div className="border border-border bg-gradient-to-br from-primary/10 via-card/40 to-background/80 p-8 md:p-12 rounded-sm shadow-2xl shadow-black/20">
-                <div className="max-w-3xl">
-                    <div className="inline-flex items-center gap-2 border border-primary/30 bg-primary/10 px-3 py-1 rounded-sm text-xs font-sans-tech uppercase tracking-[0.24em] text-primary mb-6">
-                        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
-                        RoboDataHub
-                    </div>
-                    <h1 className="text-4xl md:text-5xl font-sans-tech font-bold text-foreground tracking-tight mb-5">
-                        RoboDataHub
-                    </h1>
-                    <p className="text-muted-foreground font-sans-tech text-sm md:text-base leading-relaxed max-w-3xl">
-                        Search across the full data library for a quick shortcut, or browse featured categories below through presentation-ready examples that open directly in the viewer.
-                    </p>
+            <div className="max-w-3xl mb-8">
+                <div className="inline-flex items-center gap-2 border border-primary/30 bg-primary/10 px-3 py-1 rounded-sm text-xs font-sans-tech uppercase tracking-[0.24em] text-primary mb-5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+                    RoboDataHub
                 </div>
-
-                <div className="mt-8">
-                    <PathSearchPanel
-                        title="Global search"
-                        description="Use search to jump straight to a folder path when you already know what you want. It is the fastest way to navigate the full RoboDataHub without clicking through multiple pages."
-                        value={pathSearchText}
-                        loading={pathSearchLoading}
-                        suggestions={pathSuggestions}
-                        placeholder="Search any folder or path, e.g. BMW or carAutomation/BMW/frontGrille"
-                        onFocus={() => setPathSearchTouched(true)}
-                        onChange={(value) => {
-                            setPathSearchTouched(true);
-                            setPathSearchText(value);
-                        }}
-                        onSuggestionClick={handlePathSuggestionClick}
-                        renderHighlightedPath={renderHighlightedPath}
-                    />
-                </div>
+                <h1 className="text-4xl md:text-5xl font-sans-tech font-bold text-foreground tracking-tight mb-4">
+                    RoboDataHub
+                </h1>
+                <p className="text-muted-foreground font-sans-tech text-sm md:text-base leading-relaxed max-w-3xl">
+                    Search across the full data library for a quick shortcut, or browse featured categories below through presentation-ready examples that open directly in the viewer.
+                </p>
             </div>
+
+            <PathSearchPanel
+                title="Global search"
+                description="Use search to jump straight to a folder path when you already know what you want. It is the fastest way to navigate the full RoboDataHub without clicking through multiple pages."
+                value={pathSearchText}
+                loading={pathSearchLoading}
+                suggestions={pathSuggestions}
+                placeholder="Search any folder or path, e.g. BMW or carAutomation/BMW/frontGrille"
+                onFocus={() => setPathSearchTouched(true)}
+                onChange={(value) => {
+                    setPathSearchTouched(true);
+                    setPathSearchText(value);
+                }}
+                onSuggestionClick={handlePathSuggestionClick}
+                renderHighlightedPath={renderHighlightedPath}
+            />
 
             <div className="mt-10 flex flex-col gap-8">
                 {CATEGORIES.map((category) => (
