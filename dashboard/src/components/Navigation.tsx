@@ -6,10 +6,9 @@ import { Link } from "react-router-dom";
 const roboDataHubItems = [
   { label: "RoboDataHub Home", href: "/viewer" },
   { label: "Car Automation", href: "/viewer/carAutomation" },
-  { label: "Humanoid", href: "/viewer/humanoid" },
   { label: "Serverrack", href: "/viewer/serverrack" },
+  { label: "Dexterity", href: "/viewer/dexterity" },
   { label: "Warehouse", href: "/viewer/warehouse" },
-  { label: "Search all data", href: "/viewer/searchAll" },
 ];
 
 const primaryNavItems = [
