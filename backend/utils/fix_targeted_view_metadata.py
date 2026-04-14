@@ -84,6 +84,20 @@ def is_folder_thumbnail_blob(dataset_name: str, blob_name: str) -> bool:
     return stem_norm in {folder_norm, "thumbnail", "folder", "cover"}
 
 
+def infer_view_from_blob_path(blob_name: str):
+    parts = [p for p in blob_name.split("/") if p]
+
+    if "corner_images_controlnet" in parts:
+        return None
+    if "egos" in parts:
+        return "egos"
+    if "orig" in parts:
+        return "exo"
+
+    # Default for plain dataset-root images with no explicit view folder
+    return "exo"
+
+
 def query_frame_docs_for_dataset(cosmos_container, dataset_name: str):
     query = """
     SELECT * FROM c
@@ -171,6 +185,10 @@ def main():
             if is_folder_thumbnail_blob(dataset_name, blob_name):
                 continue
 
+            target_view = infer_view_from_blob_path(blob_name)
+            if target_view is None:
+                continue
+
             existing_doc = existing_by_blob.get(blob_name)
 
             if existing_doc is None:
@@ -178,7 +196,7 @@ def main():
                     container_name=blob_container.container_name,
                     dataset_name=dataset_name,
                     blob_name=blob_name,
-                    view="exo",
+                    view=target_view,
                 )
                 serverrack_creates.append({
                     "dataset": dataset_name,
@@ -187,10 +205,10 @@ def main():
                 })
             else:
                 old_view = existing_doc.get("view")
-                if old_view != "exo":
+                if old_view != target_view:
                     before = copy.deepcopy(existing_doc)
                     after = copy.deepcopy(existing_doc)
-                    after["view"] = "exo"
+                    after["view"] = target_view
                     serverrack_updates.append({
                         "dataset": dataset_name,
                         "blobPath": blob_name,
@@ -200,7 +218,7 @@ def main():
 
     print("\nSummary")
     print(f"  Humanoid docs to update to egos: {len(humanoid_updates)}")
-    print(f"  Serverrack docs to update to exo: {len(serverrack_updates)}")
+    print(f"  Serverrack docs to update to inferred view: {len(serverrack_updates)}")
     print(f"  Serverrack docs to create: {len(serverrack_creates)}")
 
     if humanoid_updates:
@@ -211,12 +229,12 @@ def main():
     if serverrack_updates:
         print("\nServerrack updates")
         for item in serverrack_updates[:50]:
-            print(f"  UPDATE {item['blobPath']} -> exo")
+            print(f"  UPDATE {item['blobPath']} -> {item['after']['view']}")
 
     if serverrack_creates:
         print("\nServerrack creates")
         for item in serverrack_creates[:50]:
-            print(f"  CREATE {item['blobPath']} -> exo")
+            print(f"  CREATE {item['blobPath']} -> {item['doc']['view']}")
 
     if not args.write:
         print("\nDry run only. Nothing has been written.")
@@ -251,4 +269,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-PY
