@@ -14,6 +14,10 @@ const roboDataHubItems = [
 const primaryNavItems = [
   { label: "Home", href: "/" },
   { label: "Explore Datasets", href: "/explore" },
+];
+
+const secondaryNavItems = [
+  { label: "RoboEyeView", href: "/roboeyeview" },
   { label: "Platform", href: "/platform" },
   { label: "Documentation", href: "/docs" },
 ];
@@ -49,19 +53,15 @@ const Navigation = () => {
           </div>
 
           <div className="hidden md:flex items-center gap-8">
-            <Link
-              to="/"
-              className="text-muted-foreground hover:text-primary transition-colors duration-200 font-mono-tech text-sm tracking-wide uppercase"
-            >
-              Home
-            </Link>
-
-            <Link
-              to="/explore"
-              className="text-muted-foreground hover:text-primary transition-colors duration-200 font-mono-tech text-sm tracking-wide uppercase"
-            >
-              Explore Datasets
-            </Link>
+            {primaryNavItems.map((item) => (
+              <Link
+                key={item.label}
+                to={item.href}
+                className="text-muted-foreground hover:text-primary transition-colors duration-200 font-mono-tech text-sm tracking-wide uppercase"
+              >
+                {item.label}
+              </Link>
+            ))}
 
             <div className="relative" ref={dropdownRef}>
               <button
@@ -89,7 +89,7 @@ const Navigation = () => {
               )}
             </div>
 
-            {primaryNavItems.slice(2).map((item) => (
+            {secondaryNavItems.map((item) => (
               <Link
                 key={item.label}
                 to={item.href}
@@ -118,21 +118,16 @@ const Navigation = () => {
         {isMenuOpen && (
           <div className="md:hidden border-t border-border py-4 bg-background">
             <div className="flex flex-col gap-4">
-              <Link
-                to="/"
-                className="text-muted-foreground hover:text-primary transition-colors duration-200 font-mono-tech text-sm uppercase py-2"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Home
-              </Link>
-
-              <Link
-                to="/explore"
-                className="text-muted-foreground hover:text-primary transition-colors duration-200 font-mono-tech text-sm uppercase py-2"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Explore Datasets
-              </Link>
+              {primaryNavItems.map((item) => (
+                <Link
+                  key={item.label}
+                  to={item.href}
+                  className="text-muted-foreground hover:text-primary transition-colors duration-200 font-mono-tech text-sm uppercase py-2"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  {item.label}
+                </Link>
+              ))}
 
               <div className="border border-border rounded-sm overflow-hidden">
                 <button
@@ -162,7 +157,7 @@ const Navigation = () => {
                 )}
               </div>
 
-              {primaryNavItems.slice(2).map((item) => (
+              {secondaryNavItems.map((item) => (
                 <Link
                   key={item.label}
                   to={item.href}
