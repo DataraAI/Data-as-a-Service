@@ -297,7 +297,7 @@ export default function RoboEyeView() {
                 <div className="text-[11px] font-mono-tech uppercase tracking-[0.24em] text-primary">Step 03</div>
                 <h2 className="mt-3 text-xl font-bold font-sans-tech text-foreground">Present clean outputs</h2>
                 <p className="mt-2 text-sm text-muted-foreground font-sans-tech leading-relaxed">
-                  Show practical ego results that are easy to inspect and easy to explain in a demo.
+                  Show practical ego results that are easy to inspect and ready for usage.
                 </p>
               </div>
             </div>
