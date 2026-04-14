@@ -157,6 +157,9 @@ def register_routes(app: Flask) -> None:
 
         date_val = request.form.get("date", "")
         task = request.form.get("task", "")
+        view = (request.form.get("view", "exo") or "exo").strip().lower()
+        if view not in {"exo", "egos"}:
+            return jsonify({"error": "view must be exo or egos"}), 400
         try:
             tags = json.loads(request.form.get("tags") or "[]")
             if not isinstance(tags, list):
@@ -170,6 +173,7 @@ def register_routes(app: Flask) -> None:
             "tags": tags,
             "task": task,
             "upload_type": upload_type,
+            "view": view,
         }
 
         ts = int(datetime.now(timezone.utc).timestamp())
