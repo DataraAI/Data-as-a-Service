@@ -17,6 +17,17 @@ const VLM_PRESET_OPTIONS = [
     { value: 'sensor_modalities', label: 'What are the sensor modalities detected?' },
 ];
 
+/** Exocentric / orig frames: valid source for ego generation. Cosmos may omit `view` when metadata is missing. */
+function isExoSourceImage(image: any): boolean {
+    if (!image || image.type === '3d') return false;
+    const blobId = typeof image.id === 'string' ? image.id : '';
+    if (blobId.includes('/egos/')) return false;
+    if (image.metadata?.view === 'exo') return true;
+    if (blobId.includes('/orig/')) return true;
+    if (Array.isArray(image.tags) && image.tags.includes('exocentric')) return true;
+    return false;
+}
+
 export function ImageModal({ image, onClose, onNext, onPrev, onEgoGenSuccess, onCornerCaseSuccess }: ImageModalProps) {
     if (!image) return null;
 
@@ -232,14 +243,14 @@ export function ImageModal({ image, onClose, onNext, onPrev, onEgoGenSuccess, on
                             </form>
                         </div>
                     ) : null}
-                    {image.metadata?.view === 'exo' ? (
+                    {isExoSourceImage(image) ? (
                         <div>
                             <div className="flex items-center mb-3"><label className="text-xs font-bold text-muted-foreground uppercase tracking-widest font-sans-tech">Egocentric generation</label></div>
                             <form onSubmit={generateEgoView} className="space-y-5">
                                 <div className="bg-background/50 rounded-sm border border-border divide-y divide-border text-[11px] font-sans-tech">
-                                    <div className="flex justify-between p-3">
-                                        <span className="text-muted-foreground font-medium">New camera view</span>
-                                        <select id="cameraWork" name="cameraWork" value={selectedCameraWork} onChange={(e) => setSelectedCameraWork(e.target.value)}>
+                                    <div className="flex justify-between p-3 gap-3">
+                                        <span className="text-muted-foreground font-medium shrink-0">New camera view</span>
+                                        <select id="cameraWork" name="cameraWork" value={selectedCameraWork} onChange={(e) => setSelectedCameraWork(e.target.value)} className="max-w-[min(100%,14rem)] text-foreground bg-background border border-border rounded-sm px-2 py-1 text-[11px] font-sans-tech">
                                             <option value="Rotate right 45 degrees">Rotate right 45 degrees</option>
                                             <option value="Rotate right 90 degrees">Rotate right 90 degrees</option>
                                             <option value="Rotate left 45 degrees">Rotate left 45 degrees</option>
