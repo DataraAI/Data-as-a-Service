@@ -61,24 +61,7 @@ const SHOWCASE_VERTICALS: ShowcaseVertical[] = [
   },
 ];
 
-const OUTPUT_LAYOUTS = [
-  {
-    wrapperClassName: "md:col-span-7",
-    aspectClassName: "aspect-[4/3] md:aspect-[4/4.8]",
-  },
-  {
-    wrapperClassName: "md:col-span-5",
-    aspectClassName: "aspect-[16/10] md:aspect-[5/4]",
-  },
-  {
-    wrapperClassName: "md:col-span-5",
-    aspectClassName: "aspect-[4/3] md:aspect-[4/3.8]",
-  },
-  {
-    wrapperClassName: "md:col-span-7",
-    aspectClassName: "aspect-[16/10] md:aspect-[16/11]",
-  },
-];
+type ThreeImageVariant = "feature-left" | "feature-right" | "banner-top";
 
 function buildInputImage(vertical: ShowcaseVertical): ShowcaseImage {
   return {
@@ -109,22 +92,9 @@ function layoutSeed(value: string): number {
   return value.split("").reduce((total, character) => total + character.charCodeAt(0), 0);
 }
 
-function getOutputLayout(verticalId: string, index: number, total: number) {
-  if (total === 1) {
-    return {
-      wrapperClassName: "md:col-span-12",
-      aspectClassName: "aspect-[16/10] md:aspect-[16/8]",
-    };
-  }
-
-  if (total % 2 === 1 && index === total - 1) {
-    return {
-      wrapperClassName: "md:col-span-12",
-      aspectClassName: "aspect-[16/10] md:aspect-[16/7.8]",
-    };
-  }
-
-  return OUTPUT_LAYOUTS[(layoutSeed(verticalId) + index) % OUTPUT_LAYOUTS.length];
+function getThreeImageVariant(verticalId: string): ThreeImageVariant {
+  const variants: ThreeImageVariant[] = ["feature-left", "feature-right", "banner-top"];
+  return variants[layoutSeed(verticalId) % variants.length];
 }
 
 function probeImage(path: string): Promise<boolean> {
@@ -186,6 +156,144 @@ function ShowcaseImageCard({
         )}
       </div>
     </button>
+  );
+}
+
+function ShowcaseOutputGallery({
+  verticalId,
+  outputs,
+  onSelect,
+}: {
+  verticalId: string;
+  outputs: ShowcaseImage[];
+  onSelect: (image: ShowcaseImage) => void;
+}) {
+  if (outputs.length === 1) {
+    return (
+      <div className="grid gap-4">
+        <ShowcaseImageCard
+          image={outputs[0]}
+          aspectClassName="aspect-[4/3] md:aspect-[16/8.5]"
+          onClick={() => onSelect(outputs[0])}
+        />
+      </div>
+    );
+  }
+
+  if (outputs.length === 2) {
+    return (
+      <div className="grid gap-4 md:h-[28rem] md:grid-cols-2">
+        {outputs.map((output) => (
+          <div key={output.path}>
+            <ShowcaseImageCard
+              image={output}
+              aspectClassName="aspect-[4/3] md:h-full"
+              onClick={() => onSelect(output)}
+            />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (outputs.length === 3) {
+    const variant = getThreeImageVariant(verticalId);
+
+    if (variant === "feature-left") {
+      return (
+        <div className="grid gap-4 md:h-[32rem] md:grid-cols-12 md:grid-rows-2">
+          <div className="md:col-span-7 md:row-span-2">
+            <ShowcaseImageCard
+              image={outputs[0]}
+              aspectClassName="aspect-[4/3] md:h-full"
+              onClick={() => onSelect(outputs[0])}
+            />
+          </div>
+          <div className="md:col-span-5">
+            <ShowcaseImageCard
+              image={outputs[1]}
+              aspectClassName="aspect-[4/3] md:h-full"
+              onClick={() => onSelect(outputs[1])}
+            />
+          </div>
+          <div className="md:col-span-5">
+            <ShowcaseImageCard
+              image={outputs[2]}
+              aspectClassName="aspect-[4/3] md:h-full"
+              onClick={() => onSelect(outputs[2])}
+            />
+          </div>
+        </div>
+      );
+    }
+
+    if (variant === "feature-right") {
+      return (
+        <div className="grid gap-4 md:h-[32rem] md:grid-cols-12 md:grid-rows-2">
+          <div className="md:col-span-5">
+            <ShowcaseImageCard
+              image={outputs[0]}
+              aspectClassName="aspect-[4/3] md:h-full"
+              onClick={() => onSelect(outputs[0])}
+            />
+          </div>
+          <div className="md:col-span-5 md:row-start-2">
+            <ShowcaseImageCard
+              image={outputs[1]}
+              aspectClassName="aspect-[4/3] md:h-full"
+              onClick={() => onSelect(outputs[1])}
+            />
+          </div>
+          <div className="md:col-span-7 md:col-start-6 md:row-span-2 md:row-start-1">
+            <ShowcaseImageCard
+              image={outputs[2]}
+              aspectClassName="aspect-[4/3] md:h-full"
+              onClick={() => onSelect(outputs[2])}
+            />
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="grid gap-4 md:h-[32rem] md:grid-cols-2 md:grid-rows-2">
+        <div className="md:col-span-2">
+          <ShowcaseImageCard
+            image={outputs[0]}
+            aspectClassName="aspect-[4/3] md:h-full"
+            onClick={() => onSelect(outputs[0])}
+          />
+        </div>
+        <div>
+          <ShowcaseImageCard
+            image={outputs[1]}
+            aspectClassName="aspect-[4/3] md:h-full"
+            onClick={() => onSelect(outputs[1])}
+          />
+        </div>
+        <div>
+          <ShowcaseImageCard
+            image={outputs[2]}
+            aspectClassName="aspect-[4/3] md:h-full"
+            onClick={() => onSelect(outputs[2])}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {outputs.map((output) => (
+        <div key={output.path}>
+          <ShowcaseImageCard
+            image={output}
+            aspectClassName="aspect-[4/3]"
+            onClick={() => onSelect(output)}
+          />
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -323,63 +431,6 @@ export default function RoboEyeView() {
                 </a>
               ))}
             </div>
-
-            <div className="mt-10 grid gap-4 md:grid-cols-3">
-              <div className="rounded-sm border border-border bg-card/20 p-5">
-                <div className="text-[11px] font-mono-tech uppercase tracking-[0.24em] text-primary">
-                  Step 01
-                </div>
-                <h2 className="mt-3 font-sans-tech text-xl font-bold text-foreground">
-                  Capture the exocentric scene
-                </h2>
-                <p className="mt-2 font-sans-tech text-sm leading-relaxed text-muted-foreground">
-                  Start with a real-world external view from the environment.
-                </p>
-              </div>
-              <div className="rounded-sm border border-border bg-card/20 p-5">
-                <div className="text-[11px] font-mono-tech uppercase tracking-[0.24em] text-primary">
-                  Step 02
-                </div>
-                <h2 className="mt-3 font-sans-tech text-xl font-bold text-foreground">
-                  Apply RoboEyeView
-                </h2>
-                <p className="mt-2 font-sans-tech text-sm leading-relaxed text-muted-foreground">
-                  Use the source image to generate a robot-eye perspective of your choosing.
-                </p>
-              </div>
-              <div className="rounded-sm border border-border bg-card/20 p-5">
-                <div className="text-[11px] font-mono-tech uppercase tracking-[0.24em] text-primary">
-                  Step 03
-                </div>
-                <h2 className="mt-3 font-sans-tech text-xl font-bold text-foreground">
-                  Inspect larger outputs
-                </h2>
-                <p className="mt-2 font-sans-tech text-sm leading-relaxed text-muted-foreground">
-                  Browse larger preview cards, then click any image to expand it.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="px-6 py-8 md:py-10">
-          <div className="mx-auto max-w-7xl rounded-sm border border-primary/20 bg-gradient-to-r from-primary/10 via-card/20 to-background/40 p-5 md:p-6">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div>
-                <div className="text-[11px] font-mono-tech uppercase tracking-[0.24em] text-primary">
-                  What this page shows
-                </div>
-                <p className="mt-2 font-sans-tech text-sm text-foreground/90 md:text-base">
-                  One exocentric image on the left. Multiple RoboEyeView ego outputs on the right.
-                </p>
-              </div>
-
-              <div className="inline-flex items-center gap-3 rounded-full border border-primary/25 bg-background/70 px-4 py-2 font-mono-tech text-sm uppercase tracking-wide text-primary">
-                <span>Exo</span>
-                <ArrowRight className="h-4 w-4" />
-                <span>Ego</span>
-              </div>
-            </div>
           </div>
         </section>
 
@@ -441,21 +492,11 @@ export default function RoboEyeView() {
                       </span>
                     </div>
 
-                    <div className="grid gap-4 md:grid-cols-12">
-                      {vertical.outputs.map((output, index) => {
-                        const layout = getOutputLayout(vertical.id, index, vertical.outputs.length);
-
-                        return (
-                          <div key={output.path} className={layout.wrapperClassName}>
-                            <ShowcaseImageCard
-                              image={output}
-                              aspectClassName={layout.aspectClassName}
-                              onClick={() => setSelectedImage(output)}
-                            />
-                          </div>
-                        );
-                      })}
-                    </div>
+                    <ShowcaseOutputGallery
+                      verticalId={vertical.id}
+                      outputs={vertical.outputs}
+                      onSelect={setSelectedImage}
+                    />
                   </div>
                 </div>
               </div>
