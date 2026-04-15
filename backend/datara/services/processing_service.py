@@ -44,7 +44,13 @@ class ProcessingService:
         gdrive_link = data.get("gdrive_link")
         output_name = data.get("output_name")
         upload_type = data.get("upload_type", "video")
+        view = str(data.get("view", "exo") or "exo").strip().lower()
         task = str(data.get("task", "") or "").strip()
+
+        if view not in {"exo", "egos"}:
+            raise ValueError("view must be 'exo' or 'egos'")
+        if upload_type == "video" and view != "exo":
+            raise ValueError("Video uploads currently support exo only")
 
         has_local = bool(local_video_path or local_image_dir)
         if local_video_path and local_image_dir:
@@ -73,6 +79,7 @@ class ProcessingService:
 
         date_val = data.get("date")
         misc_tags = data.get("tags", [])
+        target_view_dir = "orig" if view == "exo" else "egos"
 
         ts = int(datetime.now().timestamp())
         dataset_basename = os.path.basename(output_name) if output_name else f"dataset_{ts}"
@@ -81,16 +88,25 @@ class ProcessingService:
         try:
             if os.path.exists(local_process_dir):
                 shutil.rmtree(local_process_dir)
-            os.makedirs(os.path.join(local_process_dir, "orig"), exist_ok=True)
+            os.makedirs(os.path.join(local_process_dir, target_view_dir), exist_ok=True)
 
             if local_video_path:
                 self._ingest_video_path(local_video_path, local_process_dir, dataset_basename)
             elif local_image_dir:
                 self._ingest_image_directory(
-                    local_image_dir, local_process_dir, dataset_basename, recursive=False
+                    local_image_dir,
+                    local_process_dir,
+                    dataset_basename,
+                    target_view_dir=target_view_dir,
+                    recursive=False,
                 )
             elif upload_type == "folder":
-                self._process_folder(gdrive_link, local_process_dir, dataset_basename)
+                self._process_folder(
+                    gdrive_link,
+                    local_process_dir,
+                    dataset_basename,
+                    target_view_dir=target_view_dir,
+                )
             else:
                 self._process_video_file(gdrive_link, local_process_dir, dataset_basename, ts)
 
@@ -101,6 +117,7 @@ class ProcessingService:
                 misc_tags=misc_tags,
                 task=task,
                 create_video_annotation=(upload_type == "video"),
+                upload_view=view,
             )
 
             if os.path.exists(local_process_dir):
@@ -121,6 +138,7 @@ class ProcessingService:
         local_process_dir: str,
         dataset_basename: str,
         *,
+        target_view_dir: str = "orig",
         recursive: bool = True,
     ) -> None:
         valid_exts = (".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".webp")
@@ -150,13 +168,13 @@ class ProcessingService:
         for img_path in image_files:
             ext = os.path.splitext(img_path)[1].lower()
             new_filename = f"{dataset_basename}_{count:0{pad_width}d}{ext}"
-            dest_path = os.path.join(local_process_dir, "orig", new_filename)
+            dest_path = os.path.join(local_process_dir, target_view_dir, new_filename)
             shutil.copy2(img_path, dest_path)
             count += 1
 
         logger.info(f"Processed {count} images from folder")
 
-    def _process_folder(self, gdrive_link: str, local_process_dir: str, dataset_basename: str) -> None:
+    def _process_folder(self, gdrive_link: str, local_process_dir: str, dataset_basename: str, target_view_dir: str) -> None:
         ts = int(datetime.now().timestamp())
         temp_download_dir = os.path.join(self.upload_folder, f"temp_folder_{ts}")
         os.makedirs(temp_download_dir, exist_ok=True)
@@ -173,7 +191,12 @@ class ProcessingService:
             if not downloaded:
                 raise ValueError("Folder download failed or link invalid")
 
-            self._ingest_image_directory(temp_download_dir, local_process_dir, dataset_basename)
+            self._ingest_image_directory(
+                temp_download_dir,
+                local_process_dir,
+                dataset_basename,
+                target_view_dir=target_view_dir,
+            )
 
         finally:
             if os.path.exists(temp_download_dir):
@@ -243,8 +266,11 @@ class ProcessingService:
         misc_tags: list,
         task: str = "",
         create_video_annotation: bool = False,
+        upload_view: str = "exo",
     ) -> None:
         logger.info(f"Uploading to Azure: {output_name}")
+
+        azure_view = "orig" if upload_view == "exo" else "egos"
 
         cmd = [
             sys.executable,
@@ -256,7 +282,7 @@ class ProcessingService:
             "--input_dir",
             local_process_dir,
             "--view",
-            "orig",
+            azure_view,
             "--date",
             date_val or "",
             "--tags",
