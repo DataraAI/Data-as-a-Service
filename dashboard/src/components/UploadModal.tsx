@@ -23,6 +23,7 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
     const [brandName, setBrandName] = useState("");
     const [datasetName, setDatasetName] = useState("");
     const [uploadType, setUploadType] = useState<'video' | 'folder'>('video');
+    const [viewMode, setViewMode] = useState<'exo' | 'egos'>('exo');
     const [isUploading, setIsUploading] = useState(false);
     const [tags, setTags] = useState<string[]>([]);
     const [currentTag, setCurrentTag] = useState("");
@@ -89,6 +90,7 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
         setTask("");
         setUploadType('video');
         setSource('gdrive');
+        setViewMode('exo');
         clearLocalFiles();
     };
 
@@ -133,6 +135,7 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
                     date,
                     tags,
                     task: task.trim(),
+                    view: viewMode,
                 };
                 const response = await fetch("/api/process_video", {
                     method: "POST",
@@ -160,6 +163,7 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
                 fd.append("date", date);
                 fd.append("tags", JSON.stringify(tags));
                 fd.append("task", task.trim());
+                fd.append("view", viewMode);
                 if (uploadType === 'video') {
                     fd.append("file", localVideoFile!);
                 } else {
@@ -296,6 +300,30 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
                     <div className="space-y-2">
                         <label className="text-xs font-bold text-muted-foreground font-sans-tech">Task Context</label>
                         <input type="text" value={task} onChange={(e) => setTask(e.target.value)} placeholder="e.g. front grille for the car. Leave blank to auto-generate from the dataset name." className="w-full bg-input border border-border rounded-sm px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary font-sans-tech" />
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold text-muted-foreground font-sans-tech">View Type</label>
+                        <div className="flex gap-4 rounded-sm border border-border bg-input px-3 py-3">
+                            <label className="flex items-center gap-2 text-sm cursor-pointer">
+                                <input
+                                    type="radio"
+                                    value="exo"
+                                    checked={viewMode === 'exo'}
+                                    onChange={() => setViewMode('exo')}
+                                />
+                                Exocentric
+                            </label>
+
+                            <label className="flex items-center gap-2 text-sm cursor-pointer">
+                                <input
+                                    type="radio"
+                                    value="egos"
+                                    checked={viewMode === 'egos'}
+                                    onChange={() => setViewMode('egos')}
+                                />
+                                Egocentric
+                            </label>
+                        </div>
                     </div>
                     <div className="space-y-2">
                         <label className="text-xs font-bold text-muted-foreground font-sans-tech">Metadata Tags</label>
