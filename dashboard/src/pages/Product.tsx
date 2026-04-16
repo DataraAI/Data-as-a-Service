@@ -1,9 +1,6 @@
 import FooterSection from "@/components/FooterSection";
 import Navigation from "@/components/Navigation";
-import automotiveImage from "@/assets/product/automotive.png";
-import datacenterImage from "@/assets/product/datacenter.png";
-import manipulationImage from "@/assets/product/manipulation.png";
-import warehouseImage from "@/assets/product/warehouse.png";
+import { blobProxyUrl } from "@/lib/datasetFolderCover";
 import {
   Boxes,
   Database,
@@ -16,7 +13,7 @@ import {
 import { useEffect, useState } from "react";
 
 type GalleryItem = {
-  image: string;
+  blobPath: string;
   alt: string;
   label: string;
 };
@@ -39,22 +36,22 @@ type ProductSection = {
 
 const productGallery = {
   automotive: {
-    image: automotiveImage,
+    blobPath: "carAutomation/automotive.png",
     alt: "Automotive production line dataset",
     label: "Automotive",
   },
   datacenter: {
-    image: datacenterImage,
+    blobPath: "serverrack/datacenter.png",
     alt: "Data center rack and cable handling dataset",
     label: "Data Center",
   },
   manipulation: {
-    image: manipulationImage,
+    blobPath: "humanoid/manipulation.png",
     alt: "Hand motion and dexterous manipulation dataset",
     label: "Manipulation",
   },
   warehouse: {
-    image: warehouseImage,
+    blobPath: "warehouse/warehouse.png",
     alt: "Warehouse logistics dataset",
     label: "Warehouse",
   },
@@ -63,15 +60,18 @@ const productGallery = {
 const heroHighlights = [
   {
     label: "Real-world first",
-    description: "Training signals built from production environments instead of synthetic-only shortcuts.",
+    description:
+      "Training signals built from production environments instead of synthetic-only shortcuts.",
   },
   {
     label: "Deployment aligned",
-    description: "Organized around the workflows that matter in warehouses, factories, and data centers.",
+    description:
+      "Organized around the workflows that matter in warehouses, factories, and data centers.",
   },
   {
     label: "Integrated stack",
-    description: "Data, view transformation, dexterous motion, and task structure connected in one product story.",
+    description:
+      "Data, view transformation, dexterous motion, and task structure connected in one product story.",
   },
 ];
 
@@ -81,20 +81,24 @@ const productSections: ProductSection[] = [
     step: "1",
     title: "RoboDataHub",
     subtitle: "Large-scale industrial datasets for Physical AI.",
-    summary: "A structured data foundation spanning automotive, warehouse, server-rack, and dexterous manipulation workflows.",
+    summary:
+      "A structured data foundation spanning automotive, warehouse, server-rack, and dexterous manipulation workflows.",
     icon: Database,
     highlights: [
       {
         title: "Real environments",
-        description: "Capture production-floor conditions, edge cases, and operational variance without rebuilding collection from scratch.",
+        description:
+          "Capture production-floor conditions, edge cases, and operational variance without rebuilding collection from scratch.",
       },
       {
         title: "Faster readiness",
-        description: "Shorten the path from raw footage to training-ready assets for perception and control teams.",
+        description:
+          "Shorten the path from raw footage to training-ready assets for perception and control teams.",
       },
       {
         title: "Cross-industry coverage",
-        description: "Unify high-value scenarios across logistics, data infrastructure, factory tasks, and fine manipulation.",
+        description:
+          "Unify high-value scenarios across logistics, data infrastructure, factory tasks, and fine manipulation.",
       },
     ],
     gallery: [
@@ -109,20 +113,24 @@ const productSections: ProductSection[] = [
     step: "2",
     title: "RoboEyeView",
     subtitle: "Transforms standard video into robot-eye-view training data.",
-    summary: "Turn external viewpoints into action-relevant ego perspectives without changing the surrounding industrial workflow.",
+    summary:
+      "Turn external viewpoints into action-relevant ego perspectives without changing the surrounding industrial workflow.",
     icon: Eye,
     highlights: [
       {
         title: "Robot-centric view",
-        description: "Translate existing camera feeds into the viewpoints models need for planning and low-level action understanding.",
+        description:
+          "Translate existing camera feeds into the viewpoints models need for planning and low-level action understanding.",
       },
       {
         title: "Physics-aware context",
-        description: "Preserve occlusion, geometry, contact, and motion cues that are easy to lose in generic video pipelines.",
+        description:
+          "Preserve occlusion, geometry, contact, and motion cues that are easy to lose in generic video pipelines.",
       },
       {
         title: "Deployment fit",
-        description: "Improve perception quality for real industrial tasks without rebuilding the entire sensing stack.",
+        description:
+          "Improve perception quality for real industrial tasks without rebuilding the entire sensing stack.",
       },
     ],
     gallery: [
@@ -137,20 +145,24 @@ const productSections: ProductSection[] = [
     step: "3",
     title: "RoboHandMotion",
     subtitle: "Fine-grained interaction data for hands, tools, and objects.",
-    summary: "Detailed dexterity signals built for manipulation-heavy tasks where precision matters more than generic movement labels.",
+    summary:
+      "Detailed dexterity signals built for manipulation-heavy tasks where precision matters more than generic movement labels.",
     icon: Hand,
     highlights: [
       {
         title: "Dexterity signals",
-        description: "Track subtle grasp changes, finger intent, and object interaction details that are often missing from broad datasets.",
+        description:
+          "Track subtle grasp changes, finger intent, and object interaction details that are often missing from broad datasets.",
       },
       {
         title: "Interaction quality",
-        description: "Retain the temporal detail needed for reliable hand-tool-object coordination in practical workflows.",
+        description:
+          "Retain the temporal detail needed for reliable hand-tool-object coordination in practical workflows.",
       },
       {
         title: "Task precision",
-        description: "Support manipulation learning for operations that demand steadiness, control, and consistent repeatability.",
+        description:
+          "Support manipulation learning for operations that demand steadiness, control, and consistent repeatability.",
       },
     ],
     gallery: [
@@ -165,20 +177,24 @@ const productSections: ProductSection[] = [
     step: "4",
     title: "RoboTaskManipulator",
     subtitle: "Task-level intelligence for structured, multi-step execution.",
-    summary: "Move from isolated clips to workflow-aware task representations that mirror how real operations are carried out.",
+    summary:
+      "Move from isolated clips to workflow-aware task representations that mirror how real operations are carried out.",
     icon: Workflow,
     highlights: [
       {
         title: "Workflow structure",
-        description: "Break observed operations into explicit stages so execution models can understand sequence and dependencies.",
+        description:
+          "Break observed operations into explicit stages so execution models can understand sequence and dependencies.",
       },
       {
         title: "Execution readiness",
-        description: "Create task representations that are closer to how production automation must behave on the floor.",
+        description:
+          "Create task representations that are closer to how production automation must behave on the floor.",
       },
       {
         title: "Operational consistency",
-        description: "Improve repeatability for multi-step routines that combine perception, manipulation, and environment state.",
+        description:
+          "Improve repeatability for multi-step routines that combine perception, manipulation, and environment state.",
       },
     ],
     gallery: [
@@ -191,6 +207,55 @@ const productSections: ProductSection[] = [
 ];
 
 const platformSignals = ["Manufacturing", "Warehousing", "Data Centers", "Dexterity"];
+
+function ProductImageCard({
+  item,
+  className,
+}: {
+  item: GalleryItem;
+  className?: string;
+}) {
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    return (
+      <div
+        className={`group relative overflow-hidden rounded-[22px] border border-border bg-background ${className ?? ""}`}
+      >
+        <div className="flex aspect-[5/4] items-center justify-center bg-background/70">
+          <Database className="h-9 w-9 text-primary/60" />
+        </div>
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-background via-background/78 to-transparent px-4 pb-4 pt-12">
+          <span className="inline-flex rounded-full border border-border bg-background/80 px-3 py-1 font-mono-tech text-[11px] uppercase tracking-[0.16em] text-foreground">
+            {item.label}
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={`group relative overflow-hidden rounded-[22px] border border-border bg-background ${className ?? ""}`}
+    >
+      <div className="aspect-[5/4] overflow-hidden">
+        <img
+          src={blobProxyUrl(item.blobPath)}
+          alt={item.alt}
+          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+          loading="lazy"
+          decoding="async"
+          onError={() => setFailed(true)}
+        />
+      </div>
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-background via-background/78 to-transparent px-4 pb-4 pt-12">
+        <span className="inline-flex rounded-full border border-border bg-background/80 px-3 py-1 font-mono-tech text-[11px] uppercase tracking-[0.16em] text-foreground">
+          {item.label}
+        </span>
+      </div>
+    </div>
+  );
+}
 
 export default function Product() {
   const [activeSection, setActiveSection] = useState(productSections[0].id);
@@ -247,7 +312,7 @@ export default function Product() {
                     Product
                   </h1>
                   <p className="mt-3 max-w-xs text-sm leading-6 text-muted-foreground">
-                    The DaaS product stack presented in the same structured layout as your reference page, but styled for the existing DataraAI site.
+                    The DaaS product stack presented in the same structured layout as your reference page, now using the same blob-backed image flow as the rest of the branch.
                   </p>
                 </div>
 
@@ -360,10 +425,7 @@ export default function Product() {
                       id={section.id}
                       className="scroll-mt-24"
                     >
-                      <div
-                        data-product-section
-                        className="relative overflow-hidden rounded-[28px] border border-border bg-card/75 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.28)] md:p-8"
-                      >
+                      <div className="relative overflow-hidden rounded-[28px] border border-border bg-card/75 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.28)] md:p-8">
                         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(248,112,7,0.06),transparent_35%,rgba(16,158,59,0.05))]" />
 
                         <div className="relative">
@@ -412,24 +474,10 @@ export default function Product() {
 
                           <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                             {section.gallery.map((item) => (
-                              <div
+                              <ProductImageCard
                                 key={`${section.id}-${item.label}`}
-                                className="group relative overflow-hidden rounded-[22px] border border-border bg-background"
-                              >
-                                <div className="aspect-[5/4] overflow-hidden">
-                                  <img
-                                    src={item.image}
-                                    alt={item.alt}
-                                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-                                    loading="lazy"
-                                  />
-                                </div>
-                                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-background via-background/78 to-transparent px-4 pb-4 pt-12">
-                                  <span className="inline-flex rounded-full border border-border bg-background/80 px-3 py-1 font-mono-tech text-[11px] uppercase tracking-[0.16em] text-foreground">
-                                    {item.label}
-                                  </span>
-                                </div>
-                              </div>
+                                item={item}
+                              />
                             ))}
                           </div>
                         </div>
