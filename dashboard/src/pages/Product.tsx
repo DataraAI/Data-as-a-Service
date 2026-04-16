@@ -449,10 +449,6 @@ export default function Product() {
                                 {section.summary}
                               </p>
                             </div>
-
-                            <div className="w-full max-w-xs rounded-2xl border border-success/20 bg-success/10 px-4 py-3 font-mono-tech text-[11px] uppercase tracking-[0.18em] text-success">
-                              Structured for real deployment workflows
-                            </div>
                           </div>
 
                           <div className="mt-8 grid gap-4 lg:grid-cols-3">
