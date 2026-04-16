@@ -13,6 +13,7 @@ const roboDataHubItems = [
 
 const primaryNavItems = [
   { label: "Home", href: "/" },
+  { label: "Product", href: "/product" },
   { label: "Explore Datasets", href: "/explore" },
 ];
 
@@ -40,24 +41,24 @@ const Navigation = () => {
   }, []);
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-b border-border">
+    <nav className="fixed left-0 right-0 top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md">
       <div className="container mx-auto px-6">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-primary rounded-sm flex items-center justify-center">
-              <span className="text-primary-foreground font-mono-tech font-bold text-sm">D</span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-primary">
+              <span className="font-mono-tech text-sm font-bold text-primary-foreground">D</span>
             </div>
-            <span className="text-xl font-bold font-sans-tech tracking-tight text-foreground">
+            <span className="font-sans-tech text-xl font-bold tracking-tight text-foreground">
               DATARA<span className="text-primary">.AI</span>
             </span>
           </div>
 
-          <div className="hidden md:flex items-center gap-8">
+          <div className="hidden items-center gap-8 md:flex">
             {primaryNavItems.map((item) => (
               <Link
                 key={item.label}
                 to={item.href}
-                className="text-muted-foreground hover:text-primary transition-colors duration-200 font-mono-tech text-sm tracking-wide uppercase"
+                className="font-mono-tech text-sm uppercase tracking-wide text-muted-foreground transition-colors duration-200 hover:text-primary"
               >
                 {item.label}
               </Link>
@@ -67,19 +68,23 @@ const Navigation = () => {
               <button
                 type="button"
                 onClick={() => setIsRoboDataHubOpen((open) => !open)}
-                className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors duration-200 font-mono-tech text-sm tracking-wide uppercase"
+                className="flex items-center gap-2 font-mono-tech text-sm uppercase tracking-wide text-muted-foreground transition-colors duration-200 hover:text-primary"
               >
                 RoboDataHub
-                <ChevronDown className={`w-4 h-4 transition-transform ${isRoboDataHubOpen ? "rotate-180" : ""}`} />
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform ${
+                    isRoboDataHubOpen ? "rotate-180" : ""
+                  }`}
+                />
               </button>
 
               {isRoboDataHubOpen && (
-                <div className="absolute top-full left-0 mt-3 min-w-[240px] border border-border bg-background/95 backdrop-blur-md shadow-2xl shadow-black/30 rounded-sm overflow-hidden">
+                <div className="absolute left-0 top-full mt-3 min-w-[240px] overflow-hidden rounded-sm border border-border bg-background/95 shadow-2xl shadow-black/30 backdrop-blur-md">
                   {roboDataHubItems.map((item) => (
                     <Link
                       key={item.label}
                       to={item.href}
-                      className="block px-4 py-3 text-sm font-sans-tech text-foreground hover:bg-primary/10 hover:text-primary transition-colors border-b border-border last:border-b-0"
+                      className="block border-b border-border px-4 py-3 font-sans-tech text-sm text-foreground transition-colors last:border-b-0 hover:bg-primary/10 hover:text-primary"
                       onClick={() => setIsRoboDataHubOpen(false)}
                     >
                       {item.label}
@@ -93,16 +98,26 @@ const Navigation = () => {
               <Link
                 key={item.label}
                 to={item.href}
-                className="text-muted-foreground hover:text-primary transition-colors duration-200 font-mono-tech text-sm tracking-wide uppercase"
+                className="font-mono-tech text-sm uppercase tracking-wide text-muted-foreground transition-colors duration-200 hover:text-primary"
               >
                 {item.label}
               </Link>
             ))}
           </div>
 
-          <div className="hidden md:flex items-center gap-4">
-            <Button variant="ghost" className="font-mono-tech text-sm hover:text-primary transition-colors">Sign In</Button>
-            <Button variant="default" className="font-mono-tech text-sm rounded-sm bg-primary hover:bg-primary-glow text-primary-foreground shadow-glow border border-primary/20">Get Started</Button>
+          <div className="hidden items-center gap-4 md:flex">
+            <Button
+              variant="ghost"
+              className="font-mono-tech text-sm transition-colors hover:text-primary"
+            >
+              Sign In
+            </Button>
+            <Button
+              variant="default"
+              className="rounded-sm border border-primary/20 bg-primary font-mono-tech text-sm text-primary-foreground shadow-glow hover:bg-primary-glow"
+            >
+              Get Started
+            </Button>
           </div>
 
           <Button
@@ -111,32 +126,36 @@ const Navigation = () => {
             className="md:hidden"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
           >
-            {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
         </div>
 
         {isMenuOpen && (
-          <div className="md:hidden border-t border-border py-4 bg-background">
+          <div className="border-t border-border bg-background py-4 md:hidden">
             <div className="flex flex-col gap-4">
               {primaryNavItems.map((item) => (
                 <Link
                   key={item.label}
                   to={item.href}
-                  className="text-muted-foreground hover:text-primary transition-colors duration-200 font-mono-tech text-sm uppercase py-2"
+                  className="py-2 font-mono-tech text-sm uppercase text-muted-foreground transition-colors duration-200 hover:text-primary"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   {item.label}
                 </Link>
               ))}
 
-              <div className="border border-border rounded-sm overflow-hidden">
+              <div className="overflow-hidden rounded-sm border border-border">
                 <button
                   type="button"
                   onClick={() => setIsMobileRoboDataHubOpen((open) => !open)}
-                  className="w-full flex items-center justify-between px-3 py-3 text-left text-muted-foreground hover:text-primary transition-colors duration-200 font-mono-tech text-sm uppercase"
+                  className="flex w-full items-center justify-between px-3 py-3 text-left font-mono-tech text-sm uppercase text-muted-foreground transition-colors duration-200 hover:text-primary"
                 >
                   RoboDataHub
-                  <ChevronDown className={`w-4 h-4 transition-transform ${isMobileRoboDataHubOpen ? "rotate-180" : ""}`} />
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform ${
+                      isMobileRoboDataHubOpen ? "rotate-180" : ""
+                    }`}
+                  />
                 </button>
                 {isMobileRoboDataHubOpen && (
                   <div className="border-t border-border bg-card/20">
@@ -144,7 +163,7 @@ const Navigation = () => {
                       <Link
                         key={item.label}
                         to={item.href}
-                        className="block px-3 py-3 text-sm font-sans-tech text-foreground hover:bg-primary/10 hover:text-primary transition-colors border-b border-border last:border-b-0"
+                        className="block border-b border-border px-3 py-3 font-sans-tech text-sm text-foreground transition-colors last:border-b-0 hover:bg-primary/10 hover:text-primary"
                         onClick={() => {
                           setIsMobileRoboDataHubOpen(false);
                           setIsMenuOpen(false);
@@ -161,16 +180,20 @@ const Navigation = () => {
                 <Link
                   key={item.label}
                   to={item.href}
-                  className="text-muted-foreground hover:text-primary transition-colors duration-200 font-mono-tech text-sm uppercase py-2"
+                  className="py-2 font-mono-tech text-sm uppercase text-muted-foreground transition-colors duration-200 hover:text-primary"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   {item.label}
                 </Link>
               ))}
 
-              <div className="flex flex-col gap-2 pt-4 border-t border-border">
-                <Button variant="ghost" className="font-mono-tech w-full justify-start">Sign In</Button>
-                <Button variant="default" className="font-mono-tech w-full justify-start rounded-sm">Get Started</Button>
+              <div className="flex flex-col gap-2 border-t border-border pt-4">
+                <Button variant="ghost" className="w-full justify-start font-mono-tech">
+                  Sign In
+                </Button>
+                <Button variant="default" className="w-full justify-start rounded-sm font-mono-tech">
+                  Get Started
+                </Button>
               </div>
             </div>
           </div>
