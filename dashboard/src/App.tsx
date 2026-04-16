@@ -1,13 +1,15 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Home from "./pages/Home";
-import DataViewer from "./pages/DataViewer";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
 import ExploreDatasets from "./pages/ExploreDatasets";
+import Home from "./pages/Home";
+import Product from "./pages/Product";
+import DataViewer from "./pages/DataViewer";
 import RoboEyeView from "./pages/RoboEyeView";
 
 const App = () => (
   <BrowserRouter>
     <Routes>
       <Route path="/" element={<Home />} />
+      <Route path="/product" element={<Product />} />
       <Route path="/explore" element={<ExploreDatasets />} />
       <Route path="/roboeyeview" element={<RoboEyeView />} />
       <Route path="/viewer/*" element={<DataViewer />} />
