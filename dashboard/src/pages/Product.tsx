@@ -51,7 +51,7 @@ const productGallery = {
     label: "Manipulation",
   },
   warehouse: {
-    blobPath: "warehouse/warehouse.png",
+    blobPath: "warehouse/warehouseproduct.png",
     alt: "Warehouse logistics dataset",
     label: "Warehouse",
   },
