@@ -1,19 +1,12 @@
 import { Button } from "@/components/ui/button";
-import { ChevronDown, Menu, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Menu, X } from "lucide-react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
-
-const roboDataHubItems = [
-  { label: "RoboDataHub Home", href: "/viewer" },
-  { label: "Car Automation", href: "/viewer/carAutomation" },
-  { label: "Serverrack", href: "/viewer/serverrack" },
-  { label: "Dexterity", href: "/viewer/dexterity" },
-  { label: "Warehouse", href: "/viewer/warehouse" },
-];
 
 const primaryNavItems = [
   { label: "Home", href: "/" },
   { label: "Product", href: "/product" },
+  { label: "RoboDataHub", href: "/viewer" },
   { label: "Explore Datasets", href: "/explore" },
 ];
 
@@ -25,20 +18,6 @@ const secondaryNavItems = [
 
 const Navigation = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isRoboDataHubOpen, setIsRoboDataHubOpen] = useState(false);
-  const [isMobileRoboDataHubOpen, setIsMobileRoboDataHubOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    function handleOutsideClick(event: MouseEvent) {
-      if (!dropdownRef.current?.contains(event.target as Node)) {
-        setIsRoboDataHubOpen(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handleOutsideClick);
-    return () => document.removeEventListener("mousedown", handleOutsideClick);
-  }, []);
 
   return (
     <nav className="fixed left-0 right-0 top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md">
@@ -63,36 +42,6 @@ const Navigation = () => {
                 {item.label}
               </Link>
             ))}
-
-            <div className="relative" ref={dropdownRef}>
-              <button
-                type="button"
-                onClick={() => setIsRoboDataHubOpen((open) => !open)}
-                className="flex items-center gap-2 font-mono-tech text-sm uppercase tracking-wide text-muted-foreground transition-colors duration-200 hover:text-primary"
-              >
-                RoboDataHub
-                <ChevronDown
-                  className={`h-4 w-4 transition-transform ${
-                    isRoboDataHubOpen ? "rotate-180" : ""
-                  }`}
-                />
-              </button>
-
-              {isRoboDataHubOpen && (
-                <div className="absolute left-0 top-full mt-3 min-w-[240px] overflow-hidden rounded-sm border border-border bg-background/95 shadow-2xl shadow-black/30 backdrop-blur-md">
-                  {roboDataHubItems.map((item) => (
-                    <Link
-                      key={item.label}
-                      to={item.href}
-                      className="block border-b border-border px-4 py-3 font-sans-tech text-sm text-foreground transition-colors last:border-b-0 hover:bg-primary/10 hover:text-primary"
-                      onClick={() => setIsRoboDataHubOpen(false)}
-                    >
-                      {item.label}
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
 
             {secondaryNavItems.map((item) => (
               <Link
@@ -124,7 +73,7 @@ const Navigation = () => {
             variant="ghost"
             size="icon"
             className="md:hidden"
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            onClick={() => setIsMenuOpen((open) => !open)}
           >
             {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
@@ -143,38 +92,6 @@ const Navigation = () => {
                   {item.label}
                 </Link>
               ))}
-
-              <div className="overflow-hidden rounded-sm border border-border">
-                <button
-                  type="button"
-                  onClick={() => setIsMobileRoboDataHubOpen((open) => !open)}
-                  className="flex w-full items-center justify-between px-3 py-3 text-left font-mono-tech text-sm uppercase text-muted-foreground transition-colors duration-200 hover:text-primary"
-                >
-                  RoboDataHub
-                  <ChevronDown
-                    className={`h-4 w-4 transition-transform ${
-                      isMobileRoboDataHubOpen ? "rotate-180" : ""
-                    }`}
-                  />
-                </button>
-                {isMobileRoboDataHubOpen && (
-                  <div className="border-t border-border bg-card/20">
-                    {roboDataHubItems.map((item) => (
-                      <Link
-                        key={item.label}
-                        to={item.href}
-                        className="block border-b border-border px-3 py-3 font-sans-tech text-sm text-foreground transition-colors last:border-b-0 hover:bg-primary/10 hover:text-primary"
-                        onClick={() => {
-                          setIsMobileRoboDataHubOpen(false);
-                          setIsMenuOpen(false);
-                        }}
-                      >
-                        {item.label}
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
 
               {secondaryNavItems.map((item) => (
                 <Link
