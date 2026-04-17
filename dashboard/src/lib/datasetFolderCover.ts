@@ -7,12 +7,28 @@ const LOWER_CAMEL_ALIASES: Record<string, string[]> = {
   datahall: ["dataHall"],
 };
 
+const FRONT_PAGE_IMAGE_MODULES = import.meta.glob(
+  "../assets/images/**/*.{png,jpg,jpeg,webp,avif,svg}",
+  {
+    eager: true,
+    import: "default",
+  },
+) as Record<string, string>;
+
 function uniqueNonEmpty(values: string[]): string[] {
   return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
 }
 
 function normalizeSegment(segment: string): string {
   return segment.trim().replace(/^\/+/, "").replace(/\/+$/, "");
+}
+
+function normalizeImagePath(imagePath: string): string {
+  let normalized = normalizeSegment(imagePath);
+  if (CONTAINER_PREFIX.test(normalized)) {
+    normalized = normalized.replace(CONTAINER_PREFIX, "");
+  }
+  return normalized.split("/").filter(Boolean).join("/");
 }
 
 function lowerCamelFromDelimited(token: string): string {
@@ -23,7 +39,12 @@ function lowerCamelFromDelimited(token: string): string {
 
   if (parts.length === 0) return "";
   const [first, ...rest] = parts;
-  return first.toLowerCase() + rest.map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()).join("");
+  return (
+    first.toLowerCase() +
+    rest
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+      .join("")
+  );
 }
 
 function coverBaseNameCandidates(segment: string): string[] {
@@ -39,21 +60,34 @@ function coverBaseNameCandidates(segment: string): string[] {
 }
 
 /**
- * Blob paths inside the roboteyeview container (no container prefix).
- *
- * Preferred per-folder cover: `<fullPath>/<lowerCamelName>.png`
- * Also supports exact/lower/compact/kebab/snake variants plus generic
- * `thumbnail.png`, `folder.png`, `cover.png`.
- *
- * Keeps main's useful fallback to a category-level cover:
- * `<category>/<category>.png`
+ * Front-page assets live in `src/assets/images/<same azure-style path>`.
+ * Example: `carAutomation/carAutomation.png` -> `src/assets/images/carAutomation/carAutomation.png`
  */
-export function datasetCoverBlobCandidates(fullPath: string): string[] {
-  let normalized = normalizeSegment(fullPath);
-  if (CONTAINER_PREFIX.test(normalized)) {
-    normalized = normalized.replace(CONTAINER_PREFIX, "");
+export function frontPageImageUrl(imagePath: string): string | null {
+  const normalized = normalizeImagePath(imagePath);
+  const directCandidates = uniqueNonEmpty([
+    `../assets/images/${normalized}`,
+    `../assets/images/${normalized.toLowerCase()}`,
+  ]);
+
+  for (const candidate of directCandidates) {
+    const resolved = FRONT_PAGE_IMAGE_MODULES[candidate];
+    if (resolved) return resolved;
   }
 
+  return null;
+}
+
+export function frontPageImageExists(imagePath: string): boolean {
+  return frontPageImageUrl(imagePath) !== null;
+}
+
+/**
+ * Candidate image paths for folder thumbnails, still expressed in the same
+ * azure-style path format so they can be resolved against local assets.
+ */
+export function datasetCoverBlobCandidates(fullPath: string): string[] {
+  const normalized = normalizeImagePath(fullPath);
   const parts = normalized.split("/").filter(Boolean);
   if (parts.length === 0) return [];
 
@@ -79,5 +113,5 @@ export function datasetCoverBlobCandidates(fullPath: string): string[] {
 }
 
 export function blobProxyUrl(blobPath: string): string {
-  return `/api/proxy/${blobPath.split("/").map((s) => encodeURIComponent(s)).join("/")}`;
+  return `/api/proxy/${blobPath.split("/").map((segment) => encodeURIComponent(segment)).join("/")}`;
 }
