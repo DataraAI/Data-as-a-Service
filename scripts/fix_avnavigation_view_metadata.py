@@ -3,6 +3,7 @@ import argparse
 import os
 import sys
 import uuid
+from collections.abc import Iterable
 
 IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".webp")
 
@@ -11,15 +12,36 @@ IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".webp")
 DEFAULT_DATASET = "warehouse/Symbotic/AVnavigation"
 DEFAULT_VIEW = "exo"
 
+def candidate_backend_dirs(repo_root: str) -> Iterable[str]:
+    common_names = ("backend", "api", "server", "app", "src")
+
+    yield repo_root
+
+    for name in common_names:
+        yield os.path.join(repo_root, name)
+
+    for entry in os.listdir(repo_root):
+        full_path = os.path.join(repo_root, entry)
+        if os.path.isdir(full_path):
+            yield full_path
+
 
 def resolve_backend_dir(explicit_backend_dir: str | None) -> str:
     if explicit_backend_dir:
         return os.path.abspath(explicit_backend_dir)
 
-    # Mirror the placement assumption from the existing script:
-    # <backend>/scripts/this_script.py -> parent-parent is <backend>
-    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+    for candidate in candidate_backend_dirs(repo_root):
+        if os.path.isfile(os.path.join(candidate, "utils", "azure_client.py")):
+            return candidate
+
+    for current_root, dirnames, filenames in os.walk(repo_root):
+        dirnames[:] = [name for name in dirnames if name not in {".git", ".venv", "node_modules", "__pycache__"}]
+        if "azure_client.py" in filenames and os.path.basename(current_root) == "utils":
+            return os.path.dirname(current_root)
+
+    return repo_root
 
 def build_metadata_doc(*, blob_container_name: str, dataset: str, blob_path: str, view: str) -> dict:
     frame_name = os.path.basename(blob_path)
