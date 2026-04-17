@@ -1,6 +1,6 @@
 import FooterSection from "@/components/FooterSection";
 import Navigation from "@/components/Navigation";
-import { blobProxyUrl } from "@/lib/datasetFolderCover";
+import { frontPageImageUrl } from "@/lib/datasetFolderCover";
 import {
   Boxes,
   Database,
@@ -10,10 +10,11 @@ import {
   Workflow,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { Link } from "react-router-dom";
 
 type GalleryItem = {
-  blobPath: string;
+  imagePath: string;
   alt: string;
   label: string;
 };
@@ -34,28 +35,55 @@ type ProductSection = {
   gallery: GalleryItem[];
 };
 
+type ProductMenuItem = {
+  label: string;
+  description: string;
+  href?: string;
+};
+
 const productGallery = {
   automotive: {
-    blobPath: "carAutomation/automotive.png",
+    imagePath: "carAutomation/automotive.png",
     alt: "Automotive production line dataset",
     label: "Automotive",
   },
   datacenter: {
-    blobPath: "serverrack/datacenter.png",
+    imagePath: "serverrack/datacenter.png",
     alt: "Data center rack and cable handling dataset",
     label: "Data Center",
   },
   manipulation: {
-    blobPath: "humanoid/manipulation.png",
+    imagePath: "humanoid/manipulation.png",
     alt: "Hand motion and dexterous manipulation dataset",
     label: "Manipulation",
   },
   warehouse: {
-    blobPath: "warehouse/warehouseproduct.png",
+    imagePath: "warehouse/warehouse.png",
     alt: "Warehouse logistics dataset",
     label: "Warehouse",
   },
 } satisfies Record<string, GalleryItem>;
+
+const productMenuItems: ProductMenuItem[] = [
+  {
+    label: "RoboDataHub",
+    description: "Industrial data foundation",
+    href: "/viewer",
+  },
+  {
+    label: "RoboEyeView",
+    description: "Exo to ego transformation",
+    href: "/roboeyeview",
+  },
+  {
+    label: "RoboHandMotion",
+    description: "Coming soon",
+  },
+  {
+    label: "RoboTaskManipulator",
+    description: "Coming soon",
+  },
+];
 
 const heroHighlights = [
   {
@@ -208,20 +236,13 @@ const productSections: ProductSection[] = [
 
 const platformSignals = ["Manufacturing", "Warehousing", "Data Centers", "Dexterity"];
 
-function ProductImageCard({
-  item,
-  className,
-}: {
-  item: GalleryItem;
-  className?: string;
-}) {
+function ProductImageCard({ item }: { item: GalleryItem }) {
   const [failed, setFailed] = useState(false);
+  const src = frontPageImageUrl(item.imagePath);
 
-  if (failed) {
+  if (!src || failed) {
     return (
-      <div
-        className={`group relative overflow-hidden rounded-[22px] border border-border bg-background ${className ?? ""}`}
-      >
+      <div className="group relative overflow-hidden rounded-[22px] border border-border bg-background">
         <div className="flex aspect-[5/4] items-center justify-center bg-background/70">
           <Database className="h-9 w-9 text-primary/60" />
         </div>
@@ -235,12 +256,10 @@ function ProductImageCard({
   }
 
   return (
-    <div
-      className={`group relative overflow-hidden rounded-[22px] border border-border bg-background ${className ?? ""}`}
-    >
+    <div className="group relative overflow-hidden rounded-[22px] border border-border bg-background">
       <div className="aspect-[5/4] overflow-hidden">
         <img
-          src={blobProxyUrl(item.blobPath)}
+          src={src}
           alt={item.alt}
           className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
           loading="lazy"
@@ -258,40 +277,6 @@ function ProductImageCard({
 }
 
 export default function Product() {
-  const [activeSection, setActiveSection] = useState(productSections[0].id);
-
-  useEffect(() => {
-    const sections = productSections
-      .map((section) => document.getElementById(section.id))
-      .filter((section): section is HTMLElement => section instanceof HTMLElement);
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            setActiveSection(entry.target.id);
-          }
-        });
-      },
-      {
-        rootMargin: "-35% 0px -45% 0px",
-        threshold: 0.01,
-      },
-    );
-
-    sections.forEach((section) => observer.observe(section));
-
-    return () => observer.disconnect();
-  }, []);
-
-  const scrollToSection = (sectionId: string) => {
-    document.getElementById(sectionId)?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
-    setActiveSection(sectionId);
-  };
-
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Navigation />
@@ -312,7 +297,9 @@ export default function Product() {
                     Product
                   </h1>
                   <p className="mt-3 max-w-xs text-sm leading-6 text-muted-foreground">
-                    The DaaS product stack presented in the same structured layout as your reference page, now using the same blob-backed image flow as the rest of the branch.
+                    The DaaS product stack presented in the same structured layout as your
+                    reference page, now sourced from repository assets instead of blob-backed
+                    front-page images.
                   </p>
                 </div>
 
@@ -323,36 +310,48 @@ export default function Product() {
                   <div className="relative flex flex-col gap-3 pl-2">
                     <div className="pointer-events-none absolute bottom-3 left-5 top-3 w-px bg-gradient-to-b from-primary/15 via-primary/40 to-success/20" />
 
-                    {productSections.map((section) => {
-                      const isActive = activeSection === section.id;
-
-                      return (
-                        <button
-                          key={section.id}
-                          type="button"
-                          onClick={() => scrollToSection(section.id)}
-                          className={`group relative rounded-2xl border px-4 py-4 pl-14 text-left transition-all duration-200 ${
-                            isActive
-                              ? "border-primary/35 bg-primary/10 text-foreground shadow-[0_0_0_1px_rgba(248,112,7,0.08)]"
-                              : "border-transparent bg-transparent text-muted-foreground hover:border-border hover:bg-muted/20 hover:text-foreground"
-                          }`}
-                        >
+                    {productMenuItems.map((item, index) => {
+                      const content = (
+                        <>
                           <span
                             className={`absolute left-0 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full border font-mono-tech text-xs font-bold ${
-                              isActive
-                                ? "border-primary/50 bg-primary text-primary-foreground"
-                                : "border-border bg-background text-foreground"
+                              item.href
+                                ? "border-primary/35 bg-primary/10 text-primary"
+                                : "border-border bg-background text-muted-foreground"
                             }`}
                           >
-                            {section.step}
+                            {index + 1}
                           </span>
 
                           <span className="block font-sans-tech text-[15px] font-semibold">
-                            {section.title}
+                            {item.label}
                           </span>
                           <span className="mt-1 block text-xs leading-5 text-muted-foreground">
-                            {section.subtitle}
+                            {item.description}
                           </span>
+                        </>
+                      );
+
+                      if (item.href) {
+                        return (
+                          <Link
+                            key={item.label}
+                            to={item.href}
+                            className="group relative rounded-2xl border border-transparent px-4 py-4 pl-14 text-left text-muted-foreground transition-all duration-200 hover:border-border hover:bg-muted/20 hover:text-foreground"
+                          >
+                            {content}
+                          </Link>
+                        );
+                      }
+
+                      return (
+                        <button
+                          key={item.label}
+                          type="button"
+                          disabled
+                          className="group relative cursor-not-allowed rounded-2xl border border-transparent px-4 py-4 pl-14 text-left text-muted-foreground/75"
+                        >
+                          {content}
                         </button>
                       );
                     })}
@@ -376,7 +375,9 @@ export default function Product() {
                   </h2>
 
                   <p className="mt-5 max-w-3xl border-l-2 border-primary/40 pl-5 text-base leading-8 text-muted-foreground md:text-lg">
-                    DataraAI turns raw operational footage into structured training signals for perception, dexterity, task execution, and robot-eye-view learning, all within a layout that mirrors your uploaded reference page.
+                    DataraAI turns raw operational footage into structured training signals for
+                    perception, dexterity, task execution, and robot-eye-view learning, all
+                    within a layout that mirrors your uploaded reference page.
                   </p>
 
                   <div className="mt-8 flex flex-wrap gap-3">
@@ -401,9 +402,7 @@ export default function Product() {
                             {item.label}
                           </div>
                           <Boxes
-                            className={`h-4 w-4 ${
-                              index === 2 ? "text-success" : "text-primary"
-                            }`}
+                            className={`h-4 w-4 ${index === 2 ? "text-success" : "text-primary"}`}
                           />
                         </div>
                         <p className="text-sm leading-6 text-muted-foreground">
@@ -420,35 +419,29 @@ export default function Product() {
                   const SectionIcon = section.icon;
 
                   return (
-                    <section
-                      key={section.id}
-                      id={section.id}
-                      className="scroll-mt-24"
-                    >
+                    <section key={section.id} id={section.id} className="scroll-mt-24">
                       <div className="relative overflow-hidden rounded-[28px] border border-border bg-card/75 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.28)] md:p-8">
                         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(248,112,7,0.06),transparent_35%,rgba(16,158,59,0.05))]" />
 
                         <div className="relative">
-                          <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
-                            <div className="max-w-3xl">
-                              <div className="font-mono-tech text-[11px] uppercase tracking-[0.22em] text-primary">
-                                Solution {section.step}
-                              </div>
-                              <div className="mt-4 flex items-center gap-4">
-                                <div className="grid h-12 w-12 place-items-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
-                                  <SectionIcon className="h-5 w-5" />
-                                </div>
-                                <h3 className="font-sans-tech text-3xl font-bold tracking-tight text-foreground md:text-[2rem]">
-                                  {section.title}
-                                </h3>
-                              </div>
-                              <p className="mt-4 text-lg leading-8 text-foreground/90">
-                                {section.subtitle}
-                              </p>
-                              <p className="mt-3 max-w-3xl text-sm leading-7 text-muted-foreground md:text-base">
-                                {section.summary}
-                              </p>
+                          <div className="max-w-3xl">
+                            <div className="font-mono-tech text-[11px] uppercase tracking-[0.22em] text-primary">
+                              Solution {section.step}
                             </div>
+                            <div className="mt-4 flex items-center gap-4">
+                              <div className="grid h-12 w-12 place-items-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
+                                <SectionIcon className="h-5 w-5" />
+                              </div>
+                              <h3 className="font-sans-tech text-3xl font-bold tracking-tight text-foreground md:text-[2rem]">
+                                {section.title}
+                              </h3>
+                            </div>
+                            <p className="mt-4 text-lg leading-8 text-foreground/90">
+                              {section.subtitle}
+                            </p>
+                            <p className="mt-3 max-w-3xl text-sm leading-7 text-muted-foreground md:text-base">
+                              {section.summary}
+                            </p>
                           </div>
 
                           <div className="mt-8 grid gap-4 lg:grid-cols-3">
@@ -470,10 +463,7 @@ export default function Product() {
 
                           <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                             {section.gallery.map((item) => (
-                              <ProductImageCard
-                                key={`${section.id}-${item.label}`}
-                                item={item}
-                              />
+                              <ProductImageCard key={`${section.id}-${item.label}`} item={item} />
                             ))}
                           </div>
                         </div>

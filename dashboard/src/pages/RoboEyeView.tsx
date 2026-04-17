@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, Sparkles, X } from "lucide-react";
 import Navigation from "@/components/Navigation";
-import { blobProxyUrl } from "@/lib/datasetFolderCover";
+import { frontPageImageExists, frontPageImageUrl } from "@/lib/datasetFolderCover";
 
 interface ShowcaseImage {
   path: string;
@@ -88,6 +88,13 @@ function buildDefaultOutputs(vertical: ShowcaseVertical): ShowcaseImage[] {
   return buildOutputCandidates(vertical).slice(0, vertical.defaultOutputCount);
 }
 
+function resolveAvailableOutputs(vertical: ShowcaseVertical): ShowcaseImage[] {
+  const outputs = buildOutputCandidates(vertical).filter((image) =>
+    frontPageImageExists(image.path),
+  );
+  return outputs.length > 0 ? outputs : buildDefaultOutputs(vertical);
+}
+
 function layoutSeed(value: string): number {
   return value.split("").reduce((total, character) => total + character.charCodeAt(0), 0);
 }
@@ -95,24 +102,6 @@ function layoutSeed(value: string): number {
 function getThreeImageVariant(verticalId: string): ThreeImageVariant {
   const variants: ThreeImageVariant[] = ["feature-left", "feature-right", "banner-top"];
   return variants[layoutSeed(verticalId) % variants.length];
-}
-
-function probeImage(path: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    const image = new Image();
-    image.onload = () => resolve(true);
-    image.onerror = () => resolve(false);
-    image.src = blobProxyUrl(path);
-  });
-}
-
-async function resolveAvailableOutputs(vertical: ShowcaseVertical): Promise<ShowcaseImage[]> {
-  // Probe the expected naming convention so newly added ego images appear automatically.
-  const results = await Promise.all(
-    buildOutputCandidates(vertical).map(async (image) => ((await probeImage(image.path)) ? image : null)),
-  );
-
-  return results.filter((image): image is ShowcaseImage => image !== null);
 }
 
 function ShowcaseImageCard({
@@ -127,32 +116,37 @@ function ShowcaseImageCard({
   emphasize?: boolean;
 }) {
   const [failed, setFailed] = useState(false);
+  const src = frontPageImageUrl(image.path);
+  const canPreview = Boolean(src) && !failed;
 
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={canPreview ? onClick : undefined}
       aria-label={`Expand ${image.alt}`}
-      className={`group block w-full cursor-zoom-in overflow-hidden rounded-sm border transition-all duration-300 focus:outline-none focus-visible:border-primary focus-visible:shadow-[0_0_0_2px_rgba(249,115,22,0.75)] ${
+      disabled={!canPreview}
+      className={`group block w-full overflow-hidden rounded-sm border transition-all duration-300 focus:outline-none focus-visible:border-primary focus-visible:shadow-[0_0_0_2px_rgba(249,115,22,0.75)] ${
+        canPreview ? "cursor-zoom-in" : "cursor-default"
+      } ${
         emphasize
           ? "border-primary/30 bg-card/30 shadow-2xl shadow-black/15 hover:border-primary"
           : "border-border bg-card/20 hover:border-primary/60"
       }`}
     >
       <div className={`${aspectClassName} overflow-hidden bg-black/45`}>
-        {failed ? (
-          <div className="flex h-full items-center justify-center px-6 text-center text-sm font-sans-tech text-muted-foreground">
-            Image unavailable
-          </div>
-        ) : (
+        {canPreview ? (
           <img
-            src={blobProxyUrl(image.path)}
+            src={src ?? undefined}
             alt={image.alt}
             loading="lazy"
             decoding="async"
             onError={() => setFailed(true)}
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
           />
+        ) : (
+          <div className="flex h-full items-center justify-center px-6 text-center text-sm font-sans-tech text-muted-foreground">
+            Image unavailable
+          </div>
         )}
       </div>
     </button>
@@ -304,6 +298,8 @@ function ImageLightbox({
   selected: ShowcaseImage;
   onClose: () => void;
 }) {
+  const src = frontPageImageUrl(selected.path);
+
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -339,11 +335,17 @@ function ImageLightbox({
           onClick={(event) => event.stopPropagation()}
         >
           <div className="max-h-[84vh] w-full">
-            <img
-              src={blobProxyUrl(selected.path)}
-              alt={selected.alt}
-              className="max-h-[84vh] w-full object-contain"
-            />
+            {src ? (
+              <img
+                src={src}
+                alt={selected.alt}
+                className="max-h-[84vh] w-full object-contain"
+              />
+            ) : (
+              <div className="flex min-h-[50vh] items-center justify-center px-6 text-center text-sm font-sans-tech text-muted-foreground">
+                Image unavailable
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -353,44 +355,15 @@ function ImageLightbox({
 
 export default function RoboEyeView() {
   const [selectedImage, setSelectedImage] = useState<ShowcaseImage | null>(null);
-  const [availableOutputs, setAvailableOutputs] = useState<Record<string, ShowcaseImage[]>>(() =>
-    Object.fromEntries(
-      SHOWCASE_VERTICALS.map((vertical) => [vertical.id, buildDefaultOutputs(vertical)]),
-    ),
-  );
-
-  useEffect(() => {
-    let cancelled = false;
-
-    void (async () => {
-      const resolved = await Promise.all(
-        SHOWCASE_VERTICALS.map(async (vertical) => {
-          const outputs = await resolveAvailableOutputs(vertical);
-          return [
-            vertical.id,
-            outputs.length > 0 ? outputs : buildDefaultOutputs(vertical),
-          ] as const;
-        }),
-      );
-
-      if (!cancelled) {
-        setAvailableOutputs(Object.fromEntries(resolved));
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const resolvedVerticals = useMemo(
     () =>
       SHOWCASE_VERTICALS.map((vertical) => ({
         ...vertical,
         input: buildInputImage(vertical),
-        outputs: availableOutputs[vertical.id] ?? buildDefaultOutputs(vertical),
+        outputs: resolveAvailableOutputs(vertical),
       })),
-    [availableOutputs],
+    [],
   );
 
   return (
@@ -505,7 +478,9 @@ export default function RoboEyeView() {
         </div>
       </main>
 
-      {selectedImage && <ImageLightbox selected={selectedImage} onClose={() => setSelectedImage(null)} />}
+      {selectedImage && (
+        <ImageLightbox selected={selectedImage} onClose={() => setSelectedImage(null)} />
+      )}
     </div>
   );
 }
