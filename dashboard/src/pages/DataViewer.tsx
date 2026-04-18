@@ -634,7 +634,7 @@ function PathSearchPanel({
   );
 }
 
-function RoboDataHubSideMenu({
+function RoboDataHubTopMenu({
   activeItem,
 }: {
   activeItem: CategoryKey | "home";
@@ -655,61 +655,72 @@ function RoboDataHubSideMenu({
   ];
 
   return (
-    <div className="overflow-hidden rounded-[28px] border border-border bg-card/70 shadow-[0_20px_60px_rgba(0,0,0,0.28)] backdrop-blur-sm">
-      <div className="border-b border-border px-6 py-6">
-        <div className="font-mono-tech text-[11px] uppercase tracking-[0.24em] text-primary">
-          Datara.AI
+    <section className="overflow-hidden rounded-[28px] border border-border bg-card/70 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.28)] backdrop-blur-sm md:p-5">
+      <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+        <div className="max-w-xl px-2 pt-2">
+          <div className="font-mono-tech text-[11px] uppercase tracking-[0.24em] text-primary">
+            RoboDataHub Menu
+          </div>
+          <h2 className="mt-3 font-sans-tech text-3xl font-bold tracking-tight text-foreground">
+            Explore by vertical
+          </h2>
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">
+            A top-level navigation rail for moving across RoboDataHub without relying on a sticky
+            left sidebar. It keeps the industrial feel while making the landing pages lighter and
+            more flexible.
+          </p>
         </div>
-        <h1 className="mt-3 font-sans-tech text-3xl font-bold tracking-tight text-foreground">
-          RoboDataHub
-        </h1>
-        <p className="mt-3 max-w-xs text-sm leading-6 text-muted-foreground">
-          Browse each vertical from one persistent menu instead of the top navigation dropdown.
-        </p>
-      </div>
 
-      <div className="px-6 pb-6 pt-5">
-        <div className="px-2 pb-3 font-mono-tech text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-          Vertical Menu
-        </div>
-        <div className="relative flex flex-col gap-3 pl-2">
-          <div className="pointer-events-none absolute bottom-3 left-5 top-3 w-px bg-gradient-to-b from-primary/15 via-primary/40 to-success/20" />
+        <div className="overflow-x-auto pb-2">
+          <div className="flex min-w-max gap-3">
+            {menuItems.map((item, index) => {
+              const isActive = activeItem === item.key;
+              const badge = item.key === "home" ? "Hub" : String(index).padStart(2, "0");
 
-          {menuItems.map((item, index) => {
-            const isActive = activeItem === item.key;
-
-            return (
-              <Link
-                key={item.key}
-                to={item.href}
-                className={`group relative rounded-2xl border px-4 py-4 pl-14 text-left transition-all duration-200 ${
-                  isActive
-                    ? "border-primary/35 bg-primary/10 text-foreground shadow-[0_0_0_1px_rgba(248,112,7,0.08)]"
-                    : "border-transparent bg-transparent text-muted-foreground hover:border-border hover:bg-muted/20 hover:text-foreground"
-                }`}
-              >
-                <span
-                  className={`absolute left-0 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full border font-mono-tech text-xs font-bold ${
+              return (
+                <Link
+                  key={item.key}
+                  to={item.href}
+                  className={`group w-[244px] rounded-[24px] border p-5 transition-all duration-200 ${
                     isActive
-                      ? "border-primary/50 bg-primary text-primary-foreground"
-                      : "border-border bg-background text-foreground"
+                      ? "border-primary/35 bg-primary/10 shadow-[0_14px_40px_rgba(0,0,0,0.24)]"
+                      : "border-border/80 bg-background/60 hover:-translate-y-0.5 hover:border-primary/25 hover:bg-background/80 hover:shadow-[0_14px_40px_rgba(0,0,0,0.2)]"
                   }`}
                 >
-                  {item.key === "home" ? "H" : index}
-                </span>
+                  <div className="flex items-start justify-between gap-4">
+                    <span
+                      className={`inline-flex h-10 min-w-10 items-center justify-center rounded-2xl border px-3 font-mono-tech text-[11px] font-bold uppercase tracking-[0.18em] ${
+                        isActive
+                          ? "border-primary/50 bg-primary text-primary-foreground"
+                          : "border-border bg-background text-foreground"
+                      }`}
+                    >
+                      {badge}
+                    </span>
+                    <span
+                      className={`rounded-full border px-2.5 py-1 font-mono-tech text-[10px] uppercase tracking-[0.16em] ${
+                        isActive
+                          ? "border-success/25 bg-success/10 text-success"
+                          : "border-border bg-background/70 text-muted-foreground"
+                      }`}
+                    >
+                      {isActive ? "Open" : "Browse"}
+                    </span>
+                  </div>
 
-                <span className="block font-sans-tech text-[15px] font-semibold">
-                  {item.label}
-                </span>
-                <span className="mt-1 block text-xs leading-5 text-muted-foreground">
-                  {item.description}
-                </span>
-              </Link>
-            );
-          })}
+                  <span className="mt-5 block font-sans-tech text-base font-semibold text-foreground">
+                    {item.label}
+                  </span>
+                  <span className="mt-2 block text-sm leading-6 text-muted-foreground">
+                    {item.description}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -1132,34 +1143,140 @@ export default function DataViewer() {
 
   const renderRootLanding = () => (
     <div className="mx-auto w-full max-w-7xl px-6 py-14 md:py-18">
-      <div className="grid gap-8 xl:grid-cols-[280px_minmax(0,1fr)]">
-        <aside className="xl:sticky xl:top-8 xl:self-start">
-          <RoboDataHubSideMenu activeItem="home" />
-        </aside>
+      <RoboDataHubTopMenu activeItem="home" />
 
-        <div className="min-w-0">
-          <div className="mb-8 max-w-3xl">
+      <div className="mt-8 min-w-0">
+        <div className="mb-8 max-w-3xl">
+          <div className="mb-5 inline-flex items-center gap-2 rounded-sm border border-primary/30 bg-primary/10 px-3 py-1 font-sans-tech text-xs uppercase tracking-[0.24em] text-primary">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
+            RoboDataHub
+          </div>
+          <h1 className="mb-4 font-sans-tech text-4xl font-bold tracking-tight text-foreground md:text-5xl">
+            RoboDataHub
+          </h1>
+          <p className="max-w-3xl font-sans-tech text-sm leading-relaxed text-muted-foreground md:text-base">
+            Search across the full data library for a quick shortcut, or browse featured
+            categories below through presentation-ready examples that open directly in the
+            viewer.
+          </p>
+        </div>
+
+        <PathSearchPanel
+          title="Global search"
+          description="Use search to jump straight to a folder path when you already know what you want. It is the fastest way to navigate the full RoboDataHub without clicking through multiple pages."
+          value={pathSearchText}
+          loading={pathSearchLoading}
+          suggestions={pathSuggestions}
+          placeholder="Search any folder or path, e.g. BMW or carAutomation/BMW/frontGrille"
+          onFocus={() => setPathSearchTouched(true)}
+          onChange={(value) => {
+            setPathSearchTouched(true);
+            setPathSearchText(value);
+          }}
+          onSuggestionClick={handlePathSuggestionClick}
+          renderHighlightedPath={renderHighlightedPath}
+        />
+
+        <div className="mt-10 flex flex-col gap-8">
+          {CATEGORIES.map((category) => (
+            <section
+              key={category.routeKey}
+              className="rounded-sm border border-border bg-gradient-to-br from-card/25 via-background/80 to-primary/5 p-6 shadow-2xl shadow-black/10 md:p-8"
+            >
+              <div className="grid grid-cols-1 items-center gap-8 xl:grid-cols-[0.92fr_1.5fr] xl:gap-10">
+                <div>
+                  <div className="mb-5 inline-flex items-center gap-2 rounded-sm border border-primary/20 bg-primary/10 px-3 py-1 font-sans-tech text-[11px] uppercase tracking-[0.22em] text-primary">
+                    Featured category
+                  </div>
+                  <h2 className="mb-4 font-sans-tech text-3xl font-bold tracking-tight text-foreground md:text-4xl">
+                    {category.label}
+                  </h2>
+                  <p className="mb-4 max-w-xl font-sans-tech text-sm leading-relaxed text-foreground/90 md:text-base">
+                    {category.description}
+                  </p>
+                  <p className="max-w-xl font-sans-tech text-sm leading-relaxed text-muted-foreground">
+                    {category.helperText}
+                  </p>
+                  <div className="mt-7">
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/viewer/${category.routeKey}`)}
+                      className="inline-flex h-11 items-center gap-2 rounded-sm bg-primary px-5 font-sans-tech text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-glow"
+                    >
+                      View data
+                      <ArrowRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
+                  {CATEGORY_SHOWCASES[category.routeKey].map((item) => (
+                    <ShowcasePreviewImage
+                      key={item.previewBlobPath}
+                      blobPath={item.previewBlobPath}
+                      alt={item.alt}
+                      onClick={() => handleShowcaseImageClick(item)}
+                    />
+                  ))}
+                </div>
+              </div>
+            </section>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderCategoryLanding = (category: CategoryConfig) => (
+    <div className="mx-auto w-full max-w-7xl px-6 py-14">
+      <RoboDataHubTopMenu activeItem={category.routeKey} />
+
+      <div className="mt-8 min-w-0">
+        <div className="grid grid-cols-1 items-center gap-8 rounded-sm border border-border bg-gradient-to-br from-card/30 via-background/70 to-primary/5 p-8 shadow-2xl shadow-black/10 xl:grid-cols-[1.05fr_1fr] xl:gap-12 md:p-10">
+          <div>
             <div className="mb-5 inline-flex items-center gap-2 rounded-sm border border-primary/30 bg-primary/10 px-3 py-1 font-sans-tech text-xs uppercase tracking-[0.24em] text-primary">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
-              RoboDataHub
+              Category
             </div>
-            <h1 className="mb-4 font-sans-tech text-4xl font-bold tracking-tight text-foreground md:text-5xl">
-              RoboDataHub
+            <h1 className="mb-5 font-sans-tech text-4xl font-bold tracking-tight text-foreground md:text-5xl">
+              {category.label}
             </h1>
-            <p className="max-w-3xl font-sans-tech text-sm leading-relaxed text-muted-foreground md:text-base">
-              Search across the full data library for a quick shortcut, or browse featured
-              categories below through presentation-ready examples that open directly in the
-              viewer.
+            <p className="mb-4 max-w-2xl font-sans-tech text-base leading-relaxed text-foreground/90 md:text-lg">
+              {category.description}
             </p>
+            <p className="max-w-2xl font-sans-tech text-sm leading-relaxed text-muted-foreground">
+              {category.helperText}
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={scrollToSubdirectories}
+                className="inline-flex h-11 items-center gap-2 rounded-sm bg-primary px-5 font-sans-tech text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-glow"
+              >
+                View data
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            </div>
           </div>
 
+          <div className="grid grid-cols-2 gap-4">
+            {buildCategoryHeroImagePaths(category).map((blobPath, index) => (
+              <CategoryHeroImage
+                key={blobPath}
+                blobPath={blobPath}
+                alt={`${category.label} preview ${index + 1}`}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-10">
           <PathSearchPanel
-            title="Global search"
-            description="Use search to jump straight to a folder path when you already know what you want. It is the fastest way to navigate the full RoboDataHub without clicking through multiple pages."
+            title={category.searchTitle}
+            description={category.searchDescription}
             value={pathSearchText}
             loading={pathSearchLoading}
             suggestions={pathSuggestions}
-            placeholder="Search any folder or path, e.g. BMW or carAutomation/BMW/frontGrille"
+            placeholder={`Search ${category.routeKey} paths, e.g. ${category.routeKey}/bmw`}
             onFocus={() => setPathSearchTouched(true)}
             onChange={(value) => {
               setPathSearchTouched(true);
@@ -1168,130 +1285,16 @@ export default function DataViewer() {
             onSuggestionClick={handlePathSuggestionClick}
             renderHighlightedPath={renderHighlightedPath}
           />
-
-          <div className="mt-10 flex flex-col gap-8">
-            {CATEGORIES.map((category) => (
-              <section
-                key={category.routeKey}
-                className="rounded-sm border border-border bg-gradient-to-br from-card/25 via-background/80 to-primary/5 p-6 shadow-2xl shadow-black/10 md:p-8"
-              >
-                <div className="grid grid-cols-1 items-center gap-8 xl:grid-cols-[0.92fr_1.5fr] xl:gap-10">
-                  <div>
-                    <div className="mb-5 inline-flex items-center gap-2 rounded-sm border border-primary/20 bg-primary/10 px-3 py-1 font-sans-tech text-[11px] uppercase tracking-[0.22em] text-primary">
-                      Featured category
-                    </div>
-                    <h2 className="mb-4 font-sans-tech text-3xl font-bold tracking-tight text-foreground md:text-4xl">
-                      {category.label}
-                    </h2>
-                    <p className="mb-4 max-w-xl font-sans-tech text-sm leading-relaxed text-foreground/90 md:text-base">
-                      {category.description}
-                    </p>
-                    <p className="max-w-xl font-sans-tech text-sm leading-relaxed text-muted-foreground">
-                      {category.helperText}
-                    </p>
-                    <div className="mt-7">
-                      <button
-                        type="button"
-                        onClick={() => navigate(`/viewer/${category.routeKey}`)}
-                        className="inline-flex h-11 items-center gap-2 rounded-sm bg-primary px-5 font-sans-tech text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-glow"
-                      >
-                        View data
-                        <ArrowRight className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
-                    {CATEGORY_SHOWCASES[category.routeKey].map((item) => (
-                      <ShowcasePreviewImage
-                        key={item.previewBlobPath}
-                        blobPath={item.previewBlobPath}
-                        alt={item.alt}
-                        onClick={() => handleShowcaseImageClick(item)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </section>
-            ))}
-          </div>
         </div>
-      </div>
-    </div>
-  );
 
-  const renderCategoryLanding = (category: CategoryConfig) => (
-    <div className="mx-auto w-full max-w-7xl px-6 py-14">
-      <div className="grid gap-8 xl:grid-cols-[280px_minmax(0,1fr)]">
-        <aside className="xl:sticky xl:top-8 xl:self-start">
-          <RoboDataHubSideMenu activeItem={category.routeKey} />
-        </aside>
-
-        <div className="min-w-0">
-          <div className="grid grid-cols-1 items-center gap-8 rounded-sm border border-border bg-gradient-to-br from-card/30 via-background/70 to-primary/5 p-8 shadow-2xl shadow-black/10 xl:grid-cols-[1.05fr_1fr] xl:gap-12 md:p-10">
-            <div>
-              <div className="mb-5 inline-flex items-center gap-2 rounded-sm border border-primary/30 bg-primary/10 px-3 py-1 font-sans-tech text-xs uppercase tracking-[0.24em] text-primary">
-                Category
-              </div>
-              <h1 className="mb-5 font-sans-tech text-4xl font-bold tracking-tight text-foreground md:text-5xl">
-                {category.label}
-              </h1>
-              <p className="mb-4 max-w-2xl font-sans-tech text-base leading-relaxed text-foreground/90 md:text-lg">
-                {category.description}
-              </p>
-              <p className="max-w-2xl font-sans-tech text-sm leading-relaxed text-muted-foreground">
-                {category.helperText}
-              </p>
-              <div className="mt-8 flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={scrollToSubdirectories}
-                  className="inline-flex h-11 items-center gap-2 rounded-sm bg-primary px-5 font-sans-tech text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-glow"
-                >
-                  View data
-                  <ArrowRight className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              {buildCategoryHeroImagePaths(category).map((blobPath, index) => (
-                <CategoryHeroImage
-                  key={blobPath}
-                  blobPath={blobPath}
-                  alt={`${category.label} preview ${index + 1}`}
-                />
-              ))}
-            </div>
+        <div className="pt-12" id="category-subdirectories">
+          <div className="mx-auto mb-6 flex max-w-6xl items-center gap-2">
+            <div className="h-4 w-1 bg-primary" />
+            <h2 className="font-sans-tech text-lg font-bold uppercase tracking-widest text-muted-foreground">
+              {category.label} Subdirectories
+            </h2>
           </div>
-
-          <div className="mt-10">
-            <PathSearchPanel
-              title={category.searchTitle}
-              description={category.searchDescription}
-              value={pathSearchText}
-              loading={pathSearchLoading}
-              suggestions={pathSuggestions}
-              placeholder={`Search ${category.routeKey} paths, e.g. ${category.routeKey}/bmw`}
-              onFocus={() => setPathSearchTouched(true)}
-              onChange={(value) => {
-                setPathSearchTouched(true);
-                setPathSearchText(value);
-              }}
-              onSuggestionClick={handlePathSuggestionClick}
-              renderHighlightedPath={renderHighlightedPath}
-            />
-          </div>
-
-          <div className="pt-12" id="category-subdirectories">
-            <div className="mx-auto mb-6 flex max-w-6xl items-center gap-2">
-              <div className="h-4 w-1 bg-primary" />
-              <h2 className="font-sans-tech text-lg font-bold uppercase tracking-widest text-muted-foreground">
-                {category.label} Subdirectories
-              </h2>
-            </div>
-            {renderFolderGrid(filteredFolders, "max-w-6xl")}
-          </div>
+          {renderFolderGrid(filteredFolders, "max-w-6xl")}
         </div>
       </div>
     </div>
