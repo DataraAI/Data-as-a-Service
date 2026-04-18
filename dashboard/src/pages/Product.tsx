@@ -1,8 +1,7 @@
 import FooterSection from "@/components/FooterSection";
-import Navigation from "@/components/Navigation";
+ import Navigation from "@/components/Navigation";
 import { frontPageImageUrl } from "@/lib/datasetFolderCover";
 import {
-  Boxes,
   Database,
   Eye,
   Hand,
@@ -82,24 +81,6 @@ const productMenuItems: ProductMenuItem[] = [
   {
     label: "RoboTaskManipulator",
     description: "Coming soon",
-  },
-];
-
-const heroHighlights = [
-  {
-    label: "Real-world first",
-    description:
-      "Training signals built from production environments instead of synthetic-only shortcuts.",
-  },
-  {
-    label: "Deployment aligned",
-    description:
-      "Organized around the workflows that matter in warehouses, factories, and data centers.",
-  },
-  {
-    label: "Integrated stack",
-    description:
-      "Data, view transformation, dexterous motion, and task structure connected in one product story.",
   },
 ];
 
@@ -276,6 +257,89 @@ function ProductImageCard({ item }: { item: GalleryItem }) {
   );
 }
 
+function SolutionsTopMenu() {
+  return (
+    <section className="overflow-hidden rounded-[28px] border border-border bg-card/70 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.28)] backdrop-blur-sm md:p-5">
+      <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+        <div className="max-w-xl px-2 pt-2">
+          <div className="font-mono-tech text-[11px] uppercase tracking-[0.24em] text-primary">
+            Solutions Map
+          </div>
+          <h1 className="mt-3 font-sans-tech text-3xl font-bold tracking-tight text-foreground">
+            Solutions
+          </h1>
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">
+            A horizontal control rail for moving between DataraAI solution surfaces. The first
+            two are live today, and the remaining entries stay visible so the platform story
+            still feels complete.
+          </p>
+        </div>
+
+        <div className="overflow-x-auto pb-2">
+          <div className="flex min-w-max gap-3">
+            {productMenuItems.map((item, index) => {
+              const content = (
+                <>
+                  <div className="flex items-start justify-between gap-4">
+                    <span
+                      className={`inline-flex h-10 min-w-10 items-center justify-center rounded-2xl border px-3 font-mono-tech text-[11px] font-bold uppercase tracking-[0.18em] ${
+                        item.href
+                          ? "border-primary/35 bg-primary/10 text-primary"
+                          : "border-border bg-background text-muted-foreground"
+                      }`}
+                    >
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                    <span
+                      className={`rounded-full border px-2.5 py-1 font-mono-tech text-[10px] uppercase tracking-[0.16em] ${
+                        item.href
+                          ? "border-success/25 bg-success/10 text-success"
+                          : "border-border bg-background/70 text-muted-foreground"
+                      }`}
+                    >
+                      {item.href ? "Live" : "Soon"}
+                    </span>
+                  </div>
+
+                  <span className="mt-5 block font-sans-tech text-base font-semibold text-foreground">
+                    {item.label}
+                  </span>
+                  <span className="mt-2 block text-sm leading-6 text-muted-foreground">
+                    {item.description}
+                  </span>
+                </>
+              );
+
+              if (item.href) {
+                return (
+                  <Link
+                    key={item.label}
+                    to={item.href}
+                    className="group w-[252px] rounded-[24px] border border-border/80 bg-background/60 p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-background/80 hover:shadow-[0_14px_40px_rgba(0,0,0,0.24)]"
+                  >
+                    {content}
+                  </Link>
+                );
+              }
+
+              return (
+                <button
+                  key={item.label}
+                  type="button"
+                  disabled
+                  className="w-[252px] cursor-not-allowed rounded-[24px] border border-border/80 bg-background/40 p-5 text-left opacity-85"
+                >
+                  {content}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function Product() {
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -286,88 +350,17 @@ export default function Product() {
         <div className="pointer-events-none absolute inset-x-0 top-0 h-[520px] bg-[radial-gradient(circle_at_top_right,rgba(248,112,7,0.22),transparent_30%),radial-gradient(circle_at_10%_25%,rgba(16,158,59,0.18),transparent_24%)]" />
 
         <main className="container relative z-10 mx-auto px-6 pb-16 pt-24">
-          <div className="grid gap-8 xl:grid-cols-[280px_minmax(0,1fr)]">
-            <aside className="xl:sticky xl:top-24 xl:self-start">
-              <div className="overflow-hidden rounded-[28px] border border-border bg-card/70 shadow-[0_20px_60px_rgba(0,0,0,0.28)] backdrop-blur-sm">
-                <div className="border-b border-border px-6 py-6">
-                  <div className="font-mono-tech text-[11px] uppercase tracking-[0.24em] text-primary">
-                    Datara.AI
-                  </div>
-                  <h1 className="mt-3 font-sans-tech text-3xl font-bold tracking-tight text-foreground">
-                    Product
-                  </h1>
-                  <p className="mt-3 max-w-xs text-sm leading-6 text-muted-foreground">
-                    The DaaS product stack presented in the same structured layout as your
-                    reference page, now sourced from repository assets instead of blob-backed
-                    front-page images.
-                  </p>
-                </div>
+          <div className="mx-auto max-w-7xl">
+            <SolutionsTopMenu />
 
-                <div className="px-6 pb-6 pt-5">
-                  <div className="px-2 pb-3 font-mono-tech text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-                    Solutions
-                  </div>
-                  <div className="relative flex flex-col gap-3 pl-2">
-                    <div className="pointer-events-none absolute bottom-3 left-5 top-3 w-px bg-gradient-to-b from-primary/15 via-primary/40 to-success/20" />
-
-                    {productMenuItems.map((item, index) => {
-                      const content = (
-                        <>
-                          <span
-                            className={`absolute left-0 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full border font-mono-tech text-xs font-bold ${
-                              item.href
-                                ? "border-primary/35 bg-primary/10 text-primary"
-                                : "border-border bg-background text-muted-foreground"
-                            }`}
-                          >
-                            {index + 1}
-                          </span>
-
-                          <span className="block font-sans-tech text-[15px] font-semibold">
-                            {item.label}
-                          </span>
-                          <span className="mt-1 block text-xs leading-5 text-muted-foreground">
-                            {item.description}
-                          </span>
-                        </>
-                      );
-
-                      if (item.href) {
-                        return (
-                          <Link
-                            key={item.label}
-                            to={item.href}
-                            className="group relative rounded-2xl border border-transparent px-4 py-4 pl-14 text-left text-muted-foreground transition-all duration-200 hover:border-border hover:bg-muted/20 hover:text-foreground"
-                          >
-                            {content}
-                          </Link>
-                        );
-                      }
-
-                      return (
-                        <button
-                          key={item.label}
-                          type="button"
-                          disabled
-                          className="group relative cursor-not-allowed rounded-2xl border border-transparent px-4 py-4 pl-14 text-left text-muted-foreground/75"
-                        >
-                          {content}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            </aside>
-
-            <div className="min-w-0">
+            <div className="mt-6 min-w-0">
               <section className="relative overflow-hidden rounded-[32px] border border-border bg-card/70 px-6 py-10 shadow-[0_24px_80px_rgba(0,0,0,0.32)] md:px-10 md:py-12">
                 <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(248,112,7,0.18),transparent_24%),radial-gradient(circle_at_bottom_left,rgba(16,158,59,0.12),transparent_28%)]" />
 
                 <div className="relative">
                   <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 font-mono-tech text-[11px] uppercase tracking-[0.22em] text-primary">
                     <Layers3 className="h-3.5 w-3.5" />
-                    Physical AI Product Platform
+                    Physical AI Solutions Platform
                   </div>
 
                   <h2 className="mt-6 max-w-4xl font-sans-tech text-4xl font-bold tracking-tight text-foreground md:text-6xl md:leading-[1.02]">
@@ -391,26 +384,6 @@ export default function Product() {
                     ))}
                   </div>
 
-                  <div className="mt-8 grid gap-4 md:grid-cols-3">
-                    {heroHighlights.map((item, index) => (
-                      <div
-                        key={item.label}
-                        className="rounded-[22px] border border-border bg-background/55 p-5 backdrop-blur-sm"
-                      >
-                        <div className="mb-3 flex items-center justify-between">
-                          <div className="font-mono-tech text-[11px] uppercase tracking-[0.2em] text-primary">
-                            {item.label}
-                          </div>
-                          <Boxes
-                            className={`h-4 w-4 ${index === 2 ? "text-success" : "text-primary"}`}
-                          />
-                        </div>
-                        <p className="text-sm leading-6 text-muted-foreground">
-                          {item.description}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
                 </div>
               </section>
 
