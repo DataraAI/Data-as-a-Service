@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 
 const primaryNavItems = [
   { label: "Home", href: "/" },
-  { label: "Product", href: "/product" },
+  { label: "Solutions", href: "/product" },
   { label: "RoboDataHub", href: "/viewer" },
   { label: "Explore Datasets", href: "/explore" },
 ];
