@@ -49,8 +49,6 @@ class ProcessingService:
 
         if view not in {"exo", "egos"}:
             raise ValueError("view must be 'exo' or 'egos'")
-        if upload_type == "video" and view != "exo":
-            raise ValueError("Video uploads currently support exo only")
 
         has_local = bool(local_video_path or local_image_dir)
         if local_video_path and local_image_dir:
@@ -91,7 +89,12 @@ class ProcessingService:
             os.makedirs(os.path.join(local_process_dir, target_view_dir), exist_ok=True)
 
             if local_video_path:
-                self._ingest_video_path(local_video_path, local_process_dir, dataset_basename)
+                self._ingest_video_path(
+                    local_video_path,
+                    local_process_dir,
+                    dataset_basename,
+                    target_view_dir=target_view_dir,
+                )
             elif local_image_dir:
                 self._ingest_image_directory(
                     local_image_dir,
@@ -108,7 +111,13 @@ class ProcessingService:
                     target_view_dir=target_view_dir,
                 )
             else:
-                self._process_video_file(gdrive_link, local_process_dir, dataset_basename, ts)
+                self._process_video_file(
+                    gdrive_link,
+                    local_process_dir,
+                    dataset_basename,
+                    ts,
+                    target_view_dir=target_view_dir,
+                )
 
             self._upload_to_azure(
                 local_process_dir=local_process_dir,
@@ -208,6 +217,8 @@ class ProcessingService:
         local_process_dir: str,
         dataset_basename: str,
         ts: int,
+        *,
+        target_view_dir: str = "orig",
     ) -> None:
         video_filename = f"video_{ts}.mp4"
         video_path = os.path.join(self.upload_folder, video_filename)
@@ -224,14 +235,24 @@ class ProcessingService:
             if not downloaded_path:
                 raise ValueError("Download failed or link invalid")
 
-            self._ingest_video_path(downloaded_path, local_process_dir, dataset_basename)
+            self._ingest_video_path(
+                downloaded_path,
+                local_process_dir,
+                dataset_basename,
+                target_view_dir=target_view_dir,
+            )
 
         finally:
             if os.path.exists(video_path):
                 os.remove(video_path)
 
     def _ingest_video_path(
-        self, video_path: str, local_process_dir: str, dataset_basename: str
+        self,
+        video_path: str,
+        local_process_dir: str,
+        dataset_basename: str,
+        *,
+        target_view_dir: str = "orig",
     ) -> None:
         cap = cv2.VideoCapture(video_path)
         try:
@@ -241,7 +262,7 @@ class ProcessingService:
         finally:
             cap.release()
 
-        logger.info(f"Generating frames from video: {dataset_basename}")
+        logger.info(f"Generating frames from video into {target_view_dir}: {dataset_basename}")
         cmd = [
             sys.executable,
             os.path.join(UTILS_DIR, "generate_orig_frames.py"),
@@ -253,6 +274,8 @@ class ProcessingService:
             str(target_fps),
             "--output_dir",
             local_process_dir,
+            "--view",
+            target_view_dir,
         ]
 
         subprocess.check_call(cmd)
