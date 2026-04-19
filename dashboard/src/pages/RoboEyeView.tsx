@@ -1,11 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, Sparkles, X } from "lucide-react";
 import Navigation from "@/components/Navigation";
-import { frontPageImageExists, frontPageImageUrl } from "@/lib/datasetFolderCover";
+import { frontPageImageUrl } from "@/lib/datasetFolderCover";
 
 interface ShowcaseImage {
   path: string;
   alt: string;
+}
+
+interface ShowcaseExample {
+  id: string;
+  input: ShowcaseImage;
+  outputs: ShowcaseImage[];
 }
 
 interface ShowcaseVertical {
@@ -13,14 +19,10 @@ interface ShowcaseVertical {
   eyebrow: string;
   title: string;
   summary: string;
-  folder: string;
-  assetStem: string;
-  inputAlt: string;
-  outputAltPrefix: string;
-  defaultOutputCount: number;
+  examples: ShowcaseExample[];
 }
 
-const OUTPUT_CANDIDATE_LIMIT = 6;
+type ThreeImageVariant = "feature-left" | "feature-right" | "banner-top";
 
 const SHOWCASE_VERTICALS: ShowcaseVertical[] = [
   {
@@ -28,80 +30,151 @@ const SHOWCASE_VERTICALS: ShowcaseVertical[] = [
     eyebrow: "Car Automation",
     title: "Vehicle assembly and service viewpoints",
     summary:
-      "A single exocentric production image is transformed into clean robot-eye outputs that are easier to use in demos, workflows, and downstream robotics applications.",
-    folder: "carAutomation",
-    assetStem: "carautomation",
-    inputAlt: "Car automation exocentric input",
-    outputAltPrefix: "Car automation generated ego view",
-    defaultOutputCount: 2,
+      "Two distinct production captures are transformed into robot-eye outputs that show both consistency and range across the same automotive workflow.",
+    examples: [
+      {
+        id: "primary",
+        input: {
+          path: "carAutomation/exo_carautomation.png",
+          alt: "Car automation exocentric input one",
+        },
+        outputs: [
+          {
+            path: "carAutomation/ego_carautomation.png",
+            alt: "Car automation generated ego view one",
+          },
+          {
+            path: "carAutomation/ego_carautomation1.png",
+            alt: "Car automation generated ego view two",
+          },
+        ],
+      },
+      {
+        id: "secondary",
+        input: {
+          path: "carAutomation/2exo_carautomation.png",
+          alt: "Car automation exocentric input two",
+        },
+        outputs: [
+          {
+            path: "carAutomation/2ego_carautomation.png",
+            alt: "Car automation second-scene ego view one",
+          },
+          {
+            path: "carAutomation/2ego_carautomation1.png",
+            alt: "Car automation second-scene ego view two",
+          },
+          {
+            path: "carAutomation/2ego_carautomation2.png",
+            alt: "Car automation second-scene ego view three",
+          },
+        ],
+      },
+    ],
   },
   {
     id: "serverrack",
     eyebrow: "Serverrack",
     title: "Data-center scene to robot-eye perspective",
     summary:
-      "RoboEyeView turns external rack and maintenance captures into focused egocentric outputs that make the operational viewpoint immediately clear.",
-    folder: "serverrack",
-    assetStem: "serverrack",
-    inputAlt: "Serverrack exocentric input",
-    outputAltPrefix: "Serverrack generated ego view",
-    defaultOutputCount: 2,
+      "The page now shows two separate rack-side inputs, each converted into its own set of focused egocentric outputs for a broader, more convincing demo story.",
+    examples: [
+      {
+        id: "primary",
+        input: {
+          path: "serverrack/exo_serverrack.png",
+          alt: "Serverrack exocentric input one",
+        },
+        outputs: [
+          {
+            path: "serverrack/ego_serverrack.png",
+            alt: "Serverrack generated ego view one",
+          },
+          {
+            path: "serverrack/ego_serverrack1.png",
+            alt: "Serverrack generated ego view two",
+          },
+        ],
+      },
+      {
+        id: "secondary",
+        input: {
+          path: "serverrack/2exo_serverrack.png",
+          alt: "Serverrack exocentric input two",
+        },
+        outputs: [
+          {
+            path: "serverrack/2ego_serverrack.png",
+            alt: "Serverrack second-scene ego view one",
+          },
+          {
+            path: "serverrack/2ego_serverrack1.png",
+            alt: "Serverrack second-scene ego view two",
+          },
+          {
+            path: "serverrack/2ego_serverrack2.png",
+            alt: "Serverrack second-scene ego view three",
+          },
+        ],
+      },
+    ],
   },
   {
     id: "warehouse",
     eyebrow: "Warehouse",
     title: "Warehouse floor capture to useful robot-eye outputs",
     summary:
-      "The same exocentric warehouse input can be converted into multiple clean, practical ego outputs for presentation, analysis, and robotic workflow storytelling.",
-    folder: "warehouse",
-    assetStem: "warehouse",
-    inputAlt: "Warehouse exocentric input",
-    outputAltPrefix: "Warehouse generated ego view",
-    defaultOutputCount: 3,
+      "Two warehouse scenes branch into clean robot-eye outputs that make the transformation feel broader and more deployment-ready without overcomplicating the page.",
+    examples: [
+      {
+        id: "primary",
+        input: {
+          path: "warehouse/exo_warehouse.png",
+          alt: "Warehouse exocentric input one",
+        },
+        outputs: [
+          {
+            path: "warehouse/ego_warehouse1.png",
+            alt: "Warehouse generated ego view one",
+          },
+          {
+            path: "warehouse/ego_warehouse2.png",
+            alt: "Warehouse generated ego view two",
+          },
+        ],
+      },
+      {
+        id: "secondary",
+        input: {
+          path: "warehouse/2exo_warehouse.png",
+          alt: "Warehouse exocentric input two",
+        },
+        outputs: [
+          {
+            path: "warehouse/2ego_warehouse.png",
+            alt: "Warehouse second-scene ego view one",
+          },
+          {
+            path: "warehouse/2ego_warehouse1.png",
+            alt: "Warehouse second-scene ego view two",
+          },
+          {
+            path: "warehouse/2ego_warehouse2.png",
+            alt: "Warehouse second-scene ego view three",
+          },
+        ],
+      },
+    ],
   },
 ];
-
-type ThreeImageVariant = "feature-left" | "feature-right" | "banner-top";
-
-function buildInputImage(vertical: ShowcaseVertical): ShowcaseImage {
-  return {
-    path: `${vertical.folder}/exo_${vertical.assetStem}.png`,
-    alt: vertical.inputAlt,
-  };
-}
-
-function buildOutputImage(vertical: ShowcaseVertical, index: number): ShowcaseImage {
-  const suffix = index === 0 ? "" : String(index);
-  return {
-    path: `${vertical.folder}/ego_${vertical.assetStem}${suffix}.png`,
-    alt: `${vertical.outputAltPrefix} ${String(index + 1).padStart(2, "0")}`,
-  };
-}
-
-function buildOutputCandidates(vertical: ShowcaseVertical): ShowcaseImage[] {
-  return Array.from({ length: OUTPUT_CANDIDATE_LIMIT }, (_, index) =>
-    buildOutputImage(vertical, index),
-  );
-}
-
-function buildDefaultOutputs(vertical: ShowcaseVertical): ShowcaseImage[] {
-  return buildOutputCandidates(vertical).slice(0, vertical.defaultOutputCount);
-}
-
-function resolveAvailableOutputs(vertical: ShowcaseVertical): ShowcaseImage[] {
-  const outputs = buildOutputCandidates(vertical).filter((image) =>
-    frontPageImageExists(image.path),
-  );
-  return outputs.length > 0 ? outputs : buildDefaultOutputs(vertical);
-}
 
 function layoutSeed(value: string): number {
   return value.split("").reduce((total, character) => total + character.charCodeAt(0), 0);
 }
 
-function getThreeImageVariant(verticalId: string): ThreeImageVariant {
+function getThreeImageVariant(value: string): ThreeImageVariant {
   const variants: ThreeImageVariant[] = ["feature-left", "feature-right", "banner-top"];
-  return variants[layoutSeed(verticalId) % variants.length];
+  return variants[layoutSeed(value) % variants.length];
 }
 
 function ShowcaseImageCard({
@@ -109,11 +182,13 @@ function ShowcaseImageCard({
   onClick,
   aspectClassName,
   emphasize = false,
+  containerClassName = "",
 }: {
   image: ShowcaseImage;
   onClick: () => void;
   aspectClassName: string;
   emphasize?: boolean;
+  containerClassName?: string;
 }) {
   const [failed, setFailed] = useState(false);
   const src = frontPageImageUrl(image.path);
@@ -125,7 +200,7 @@ function ShowcaseImageCard({
       onClick={canPreview ? onClick : undefined}
       aria-label={`Expand ${image.alt}`}
       disabled={!canPreview}
-      className={`group block w-full overflow-hidden rounded-sm border transition-all duration-300 focus:outline-none focus-visible:border-primary focus-visible:shadow-[0_0_0_2px_rgba(31,209,107,0.4)] ${
+      className={`group block w-full overflow-hidden rounded-sm border transition-all duration-300 focus:outline-none focus-visible:border-primary focus-visible:shadow-[0_0_0_2px_rgba(31,209,107,0.4)] ${containerClassName} ${
         canPreview ? "cursor-zoom-in" : "cursor-default"
       } ${
         emphasize
@@ -154,20 +229,20 @@ function ShowcaseImageCard({
 }
 
 function ShowcaseOutputGallery({
-  verticalId,
+  galleryId,
   outputs,
   onSelect,
 }: {
-  verticalId: string;
+  galleryId: string;
   outputs: ShowcaseImage[];
   onSelect: (image: ShowcaseImage) => void;
 }) {
-  if (outputs.length === 1) {
+  if (outputs.length <= 1) {
     return (
       <div className="grid gap-4">
         <ShowcaseImageCard
           image={outputs[0]}
-          aspectClassName="aspect-[4/3] md:aspect-[16/8.5]"
+          aspectClassName="aspect-[4/3] lg:h-full"
           onClick={() => onSelect(outputs[0])}
         />
       </div>
@@ -176,96 +251,67 @@ function ShowcaseOutputGallery({
 
   if (outputs.length === 2) {
     return (
-      <div className="grid gap-4 md:grid-cols-2 lg:h-[28rem]">
+      <div className="grid gap-4 sm:grid-cols-2 lg:h-[15rem] xl:h-[16rem]">
         {outputs.map((output) => (
-          <div key={output.path}>
-            <ShowcaseImageCard
-              image={output}
-              aspectClassName="aspect-[4/3] md:h-full"
-              onClick={() => onSelect(output)}
-            />
-          </div>
+          <ShowcaseImageCard
+            key={output.path}
+            image={output}
+            aspectClassName="aspect-[4/3] lg:h-full"
+            onClick={() => onSelect(output)}
+          />
         ))}
       </div>
     );
   }
 
-  if (outputs.length === 3) {
-    const variant = getThreeImageVariant(verticalId);
+  const variant = getThreeImageVariant(galleryId);
 
-    if (variant === "feature-left") {
-      return (
-        <div className="grid gap-4 md:grid-cols-12 md:grid-rows-2 lg:h-[28rem] xl:h-[32rem]">
-          <div className="md:col-span-7 md:row-span-2">
-            <ShowcaseImageCard
-              image={outputs[0]}
-              aspectClassName="aspect-[4/3] md:h-full"
-              onClick={() => onSelect(outputs[0])}
-            />
-          </div>
-          <div className="md:col-span-5">
-            <ShowcaseImageCard
-              image={outputs[1]}
-              aspectClassName="aspect-[4/3] md:h-full"
-              onClick={() => onSelect(outputs[1])}
-            />
-          </div>
-          <div className="md:col-span-5">
-            <ShowcaseImageCard
-              image={outputs[2]}
-              aspectClassName="aspect-[4/3] md:h-full"
-              onClick={() => onSelect(outputs[2])}
-            />
-          </div>
-        </div>
-      );
-    }
-
-    if (variant === "feature-right") {
-      return (
-        <div className="grid gap-4 md:grid-cols-12 md:grid-rows-2 lg:h-[28rem] xl:h-[32rem]">
-          <div className="md:col-span-5">
-            <ShowcaseImageCard
-              image={outputs[0]}
-              aspectClassName="aspect-[4/3] md:h-full"
-              onClick={() => onSelect(outputs[0])}
-            />
-          </div>
-          <div className="md:col-span-5 md:row-start-2">
-            <ShowcaseImageCard
-              image={outputs[1]}
-              aspectClassName="aspect-[4/3] md:h-full"
-              onClick={() => onSelect(outputs[1])}
-            />
-          </div>
-          <div className="md:col-span-7 md:col-start-6 md:row-span-2 md:row-start-1">
-            <ShowcaseImageCard
-              image={outputs[2]}
-              aspectClassName="aspect-[4/3] md:h-full"
-              onClick={() => onSelect(outputs[2])}
-            />
-          </div>
-        </div>
-      );
-    }
-
+  if (variant === "feature-left") {
     return (
-      <div className="grid gap-4 md:grid-cols-2 md:grid-rows-2 lg:h-[28rem] xl:h-[32rem]">
-        <div className="md:col-span-2">
+      <div className="grid gap-4 md:grid-cols-12 md:grid-rows-2 lg:h-[18rem] xl:h-[20rem]">
+        <div className="md:col-span-7 md:row-span-2">
           <ShowcaseImageCard
             image={outputs[0]}
             aspectClassName="aspect-[4/3] md:h-full"
             onClick={() => onSelect(outputs[0])}
           />
         </div>
-        <div>
+        <div className="md:col-span-5">
           <ShowcaseImageCard
             image={outputs[1]}
             aspectClassName="aspect-[4/3] md:h-full"
             onClick={() => onSelect(outputs[1])}
           />
         </div>
-        <div>
+        <div className="md:col-span-5">
+          <ShowcaseImageCard
+            image={outputs[2]}
+            aspectClassName="aspect-[4/3] md:h-full"
+            onClick={() => onSelect(outputs[2])}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (variant === "feature-right") {
+    return (
+      <div className="grid gap-4 md:grid-cols-12 md:grid-rows-2 lg:h-[18rem] xl:h-[20rem]">
+        <div className="md:col-span-5">
+          <ShowcaseImageCard
+            image={outputs[0]}
+            aspectClassName="aspect-[4/3] md:h-full"
+            onClick={() => onSelect(outputs[0])}
+          />
+        </div>
+        <div className="md:col-span-5 md:row-start-2">
+          <ShowcaseImageCard
+            image={outputs[1]}
+            aspectClassName="aspect-[4/3] md:h-full"
+            onClick={() => onSelect(outputs[1])}
+          />
+        </div>
+        <div className="md:col-span-7 md:col-start-6 md:row-span-2 md:row-start-1">
           <ShowcaseImageCard
             image={outputs[2]}
             aspectClassName="aspect-[4/3] md:h-full"
@@ -277,16 +323,81 @@ function ShowcaseOutputGallery({
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-      {outputs.map((output) => (
-        <div key={output.path}>
-          <ShowcaseImageCard
-            image={output}
-            aspectClassName="aspect-[4/3]"
-            onClick={() => onSelect(output)}
-          />
+    <div className="grid gap-4 md:grid-cols-2 md:grid-rows-2 lg:h-[18rem] xl:h-[20rem]">
+      <div className="md:col-span-2">
+        <ShowcaseImageCard
+          image={outputs[0]}
+          aspectClassName="aspect-[4/3] md:h-full"
+          onClick={() => onSelect(outputs[0])}
+        />
+      </div>
+      <div>
+        <ShowcaseImageCard
+          image={outputs[1]}
+          aspectClassName="aspect-[4/3] md:h-full"
+          onClick={() => onSelect(outputs[1])}
+        />
+      </div>
+      <div>
+        <ShowcaseImageCard
+          image={outputs[2]}
+          aspectClassName="aspect-[4/3] md:h-full"
+          onClick={() => onSelect(outputs[2])}
+        />
+      </div>
+    </div>
+  );
+}
+
+function ShowcaseArrow() {
+  return (
+    <div className="flex h-full items-center justify-center">
+      <div className="inline-flex flex-col items-center gap-3 rounded-full border border-primary/25 bg-background/85 px-4 py-4">
+        <span className="text-[10px] font-mono-tech uppercase tracking-[0.24em] text-primary">
+          RoboEyeView
+        </span>
+        <ArrowRight className="h-5 w-5 text-primary" />
+      </div>
+    </div>
+  );
+}
+
+function ShowcaseExampleRow({
+  example,
+  rowId,
+  onSelect,
+}: {
+  example: ShowcaseExample;
+  rowId: string;
+  onSelect: (image: ShowcaseImage) => void;
+}) {
+  return (
+    <div className="grid gap-4 xl:grid-cols-[minmax(250px,0.7fr)_68px_minmax(0,1.3fr)] xl:items-stretch xl:gap-6">
+      <ShowcaseImageCard
+        image={example.input}
+        emphasize
+        containerClassName="h-full"
+        aspectClassName="aspect-[4/3] sm:aspect-[16/11] xl:h-full"
+        onClick={() => onSelect(example.input)}
+      />
+
+      <div className="hidden xl:block">
+        <ShowcaseArrow />
+      </div>
+
+      <div className="space-y-3">
+        <div className="flex items-center gap-3 xl:hidden">
+          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
+          <ArrowRight className="h-4 w-4 text-primary" />
+          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
         </div>
-      ))}
+
+        <ShowcaseOutputGallery
+          galleryId={rowId}
+          outputs={example.outputs}
+          onSelect={onSelect}
+        />
+      </div>
     </div>
   );
 }
@@ -356,15 +467,7 @@ function ImageLightbox({
 export default function RoboEyeView() {
   const [selectedImage, setSelectedImage] = useState<ShowcaseImage | null>(null);
 
-  const resolvedVerticals = useMemo(
-    () =>
-      SHOWCASE_VERTICALS.map((vertical) => ({
-        ...vertical,
-        input: buildInputImage(vertical),
-        outputs: resolveAvailableOutputs(vertical),
-      })),
-    [],
-  );
+  const resolvedVerticals = useMemo(() => SHOWCASE_VERTICALS, []);
 
   return (
     <div className="relative min-h-screen bg-background font-sans-tech text-foreground">
@@ -387,9 +490,9 @@ export default function RoboEyeView() {
               </h1>
 
               <p className="mt-5 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base md:text-lg">
-                RoboEyeView transforms external scene captures into clean egocentric images that
-                are easier to explain, easier to demonstrate, and better aligned with real robotics
-                workflows.
+                Each vertical now pairs multiple exocentric scenes with their corresponding
+                robot-eye outputs, giving the page a broader, more persuasive demo narrative
+                without turning the layout into a maze of extra panels.
               </p>
             </div>
 
@@ -412,65 +515,28 @@ export default function RoboEyeView() {
             <section key={vertical.id} id={vertical.id} className="scroll-mt-24 px-4 sm:px-6">
               <div className="mx-auto max-w-7xl overflow-hidden rounded-sm border border-border bg-card/15 shadow-2xl shadow-black/10">
                 <div className="border-b border-border bg-background/65 px-6 py-5 md:px-8 md:py-6">
-                  <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-                    <div className="max-w-4xl">
-                      <div className="text-[11px] font-mono-tech uppercase tracking-[0.24em] text-primary">
-                        {vertical.eyebrow}
-                      </div>
-                      <h2 className="mt-3 text-2xl font-bold tracking-tight text-foreground md:text-4xl">
-                        {vertical.title}
-                      </h2>
-                      <p className="mt-3 max-w-3xl font-sans-tech text-sm leading-relaxed text-muted-foreground md:text-base">
-                        {vertical.summary}
-                      </p>
+                  <div className="max-w-4xl">
+                    <div className="text-[11px] font-mono-tech uppercase tracking-[0.24em] text-primary">
+                      {vertical.eyebrow}
                     </div>
-
-                    <div className="inline-flex items-center gap-3 rounded-full border border-primary/25 bg-primary/10 px-4 py-2">
-                      <span className="text-[11px] font-mono-tech uppercase tracking-[0.24em] text-primary">
-                        Exocentric
-                      </span>
-                      <ArrowRight className="h-4 w-4 text-primary" />
-                      <span className="text-[11px] font-mono-tech uppercase tracking-[0.24em] text-primary">
-                        Egocentric
-                      </span>
-                    </div>
+                    <h2 className="mt-3 text-2xl font-bold tracking-tight text-foreground md:text-4xl">
+                      {vertical.title}
+                    </h2>
+                    <p className="mt-3 max-w-3xl font-sans-tech text-sm leading-relaxed text-muted-foreground md:text-base">
+                      {vertical.summary}
+                    </p>
                   </div>
                 </div>
 
-                <div className="grid gap-6 p-5 sm:p-6 md:p-8 xl:grid-cols-[minmax(0,0.82fr)_56px_minmax(0,1.38fr)] xl:gap-8">
-                  <div>
-                    <ShowcaseImageCard
-                      image={vertical.input}
-                      emphasize
-                      aspectClassName="aspect-[4/5] md:aspect-[4/4.6] lg:aspect-[4/5.2]"
-                      onClick={() => setSelectedImage(vertical.input)}
-                    />
-                  </div>
-
-                  <div className="hidden flex-col items-center justify-center gap-4 xl:flex">
-                    <div className="h-16 w-px bg-gradient-to-b from-transparent via-primary/60 to-transparent" />
-                    <div className="inline-flex flex-col items-center gap-3 rounded-full border border-primary/25 bg-background/85 px-4 py-4">
-                      <span className="text-[10px] font-mono-tech uppercase tracking-[0.24em] text-primary">
-                        RoboEyeView
-                      </span>
-                      <ArrowRight className="h-5 w-5 text-primary" />
-                    </div>
-                    <div className="h-16 w-px bg-gradient-to-b from-transparent via-primary/60 to-transparent" />
-                  </div>
-
-                  <div>
-                    <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1.5 lg:hidden">
-                      <span className="text-[10px] font-mono-tech uppercase tracking-[0.24em] text-primary">
-                        RoboEyeView outputs
-                      </span>
-                    </div>
-
-                    <ShowcaseOutputGallery
-                      verticalId={vertical.id}
-                      outputs={vertical.outputs}
+                <div className="space-y-5 p-5 sm:p-6 md:p-8">
+                  {vertical.examples.map((example) => (
+                    <ShowcaseExampleRow
+                      key={`${vertical.id}-${example.id}`}
+                      example={example}
+                      rowId={`${vertical.id}-${example.id}`}
                       onSelect={setSelectedImage}
                     />
-                  </div>
+                  ))}
                 </div>
               </div>
             </section>
