@@ -5,13 +5,13 @@ import ActionsSection from "@/components/ActionsSection";
 import FooterSection from "@/components/FooterSection";
 
 export default function Home() {
-    return (
-        <div className="min-h-screen bg-background">
-            <Navigation />
-            <HeroSection />
-            <StatsSection />
-            <ActionsSection />
-            <FooterSection />
-        </div>
-    );
+  return (
+    <div className="min-h-screen bg-background">
+      <Navigation />
+      <HeroSection />
+      <StatsSection />
+      <ActionsSection />
+      <FooterSection />
+    </div>
+  );
 }
