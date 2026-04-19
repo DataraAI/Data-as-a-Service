@@ -26,42 +26,37 @@ const ActionsSection = () => {
   ];
 
   return (
-    <section className="py-20 relative bg-background border-t border-border/50">
-      <div className="container mx-auto px-6">
-        <div className="text-center mb-14">
-          <h2 className="text-3xl md:text-4xl font-bold font-sans-tech mb-4 text-foreground uppercase tracking-tight">
+    <section className="relative border-t border-border/50 bg-background py-20">
+      <div className="mx-auto max-w-[1440px] px-4 sm:px-6">
+        <div className="mb-14 text-center">
+          <h2 className="mb-4 font-sans-tech text-3xl font-bold uppercase tracking-tight text-foreground md:text-4xl">
             Quick <span className="text-primary">Actions</span>
           </h2>
-          <div className="h-1 w-20 bg-primary mx-auto mb-4"></div>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto font-mono-tech text-sm">
+          <div className="mx-auto mb-4 h-1 w-20 bg-primary" />
+          <p className="mx-auto max-w-2xl font-mono-tech text-sm text-muted-foreground">
             Manage your datasets and view results
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+        <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 lg:grid-cols-2">
           {actions.map((action, index) => (
             <Card
               key={index}
-              className="p-8 bg-card/10 backdrop-blur-sm border border-border group relative overflow-hidden transition-all hover:border-primary/50"
+              className="group relative overflow-hidden border border-border bg-card/10 p-6 backdrop-blur-sm transition-all hover:border-primary/50 sm:p-8"
             >
-              {/* Decorative corners */}
-              <div className="absolute top-0 left-0 w-3 h-3 border-t border-l border-primary/30 group-hover:border-primary transition-colors"></div>
-              <div className="absolute top-0 right-0 w-3 h-3 border-t border-r border-primary/30 group-hover:border-primary transition-colors"></div>
-              <div className="absolute bottom-0 left-0 w-3 h-3 border-b border-l border-primary/30 group-hover:border-primary transition-colors"></div>
-              <div className="absolute bottom-0 right-0 w-3 h-3 border-b border-r border-primary/30 group-hover:border-primary transition-colors"></div>
+              <div className="absolute left-0 top-0 h-3 w-3 border-l border-t border-primary/30 transition-colors group-hover:border-primary" />
+              <div className="absolute right-0 top-0 h-3 w-3 border-r border-t border-primary/30 transition-colors group-hover:border-primary" />
+              <div className="absolute bottom-0 left-0 h-3 w-3 border-b border-l border-primary/30 transition-colors group-hover:border-primary" />
+              <div className="absolute bottom-0 right-0 h-3 w-3 border-b border-r border-primary/30 transition-colors group-hover:border-primary" />
 
-              <div className="mb-6 relative z-10">
-                <div
-                  className="w-14 h-14 rounded-sm flex items-center justify-center mb-5 bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-all"
-                >
-                  <action.icon
-                    className="w-7 h-7 text-primary"
-                  />
+              <div className="relative z-10 mb-6">
+                <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-sm border border-primary/20 bg-primary/10 transition-all group-hover:bg-primary/20">
+                  <action.icon className="h-7 w-7 text-primary" />
                 </div>
-                <h3 className="text-2xl font-bold font-sans-tech mb-2 text-foreground">
+                <h3 className="mb-2 font-sans-tech text-2xl font-bold text-foreground">
                   {action.title}
                 </h3>
-                <p className="text-muted-foreground leading-relaxed font-mono-tech text-sm">
+                <p className="font-mono-tech text-sm leading-relaxed text-muted-foreground">
                   {action.description}
                 </p>
               </div>
@@ -70,46 +65,42 @@ const ActionsSection = () => {
                 <Button
                   asChild
                   variant="outline"
-                  className="w-full group/btn border-primary/30 hover:bg-primary/10 hover:border-primary text-primary font-mono-tech"
+                  className="group/btn w-full border-primary/30 font-mono-tech text-primary hover:border-primary hover:bg-primary/10"
                   size="lg"
                 >
                   <Link to={action.href}>
                     <span>VIEW DATA</span>
-                    <ExternalLink className="w-4 h-4 ml-2 group-hover/btn:translate-x-1 transition-transform duration-300" />
+                    <ExternalLink className="ml-2 h-4 w-4 transition-transform duration-300 group-hover/btn:translate-x-1" />
                   </Link>
                 </Button>
               ) : (
                 <Button
                   onClick={action.action}
-                  className="w-full group/btn bg-primary hover:bg-primary/90 text-primary-foreground font-mono-tech"
+                  className="group/btn w-full bg-primary font-mono-tech text-primary-foreground hover:bg-primary/90"
                   size="lg"
                 >
                   <span>IMPORT DATA</span>
-                  <ArrowRight className="w-4 h-4 ml-2 group-hover/btn:translate-x-1 transition-transform duration-300" />
+                  <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-300 group-hover/btn:translate-x-1" />
                 </Button>
               )}
             </Card>
           ))}
         </div>
 
-        <UploadModal
-          isOpen={isUploadModalOpen}
-          onClose={() => setIsUploadModalOpen(false)}
-        />
+        <UploadModal isOpen={isUploadModalOpen} onClose={() => setIsUploadModalOpen(false)} />
 
-        {/* Additional Links Section */}
-        <div className="mt-20 text-center border-t border-border pt-10">
-          <h3 className="text-xl font-bold font-sans-tech mb-8 text-foreground uppercase tracking-wider">
+        <div className="mt-16 border-t border-border pt-10 text-center">
+          <h3 className="mb-8 font-sans-tech text-xl font-bold uppercase tracking-wider text-foreground">
             SYSTEM RESOURCES
           </h3>
-          <div className="flex flex-wrap justify-center gap-4">
+          <div className="flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:flex-wrap">
             <Button variant="ghost" className="group font-mono-tech text-muted-foreground hover:text-primary">
               // API_DOCS
-              <ExternalLink className="w-3 h-3 ml-2 group-hover:scale-110 transition-transform duration-300" />
+              <ExternalLink className="ml-2 h-3 w-3 transition-transform duration-300 group-hover:scale-110" />
             </Button>
             <Button variant="ghost" className="group font-mono-tech text-muted-foreground hover:text-primary">
               // RESEARCH_PAPERS
-              <ExternalLink className="w-3 h-3 ml-2 group-hover:scale-110 transition-transform duration-300" />
+              <ExternalLink className="ml-2 h-3 w-3 transition-transform duration-300 group-hover:scale-110" />
             </Button>
           </div>
         </div>
