@@ -493,7 +493,7 @@ function ShowcasePreviewImage({
       <button
         type="button"
         onClick={onClick}
-        className="group relative flex aspect-[5/4] w-full items-center justify-center overflow-hidden rounded-sm border border-border bg-background/70 transition-all duration-300 hover:border-primary hover:shadow-[0_0_0_2px_rgba(249,115,22,0.8)]"
+        className="group relative flex aspect-[5/4] w-full items-center justify-center overflow-hidden rounded-sm border border-border bg-background/70 transition-all duration-300 hover:border-primary hover:shadow-[0_0_0_2px_rgba(31,209,107,0.38)]"
       >
         <Database className="h-9 w-9 text-primary/60" />
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-background/95 to-transparent px-3 py-2 text-left">
@@ -509,7 +509,7 @@ function ShowcasePreviewImage({
     <button
       type="button"
       onClick={onClick}
-      className="group relative w-full overflow-hidden rounded-sm border border-border bg-background/70 shadow-xl shadow-black/20 transition-all duration-300 hover:border-primary hover:shadow-[0_0_0_2px_rgba(249,115,22,0.85)] focus:outline-none focus:border-primary focus:shadow-[0_0_0_2px_rgba(249,115,22,0.85)]"
+      className="group relative w-full overflow-hidden rounded-sm border border-border bg-background/70 shadow-xl shadow-black/20 transition-all duration-300 hover:border-primary hover:shadow-[0_0_0_2px_rgba(31,209,107,0.42)] focus:outline-none focus:border-primary focus:shadow-[0_0_0_2px_rgba(31,209,107,0.42)]"
     >
       <div className="aspect-[5/4] overflow-hidden">
         <img
@@ -700,7 +700,7 @@ function RoboDataHubTopMenu({
                     <span
                       className={`rounded-full border px-2.5 py-1 font-mono-tech text-[10px] uppercase tracking-[0.16em] ${
                         isActive
-                          ? "border-success/25 bg-success/10 text-success"
+                          ? "border-primary-glow/25 bg-primary-glow/10 text-primary-glow"
                           : "border-border bg-background/70 text-muted-foreground"
                       }`}
                     >
@@ -1108,7 +1108,7 @@ export default function DataViewer() {
             <div className="absolute bottom-0 right-0 h-3 w-3 border-b border-r border-border transition-colors group-hover:border-primary" />
 
             <div className="relative z-10 flex flex-col items-center gap-6">
-              <div className="h-44 w-full overflow-hidden rounded-sm border border-border bg-background/50 transition-all group-hover:border-primary/30 group-hover:shadow-[0_0_15px_rgba(249,115,22,0.1)]">
+              <div className="h-44 w-full overflow-hidden rounded-sm border border-border bg-background/50 transition-all group-hover:border-primary/30 group-hover:shadow-[0_0_18px_rgba(31,209,107,0.12)]">
                 <DatasetFolderCover
                   key={folder.full_path}
                   fullPath={folder.source_path ?? resolveDisplayPathToBackendPath(folder.full_path)}
@@ -1319,8 +1319,8 @@ export default function DataViewer() {
             </div>
           </div>
           <div className="flex items-center gap-6 font-sans-tech text-xs font-medium text-muted-foreground">
-            <span className="flex items-center gap-2 text-success">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-success" />
+            <span className="flex items-center gap-2 text-primary-glow">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary-glow" />
               Live Connection
             </span>
           </div>

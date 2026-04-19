@@ -125,7 +125,7 @@ function ShowcaseImageCard({
       onClick={canPreview ? onClick : undefined}
       aria-label={`Expand ${image.alt}`}
       disabled={!canPreview}
-      className={`group block w-full overflow-hidden rounded-sm border transition-all duration-300 focus:outline-none focus-visible:border-primary focus-visible:shadow-[0_0_0_2px_rgba(249,115,22,0.75)] ${
+      className={`group block w-full overflow-hidden rounded-sm border transition-all duration-300 focus:outline-none focus-visible:border-primary focus-visible:shadow-[0_0_0_2px_rgba(31,209,107,0.4)] ${
         canPreview ? "cursor-zoom-in" : "cursor-default"
       } ${
         emphasize
