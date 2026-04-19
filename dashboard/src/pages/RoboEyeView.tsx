@@ -22,8 +22,6 @@ interface ShowcaseVertical {
   examples: ShowcaseExample[];
 }
 
-type ThreeImageVariant = "feature-left" | "feature-right" | "banner-top";
-
 const SHOWCASE_VERTICALS: ShowcaseVertical[] = [
   {
     id: "carAutomation",
@@ -168,15 +166,6 @@ const SHOWCASE_VERTICALS: ShowcaseVertical[] = [
   },
 ];
 
-function layoutSeed(value: string): number {
-  return value.split("").reduce((total, character) => total + character.charCodeAt(0), 0);
-}
-
-function getThreeImageVariant(value: string): ThreeImageVariant {
-  const variants: ThreeImageVariant[] = ["feature-left", "feature-right", "banner-top"];
-  return variants[layoutSeed(value) % variants.length];
-}
-
 function ShowcaseImageCard({
   image,
   onClick,
@@ -229,11 +218,9 @@ function ShowcaseImageCard({
 }
 
 function ShowcaseOutputGallery({
-  galleryId,
   outputs,
   onSelect,
 }: {
-  galleryId: string;
   outputs: ShowcaseImage[];
   onSelect: (image: ShowcaseImage) => void;
 }) {
@@ -260,64 +247,6 @@ function ShowcaseOutputGallery({
             onClick={() => onSelect(output)}
           />
         ))}
-      </div>
-    );
-  }
-
-  const variant = getThreeImageVariant(galleryId);
-
-  if (variant === "feature-left") {
-    return (
-      <div className="grid gap-4 md:grid-cols-12 md:grid-rows-2 lg:h-[18rem] xl:h-[20rem]">
-        <div className="md:col-span-7 md:row-span-2">
-          <ShowcaseImageCard
-            image={outputs[0]}
-            aspectClassName="aspect-[4/3] md:h-full"
-            onClick={() => onSelect(outputs[0])}
-          />
-        </div>
-        <div className="md:col-span-5">
-          <ShowcaseImageCard
-            image={outputs[1]}
-            aspectClassName="aspect-[4/3] md:h-full"
-            onClick={() => onSelect(outputs[1])}
-          />
-        </div>
-        <div className="md:col-span-5">
-          <ShowcaseImageCard
-            image={outputs[2]}
-            aspectClassName="aspect-[4/3] md:h-full"
-            onClick={() => onSelect(outputs[2])}
-          />
-        </div>
-      </div>
-    );
-  }
-
-  if (variant === "feature-right") {
-    return (
-      <div className="grid gap-4 md:grid-cols-12 md:grid-rows-2 lg:h-[18rem] xl:h-[20rem]">
-        <div className="md:col-span-5">
-          <ShowcaseImageCard
-            image={outputs[0]}
-            aspectClassName="aspect-[4/3] md:h-full"
-            onClick={() => onSelect(outputs[0])}
-          />
-        </div>
-        <div className="md:col-span-5 md:row-start-2">
-          <ShowcaseImageCard
-            image={outputs[1]}
-            aspectClassName="aspect-[4/3] md:h-full"
-            onClick={() => onSelect(outputs[1])}
-          />
-        </div>
-        <div className="md:col-span-7 md:col-start-6 md:row-span-2 md:row-start-1">
-          <ShowcaseImageCard
-            image={outputs[2]}
-            aspectClassName="aspect-[4/3] md:h-full"
-            onClick={() => onSelect(outputs[2])}
-          />
-        </div>
       </div>
     );
   }
@@ -364,11 +293,9 @@ function ShowcaseArrow() {
 
 function ShowcaseExampleRow({
   example,
-  rowId,
   onSelect,
 }: {
   example: ShowcaseExample;
-  rowId: string;
   onSelect: (image: ShowcaseImage) => void;
 }) {
   return (
@@ -393,7 +320,6 @@ function ShowcaseExampleRow({
         </div>
 
         <ShowcaseOutputGallery
-          galleryId={rowId}
           outputs={example.outputs}
           onSelect={onSelect}
         />
@@ -533,7 +459,6 @@ export default function RoboEyeView() {
                     <ShowcaseExampleRow
                       key={`${vertical.id}-${example.id}`}
                       example={example}
-                      rowId={`${vertical.id}-${example.id}`}
                       onSelect={setSelectedImage}
                     />
                   ))}
