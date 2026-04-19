@@ -30,133 +30,127 @@
     }
 }
 
-/* 
-  Colors:
-  Brand Orange: #F87007 -> 26 95% 50%
-  Brand Green: #109E3B -> 138 81% 34%
+/*
+  Dark Forest Green theme inspired by the Product Platform reference:
+  Base: #07110d
+  Panel: #0b1712
+  Accent: #1fd16b
+  Soft Glow: #8fe0b3
 */
 
 @layer base {
     :root {
-        --background: 0 0% 100%;
-        --foreground: 222.2 84% 4.9%;
+        --background: 144 27% 96%;
+        --foreground: 151 31% 15%;
 
         --card: 0 0% 100%;
-        --card-foreground: 222.2 84% 4.9%;
+        --card-foreground: 151 31% 15%;
 
         --popover: 0 0% 100%;
-        --popover-foreground: 222.2 84% 4.9%;
+        --popover-foreground: 151 31% 15%;
 
-        /* Brand Orange as Primary */
-        --primary: 26 95% 50%;
-        --primary-foreground: 0 0% 100%;
-        --primary-glow: 26 100% 70%;
+        --primary: 146 74% 47%;
+        --primary-foreground: 150 44% 8%;
+        --primary-glow: 145 58% 72%;
 
-        /* Brand Green as Secondary/Accent */
-        --secondary: 138 81% 34%;
-        --secondary-foreground: 0 0% 100%;
+        --secondary: 151 34% 31%;
+        --secondary-foreground: 145 29% 95%;
 
-        --muted: 220 14.3% 95.9%;
-        --muted-foreground: 220 8.9% 46.1%;
+        --success: 145 58% 72%;
+        --success-foreground: 150 44% 8%;
 
-        --accent: 138 81% 34%;
-        --accent-foreground: 0 0% 100%;
+        --muted: 142 23% 92%;
+        --muted-foreground: 148 13% 38%;
 
-        --destructive: 0 84.2% 60.2%;
+        --accent: 150 28% 24%;
+        --accent-foreground: 145 29% 95%;
+
+        --destructive: 0 72% 54%;
         --destructive-foreground: 210 40% 98%;
 
-        --border: 220 13% 91%;
-        --input: 220 13% 91%;
-        --ring: 26 95% 50%;
+        --border: 144 19% 84%;
+        --input: 144 19% 84%;
+        --ring: 146 74% 47%;
 
-        --gradient-primary: linear-gradient(135deg, hsl(26 95% 50%), hsl(138 81% 34%));
-        /* Lighter hero gradient */
-        --gradient-hero: linear-gradient(135deg, hsl(26 95% 50% / 0.1), hsl(138 81% 34% / 0.05));
-        --gradient-card: linear-gradient(135deg, hsl(0 0% 100%), hsl(220 14.3% 95.9%));
+        --gradient-primary: linear-gradient(135deg, hsl(146 74% 47%), hsl(151 34% 31%));
+        --gradient-hero: linear-gradient(135deg, hsl(146 74% 47% / 0.12), hsl(151 34% 31% / 0.05));
+        --gradient-card: linear-gradient(135deg, hsl(0 0% 100%), hsl(144 27% 96%));
 
-        --shadow-elegant: 0 10px 30px -10px hsl(26 95% 50% / 0.2);
-        --shadow-glow: 0 0 40px hsl(26 100% 70% / 0.3);
+        --shadow-elegant: 0 12px 32px -12px hsl(146 74% 47% / 0.26);
+        --shadow-glow: 0 0 40px hsl(145 58% 72% / 0.24);
 
         --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
         --radius: 0.75rem;
 
-        --sidebar-background: 0 0% 98%;
-        --sidebar-foreground: 240 5.3% 26.1%;
-        --sidebar-primary: 240 5.9% 10%;
-        --sidebar-primary-foreground: 0 0% 98%;
-        --sidebar-accent: 240 4.8% 95.9%;
-        --sidebar-accent-foreground: 240 5.9% 10%;
-        --sidebar-border: 220 13% 91%;
-        --sidebar-ring: 217.2 91.2% 59.8%;
+        --sidebar-background: 145 26% 97%;
+        --sidebar-foreground: 151 23% 24%;
+        --sidebar-primary: 146 74% 47%;
+        --sidebar-primary-foreground: 150 44% 8%;
+        --sidebar-accent: 142 23% 92%;
+        --sidebar-accent-foreground: 151 31% 15%;
+        --sidebar-border: 144 19% 84%;
+        --sidebar-ring: 146 74% 47%;
     }
 
     .dark {
-        --background: 0 0% 1.9%;
-        /* #050505 Deep Matte Black */
-        --foreground: 210 40% 98%;
+        --background: 156 42% 5%;
+        --foreground: 145 29% 95%;
 
-        --card: 240 4% 8%;
-        --card-foreground: 210 40% 98%;
+        --card: 150 35% 8%;
+        --card-foreground: 145 29% 95%;
 
-        --popover: 240 5% 4%;
-        --popover-foreground: 210 40% 98%;
+        --popover: 150 36% 7%;
+        --popover-foreground: 145 29% 95%;
 
-        /* Brand Orange */
-        --primary: 26 95% 50%;
-        /* #F87007 */
-        --primary-foreground: 0 0% 100%;
-        --primary-glow: 26 100% 50%;
+        --primary: 146 74% 47%;
+        --primary-foreground: 150 44% 8%;
+        --primary-glow: 145 58% 72%;
 
-        /* Brand Green (Success/Operational) */
-        --secondary: 138 81% 34%;
-        /* #109E3B */
-        --secondary-foreground: 0 0% 100%;
+        --secondary: 151 38% 17%;
+        --secondary-foreground: 145 29% 95%;
 
-        /* Explicit Success Variable */
-        --success: 138 81% 34%;
-        --success-foreground: 0 0% 100%;
+        --success: 145 58% 72%;
+        --success-foreground: 150 44% 8%;
 
-        --muted: 240 4% 16%;
-        --muted-foreground: 240 5% 64.9%;
+        --muted: 150 24% 14%;
+        --muted-foreground: 138 18% 72%;
 
-        --accent: 138 81% 34%;
-        --accent-foreground: 210 40% 98%;
+        --accent: 151 40% 22%;
+        --accent-foreground: 145 29% 95%;
 
-        --destructive: 0 62.8% 30.6%;
+        --destructive: 0 63% 33%;
         --destructive-foreground: 210 40% 98%;
 
-        --border: 240 4% 20%;
-        --input: 240 4% 20%;
-        --ring: 26 95% 50%;
+        --border: 145 24% 22%;
+        --input: 145 24% 20%;
+        --ring: 145 58% 72%;
 
-        --gradient-primary: linear-gradient(135deg, hsl(26 95% 50%), hsl(138 81% 34%));
-        --gradient-hero: linear-gradient(135deg, hsl(26 95% 50% / 0.05), hsl(138 81% 34% / 0.05));
-        --gradient-card: linear-gradient(135deg, hsl(240 4% 10%), hsl(240 4% 8%));
+        --gradient-primary: linear-gradient(135deg, hsl(146 74% 47%), hsl(151 44% 35%));
+        --gradient-hero: linear-gradient(135deg, hsl(146 74% 47% / 0.08), hsl(145 58% 72% / 0.04));
+        --gradient-card: linear-gradient(135deg, hsl(151 35% 12%), hsl(156 42% 5%));
 
-        --shadow-elegant: 0 10px 30px -10px hsl(26 95% 50% / 0.2);
-        --shadow-glow: 0 0 20px hsl(26 100% 50% / 0.3);
+        --shadow-elegant: 0 16px 42px -20px hsl(146 74% 47% / 0.42);
+        --shadow-glow: 0 0 28px hsl(145 58% 72% / 0.18);
 
-        --sidebar-background: 0 0% 2.3%;
-        /* #060606 slightly lighter than bg */
-        --sidebar-foreground: 240 5% 80%;
-        --sidebar-primary: 26 95% 50%;
-        --sidebar-primary-foreground: 0 0% 100%;
-        --sidebar-accent: 240 4% 16%;
-        --sidebar-accent-foreground: 210 40% 98%;
-        --sidebar-border: 240 4% 20%;
-        --sidebar-ring: 26 95% 50%;
+        --sidebar-background: 150 36% 7%;
+        --sidebar-foreground: 138 18% 78%;
+        --sidebar-primary: 146 74% 47%;
+        --sidebar-primary-foreground: 150 44% 8%;
+        --sidebar-accent: 150 24% 14%;
+        --sidebar-accent-foreground: 145 29% 95%;
+        --sidebar-border: 145 24% 22%;
+        --sidebar-ring: 145 58% 72%;
     }
 }
 
 @layer utilities {
     .bg-grid-pattern {
         background-size: 15px 15px;
-        /* Updated to 15px squares */
-        background-image: linear-gradient(to right, rgb(255 255 255 / 0.05) 1px, transparent 1px),
-            linear-gradient(to bottom, rgb(255 255 255 / 0.05) 1px, transparent 1px);
+        background-image:
+            linear-gradient(to right, hsl(var(--primary-glow) / 0.08) 1px, transparent 1px),
+            linear-gradient(to bottom, hsl(var(--primary-glow) / 0.08) 1px, transparent 1px);
     }
-
 
     .bg-noise {
         position: fixed;
@@ -186,5 +180,10 @@
 
     body {
         @apply bg-background text-foreground;
+        background-image:
+            radial-gradient(circle at top right, hsl(var(--primary) / 0.12), transparent 24%),
+            radial-gradient(circle at bottom left, hsl(var(--primary-glow) / 0.08), transparent 22%),
+            linear-gradient(180deg, hsl(var(--background)) 0%, hsl(150 38% 6%) 100%);
+        background-attachment: fixed;
     }
 }
