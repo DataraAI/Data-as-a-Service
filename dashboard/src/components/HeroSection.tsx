@@ -3,105 +3,115 @@ import { ArrowRight, Database, Cpu, Activity, Terminal } from "lucide-react";
 
 const HeroSection = () => {
   return (
-    <section className="relative min-h-screen pt-20 flex flex-col justify-center overflow-hidden bg-background">
-      {/* Background decorative elements */}
-      <div className="absolute inset-0 bg-grid-pattern opacity-[0.15] pointer-events-none"></div>
+    <section className="relative flex min-h-screen flex-col justify-center overflow-hidden bg-background pt-20">
+      <div className="pointer-events-none absolute inset-0 bg-grid-pattern opacity-[0.15]" />
 
-      {/* Corner Markers */}
-      <div className="absolute top-24 left-6 w-4 h-4 border-t border-l border-primary/50"></div>
-      <div className="absolute top-24 right-6 w-4 h-4 border-t border-r border-primary/50"></div>
-      <div className="absolute bottom-6 left-6 w-4 h-4 border-b border-l border-primary/50"></div>
-      <div className="absolute bottom-6 right-6 w-4 h-4 border-b border-r border-primary/50"></div>
+      <div className="absolute left-6 top-24 h-4 w-4 border-l border-t border-primary/50" />
+      <div className="absolute right-6 top-24 h-4 w-4 border-r border-t border-primary/50" />
+      <div className="absolute bottom-6 left-6 h-4 w-4 border-b border-l border-primary/50" />
+      <div className="absolute bottom-6 right-6 h-4 w-4 border-b border-r border-primary/50" />
 
-      {/* Decorative coordinate text */}
-      <div className="absolute top-28 left-8 font-mono-tech text-[10px] text-muted-foreground/40">
+      <div className="absolute left-8 top-28 font-mono-tech text-[10px] text-muted-foreground/40">
         System Operational // 34.0522 N, 118.2437 W
       </div>
 
-      <div className="container mx-auto px-6 relative z-10 h-full">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center h-full">
-
-          {/* Left Column: Content */}
-          <div className="lg:col-span-7 flex flex-col gap-8">
-
-            {/* Status Indicator */}
-            <div className="inline-flex items-center gap-3 border border-border bg-card/50 backdrop-blur-sm px-3 py-1.5 w-fit">
+      <div className="container relative z-10 mx-auto h-full px-6">
+        <div className="grid h-full grid-cols-1 items-center gap-12 lg:grid-cols-12">
+          <div className="flex flex-col gap-8 lg:col-span-7">
+            <div className="inline-flex w-fit items-center gap-3 border border-border bg-card/50 px-3 py-1.5 backdrop-blur-sm">
               <div className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span>
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary-glow opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-primary-glow" />
               </div>
-              <span className="font-mono-tech text-xs text-success font-medium tracking-wider">System Status: Online</span>
+              <span className="font-mono-tech text-xs font-medium tracking-wider text-primary-glow">
+                System Status: Online
+              </span>
             </div>
 
-            {/* Main Heading */}
-            <h1 className="text-5xl lg:text-7xl font-sans-tech font-bold text-foreground leading-[1.1] tracking-tight">
+            <h1 className="font-sans-tech text-5xl font-bold leading-[1.1] tracking-tight text-foreground lg:text-7xl">
               ADVANCED <br />
-              ROBOTICS <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary-glow">DATASETS</span>
+              ROBOTICS{" "}
+              <span className="bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
+                DATASETS
+              </span>
             </h1>
 
-            {/* Description */}
-            <p className="text-lg text-muted-foreground font-sans-tech max-w-2xl leading-relaxed border-l-2 border-primary/50 pl-6">
-              Accelerate your embodied AI development. High-fidelity, multi-modal sensor data for next-generation robotic perception and control.
+            <p className="max-w-2xl border-l-2 border-primary/50 pl-6 font-sans-tech text-lg leading-relaxed text-muted-foreground">
+              Accelerate your embodied AI development. High-fidelity, multi-modal sensor data
+              for next-generation robotic perception and control.
             </p>
 
-            {/* Stats Grid - Mini Bento */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 my-4">
-              <div className="border border-border p-4 bg-card/30 backdrop-blur-sm group hover:border-primary/50 transition-colors">
-                <Database className="w-5 h-5 text-primary mb-2" />
-                <div className="text-2xl font-bold font-sans-tech">10M+</div>
-                <div className="text-xs text-muted-foreground font-mono-tech uppercase">Data Points</div>
+            <div className="my-4 grid grid-cols-2 gap-4 md:grid-cols-3">
+              <div className="group border border-border bg-card/30 p-4 backdrop-blur-sm transition-colors hover:border-primary/50">
+                <Database className="mb-2 h-5 w-5 text-primary" />
+                <div className="font-sans-tech text-2xl font-bold">10M+</div>
+                <div className="font-mono-tech text-xs uppercase text-muted-foreground">
+                  Data Points
+                </div>
               </div>
-              <div className="border border-border p-4 bg-card/30 backdrop-blur-sm group hover:border-primary/50 transition-colors">
-                <Activity className="w-5 h-5 text-primary mb-2" />
-                <div className="text-2xl font-bold font-sans-tech">99.9%</div>
-                <div className="text-xs text-muted-foreground font-mono-tech uppercase">Label Accuracy</div>
+              <div className="group border border-border bg-card/30 p-4 backdrop-blur-sm transition-colors hover:border-primary/50">
+                <Activity className="mb-2 h-5 w-5 text-primary" />
+                <div className="font-sans-tech text-2xl font-bold">99.9%</div>
+                <div className="font-mono-tech text-xs uppercase text-muted-foreground">
+                  Label Accuracy
+                </div>
               </div>
-              <div className="border border-border p-4 bg-card/30 backdrop-blur-sm group hover:border-primary/50 transition-colors">
-                <Terminal className="w-5 h-5 text-primary mb-2" />
-                <div className="text-2xl font-bold font-sans-tech">&lt;50ms</div>
-                <div className="text-xs text-muted-foreground font-mono-tech uppercase">Latency</div>
+              <div className="group border border-border bg-card/30 p-4 backdrop-blur-sm transition-colors hover:border-primary/50">
+                <Terminal className="mb-2 h-5 w-5 text-primary" />
+                <div className="font-sans-tech text-2xl font-bold">&lt;50ms</div>
+                <div className="font-mono-tech text-xs uppercase text-muted-foreground">
+                  Latency
+                </div>
               </div>
             </div>
 
-            {/* CTAs */}
-            <div className="flex flex-col sm:flex-row gap-4 mt-4">
-              <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground font-sans-tech font-bold rounded-md px-8 h-14 border border-primary-glow/50 shadow-glow">
-                Connect Data Source <ArrowRight className="w-4 h-4 ml-2" />
+            <div className="mt-4 flex flex-col gap-4 sm:flex-row">
+              <Button
+                size="lg"
+                className="h-14 rounded-md border border-primary-glow/40 bg-primary px-8 font-sans-tech font-bold text-primary-foreground shadow-glow hover:bg-primary/90"
+              >
+                Connect Data Source <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
-              <Button size="lg" variant="outline" className="font-sans-tech font-medium rounded-md px-8 h-14 border-border hover:bg-muted/50 hover:text-foreground">
+              <Button
+                size="lg"
+                variant="outline"
+                className="h-14 rounded-md border-border px-8 font-sans-tech font-medium hover:bg-muted/50 hover:text-foreground"
+              >
                 Read Documentation
               </Button>
             </div>
           </div>
 
-          {/* Right Column: Visualization / Blueprint */}
-          <div className="lg:col-span-5 relative h-[500px] w-full hidden lg:block">
-            {/* Tech Frame */}
+          <div className="relative hidden h-[500px] w-full lg:col-span-5 lg:block">
             <div className="absolute inset-0 border border-border bg-card/10 backdrop-blur-[2px]">
-              {/* Decorative brackets */}
-              <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-primary"></div>
-              <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-primary"></div>
-              <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-primary"></div>
-              <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-primary"></div>
+              <div className="absolute left-0 top-0 h-8 w-8 border-l-2 border-t-2 border-primary" />
+              <div className="absolute right-0 top-0 h-8 w-8 border-r-2 border-t-2 border-primary" />
+              <div className="absolute bottom-0 left-0 h-8 w-8 border-b-2 border-l-2 border-primary" />
+              <div className="absolute bottom-0 right-0 h-8 w-8 border-b-2 border-r-2 border-primary" />
 
-              {/* Center Visualization Placeholder */}
-              <div className="absolute inset-4 border border-dashed border-border/50 flex items-center justify-center bg-black/40">
+              <div className="absolute inset-4 flex items-center justify-center border border-dashed border-border/50 bg-background/65">
                 <div className="text-center">
-                  <Cpu className="w-16 h-16 text-primary/50 mx-auto mb-4 animate-pulse" />
-                  <span className="font-mono-tech text-sm text-primary/70 tracking-widest">Waiting for input stream...</span>
+                  <Cpu className="mx-auto mb-4 h-16 w-16 animate-pulse text-primary/55" />
+                  <span className="font-mono-tech text-sm tracking-widest text-primary-glow/85">
+                    Waiting for input stream...
+                  </span>
                 </div>
 
-                {/* Floating fake data points */}
-                <div className="absolute top-10 right-10 font-mono-tech text-[10px] text-green-500/50">
-                  x: 45.23<br />y: 12.01<br />z: 09.22
+                <div className="absolute right-10 top-10 font-mono-tech text-[10px] text-primary-glow/55">
+                  x: 45.23
+                  <br />
+                  y: 12.01
+                  <br />
+                  z: 09.22
                 </div>
-                <div className="absolute bottom-20 left-10 font-mono-tech text-[10px] text-primary/50">
-                  VEL: 1.2 m/s<br />ACC: 0.4 m/s²
+                <div className="absolute bottom-20 left-10 font-mono-tech text-[10px] text-primary/55">
+                  VEL: 1.2 m/s
+                  <br />
+                  ACC: 0.4 m/s²
                 </div>
               </div>
             </div>
           </div>
-
         </div>
       </div>
     </section>
