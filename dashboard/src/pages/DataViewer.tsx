@@ -493,7 +493,7 @@ function ShowcasePreviewImage({
       <button
         type="button"
         onClick={onClick}
-        className="group relative flex aspect-[5/4] w-full items-center justify-center overflow-hidden rounded-sm border border-border bg-background/70 transition-all duration-300 hover:border-primary hover:shadow-[0_0_0_2px_rgba(249,115,22,0.8)]"
+        className="group relative flex aspect-[5/4] w-full items-center justify-center overflow-hidden rounded-sm border border-border bg-background/70 transition-all duration-300 hover:border-primary hover:shadow-[0_0_0_2px_rgba(31,209,107,0.38)]"
       >
         <Database className="h-9 w-9 text-primary/60" />
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-background/95 to-transparent px-3 py-2 text-left">
@@ -509,7 +509,7 @@ function ShowcasePreviewImage({
     <button
       type="button"
       onClick={onClick}
-      className="group relative w-full overflow-hidden rounded-sm border border-border bg-background/70 shadow-xl shadow-black/20 transition-all duration-300 hover:border-primary hover:shadow-[0_0_0_2px_rgba(249,115,22,0.85)] focus:outline-none focus:border-primary focus:shadow-[0_0_0_2px_rgba(249,115,22,0.85)]"
+      className="group relative w-full overflow-hidden rounded-sm border border-border bg-background/70 shadow-xl shadow-black/20 transition-all duration-300 hover:border-primary hover:shadow-[0_0_0_2px_rgba(31,209,107,0.42)] focus:outline-none focus:border-primary focus:shadow-[0_0_0_2px_rgba(31,209,107,0.42)]"
     >
       <div className="aspect-[5/4] overflow-hidden">
         <img
@@ -700,7 +700,7 @@ function RoboDataHubTopMenu({
                     <span
                       className={`rounded-full border px-2.5 py-1 font-mono-tech text-[10px] uppercase tracking-[0.16em] ${
                         isActive
-                          ? "border-success/25 bg-success/10 text-success"
+                          ? "border-primary-glow/25 bg-primary-glow/10 text-primary-glow"
                           : "border-border bg-background/70 text-muted-foreground"
                       }`}
                     >
@@ -1108,7 +1108,7 @@ export default function DataViewer() {
             <div className="absolute bottom-0 right-0 h-3 w-3 border-b border-r border-border transition-colors group-hover:border-primary" />
 
             <div className="relative z-10 flex flex-col items-center gap-6">
-              <div className="h-44 w-full overflow-hidden rounded-sm border border-border bg-background/50 transition-all group-hover:border-primary/30 group-hover:shadow-[0_0_15px_rgba(249,115,22,0.1)]">
+              <div className="h-44 w-full overflow-hidden rounded-sm border border-border bg-background/50 transition-all group-hover:border-primary/30 group-hover:shadow-[0_0_18px_rgba(31,209,107,0.12)]">
                 <DatasetFolderCover
                   key={folder.full_path}
                   fullPath={folder.source_path ?? resolveDisplayPathToBackendPath(folder.full_path)}
@@ -1142,7 +1142,7 @@ export default function DataViewer() {
   }
 
   const renderRootLanding = () => (
-    <div className="mx-auto w-full max-w-7xl px-6 py-14 md:py-18">
+    <div className="mx-auto w-full max-w-[1440px] px-4 py-12 sm:px-6 md:py-16">
       <RoboDataHubTopMenu activeItem="home" />
 
       <div className="mt-8 min-w-0">
@@ -1151,7 +1151,7 @@ export default function DataViewer() {
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
             RoboDataHub
           </div>
-          <h1 className="mb-4 font-sans-tech text-4xl font-bold tracking-tight text-foreground md:text-5xl">
+            <h1 className="mb-4 font-sans-tech text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-5xl">
             RoboDataHub
           </h1>
           <p className="max-w-3xl font-sans-tech text-sm leading-relaxed text-muted-foreground md:text-base">
@@ -1228,16 +1228,16 @@ export default function DataViewer() {
   );
 
   const renderCategoryLanding = (category: CategoryConfig) => (
-    <div className="mx-auto w-full max-w-7xl px-6 py-14">
+    <div className="mx-auto w-full max-w-[1440px] px-4 py-12 sm:px-6 md:py-16">
       <RoboDataHubTopMenu activeItem={category.routeKey} />
 
       <div className="mt-8 min-w-0">
-        <div className="grid grid-cols-1 items-center gap-8 rounded-sm border border-border bg-gradient-to-br from-card/30 via-background/70 to-primary/5 p-8 shadow-2xl shadow-black/10 xl:grid-cols-[1.05fr_1fr] xl:gap-12 md:p-10">
+          <div className="grid grid-cols-1 items-center gap-8 rounded-sm border border-border bg-gradient-to-br from-card/30 via-background/70 to-primary/5 p-6 shadow-2xl shadow-black/10 md:p-8 xl:grid-cols-[1.05fr_1fr] xl:gap-12">
           <div>
             <div className="mb-5 inline-flex items-center gap-2 rounded-sm border border-primary/30 bg-primary/10 px-3 py-1 font-sans-tech text-xs uppercase tracking-[0.24em] text-primary">
               Category
             </div>
-            <h1 className="mb-5 font-sans-tech text-4xl font-bold tracking-tight text-foreground md:text-5xl">
+              <h1 className="mb-5 font-sans-tech text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-5xl">
               {category.label}
             </h1>
             <p className="mb-4 max-w-2xl font-sans-tech text-base leading-relaxed text-foreground/90 md:text-lg">
@@ -1301,14 +1301,14 @@ export default function DataViewer() {
   );
 
   return (
-    <div className="relative flex h-screen flex-col overflow-hidden bg-background font-sans-tech text-foreground">
+    <div className="relative flex min-h-screen flex-col bg-background font-sans-tech text-foreground md:h-screen md:overflow-hidden">
       <div className="pointer-events-none absolute inset-0 bg-grid-pattern opacity-[0.05]" />
       <Navigation />
 
-      <div className="relative z-10 flex flex-1 flex-col overflow-hidden pt-16">
-        <div className="z-20 flex h-12 shrink-0 items-center justify-between border-b border-border bg-background/80 px-4 backdrop-blur-md">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 text-sm">
+      <div className="relative z-10 flex flex-1 flex-col pt-16 md:overflow-hidden">
+        <div className="z-20 flex min-h-12 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-background/80 px-4 py-2 backdrop-blur-md sm:h-12 sm:flex-nowrap sm:py-0">
+            <div className="flex min-w-0 items-center gap-4">
+              <div className="flex items-center gap-2 text-sm">
               <Link
                 to="/viewer"
                 className="hidden font-sans-tech font-bold text-primary transition-colors hover:text-primary-glow md:block"
@@ -1318,15 +1318,15 @@ export default function DataViewer() {
               <Breadcrumbs />
             </div>
           </div>
-          <div className="flex items-center gap-6 font-sans-tech text-xs font-medium text-muted-foreground">
-            <span className="flex items-center gap-2 text-success">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-success" />
+            <div className="ml-auto flex items-center gap-4 font-sans-tech text-[11px] font-medium text-muted-foreground sm:ml-0 sm:gap-6 sm:text-xs">
+            <span className="flex items-center gap-2 text-primary-glow">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary-glow" />
               Live Connection
             </span>
           </div>
         </div>
 
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 flex-col overflow-hidden xl:flex-row">
           {isLeaf && (
             <Sidebar
               availableTags={availableTags}
@@ -1344,8 +1344,8 @@ export default function DataViewer() {
             />
           )}
 
-          <div className="flex min-w-0 flex-1 flex-col bg-background/50">
-            <div className="flex h-10 items-center justify-between border-b border-border bg-card/10 px-4">
+            <div className="flex min-w-0 flex-1 flex-col bg-background/50">
+            <div className="flex min-h-10 flex-wrap items-center justify-between gap-3 border-b border-border bg-card/10 px-4 py-2 sm:h-10 sm:flex-nowrap sm:py-0">
               <div className="flex items-center space-x-4">
                 <div className="flex items-center rounded-sm border border-border bg-card px-2 py-1 text-xs">
                   <span className="mr-2 font-sans-tech text-muted-foreground">Items:</span>
@@ -1389,7 +1389,7 @@ export default function DataViewer() {
 
               {!isRootLanding && !isCategoryLanding && !isLeaf && (
                 <div className="flex min-h-full flex-col">
-                  <div className="p-8">
+                    <div className="p-4 sm:p-6 lg:p-8">
                     {pathSegments.length > 0 && (
                       <div className="mx-auto mb-6 flex max-w-5xl items-center gap-2">
                         <div className="h-4 w-1 bg-primary" />

@@ -125,7 +125,7 @@ function ShowcaseImageCard({
       onClick={canPreview ? onClick : undefined}
       aria-label={`Expand ${image.alt}`}
       disabled={!canPreview}
-      className={`group block w-full overflow-hidden rounded-sm border transition-all duration-300 focus:outline-none focus-visible:border-primary focus-visible:shadow-[0_0_0_2px_rgba(249,115,22,0.75)] ${
+      className={`group block w-full overflow-hidden rounded-sm border transition-all duration-300 focus:outline-none focus-visible:border-primary focus-visible:shadow-[0_0_0_2px_rgba(31,209,107,0.4)] ${
         canPreview ? "cursor-zoom-in" : "cursor-default"
       } ${
         emphasize
@@ -176,7 +176,7 @@ function ShowcaseOutputGallery({
 
   if (outputs.length === 2) {
     return (
-      <div className="grid gap-4 md:h-[28rem] md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2 lg:h-[28rem]">
         {outputs.map((output) => (
           <div key={output.path}>
             <ShowcaseImageCard
@@ -195,7 +195,7 @@ function ShowcaseOutputGallery({
 
     if (variant === "feature-left") {
       return (
-        <div className="grid gap-4 md:h-[32rem] md:grid-cols-12 md:grid-rows-2">
+        <div className="grid gap-4 md:grid-cols-12 md:grid-rows-2 lg:h-[28rem] xl:h-[32rem]">
           <div className="md:col-span-7 md:row-span-2">
             <ShowcaseImageCard
               image={outputs[0]}
@@ -223,7 +223,7 @@ function ShowcaseOutputGallery({
 
     if (variant === "feature-right") {
       return (
-        <div className="grid gap-4 md:h-[32rem] md:grid-cols-12 md:grid-rows-2">
+        <div className="grid gap-4 md:grid-cols-12 md:grid-rows-2 lg:h-[28rem] xl:h-[32rem]">
           <div className="md:col-span-5">
             <ShowcaseImageCard
               image={outputs[0]}
@@ -250,7 +250,7 @@ function ShowcaseOutputGallery({
     }
 
     return (
-      <div className="grid gap-4 md:h-[32rem] md:grid-cols-2 md:grid-rows-2">
+      <div className="grid gap-4 md:grid-cols-2 md:grid-rows-2 lg:h-[28rem] xl:h-[32rem]">
         <div className="md:col-span-2">
           <ShowcaseImageCard
             image={outputs[0]}
@@ -373,7 +373,7 @@ export default function RoboEyeView() {
 
       <main className="relative z-10 pt-16">
         <section className="border-b border-border bg-background/80 backdrop-blur-sm">
-          <div className="mx-auto max-w-7xl px-6 py-16 md:py-20">
+          <div className="mx-auto max-w-[1440px] px-4 py-14 sm:px-6 md:py-20">
             <div className="max-w-4xl">
               <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5">
                 <Sparkles className="h-4 w-4 text-primary" />
@@ -382,11 +382,11 @@ export default function RoboEyeView() {
                 </span>
               </div>
 
-              <h1 className="mt-6 text-4xl font-bold tracking-tight text-foreground md:text-6xl">
+              <h1 className="mt-6 text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-6xl">
                 Exocentric in. <span className="text-primary">Robot-eye outputs</span> out.
               </h1>
 
-              <p className="mt-5 max-w-3xl text-base leading-relaxed text-muted-foreground md:text-lg">
+              <p className="mt-5 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base md:text-lg">
                 RoboEyeView transforms external scene captures into clean egocentric images that
                 are easier to explain, easier to demonstrate, and better aligned with real robotics
                 workflows.
@@ -409,7 +409,7 @@ export default function RoboEyeView() {
 
         <div className="space-y-8 pb-16 md:space-y-10">
           {resolvedVerticals.map((vertical) => (
-            <section key={vertical.id} id={vertical.id} className="scroll-mt-24 px-6">
+            <section key={vertical.id} id={vertical.id} className="scroll-mt-24 px-4 sm:px-6">
               <div className="mx-auto max-w-7xl overflow-hidden rounded-sm border border-border bg-card/15 shadow-2xl shadow-black/10">
                 <div className="border-b border-border bg-background/65 px-6 py-5 md:px-8 md:py-6">
                   <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -437,7 +437,7 @@ export default function RoboEyeView() {
                   </div>
                 </div>
 
-                <div className="grid gap-6 p-6 md:p-8 lg:grid-cols-[minmax(0,0.82fr)_56px_minmax(0,1.38fr)] lg:gap-8">
+                <div className="grid gap-6 p-5 sm:p-6 md:p-8 xl:grid-cols-[minmax(0,0.82fr)_56px_minmax(0,1.38fr)] xl:gap-8">
                   <div>
                     <ShowcaseImageCard
                       image={vertical.input}
@@ -447,7 +447,7 @@ export default function RoboEyeView() {
                     />
                   </div>
 
-                  <div className="hidden flex-col items-center justify-center gap-4 lg:flex">
+                  <div className="hidden flex-col items-center justify-center gap-4 xl:flex">
                     <div className="h-16 w-px bg-gradient-to-b from-transparent via-primary/60 to-transparent" />
                     <div className="inline-flex flex-col items-center gap-3 rounded-full border border-primary/25 bg-background/85 px-4 py-4">
                       <span className="text-[10px] font-mono-tech uppercase tracking-[0.24em] text-primary">

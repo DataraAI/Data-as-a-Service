@@ -17,7 +17,6 @@ const ANNOTATION_TYPES = [
   "3d mesh",
 ] as const;
 
-/** Match folder paths when filters are on (path names often encode modality / task). */
 const MODALITY_KEYWORDS: Record<string, string[]> = {
   video: ["video", "rgb", "camera", "mp4", "frame", "image"],
   audio: ["audio", "wav", "sound", "mic"],
@@ -56,7 +55,6 @@ function displayTitle(fullPath: string): string {
   return parts[parts.length - 1] || fullPath;
 }
 
-/** Keep only paths shaped as category/brand/dataset (three segments, no trailing slash). */
 function isDatasetRootPath(p: string): boolean {
   return p.split("/").filter(Boolean).length === 3;
 }
@@ -84,7 +82,9 @@ export default function ExploreDatasets() {
       const raw = res.data;
       const list = Array.isArray(raw)
         ? raw
-            .map((p) => (typeof p === "string" ? p : String((p as { full_path?: string }).full_path ?? p)))
+            .map((p) =>
+              typeof p === "string" ? p : String((p as { full_path?: string }).full_path ?? p),
+            )
             .filter(Boolean)
             .map((p) => p.replace(/\/+$/, ""))
             .filter(isDatasetRootPath)
@@ -93,11 +93,17 @@ export default function ExploreDatasets() {
     } catch (e: unknown) {
       console.error("ExploreDatasets: dataset-paths failed, falling back to root", e);
       try {
-        const fallback = await axios.get<{ full_path: string }[]>("/api/datasets", { params: { path: "" } });
+        const fallback = await axios.get<{ full_path: string }[]>("/api/datasets", {
+          params: { path: "" },
+        });
         setPaths(
-          [...new Set((fallback.data ?? []).map((d) => d.full_path.replace(/\/+$/, "")).filter(isDatasetRootPath))].sort(
-            (a, b) => a.localeCompare(b)
-          )
+          [
+            ...new Set(
+              (fallback.data ?? [])
+                .map((d) => d.full_path.replace(/\/+$/, ""))
+                .filter(isDatasetRootPath),
+            ),
+          ].sort((a, b) => a.localeCompare(b)),
         );
       } catch (e2: unknown) {
         const msg =
@@ -160,83 +166,94 @@ export default function ExploreDatasets() {
     setSearchDataset((s) => s.trim());
   };
 
-  const hasSearchInput =
-    searchCategory.trim() || searchBrand.trim() || searchDataset.trim();
+  const hasSearchInput = searchCategory.trim() || searchBrand.trim() || searchDataset.trim();
 
   return (
-    <div className="min-h-screen flex flex-col text-foreground bg-background font-sans-tech relative">
-      <div className="absolute inset-0 bg-grid-pattern opacity-[0.05] pointer-events-none" aria-hidden />
+    <div className="relative flex min-h-screen flex-col bg-background font-sans-tech text-foreground">
+      <div className="pointer-events-none absolute inset-0 bg-grid-pattern opacity-[0.05]" aria-hidden />
       <Navigation />
 
-      <main className="flex-1 flex flex-col pt-16 relative z-10 min-h-0">
-        <header className="border-b border-border bg-card/30 backdrop-blur-sm px-4 py-6 md:px-8">
-          <div className="max-w-7xl mx-auto">
-            <p className="text-xs font-mono-tech uppercase tracking-widest text-muted-foreground mb-2">Datara DataHub</p>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">
+      <main className="relative z-10 flex min-h-0 flex-1 flex-col pt-16">
+        <header className="border-b border-border bg-card/30 px-4 py-6 backdrop-blur-sm sm:px-6">
+          <div className="mx-auto max-w-[1440px]">
+            <p className="mb-2 font-mono-tech text-xs uppercase tracking-widest text-muted-foreground">
+              Datara DataHub
+            </p>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
               Explore <span className="text-primary">Datasets</span>
             </h1>
-            <p className="text-sm text-muted-foreground mt-2 max-w-2xl">
-              Browse dataset paths (category / brand / dataset name) in the roboteyeview container. Search each segment,
-              filter by modality and annotation, then open a path in the data viewer.
+            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+              Browse dataset paths (category / brand / dataset name) in the roboteyeview
+              container. Search each segment, filter by modality and annotation, then open a
+              path in the data viewer.
             </p>
           </div>
         </header>
 
-        <div className="flex-1 flex flex-col md:flex-row min-h-0 max-w-7xl mx-auto w-full">
-          <aside className="w-full md:w-[min(100%,280px)] lg:w-1/4 shrink-0 border-b md:border-b-0 md:border-r border-border bg-card/20 overflow-y-auto custom-scrollbar">
-            <div className="p-5 space-y-8">
+        <div className="mx-auto flex min-h-0 w-full max-w-[1440px] flex-1 flex-col lg:flex-row">
+          <aside className="custom-scrollbar w-full shrink-0 overflow-y-auto border-b border-border bg-card/20 lg:w-[320px] lg:border-b-0 lg:border-r">
+            <div className="space-y-8 p-5">
               <div className="space-y-3">
                 <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   Path search
                 </h3>
                 <div className="space-y-2">
                   <div className="space-y-1">
-                    <Label htmlFor="explore-search-category" className="text-[10px] uppercase tracking-wide text-muted-foreground font-mono-tech">
+                    <Label
+                      htmlFor="explore-search-category"
+                      className="font-mono-tech text-[10px] uppercase tracking-wide text-muted-foreground"
+                    >
                       Category
                     </Label>
                     <div className="relative">
-                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                      <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                       <Input
                         id="explore-search-category"
                         type="search"
-                        placeholder="Search category…"
+                        placeholder="Search category..."
                         value={searchCategory}
                         onChange={(e) => setSearchCategory(e.target.value)}
-                        className="pl-8 h-9 text-sm font-sans-tech bg-background/80 border-border rounded-sm"
+                        className="h-9 rounded-sm border-border bg-background/80 pl-8 text-sm font-sans-tech"
                         autoComplete="off"
                       />
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <Label htmlFor="explore-search-brand" className="text-[10px] uppercase tracking-wide text-muted-foreground font-mono-tech">
+                    <Label
+                      htmlFor="explore-search-brand"
+                      className="font-mono-tech text-[10px] uppercase tracking-wide text-muted-foreground"
+                    >
                       Brand
                     </Label>
                     <div className="relative">
-                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                      <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                       <Input
                         id="explore-search-brand"
                         type="search"
-                        placeholder="Search brand…"
+                        placeholder="Search brand..."
                         value={searchBrand}
                         onChange={(e) => setSearchBrand(e.target.value)}
-                        className="pl-8 h-9 text-sm font-sans-tech bg-background/80 border-border rounded-sm"
+                        className="h-9 rounded-sm border-border bg-background/80 pl-8 text-sm font-sans-tech"
                         autoComplete="off"
                       />
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <Label htmlFor="explore-search-dataset" className="text-[10px] uppercase tracking-wide text-muted-foreground font-mono-tech">
+                    <Label
+                      htmlFor="explore-search-dataset"
+                      className="font-mono-tech text-[10px] uppercase tracking-wide text-muted-foreground"
+                    >
                       Dataset name
                     </Label>
                     <div className="relative">
-                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                      <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                       <Input
                         id="explore-search-dataset"
                         type="search"
-                        placeholder="Search dataset…"
+                        placeholder="Search dataset..."
                         value={searchDataset}
                         onChange={(e) => setSearchDataset(e.target.value)}
-                        className="pl-8 h-9 text-sm font-sans-tech bg-background/80 border-border rounded-sm"
+                        className="h-9 rounded-sm border-border bg-background/80 pl-8 text-sm font-sans-tech"
                         autoComplete="off"
                       />
                     </div>
@@ -254,16 +271,16 @@ export default function ExploreDatasets() {
               </div>
 
               <div>
-                <h2 className="text-xs font-bold font-mono-tech uppercase tracking-widest text-foreground mb-3">
+                <h2 className="mb-3 font-mono-tech text-xs font-bold uppercase tracking-widest text-foreground">
                   Data attributes and filtering
                 </h2>
-                <p className="text-xs text-muted-foreground mb-4">
+                <p className="mb-4 text-xs text-muted-foreground">
                   Narrow paths by keywords in folder names. Leave a group empty to include all.
                 </p>
               </div>
 
               <div>
-                <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   Sensor modality
                 </h3>
                 <div className="flex flex-wrap gap-2">
@@ -273,10 +290,10 @@ export default function ExploreDatasets() {
                       type="button"
                       onClick={() => setModalities((s) => toggleSet(s, m))}
                       className={cn(
-                        "px-3 py-1.5 rounded-full text-xs font-mono-tech border transition-colors",
+                        "rounded-full border px-3 py-1.5 font-mono-tech text-xs transition-colors",
                         modalities.has(m)
-                          ? "bg-primary text-primary-foreground border-primary shadow-glow/30"
-                          : "bg-background/80 text-muted-foreground border-border hover:border-primary/40 hover:text-foreground"
+                          ? "border-primary bg-primary text-primary-foreground shadow-glow/30"
+                          : "border-border bg-background/80 text-muted-foreground hover:border-primary/40 hover:text-foreground",
                       )}
                     >
                       {m}
@@ -286,7 +303,7 @@ export default function ExploreDatasets() {
               </div>
 
               <div>
-                <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   Annotation type
                 </h3>
                 <div className="flex flex-wrap gap-2">
@@ -296,10 +313,10 @@ export default function ExploreDatasets() {
                       type="button"
                       onClick={() => setAnnotations((s) => toggleSet(s, a))}
                       className={cn(
-                        "px-3 py-1.5 rounded-full text-xs font-mono-tech border transition-colors",
+                        "rounded-full border px-3 py-1.5 font-mono-tech text-xs transition-colors",
                         annotations.has(a)
-                          ? "bg-primary text-primary-foreground border-primary shadow-glow/30"
-                          : "bg-background/80 text-muted-foreground border-border hover:border-primary/40 hover:text-foreground"
+                          ? "border-primary bg-primary text-primary-foreground shadow-glow/30"
+                          : "border-border bg-background/80 text-muted-foreground hover:border-primary/40 hover:text-foreground",
                       )}
                     >
                       {a}
@@ -309,33 +326,38 @@ export default function ExploreDatasets() {
               </div>
 
               {(modalities.size > 0 || annotations.size > 0 || hasSearchInput) && (
-                <Button variant="outline" size="sm" className="w-full font-mono-tech text-xs" onClick={clearFilters}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full font-mono-tech text-xs"
+                  onClick={clearFilters}
+                >
                   Clear filters
                 </Button>
               )}
             </div>
           </aside>
 
-          <section className="flex-1 flex flex-col min-w-0 min-h-0 bg-background/40">
-            <div className="sticky top-16 z-20 shrink-0 border-b border-border bg-background/95 backdrop-blur-md px-4 py-3 md:px-6">
-              <p className="text-xs text-muted-foreground font-mono-tech">
+          <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-background/40">
+            <div className="sticky top-16 z-20 shrink-0 border-b border-border bg-background/95 px-4 py-3 backdrop-blur-md md:px-6">
+              <p className="font-mono-tech text-xs text-muted-foreground">
                 {loading
-                  ? "Loading…"
+                  ? "Loading..."
                   : `${filteredPaths.length} path${filteredPaths.length === 1 ? "" : "s"} shown`}
               </p>
             </div>
 
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6">
+            <div className="custom-scrollbar flex-1 overflow-y-auto p-4 md:p-6">
               {loading && (
-                <div className="flex flex-col items-center justify-center py-24 gap-4 text-muted-foreground">
-                  <Loader2 className="w-10 h-10 text-primary animate-spin" />
-                  <span className="text-sm font-mono-tech">Loading datasets…</span>
+                <div className="flex flex-col items-center justify-center gap-4 py-24 text-muted-foreground">
+                  <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                  <span className="font-mono-tech text-sm">Loading datasets...</span>
                 </div>
               )}
 
               {!loading && loadError && (
                 <div className="rounded-sm border border-destructive/40 bg-destructive/5 p-6 text-center">
-                  <p className="text-sm text-destructive font-sans-tech mb-2">{loadError}</p>
+                  <p className="mb-2 font-sans-tech text-sm text-destructive">{loadError}</p>
                   <Button variant="outline" size="sm" onClick={() => void fetchPaths()}>
                     Retry
                   </Button>
@@ -343,10 +365,14 @@ export default function ExploreDatasets() {
               )}
 
               {!loading && !loadError && filteredPaths.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-20 text-muted-foreground border border-dashed border-border rounded-sm bg-card/10">
-                  <Database className="w-12 h-12 mb-4 opacity-40" />
+                <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/10 py-20 text-muted-foreground">
+                  <Database className="mb-4 h-12 w-12 opacity-40" />
                   <p className="font-sans-tech text-sm">No paths match your filters.</p>
-                  <button type="button" onClick={clearFilters} className="mt-4 text-primary text-sm font-medium underline-offset-4 hover:underline">
+                  <button
+                    type="button"
+                    onClick={clearFilters}
+                    className="mt-4 text-sm font-medium text-primary underline-offset-4 hover:underline"
+                  >
                     Reset filters
                   </button>
                 </div>
@@ -358,33 +384,35 @@ export default function ExploreDatasets() {
                     <li key={fullPath}>
                       <Link
                         to={viewerHref(fullPath)}
-                        className="group block rounded-sm border border-border bg-card/30 overflow-hidden hover:border-primary/50 hover:bg-card/50 transition-all duration-300 shadow-elegant/0 hover:shadow-elegant"
+                        className="group block overflow-hidden rounded-sm border border-border bg-card/30 transition-all duration-300 hover:border-primary/50 hover:bg-card/50 hover:shadow-elegant"
                       >
-                        <div className="flex flex-col sm:flex-row sm:items-stretch min-h-[100px]">
-                          <div className="sm:w-36 shrink-0 bg-primary/10 border-b sm:border-b-0 sm:border-r border-border flex items-center justify-center p-4 overflow-hidden">
+                        <div className="flex min-h-[100px] flex-col sm:flex-row sm:items-stretch">
+                          <div className="flex shrink-0 items-center justify-center overflow-hidden border-b border-border bg-primary/10 p-4 sm:w-36 sm:border-b-0 sm:border-r">
                             <DatasetFolderCover
                               key={fullPath}
                               fullPath={fullPath}
                               FallbackIcon={FolderOpen}
-                              className="flex items-center justify-center w-full max-w-[8rem] sm:max-w-none h-24 sm:h-28"
-                              imgClassName="w-full h-full object-cover rounded-sm group-hover:scale-105 transition-transform duration-300"
-                              iconClassName="w-10 h-10 text-primary opacity-90 group-hover:scale-105 transition-transform"
+                              className="flex h-24 w-full max-w-[8rem] items-center justify-center sm:h-28 sm:max-w-none"
+                              imgClassName="h-full w-full rounded-sm object-cover transition-transform duration-300 group-hover:scale-105"
+                              iconClassName="h-10 w-10 text-primary opacity-90 transition-transform group-hover:scale-105"
                             />
                           </div>
-                          <div className="flex-1 p-4 flex flex-col justify-center min-w-0">
-                            <p className="text-lg font-bold font-sans-tech uppercase tracking-wide text-foreground group-hover:text-primary transition-colors truncate">
+                          <div className="flex min-w-0 flex-1 flex-col justify-center p-4">
+                            <p className="truncate font-sans-tech text-lg font-bold uppercase tracking-wide text-foreground transition-colors group-hover:text-primary">
                               {displayTitle(fullPath)}
                             </p>
-                            <p className="text-xs font-mono-tech text-muted-foreground mt-1 break-all">{fullPath}</p>
+                            <p className="mt-1 break-all font-mono-tech text-xs text-muted-foreground">
+                              {fullPath}
+                            </p>
                           </div>
                         </div>
-                        <div className="px-4 py-2 bg-muted/40 border-t border-border flex items-center justify-between gap-2">
-                          <span className="text-[10px] font-mono-tech uppercase tracking-wider text-muted-foreground">
+                        <div className="flex items-center justify-between gap-2 border-t border-border bg-muted/40 px-4 py-2">
+                          <span className="font-mono-tech text-[10px] uppercase tracking-wider text-muted-foreground">
                             roboteyeview
                           </span>
-                          <span className="text-xs font-mono-tech text-primary group-hover:text-primary-glow flex items-center gap-1">
+                          <span className="flex items-center gap-1 font-mono-tech text-xs text-primary transition-colors group-hover:text-primary-glow">
                             Open in viewer
-                            <span aria-hidden>→</span>
+                            <span aria-hidden>&rarr;</span>
                           </span>
                         </div>
                       </Link>

@@ -1,5 +1,5 @@
 import FooterSection from "@/components/FooterSection";
- import Navigation from "@/components/Navigation";
+import Navigation from "@/components/Navigation";
 import { frontPageImageUrl } from "@/lib/datasetFolderCover";
 import {
   Database,
@@ -265,7 +265,7 @@ function SolutionsTopMenu() {
           <div className="font-mono-tech text-[11px] uppercase tracking-[0.24em] text-primary">
             Solutions Map
           </div>
-          <h1 className="mt-3 font-sans-tech text-3xl font-bold tracking-tight text-foreground">
+          <h1 className="mt-3 font-sans-tech text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
             Solutions
           </h1>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
@@ -276,7 +276,7 @@ function SolutionsTopMenu() {
         </div>
 
         <div className="overflow-x-auto pb-2">
-          <div className="flex min-w-max gap-3">
+          <div className="flex min-w-max snap-x snap-mandatory gap-3">
             {productMenuItems.map((item, index) => {
               const content = (
                 <>
@@ -293,7 +293,7 @@ function SolutionsTopMenu() {
                     <span
                       className={`rounded-full border px-2.5 py-1 font-mono-tech text-[10px] uppercase tracking-[0.16em] ${
                         item.href
-                          ? "border-success/25 bg-success/10 text-success"
+                          ? "border-primary-glow/25 bg-primary-glow/10 text-primary-glow"
                           : "border-border bg-background/70 text-muted-foreground"
                       }`}
                     >
@@ -315,7 +315,7 @@ function SolutionsTopMenu() {
                   <Link
                     key={item.label}
                     to={item.href}
-                    className="group w-[252px] rounded-[24px] border border-border/80 bg-background/60 p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-background/80 hover:shadow-[0_14px_40px_rgba(0,0,0,0.24)]"
+                    className="group w-[220px] snap-start rounded-[24px] border border-border/80 bg-background/60 p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-background/80 hover:shadow-[0_14px_40px_rgba(0,0,0,0.24)] sm:w-[244px]"
                   >
                     {content}
                   </Link>
@@ -327,7 +327,7 @@ function SolutionsTopMenu() {
                   key={item.label}
                   type="button"
                   disabled
-                  className="w-[252px] cursor-not-allowed rounded-[24px] border border-border/80 bg-background/40 p-5 text-left opacity-85"
+                  className="w-[220px] cursor-not-allowed snap-start rounded-[24px] border border-border/80 bg-background/40 p-5 text-left opacity-85 sm:w-[244px]"
                 >
                   {content}
                 </button>
@@ -347,15 +347,15 @@ export default function Product() {
 
       <div className="relative overflow-hidden">
         <div className="pointer-events-none absolute inset-0 bg-grid-pattern opacity-[0.08]" />
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-[520px] bg-[radial-gradient(circle_at_top_right,rgba(248,112,7,0.22),transparent_30%),radial-gradient(circle_at_10%_25%,rgba(16,158,59,0.18),transparent_24%)]" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-[520px] bg-[radial-gradient(circle_at_top_right,rgba(31,209,107,0.2),transparent_30%),radial-gradient(circle_at_10%_25%,rgba(143,224,179,0.14),transparent_24%)]" />
 
-        <main className="container relative z-10 mx-auto px-6 pb-16 pt-24">
+        <main className="relative z-10 mx-auto max-w-[1440px] px-4 pb-16 pt-24 sm:px-6">
           <div className="mx-auto max-w-7xl">
             <SolutionsTopMenu />
 
             <div className="mt-6 min-w-0">
-              <section className="relative overflow-hidden rounded-[32px] border border-border bg-card/70 px-6 py-10 shadow-[0_24px_80px_rgba(0,0,0,0.32)] md:px-10 md:py-12">
-                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(248,112,7,0.18),transparent_24%),radial-gradient(circle_at_bottom_left,rgba(16,158,59,0.12),transparent_28%)]" />
+              <section className="relative overflow-hidden rounded-[32px] border border-border bg-card/70 px-5 py-8 shadow-[0_24px_80px_rgba(0,0,0,0.32)] sm:px-6 md:px-10 md:py-12">
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(31,209,107,0.16),transparent_24%),radial-gradient(circle_at_bottom_left,rgba(143,224,179,0.1),transparent_28%)]" />
 
                 <div className="relative">
                   <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 font-mono-tech text-[11px] uppercase tracking-[0.22em] text-primary">
@@ -363,11 +363,11 @@ export default function Product() {
                     Physical AI Solutions Platform
                   </div>
 
-                  <h2 className="mt-6 max-w-4xl font-sans-tech text-4xl font-bold tracking-tight text-foreground md:text-6xl md:leading-[1.02]">
+                  <h2 className="mt-6 max-w-4xl font-sans-tech text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-6xl md:leading-[1.02]">
                     Robot-ready data and execution intelligence for real industrial deployment.
                   </h2>
 
-                  <p className="mt-5 max-w-3xl border-l-2 border-primary/40 pl-5 text-base leading-8 text-muted-foreground md:text-lg">
+                  <p className="mt-5 max-w-3xl border-l-2 border-primary/40 pl-4 text-sm leading-7 text-muted-foreground sm:pl-5 sm:text-base md:text-lg md:leading-8">
                     DataraAI turns raw operational footage into structured training signals for
                     perception, dexterity, task execution, and robot-eye-view learning, all
                     within a layout that mirrors your uploaded reference page.
@@ -394,7 +394,7 @@ export default function Product() {
                   return (
                     <section key={section.id} id={section.id} className="scroll-mt-24">
                       <div className="relative overflow-hidden rounded-[28px] border border-border bg-card/75 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.28)] md:p-8">
-                        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(248,112,7,0.06),transparent_35%,rgba(16,158,59,0.05))]" />
+                        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(31,209,107,0.08),transparent_35%,rgba(143,224,179,0.06))]" />
 
                         <div className="relative">
                           <div className="max-w-3xl">
@@ -417,13 +417,13 @@ export default function Product() {
                             </p>
                           </div>
 
-                          <div className="mt-8 grid gap-4 lg:grid-cols-3">
+                          <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                             {section.highlights.map((highlight) => (
                               <div
                                 key={highlight.title}
                                 className="rounded-[22px] border border-border bg-background/55 p-5 backdrop-blur-sm"
                               >
-                                <div className="h-1.5 w-12 rounded-full bg-gradient-to-r from-primary to-success" />
+                                <div className="h-1.5 w-12 rounded-full bg-gradient-to-r from-primary to-primary-glow" />
                                 <div className="mt-4 font-sans-tech text-base font-semibold text-foreground">
                                   {highlight.title}
                                 </div>
