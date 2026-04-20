@@ -238,12 +238,12 @@ function ShowcaseOutputGallery({
 
   if (outputs.length === 2) {
     return (
-      <div className="grid gap-4 sm:grid-cols-2 lg:h-[15rem] xl:h-[16rem]">
+      <div className="grid gap-4 sm:grid-cols-2">
         {outputs.map((output) => (
           <ShowcaseImageCard
             key={output.path}
             image={output}
-            aspectClassName="aspect-[4/3] lg:h-full"
+            aspectClassName="aspect-[4/3]"
             onClick={() => onSelect(output)}
           />
         ))}
@@ -252,25 +252,25 @@ function ShowcaseOutputGallery({
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 md:grid-rows-2 lg:h-[18rem] xl:h-[20rem]">
+    <div className="grid gap-4 md:grid-cols-2">
       <div className="md:col-span-2">
         <ShowcaseImageCard
           image={outputs[0]}
-          aspectClassName="aspect-[4/3] md:h-full"
+          aspectClassName="aspect-[16/9]"
           onClick={() => onSelect(outputs[0])}
         />
       </div>
       <div>
         <ShowcaseImageCard
           image={outputs[1]}
-          aspectClassName="aspect-[4/3] md:h-full"
+          aspectClassName="aspect-[4/3]"
           onClick={() => onSelect(outputs[1])}
         />
       </div>
       <div>
         <ShowcaseImageCard
           image={outputs[2]}
-          aspectClassName="aspect-[4/3] md:h-full"
+          aspectClassName="aspect-[4/3]"
           onClick={() => onSelect(outputs[2])}
         />
       </div>
@@ -299,12 +299,11 @@ function ShowcaseExampleRow({
   onSelect: (image: ShowcaseImage) => void;
 }) {
   return (
-    <div className="grid gap-4 xl:grid-cols-[minmax(250px,0.7fr)_68px_minmax(0,1.3fr)] xl:items-stretch xl:gap-6">
+    <div className="grid gap-4 xl:grid-cols-[minmax(250px,0.7fr)_68px_minmax(0,1.3fr)] xl:items-start xl:gap-6">
       <ShowcaseImageCard
         image={example.input}
         emphasize
-        containerClassName="h-full"
-        aspectClassName="aspect-[4/3] sm:aspect-[16/11] xl:h-full"
+        aspectClassName="aspect-[4/3] sm:aspect-[16/11]"
         onClick={() => onSelect(example.input)}
       />
 
