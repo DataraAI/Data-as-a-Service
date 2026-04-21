@@ -1,7 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
+import { useAuth } from "@/auth/useAuth";
 
 const primaryNavItems = [
   { label: "Home", href: "/" },
@@ -10,16 +11,15 @@ const primaryNavItems = [
   { label: "Explore Datasets", href: "/explore" },
 ];
 
-const secondaryNavItems = [
-  { label: "RoboEyeView", href: "/roboeyeview" },
-  { label: "Platform", href: "/platform" },
-  { label: "Documentation", href: "/docs" },
-];
-
+const secondaryNavItems = [{ label: "RoboEyeView", href: "/roboeyeview" }];
 const allNavItems = [...primaryNavItems, ...secondaryNavItems];
 
 const Navigation = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { isAuthenticated, isApproved, user, login, logout } = useAuth();
+  const location = useLocation();
+
+  const loginTarget = `${location.pathname}${location.search}`;
 
   return (
     <nav className="fixed left-0 right-0 top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md">
@@ -51,17 +51,39 @@ const Navigation = () => {
           </div>
 
           <div className="hidden items-center gap-3 xl:flex">
-            <Button
-              variant="ghost"
-              className="font-mono-tech text-sm transition-colors hover:text-primary"
-            >
-              Sign In
-            </Button>
+            {isAuthenticated ? (
+              <>
+                <div className="rounded-sm border border-border bg-card/40 px-3 py-2 text-right">
+                  <div className="font-mono-tech text-[10px] uppercase tracking-wide text-muted-foreground">
+                    {isApproved ? user?.role ?? "user" : "pending"}
+                  </div>
+                  <div className="max-w-[220px] truncate font-sans-tech text-sm text-foreground">
+                    {user?.displayName ?? user?.email}
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  className="font-mono-tech text-sm transition-colors hover:text-primary"
+                  onClick={() => void logout()}
+                >
+                  Sign Out
+                </Button>
+              </>
+            ) : (
+              <Button
+                variant="ghost"
+                className="font-mono-tech text-sm transition-colors hover:text-primary"
+                onClick={() => login(loginTarget)}
+              >
+                Sign In
+              </Button>
+            )}
             <Button
               variant="default"
               className="rounded-sm border border-primary/20 bg-primary font-mono-tech text-sm text-primary-foreground shadow-glow hover:bg-primary-glow"
+              onClick={() => (isAuthenticated ? window.location.assign("/viewer") : login(loginTarget))}
             >
-              Get Started
+              {isAuthenticated ? "Open Platform" : "Get Started"}
             </Button>
           </div>
 
@@ -92,12 +114,43 @@ const Navigation = () => {
                 ))}
               </div>
 
-              <div className="mt-4 grid gap-2 border-t border-border pt-4 sm:grid-cols-2">
-                <Button variant="ghost" className="w-full justify-start font-mono-tech">
-                  Sign In
-                </Button>
-                <Button variant="default" className="w-full justify-start rounded-sm font-mono-tech">
-                  Get Started
+              <div className="mt-4 space-y-3 border-t border-border pt-4">
+                {isAuthenticated && (
+                  <div className="rounded-sm border border-border bg-card/30 px-4 py-3">
+                    <div className="font-mono-tech text-[10px] uppercase tracking-wide text-muted-foreground">
+                      {isApproved ? user?.role ?? "user" : "pending approval"}
+                    </div>
+                    <div className="mt-1 truncate font-sans-tech text-sm text-foreground">
+                      {user?.displayName ?? user?.email}
+                    </div>
+                  </div>
+                )}
+
+                {!isAuthenticated ? (
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start font-mono-tech"
+                    onClick={() => login(loginTarget)}
+                  >
+                    Sign In
+                  </Button>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start font-mono-tech"
+                    onClick={() => void logout()}
+                  >
+                    Sign Out
+                  </Button>
+                )}
+                <Button
+                  variant="default"
+                  className="w-full justify-start rounded-sm font-mono-tech"
+                  onClick={() =>
+                    isAuthenticated ? window.location.assign("/viewer") : login(loginTarget)
+                  }
+                >
+                  {isAuthenticated ? "Open Platform" : "Get Started"}
                 </Button>
               </div>
             </div>

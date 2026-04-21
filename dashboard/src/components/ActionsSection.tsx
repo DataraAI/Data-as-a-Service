@@ -1,20 +1,29 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Database, Upload, ArrowRight, ExternalLink } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Database, Upload, ArrowRight, ExternalLink, LockKeyhole } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
 import { UploadModal } from "@/components/UploadModal";
+import { useAuth } from "@/auth/useAuth";
 
 const ActionsSection = () => {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const { isAuthenticated, isApproved, login } = useAuth();
+  const location = useLocation();
+
+  const canImport = isAuthenticated && isApproved;
 
   const actions = [
     {
-      icon: Upload,
+      icon: canImport ? Upload : LockKeyhole,
       title: "Import Dataset",
-      description: "Upload a dataset for processing",
-      action: () => setIsUploadModalOpen(true),
+      description: canImport
+        ? "Upload a dataset for processing"
+        : "Sign in with an approved account before uploading private or public data",
+      action: () =>
+        canImport ? setIsUploadModalOpen(true) : login(`${location.pathname}${location.search}`),
       variant: "default",
+      cta: canImport ? "IMPORT DATA" : "SIGN IN TO IMPORT",
     },
     {
       icon: Database,
@@ -22,6 +31,7 @@ const ActionsSection = () => {
       description: "Explore the dataset in our custom viewer",
       href: "/viewer",
       variant: "secondary",
+      cta: "VIEW DATA",
     },
   ];
 
@@ -61,7 +71,7 @@ const ActionsSection = () => {
                 </p>
               </div>
 
-              {action.href ? (
+              {"href" in action ? (
                 <Button
                   asChild
                   variant="outline"
@@ -69,7 +79,7 @@ const ActionsSection = () => {
                   size="lg"
                 >
                   <Link to={action.href}>
-                    <span>VIEW DATA</span>
+                    <span>{action.cta}</span>
                     <ExternalLink className="ml-2 h-4 w-4 transition-transform duration-300 group-hover/btn:translate-x-1" />
                   </Link>
                 </Button>
@@ -79,7 +89,7 @@ const ActionsSection = () => {
                   className="group/btn w-full bg-primary font-mono-tech text-primary-foreground hover:bg-primary/90"
                   size="lg"
                 >
-                  <span>IMPORT DATA</span>
+                  <span>{action.cta}</span>
                   <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-300 group-hover/btn:translate-x-1" />
                 </Button>
               )}
@@ -88,22 +98,6 @@ const ActionsSection = () => {
         </div>
 
         <UploadModal isOpen={isUploadModalOpen} onClose={() => setIsUploadModalOpen(false)} />
-
-        <div className="mt-16 border-t border-border pt-10 text-center">
-          <h3 className="mb-8 font-sans-tech text-xl font-bold uppercase tracking-wider text-foreground">
-            SYSTEM RESOURCES
-          </h3>
-          <div className="flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:flex-wrap">
-            <Button variant="ghost" className="group font-mono-tech text-muted-foreground hover:text-primary">
-              // API_DOCS
-              <ExternalLink className="ml-2 h-3 w-3 transition-transform duration-300 group-hover:scale-110" />
-            </Button>
-            <Button variant="ghost" className="group font-mono-tech text-muted-foreground hover:text-primary">
-              // RESEARCH_PAPERS
-              <ExternalLink className="ml-2 h-3 w-3 transition-transform duration-300 group-hover:scale-110" />
-            </Button>
-          </div>
-        </div>
       </div>
     </section>
   );
