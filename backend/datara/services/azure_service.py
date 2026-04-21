@@ -5,9 +5,10 @@ from __future__ import annotations
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Any
+from urllib.parse import quote
 
 from azure.cosmos import CosmosClient
-from azure.core.exceptions import ResourceExistsError, ResourceNotFoundError
+from azure.core.exceptions import HttpResponseError, ResourceExistsError, ResourceNotFoundError
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobSasPermissions, BlobServiceClient, generate_blob_sas
 
@@ -116,8 +117,9 @@ class AzureService:
         return deleted
 
     def generate_sas_url(self, container_name: str, blob_name: str, expiry_hours: int = 1) -> str:
+        encoded_blob_name = quote(blob_name, safe="/")
         if not self.account_key:
-            return f"{self.account_url}{container_name}/{blob_name}"
+            return f"{self.account_url}{container_name}/{encoded_blob_name}"
         token = generate_blob_sas(
             account_name=self.account_name,
             container_name=container_name,
@@ -126,10 +128,11 @@ class AzureService:
             permission=BlobSasPermissions(read=True),
             expiry=datetime.now(timezone.utc) + timedelta(hours=expiry_hours),
         )
-        return f"{self.account_url}{container_name}/{blob_name}?{token}"
+        return f"{self.account_url}{container_name}/{encoded_blob_name}?{token}"
 
     def get_blob_url(self, container_name: str, blob_name: str) -> str:
-        return f"{self.account_url}{container_name}/{blob_name}"
+        encoded_blob_name = quote(blob_name, safe="/")
+        return f"{self.account_url}{container_name}/{encoded_blob_name}"
 
     def copy_blob(
         self,
@@ -147,7 +150,25 @@ class AzureService:
             raise FileExistsError(f"Destination blob already exists: {target_container}/{target_blob}")
 
         source_url = self.generate_sas_url(source_container, source_blob, expiry_hours=2)
-        result = destination.start_copy_from_url(source_url)
+        try:
+            result = destination.start_copy_from_url(source_url)
+        except HttpResponseError as exc:
+            logger.warning(
+                "start_copy_from_url failed for %s/%s -> %s/%s (%s). Falling back to download/upload copy.",
+                source_container,
+                source_blob,
+                target_container,
+                target_blob,
+                exc,
+            )
+            self._copy_blob_via_download(
+                source_container=source_container,
+                source_blob=source_blob,
+                target_container=target_container,
+                target_blob=target_blob,
+                overwrite=overwrite,
+            )
+            return
         copy_id = result["copy_id"]
         deadline = time.time() + timeout_seconds
 
@@ -161,6 +182,30 @@ class AzureService:
             time.sleep(1)
 
         raise TimeoutError(f"Timed out waiting for blob copy {copy_id}")
+
+    def _copy_blob_via_download(
+        self,
+        *,
+        source_container: str,
+        source_blob: str,
+        target_container: str,
+        target_blob: str,
+        overwrite: bool = False,
+    ) -> None:
+        self.ensure_container(target_container)
+        source_client = self.get_container_client(source_container).get_blob_client(source_blob)
+        destination = self.get_container_client(target_container).get_blob_client(target_blob)
+        if destination.exists() and not overwrite:
+            raise FileExistsError(f"Destination blob already exists: {target_container}/{target_blob}")
+
+        download = source_client.download_blob()
+        source_props = source_client.get_blob_properties()
+        destination.upload_blob(
+            download.readall(),
+            overwrite=True,
+            content_settings=source_props.content_settings,
+            metadata=source_props.metadata,
+        )
 
     def move_blob(
         self,
