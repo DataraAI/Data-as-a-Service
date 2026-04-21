@@ -1,4 +1,4 @@
-"""Migrate legacy public data from the old admin container into the shared public catalog."""
+"""Migrate legacy public data into the shared public catalog."""
 
 from __future__ import annotations
 
@@ -34,6 +34,55 @@ def route_parts_for_prefix(prefix: str) -> tuple[str, str, str] | None:
     return category, parts[1], parts[2]
 
 
+def migrate_prefix(
+    *,
+    azure: AzureService,
+    source_container: str,
+    source_prefix: str,
+    target_container: str,
+    target_prefix: str,
+    dataset: dict[str, str],
+) -> tuple[int, int]:
+    copied_or_moved = 0
+
+    if source_container == target_container and source_prefix.rstrip("/") == target_prefix.rstrip("/"):
+        print(f"Backfilling catalog only for {target_prefix}")
+    else:
+        for blob in azure.list_blobs(source_container, source_prefix):
+            suffix = blob.name[len(source_prefix.rstrip("/")) + 1 :]
+            target_blob = f"{target_prefix}/{suffix}"
+
+            if source_container == target_container:
+                azure.move_blob(
+                    source_container=source_container,
+                    source_blob=blob.name,
+                    target_container=target_container,
+                    target_blob=target_blob,
+                    overwrite=False,
+                )
+            else:
+                azure.copy_blob(
+                    source_container=source_container,
+                    source_blob=blob.name,
+                    target_container=target_container,
+                    target_blob=target_blob,
+                    overwrite=False,
+                )
+            copied_or_moved += 1
+
+    updated_docs = azure.rewrite_cosmos_docs_for_prefix(
+        source_container=source_container,
+        source_prefix=source_prefix,
+        target_container=target_container,
+        target_prefix=target_prefix,
+        dataset_id=dataset["id"],
+        owner_user_id=dataset["owner_user_id"],
+        visibility="public",
+        source_dataset_id=None,
+    )
+    return copied_or_moved, updated_docs
+
+
 def main() -> None:
     args = parse_args()
     store = SQLStore()
@@ -60,12 +109,12 @@ def main() -> None:
             continue
         category, brand, dataset_name = route_parts
         target_prefix = f"{category}/{brand}/{dataset_name}"
-        existing = store.get_dataset_by_storage(args.target_container, target_prefix)
-        if existing:
-            print(f"Skipping existing catalog row for {target_prefix}")
-            continue
 
-        print(f"Migrating {prefix} -> {target_prefix}")
+        if args.source_container == args.target_container and prefix == target_prefix:
+            print(f"Registering existing public dataset {prefix}")
+        else:
+            print(f"Migrating {prefix} -> {target_prefix}")
+
         if args.dry_run:
             migrated += 1
             continue
@@ -82,25 +131,16 @@ def main() -> None:
             source_kind="migration",
         )
 
-        for blob in azure.list_blobs(args.source_container, prefix):
-            suffix = blob.name[len(prefix.rstrip("/")) + 1 :]
-            azure.copy_blob(
-                source_container=args.source_container,
-                source_blob=blob.name,
-                target_container=args.target_container,
-                target_blob=f"{target_prefix}/{suffix}",
-                overwrite=False,
-            )
-
-        azure.rewrite_cosmos_docs_for_prefix(
+        blob_count, doc_count = migrate_prefix(
+            azure=azure,
             source_container=args.source_container,
             source_prefix=prefix,
             target_container=args.target_container,
             target_prefix=target_prefix,
-            dataset_id=dataset["id"],
-            owner_user_id=dataset["owner_user_id"],
-            visibility="public",
-            source_dataset_id=None,
+            dataset=dataset,
+        )
+        print(
+            f"Finished {target_prefix}: migrated {blob_count} blobs and rewrote {doc_count} Cosmos documents"
         )
         migrated += 1
 
