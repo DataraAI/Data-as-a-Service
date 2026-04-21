@@ -14,6 +14,7 @@ PROJECT_ROOT = BACKEND_DIR.parent
 DEFAULT_SQLITE_PATH = BACKEND_DIR / "data" / "datara_app.sqlite3"
 
 load_dotenv(PROJECT_ROOT / "config" / ".env")
+load_dotenv(BACKEND_DIR / ".env")
 load_dotenv(PROJECT_ROOT / ".env")
 
 
