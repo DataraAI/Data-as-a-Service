@@ -6,10 +6,8 @@ import base64
 import json
 import os
 import re
-import time
 from typing import Any
 
-from datara.config import settings
 from datara.logging import logger
 from datara.services.sql_store import SQLStore
 
@@ -27,78 +25,8 @@ class DatasetService:
     def __init__(self, azure_service, sql_store: SQLStore):
         self.azure_service = azure_service
         self.sql_store = sql_store
-        self._last_public_catalog_sync = 0.0
-
-    @staticmethod
-    def _route_parts_for_storage_prefix(prefix: str) -> tuple[str, str, str] | None:
-        parts = [segment for segment in prefix.split("/") if segment]
-        if len(parts) < 3:
-            return None
-
-        legacy_category = parts[0]
-        if legacy_category == "humanoid":
-            return "dexterity", parts[1], parts[2]
-        if legacy_category.lower() == "peeling":
-            return "dexterity", "peeling", parts[2]
-        if legacy_category.lower() == "washingmachine":
-            return "dexterity", "washingMachine", parts[2]
-
-        if legacy_category not in {"carAutomation", "serverrack", "warehouse", "dexterity"}:
-            return None
-
-        return legacy_category, parts[1], parts[2]
-
-    def _discover_public_dataset_roots(self) -> set[str]:
-        container_name = settings.azure_public_container
-        roots: set[str] = set()
-        for blob in self.azure_service.get_container_client(container_name).list_blobs():
-            parts = [segment for segment in blob.name.split("/") if segment]
-            if len(parts) >= 3:
-                roots.add("/".join(parts[:3]))
-        return roots
-
-    def _ensure_public_catalog(self, current_user: dict[str, Any], *, force: bool = False) -> None:
-        now = time.monotonic()
-        if not force and now - self._last_public_catalog_sync < 60:
-            return
-
-        owner_user = self.sql_store.get_first_admin_user()
-        if not owner_user:
-            owner_user = current_user
-
-        if not owner_user:
-            return
-
-        container_name = settings.azure_public_container
-        discovered = 0
-        try:
-            for storage_prefix in sorted(self._discover_public_dataset_roots()):
-                route_parts = self._route_parts_for_storage_prefix(storage_prefix)
-                if not route_parts:
-                    continue
-
-                category, brand, dataset_name = route_parts
-                self.sql_store.backfill_dataset(
-                    owner_user=owner_user,
-                    created_by_user=owner_user,
-                    visibility="public",
-                    category=category,
-                    brand=brand,
-                    dataset_name=dataset_name,
-                    storage_container=container_name,
-                    storage_prefix=storage_prefix,
-                    source_kind="catalog_sync",
-                )
-                discovered += 1
-        except Exception as exc:
-            logger.warning("Public dataset catalog sync failed: %s", exc)
-        finally:
-            self._last_public_catalog_sync = now
-
-        logger.info("Public dataset catalog sync complete (%s roots scanned)", discovered)
 
     def list_datasets(self, path: str, current_user: dict[str, Any]) -> list[dict[str, Any]]:
-        self._ensure_public_catalog(current_user)
         path = path.strip("/ ")
         if not path:
             return self._list_root_entries(current_user)
@@ -132,7 +60,10 @@ class DatasetService:
                 "type": "folder",
             }
 
-        return sorted(children_by_full_path.values(), key=lambda item: item["full_path"].lower())
+        if children_by_full_path:
+            return sorted(children_by_full_path.values(), key=lambda item: item["full_path"].lower())
+
+        return self._list_storage_children(path, current_user)
 
     def _list_root_entries(self, current_user: dict[str, Any]) -> list[dict[str, Any]]:
         accessible = [
@@ -158,23 +89,38 @@ class DatasetService:
         return sorted(roots.values(), key=lambda item: item["full_path"].lower())
 
     def list_all_dataset_paths(self, current_user: dict[str, Any]) -> list[dict[str, Any]]:
-        self._ensure_public_catalog(current_user)
         datasets = self.sql_store.list_accessible_datasets(current_user)
-        return [
-            self.sql_store.build_dataset_summary(dataset, current_user)
-            for dataset in sorted(
-                datasets,
-                key=lambda item: (
-                    item["visibility"],
-                    item["category"].lower(),
-                    item["brand"].lower(),
-                    item["dataset_name"].lower(),
-                ),
-            )
-        ]
+        all_paths: dict[str, dict[str, Any]] = {}
+
+        for dataset in sorted(
+            datasets,
+            key=lambda item: (
+                item["visibility"],
+                item["category"].lower(),
+                item["brand"].lower(),
+                item["dataset_name"].lower(),
+            ),
+        ):
+            summary = self.sql_store.build_dataset_summary(dataset, current_user)
+            route_segments = [segment for segment in summary["full_path"].split("/") if segment]
+
+            for index in range(1, len(route_segments) + 1):
+                full_path = "/".join(route_segments[:index])
+                all_paths.setdefault(
+                    full_path,
+                    self._build_folder_record(
+                        summary=summary,
+                        full_path=full_path,
+                        source_path=dataset["storage_prefix"],
+                    ),
+                )
+
+            for nested_path in self._list_recursive_storage_paths(dataset, current_user):
+                all_paths.setdefault(nested_path["full_path"], nested_path)
+
+        return sorted(all_paths.values(), key=lambda item: item["full_path"].lower())
 
     def get_dataset_images(self, route_path: str, current_user: dict[str, Any]) -> list[dict[str, Any]]:
-        self._ensure_public_catalog(current_user)
         dataset, extra_segments = self.sql_store.resolve_dataset_route(route_path, current_user)
         self.sql_store.assert_user_can_access_dataset(dataset, current_user)
 
@@ -275,6 +221,93 @@ class DatasetService:
             "deleted_blobs": len(deleted_blobs),
             "deleted_docs": deleted_docs,
         }
+
+    def _build_folder_record(
+        self,
+        *,
+        summary: dict[str, Any],
+        full_path: str,
+        source_path: str,
+    ) -> dict[str, Any]:
+        parts = [segment for segment in full_path.split("/") if segment]
+        return {
+            "name": parts[-1] if parts else full_path,
+            "full_path": full_path,
+            "source_path": source_path.rstrip("/"),
+            "visibility": summary["visibility"],
+            "owner_slug": summary["owner_storage_slug"],
+            "viewer_path": f"/viewer/{full_path}",
+            "type": "folder",
+        }
+
+    def _list_storage_children(self, route_path: str, current_user: dict[str, Any]) -> list[dict[str, Any]]:
+        try:
+            dataset, extra_segments = self.sql_store.resolve_dataset_route(route_path, current_user)
+        except (PermissionError, ValueError):
+            return []
+
+        summary = self.sql_store.build_dataset_summary(dataset, current_user)
+        storage_prefix = dataset["storage_prefix"].rstrip("/")
+        if extra_segments:
+            storage_prefix = f"{storage_prefix}/{'/'.join(extra_segments).strip('/')}"
+
+        children: dict[str, dict[str, Any]] = {}
+        for child_prefix in self.azure_service.list_immediate_child_folders(
+            dataset["storage_container"],
+            storage_prefix,
+        ):
+            child_name = child_prefix.rstrip("/").split("/")[-1]
+            child_route = f"{route_path.rstrip('/')}/{child_name}"
+            children[child_route] = self._build_folder_record(
+                summary=summary,
+                full_path=child_route,
+                source_path=child_prefix,
+            )
+
+        return sorted(children.values(), key=lambda item: item["full_path"].lower())
+
+    def _list_recursive_storage_paths(
+        self,
+        dataset: dict[str, Any],
+        current_user: dict[str, Any],
+    ) -> list[dict[str, Any]]:
+        summary = self.sql_store.build_dataset_summary(dataset, current_user)
+        route_root = summary["full_path"].rstrip("/")
+        storage_root = dataset["storage_prefix"].rstrip("/")
+        nested_paths: dict[str, dict[str, Any]] = {}
+
+        for blob in self.azure_service.list_blobs(dataset["storage_container"], storage_root):
+            blob_name = str(getattr(blob, "name", "") or "").rstrip("/")
+            if not blob_name:
+                continue
+
+            prefix_with_slash = f"{storage_root}/"
+            if not blob_name.startswith(prefix_with_slash):
+                continue
+
+            remainder = blob_name[len(prefix_with_slash) :]
+            if "/" not in remainder:
+                continue
+
+            folder_segments = [segment for segment in remainder.split("/")[:-1] if segment]
+            if not folder_segments:
+                continue
+
+            current_route_segments: list[str] = []
+            for segment in folder_segments:
+                current_route_segments.append(segment)
+                nested_full_path = f"{route_root}/{'/'.join(current_route_segments)}"
+                nested_source_path = f"{storage_root}/{'/'.join(current_route_segments)}"
+                nested_paths.setdefault(
+                    nested_full_path,
+                    self._build_folder_record(
+                        summary=summary,
+                        full_path=nested_full_path,
+                        source_path=nested_source_path,
+                    ),
+                )
+
+        return sorted(nested_paths.values(), key=lambda item: item["full_path"].lower())
 
     def resolve_asset(self, asset_id: str, current_user: dict[str, Any]) -> dict[str, Any]:
         try:
