@@ -1,230 +1,356 @@
-"""Azure Storage and Cosmos DB service integration"""
+"""Azure Blob Storage and Cosmos DB helpers."""
 
-import os
+from __future__ import annotations
+
+import time
 from datetime import datetime, timedelta, timezone
-from typing import Optional, List, Dict, Any
+from typing import Any
+from urllib.parse import quote
 
-from azure.identity import DefaultAzureCredential
-from azure.storage.blob import BlobServiceClient, generate_blob_sas, BlobSasPermissions
 from azure.cosmos import CosmosClient
+from azure.core.exceptions import HttpResponseError, ResourceExistsError, ResourceNotFoundError
+from azure.identity import DefaultAzureCredential
+from azure.storage.blob import BlobSasPermissions, BlobServiceClient, generate_blob_sas
 
+from datara.config import settings
 from datara.logging import logger
 
 
 class AzureService:
-    """Service for Azure Blob Storage and Cosmos DB operations"""
+    """Service object for Azure Blob Storage and Cosmos DB operations."""
 
-    def __init__(self):
-        """Initialize Azure services"""
-        self.account_name = os.getenv("AZURE_STORAGE_ACCOUNT_NAME", "daasblob")
+    def __init__(self) -> None:
+        self.account_name = settings.azure_storage_account or "daasblob"
         self.account_url = f"https://{self.account_name}.blob.core.windows.net/"
-        self.container_name = os.getenv("AZURE_BLOB_CONTAINER", "roboteyeview")
+        self.account_key = settings.azure_storage_key
+        self.container_name = settings.azure_blob_container
+        self.public_container_name = settings.azure_public_container
 
-        # Initialize Blob Storage
         self._init_blob_service()
-
-        # Initialize Cosmos DB
         self._init_cosmos_db()
 
-        logger.info(f"Azure services initialized - Account: {self.account_name}, Container: {self.container_name}")
-
     def _init_blob_service(self) -> None:
-        """Initialize Azure Blob Storage client"""
-        conn_str = os.getenv("BLOB_CONNECTION_STRING")
-        self.account_key = None
+        connection_string = settings.azure_connection_string
+        if connection_string:
+            self.blob_service_client = BlobServiceClient.from_connection_string(connection_string)
+            if not self.account_key:
+                try:
+                    fields = dict(part.split("=", 1) for part in connection_string.split(";") if "=" in part)
+                    self.account_key = fields.get("AccountKey") or self.account_key
+                    self.account_name = fields.get("AccountName", self.account_name)
+                    self.account_url = f"https://{self.account_name}.blob.core.windows.net/"
+                except Exception as exc:
+                    logger.warning("Could not parse Azure connection string: %s", exc)
+            logger.info("Azure Blob client initialized from connection string")
+            return
 
-        if conn_str:
-            logger.info("Initializing Blob Service with connection string")
-            self.blob_service_client = BlobServiceClient.from_connection_string(conn_str)
-
-            # Parse account key from connection string
-            try:
-                data = dict(item.split('=', 1) for item in conn_str.split(';') if item)
-                self.account_key = data.get('AccountKey')
-            except Exception as e:
-                logger.warning(f"Could not parse AccountKey: {e}")
-        else:
-            logger.info("Initializing Blob Service with DefaultAzureCredential")
-            credential = DefaultAzureCredential()
-            self.blob_service_client = BlobServiceClient(
-                account_url=self.account_url,
-                credential=credential
-            )
-
-        self.container_client = self.blob_service_client.get_container_client(self.container_name)
+        credential = DefaultAzureCredential()
+        self.blob_service_client = BlobServiceClient(account_url=self.account_url, credential=credential)
+        logger.info("Azure Blob client initialized with DefaultAzureCredential")
 
     def _init_cosmos_db(self) -> None:
-        """Initialize Azure Cosmos DB client"""
-        cosmos_endpoint = os.getenv(
-            "COSMOS_ENDPOINT",
-            "https://daas-blob-annotations.documents.azure.com:443/"
-        )
-        cosmos_key = os.getenv("COSMOS_DB_KEY")
-
-        if cosmos_key:
-            try:
-                self.cosmos_client = CosmosClient(cosmos_endpoint, cosmos_key)
-                self.cosmos_database = "BlobAnnotations"
-                self.cosmos_container = "roboteyeview"
-                logger.info("Cosmos DB initialized successfully")
-            except Exception as e:
-                logger.error(f"Failed to initialize Cosmos DB: {e}")
-                self.cosmos_client = None
-        else:
-            logger.warning("Cosmos DB key not configured, Cosmos features disabled")
+        if not settings.azure_cosmos_endpoint or not settings.azure_cosmos_key:
+            logger.warning("Cosmos DB not configured; metadata features are limited")
             self.cosmos_client = None
+            return
 
-    def list_datasets(self, path: str = "") -> List[Dict[str, Any]]:
-        """
-        List datasets (directories) in the container
+        self.cosmos_client = CosmosClient(settings.azure_cosmos_endpoint, settings.azure_cosmos_key)
+        self.cosmos_database = settings.azure_cosmos_database
+        self.cosmos_container = settings.azure_cosmos_container
+        logger.info(
+            "Cosmos DB initialized: database=%s container=%s",
+            self.cosmos_database,
+            self.cosmos_container,
+        )
 
-        Args:
-            path: Path prefix to list under
+    def get_container_client(self, container_name: str):
+        return self.blob_service_client.get_container_client(container_name)
 
-        Returns:
-            List of dataset items
-        """
-        if path and not path.endswith('/'):
-            path += '/'
-
+    def ensure_container(self, container_name: str) -> None:
+        client = self.get_container_client(container_name)
         try:
-            blob_iter = self.container_client.walk_blobs(name_starts_with=path, delimiter="/")
+            if not client.exists():
+                client.create_container()
+        except ResourceExistsError:
+            pass
 
-            items = []
-            for item in blob_iter:
-                if hasattr(item, 'name') and item.name.endswith('/'):
-                    full_path = item.name.rstrip('/')
-                    relative_name = item.name[len(path):].rstrip('/')
+    def blob_exists(self, container_name: str, blob_name: str) -> bool:
+        return self.get_container_client(container_name).get_blob_client(blob_name).exists()
 
-                    items.append({
-                        "name": relative_name,
-                        "full_path": full_path,
-                        "type": "folder"
-                    })
+    def list_immediate_child_folders(self, container_name: str, prefix: str = "") -> list[str]:
+        prefix = prefix.strip("/")
+        if prefix:
+            prefix = f"{prefix}/"
 
-            return items
-        except Exception as e:
-            logger.error(f"Error listing datasets at {path}: {e}")
-            raise
+        client = self.get_container_client(container_name)
+        folders: list[str] = []
+        for item in client.walk_blobs(name_starts_with=prefix, delimiter="/"):
+            name = getattr(item, "name", "")
+            if not name.endswith("/"):
+                continue
+            folders.append(name.rstrip("/"))
+        return folders
 
-    def list_all_dataset_paths(self) -> List[str]:
-        """
-        Return every virtual folder path in the container (BFS), for catalog search.
-        Paths have no leading or trailing slashes.
-        """
-        seen: set[str] = set()
-        out: List[str] = []
-        stack: List[str] = [""]
-        while stack:
-            current = stack.pop()
-            try:
-                children = self.list_datasets(current)
-            except Exception as e:
-                logger.error(f"Error listing datasets at {current!r}: {e}")
-                raise
-            for item in children:
-                fp = item.get("full_path") or ""
-                if not fp or fp in seen:
-                    continue
-                seen.add(fp)
-                out.append(fp)
-                stack.append(fp)
-        return sorted(out)
+    def list_blobs(self, container_name: str, prefix: str) -> list[Any]:
+        prefix = prefix.strip("/")
+        if prefix:
+            prefix = f"{prefix}/"
+        client = self.get_container_client(container_name)
+        return list(client.list_blobs(name_starts_with=prefix))
 
-    def list_blobs(self, prefix: str) -> List[Any]:
-        """
-        List blobs with given prefix
+    def download_blob(self, container_name: str, blob_name: str) -> Any:
+        client = self.get_container_client(container_name)
+        return client.get_blob_client(blob_name).download_blob()
 
-        Args:
-            prefix: Blob name prefix
-
-        Returns:
-            List of blob objects
-        """
+    def delete_blob(self, container_name: str, blob_name: str) -> None:
+        client = self.get_container_client(container_name)
         try:
-            return list(self.container_client.list_blobs(name_starts_with=prefix))
-        except Exception as e:
-            logger.error(f"Error listing blobs with prefix {prefix}: {e}")
-            raise
+            client.delete_blob(blob_name)
+        except ResourceNotFoundError:
+            logger.info("Blob already absent: %s/%s", container_name, blob_name)
 
-    def download_blob(self, blob_name: str) -> Any:
-        """
-        Download blob content
+    def delete_blobs_with_prefix(self, container_name: str, prefix: str) -> list[str]:
+        deleted: list[str] = []
+        for blob in self.list_blobs(container_name, prefix):
+            self.delete_blob(container_name, blob.name)
+            deleted.append(blob.name)
+        return deleted
 
-        Args:
-            blob_name: Name of blob to download
-
-        Returns:
-            Blob download stream
-        """
-        try:
-            blob_client = self.container_client.get_blob_client(blob_name)
-            return blob_client.download_blob()
-        except Exception as e:
-            logger.error(f"Error downloading blob {blob_name}: {e}")
-            raise
-
-    def generate_sas_url(self, blob_name: str, expiry_hours: int = 1) -> str:
-        """
-        Generate SAS URL for blob access
-
-        Args:
-            blob_name: Name of blob
-            expiry_hours: SAS token expiry in hours
-
-        Returns:
-            SAS URL
-        """
+    def generate_sas_url(self, container_name: str, blob_name: str, expiry_hours: int = 1) -> str:
+        encoded_blob_name = quote(blob_name, safe="/")
         if not self.account_key:
-            logger.warning(f"Cannot generate SAS URL without account key for {blob_name}")
-            return f"{self.account_url}{self.container_name}/{blob_name}"
+            return f"{self.account_url}{container_name}/{encoded_blob_name}"
+        token = generate_blob_sas(
+            account_name=self.account_name,
+            container_name=container_name,
+            blob_name=blob_name,
+            account_key=self.account_key,
+            permission=BlobSasPermissions(read=True),
+            expiry=datetime.now(timezone.utc) + timedelta(hours=expiry_hours),
+        )
+        return f"{self.account_url}{container_name}/{encoded_blob_name}?{token}"
 
+    def get_blob_url(self, container_name: str, blob_name: str) -> str:
+        encoded_blob_name = quote(blob_name, safe="/")
+        return f"{self.account_url}{container_name}/{encoded_blob_name}"
+
+    def copy_blob(
+        self,
+        *,
+        source_container: str,
+        source_blob: str,
+        target_container: str,
+        target_blob: str,
+        overwrite: bool = False,
+        timeout_seconds: int = 60,
+    ) -> None:
+        self.ensure_container(target_container)
+        destination = self.get_container_client(target_container).get_blob_client(target_blob)
+        if destination.exists() and not overwrite:
+            raise FileExistsError(f"Destination blob already exists: {target_container}/{target_blob}")
+
+        source_url = self.generate_sas_url(source_container, source_blob, expiry_hours=2)
         try:
-            sas_token = generate_blob_sas(
-                account_name=self.account_name,
-                container_name=self.container_name,
-                blob_name=blob_name,
-                account_key=self.account_key,
-                permission=BlobSasPermissions(read=True),
-                expiry=datetime.now(timezone.utc) + timedelta(hours=expiry_hours)
+            result = destination.start_copy_from_url(source_url)
+        except HttpResponseError as exc:
+            logger.warning(
+                "start_copy_from_url failed for %s/%s -> %s/%s (%s). Falling back to download/upload copy.",
+                source_container,
+                source_blob,
+                target_container,
+                target_blob,
+                exc,
             )
+            self._copy_blob_via_download(
+                source_container=source_container,
+                source_blob=source_blob,
+                target_container=target_container,
+                target_blob=target_blob,
+                overwrite=overwrite,
+            )
+            return
+        copy_id = result["copy_id"]
+        deadline = time.time() + timeout_seconds
 
-            return f"{self.account_url}{self.container_name}/{blob_name}?{sas_token}"
-        except Exception as e:
-            logger.error(f"Error generating SAS URL for {blob_name}: {e}")
-            raise
+        while time.time() < deadline:
+            props = destination.get_blob_properties()
+            status = props.copy.status
+            if status == "success":
+                return
+            if status == "failed":
+                raise RuntimeError(f"Blob copy failed for {source_blob} -> {target_blob}")
+            time.sleep(1)
 
-    def get_cosmos_metadata(self, dataset_name: str) -> Dict[str, Any]:
-        """
-        Fetch metadata from Cosmos DB for dataset
+        raise TimeoutError(f"Timed out waiting for blob copy {copy_id}")
 
-        Args:
-            dataset_name: Name of dataset
+    def _copy_blob_via_download(
+        self,
+        *,
+        source_container: str,
+        source_blob: str,
+        target_container: str,
+        target_blob: str,
+        overwrite: bool = False,
+    ) -> None:
+        self.ensure_container(target_container)
+        source_client = self.get_container_client(source_container).get_blob_client(source_blob)
+        destination = self.get_container_client(target_container).get_blob_client(target_blob)
+        if destination.exists() and not overwrite:
+            raise FileExistsError(f"Destination blob already exists: {target_container}/{target_blob}")
 
-        Returns:
-            Mapping of blob path to metadata document
-        """
+        download = source_client.download_blob()
+        source_props = source_client.get_blob_properties()
+        destination.upload_blob(
+            download.readall(),
+            overwrite=True,
+            content_settings=source_props.content_settings,
+            metadata=source_props.metadata,
+        )
+
+    def move_blob(
+        self,
+        *,
+        source_container: str,
+        source_blob: str,
+        target_container: str,
+        target_blob: str,
+        overwrite: bool = False,
+    ) -> None:
+        self.copy_blob(
+            source_container=source_container,
+            source_blob=source_blob,
+            target_container=target_container,
+            target_blob=target_blob,
+            overwrite=overwrite,
+        )
+        self.delete_blob(source_container, source_blob)
+
+    def get_cosmos_container_client(self):
         if not self.cosmos_client:
-            logger.warning(f"Cosmos DB not configured, no metadata for {dataset_name}")
+            return None
+        return self.cosmos_client.get_database_client(self.cosmos_database).get_container_client(self.cosmos_container)
+
+    def get_cosmos_metadata_for_prefix(self, container_name: str, dataset_prefix: str) -> dict[str, dict[str, Any]]:
+        cosmos_container = self.get_cosmos_container_client()
+        if not cosmos_container:
             return {}
 
+        prefix = dataset_prefix.rstrip("/")
+        query = (
+            "SELECT * FROM c WHERE c.containerName = @container "
+            "AND (c.datasetName = @prefix OR STARTSWITH(c.datasetName, @prefixSlash))"
+        )
+        items = list(
+            cosmos_container.query_items(
+                query=query,
+                parameters=[
+                    {"name": "@container", "value": container_name},
+                    {"name": "@prefix", "value": prefix},
+                    {"name": "@prefixSlash", "value": f"{prefix}/"},
+                ],
+                enable_cross_partition_query=True,
+            )
+        )
+        return {item["blobPath"]: item for item in items if item.get("blobPath")}
+
+    def get_cosmos_doc_for_blob(self, container_name: str, blob_path: str) -> dict[str, Any] | None:
+        cosmos_container = self.get_cosmos_container_client()
+        if not cosmos_container:
+            return None
+
+        query = "SELECT * FROM c WHERE c.containerName = @container AND c.blobPath = @blobPath"
+        items = list(
+            cosmos_container.query_items(
+                query=query,
+                parameters=[
+                    {"name": "@container", "value": container_name},
+                    {"name": "@blobPath", "value": blob_path},
+                ],
+                enable_cross_partition_query=True,
+            )
+        )
+        return items[0] if items else None
+
+    def list_cosmos_docs_for_prefix(self, container_name: str, dataset_prefix: str) -> list[dict[str, Any]]:
+        cosmos_container = self.get_cosmos_container_client()
+        if not cosmos_container:
+            return []
+
+        prefix = dataset_prefix.rstrip("/")
+        query = (
+            "SELECT * FROM c WHERE c.containerName = @container "
+            "AND (c.datasetName = @prefix OR STARTSWITH(c.datasetName, @prefixSlash))"
+        )
+        return list(
+            cosmos_container.query_items(
+                query=query,
+                parameters=[
+                    {"name": "@container", "value": container_name},
+                    {"name": "@prefix", "value": prefix},
+                    {"name": "@prefixSlash", "value": f"{prefix}/"},
+                ],
+                enable_cross_partition_query=True,
+            )
+        )
+
+    def upsert_cosmos_item(self, item: dict[str, Any]) -> None:
+        cosmos_container = self.get_cosmos_container_client()
+        if not cosmos_container:
+            return
+        cosmos_container.upsert_item(item)
+
+    def delete_cosmos_docs_for_prefix(self, container_name: str, dataset_prefix: str) -> int:
+        cosmos_container = self.get_cosmos_container_client()
+        if not cosmos_container:
+            return 0
+
+        docs = self.list_cosmos_docs_for_prefix(container_name, dataset_prefix)
+        deleted = 0
+        partition_key_field = None
         try:
-            database = self.cosmos_client.get_database_client(self.cosmos_database)
-            container = database.get_container_client(self.cosmos_container)
+            container_props = cosmos_container.read()
+            paths = container_props.get("partitionKey", {}).get("paths", [])
+            if paths:
+                partition_key_field = paths[0].lstrip("/")
+        except Exception:
+            partition_key_field = None
 
-            query = f"SELECT * FROM c WHERE c.datasetName = '{dataset_name}'"
-            items = list(container.query_items(query=query, enable_cross_partition_query=True))
+        for doc in docs:
+            partition_value = doc.get(partition_key_field) if partition_key_field else doc["id"]
+            cosmos_container.delete_item(item=doc["id"], partition_key=partition_value)
+            deleted += 1
+        return deleted
 
-            logger.info(f"Retrieved {len(items)} Cosmos metadata documents for {dataset_name}")
+    def rewrite_cosmos_docs_for_prefix(
+        self,
+        *,
+        source_container: str,
+        source_prefix: str,
+        target_container: str,
+        target_prefix: str,
+        dataset_id: str,
+        owner_user_id: str,
+        visibility: str,
+        source_dataset_id: str | None = None,
+    ) -> int:
+        docs = self.list_cosmos_docs_for_prefix(source_container, source_prefix)
+        if not docs:
+            return 0
 
-            metadata_map = {}
-            for item in items:
-                blob_path = item.get("blobPath")
-                if blob_path:
-                    metadata_map[blob_path] = item
-
-            return metadata_map
-        except Exception as e:
-            logger.error(f"Error fetching Cosmos metadata for {dataset_name}: {e}")
-            return {}
-
+        updated = 0
+        source_prefix = source_prefix.rstrip("/")
+        target_prefix = target_prefix.rstrip("/")
+        for doc in docs:
+            blob_path = doc.get("blobPath")
+            if blob_path and blob_path.startswith(f"{source_prefix}/"):
+                suffix = blob_path[len(source_prefix) + 1 :]
+                doc["blobPath"] = f"{target_prefix}/{suffix}"
+            doc["containerName"] = target_container
+            doc["datasetName"] = target_prefix
+            doc["datasetId"] = dataset_id
+            doc["ownerUserId"] = owner_user_id
+            doc["visibility"] = visibility
+            doc["sourceDatasetId"] = source_dataset_id
+            self.upsert_cosmos_item(doc)
+            updated += 1
+        return updated

@@ -4,77 +4,74 @@ import { Github, Twitter, Linkedin, Mail, ArrowUp } from "lucide-react";
 
 const FooterSection = () => {
   const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
-    <footer className="bg-card border-t border-border/50">
-      <div className="container mx-auto px-6 py-16">
-        {/* Main footer content */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
-          {/* Company info */}
-          <div className="col-span-1 md:col-span-2">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">D</span>
+    <footer className="border-t border-border/50 bg-card">
+      <div className="mx-auto max-w-[1440px] px-4 py-16 sm:px-6">
+        <div className="mb-12 grid grid-cols-1 gap-8 md:grid-cols-2 xl:grid-cols-4">
+          <div className="xl:col-span-2">
+            <div className="mb-4 flex items-center gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-primary">
+                <span className="text-sm font-bold text-primary-foreground">D</span>
               </div>
-              <span className="text-xl font-bold bg-gradient-to-r from-foreground to-primary bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-foreground to-primary bg-clip-text text-xl font-bold text-transparent">
                 Datara.AI
               </span>
             </div>
-            <p className="text-muted-foreground mb-6 max-w-md leading-relaxed">
-              Empowering the future of robotics with high-quality training data. 
-              Building the foundation for efficient, accurate AI models that will power tomorrow's physical robots.
+            <p className="mb-6 max-w-md leading-relaxed text-muted-foreground">
+              Empowering the future of robotics with high-quality training data. Building the
+              foundation for efficient, accurate AI models that will power tomorrow&apos;s
+              physical robots.
             </p>
             <div className="flex gap-4">
-              <Button variant="ghost" size="icon" className="hover:text-primary transition-colors duration-300">
-                <Github className="w-5 h-5" />
+              <Button variant="ghost" size="icon" className="transition-colors duration-300 hover:text-primary">
+                <Github className="h-5 w-5" />
               </Button>
-              <Button variant="ghost" size="icon" className="hover:text-primary transition-colors duration-300">
-                <Twitter className="w-5 h-5" />
+              <Button variant="ghost" size="icon" className="transition-colors duration-300 hover:text-primary">
+                <Twitter className="h-5 w-5" />
               </Button>
-              <Button variant="ghost" size="icon" className="hover:text-primary transition-colors duration-300">
-                <Linkedin className="w-5 h-5" />
+              <Button variant="ghost" size="icon" className="transition-colors duration-300 hover:text-primary">
+                <Linkedin className="h-5 w-5" />
               </Button>
-              <Button variant="ghost" size="icon" className="hover:text-primary transition-colors duration-300">
-                <Mail className="w-5 h-5" />
+              <Button variant="ghost" size="icon" className="transition-colors duration-300 hover:text-primary">
+                <Mail className="h-5 w-5" />
               </Button>
             </div>
           </div>
 
-          {/* Quick Links */}
           <div>
-            <h4 className="font-semibold mb-4 text-foreground">Platform</h4>
+            <h4 className="mb-4 font-semibold text-foreground">Platform</h4>
             <div className="space-y-3">
-              <a href="/datasets" className="block text-muted-foreground hover:text-primary transition-colors duration-300">
+              <a href="/datasets" className="block text-muted-foreground transition-colors duration-300 hover:text-primary">
                 Datasets
               </a>
-              <a href="/api" className="block text-muted-foreground hover:text-primary transition-colors duration-300">
+              <a href="/api" className="block text-muted-foreground transition-colors duration-300 hover:text-primary">
                 API Access
               </a>
-              <a href="/tools" className="block text-muted-foreground hover:text-primary transition-colors duration-300">
+              <a href="/tools" className="block text-muted-foreground transition-colors duration-300 hover:text-primary">
                 AI Tools
               </a>
-              <a href="/integrations" className="block text-muted-foreground hover:text-primary transition-colors duration-300">
+              <a href="/integrations" className="block text-muted-foreground transition-colors duration-300 hover:text-primary">
                 Integrations
               </a>
             </div>
           </div>
 
-          {/* Resources */}
           <div>
-            <h4 className="font-semibold mb-4 text-foreground">Resources</h4>
+            <h4 className="mb-4 font-semibold text-foreground">Resources</h4>
             <div className="space-y-3">
-              <a href="/docs" className="block text-muted-foreground hover:text-primary transition-colors duration-300">
+              <a href="/docs" className="block text-muted-foreground transition-colors duration-300 hover:text-primary">
                 Documentation
               </a>
-              <a href="/research" className="block text-muted-foreground hover:text-primary transition-colors duration-300">
+              <a href="/research" className="block text-muted-foreground transition-colors duration-300 hover:text-primary">
                 Research
               </a>
-              <a href="/blog" className="block text-muted-foreground hover:text-primary transition-colors duration-300">
+              <a href="/blog" className="block text-muted-foreground transition-colors duration-300 hover:text-primary">
                 Blog
               </a>
-              <a href="/support" className="block text-muted-foreground hover:text-primary transition-colors duration-300">
+              <a href="/support" className="block text-muted-foreground transition-colors duration-300 hover:text-primary">
                 Support
               </a>
             </div>
@@ -83,26 +80,25 @@ const FooterSection = () => {
 
         <Separator className="mb-8" />
 
-        {/* Bottom footer */}
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-6 text-sm text-muted-foreground">
-            <span>© 2024 Datara.AI. All rights reserved.</span>
-            <a href="/privacy" className="hover:text-primary transition-colors duration-300">
+        <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
+          <div className="flex flex-col gap-2 text-sm text-muted-foreground sm:flex-row sm:flex-wrap sm:items-center sm:gap-6">
+            <span>&copy; 2024 Datara.AI. All rights reserved.</span>
+            <a href="/privacy" className="transition-colors duration-300 hover:text-primary">
               Privacy Policy
             </a>
-            <a href="/terms" className="hover:text-primary transition-colors duration-300">
+            <a href="/terms" className="transition-colors duration-300 hover:text-primary">
               Terms of Service
             </a>
           </div>
 
-          <Button 
-            variant="ghost" 
-            size="sm" 
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={scrollToTop}
-            className="group hover:text-primary transition-colors duration-300"
+            className="group transition-colors duration-300 hover:text-primary"
           >
             Back to top
-            <ArrowUp className="w-4 h-4 ml-2 group-hover:-translate-y-1 transition-transform duration-300" />
+            <ArrowUp className="ml-2 h-4 w-4 transition-transform duration-300 group-hover:-translate-y-1" />
           </Button>
         </div>
       </div>

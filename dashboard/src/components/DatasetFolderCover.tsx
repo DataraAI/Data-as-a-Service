@@ -1,11 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { LucideIcon } from "lucide-react";
-import { blobProxyUrl, datasetCoverBlobCandidates } from "@/lib/datasetFolderCover";
+import { datasetCoverBlobCandidates, frontPageImageUrl } from "@/lib/datasetFolderCover";
 
 interface DatasetFolderCoverProps {
   fullPath: string;
   FallbackIcon: LucideIcon;
-  /** Wrapper around image or icon */
   className?: string;
   imgClassName?: string;
   iconClassName?: string;
@@ -18,14 +17,14 @@ export function DatasetFolderCover({
   imgClassName,
   iconClassName,
 }: DatasetFolderCoverProps) {
-  const candidates = useMemo(() => datasetCoverBlobCandidates(fullPath), [fullPath]);
-  const [attempt, setAttempt] = useState(0);
-
-  useEffect(() => {
-    setAttempt(0);
+  const src = useMemo(() => {
+    const candidates = datasetCoverBlobCandidates(fullPath);
+    return candidates
+      .map((candidate) => frontPageImageUrl(candidate))
+      .find((candidate): candidate is string => Boolean(candidate));
   }, [fullPath]);
 
-  if (candidates.length === 0 || attempt >= candidates.length) {
+  if (!src) {
     return (
       <div className={className}>
         <FallbackIcon className={iconClassName} aria-hidden />
@@ -33,18 +32,9 @@ export function DatasetFolderCover({
     );
   }
 
-  const src = blobProxyUrl(candidates[attempt]);
-
   return (
     <div className={className}>
-      <img
-        src={src}
-        alt=""
-        loading="lazy"
-        decoding="async"
-        className={imgClassName}
-        onError={() => setAttempt((a) => a + 1)}
-      />
+      <img src={src} alt="" loading="lazy" decoding="async" className={imgClassName} />
     </div>
   );
 }

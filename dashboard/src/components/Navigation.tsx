@@ -1,181 +1,159 @@
 import { Button } from "@/components/ui/button";
-import { ChevronDown, Menu, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
-
-const roboDataHubItems = [
-  { label: "RoboDataHub Home", href: "/viewer" },
-  { label: "Car Automation", href: "/viewer/carAutomation" },
-  { label: "Serverrack", href: "/viewer/serverrack" },
-  { label: "Dexterity", href: "/viewer/dexterity" },
-  { label: "Warehouse", href: "/viewer/warehouse" },
-];
+import { Menu, X } from "lucide-react";
+import { useState } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { useAuth } from "@/auth/useAuth";
 
 const primaryNavItems = [
   { label: "Home", href: "/" },
+  { label: "Solutions", href: "/product" },
+  { label: "RoboDataHub", href: "/viewer" },
   { label: "Explore Datasets", href: "/explore" },
-  { label: "Platform", href: "/platform" },
-  { label: "Documentation", href: "/docs" },
 ];
+
+const secondaryNavItems = [{ label: "RoboEyeView", href: "/roboeyeview" }];
+const allNavItems = [...primaryNavItems, ...secondaryNavItems];
 
 const Navigation = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isRoboDataHubOpen, setIsRoboDataHubOpen] = useState(false);
-  const [isMobileRoboDataHubOpen, setIsMobileRoboDataHubOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const { isAuthenticated, isApproved, user, login, register, logout } = useAuth();
+  const location = useLocation();
 
-  useEffect(() => {
-    function handleOutsideClick(event: MouseEvent) {
-      if (!dropdownRef.current?.contains(event.target as Node)) {
-        setIsRoboDataHubOpen(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handleOutsideClick);
-    return () => document.removeEventListener("mousedown", handleOutsideClick);
-  }, []);
+  const loginTarget = `${location.pathname}${location.search}`;
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-b border-border">
-      <div className="container mx-auto px-6">
-        <div className="flex items-center justify-between h-16">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-primary rounded-sm flex items-center justify-center">
-              <span className="text-primary-foreground font-mono-tech font-bold text-sm">D</span>
+    <nav className="fixed left-0 right-0 top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md">
+      <div className="mx-auto max-w-[1440px] px-4 sm:px-6">
+        <div className="flex h-16 items-center justify-between gap-3">
+          <Link
+            to="/"
+            className="flex min-w-0 items-center gap-3"
+            onClick={() => setIsMenuOpen(false)}
+          >
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm bg-primary">
+              <span className="font-mono-tech text-sm font-bold text-primary-foreground">D</span>
             </div>
-            <span className="text-xl font-bold font-sans-tech tracking-tight text-foreground">
+            <span className="truncate font-sans-tech text-lg font-bold tracking-tight text-foreground sm:text-xl">
               DATARA<span className="text-primary">.AI</span>
             </span>
-          </div>
+          </Link>
 
-          <div className="hidden md:flex items-center gap-8">
-            <Link
-              to="/"
-              className="text-muted-foreground hover:text-primary transition-colors duration-200 font-mono-tech text-sm tracking-wide uppercase"
-            >
-              Home
-            </Link>
-
-            <Link
-              to="/explore"
-              className="text-muted-foreground hover:text-primary transition-colors duration-200 font-mono-tech text-sm tracking-wide uppercase"
-            >
-              Explore Datasets
-            </Link>
-
-            <div className="relative" ref={dropdownRef}>
-              <button
-                type="button"
-                onClick={() => setIsRoboDataHubOpen((open) => !open)}
-                className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors duration-200 font-mono-tech text-sm tracking-wide uppercase"
-              >
-                RoboDataHub
-                <ChevronDown className={`w-4 h-4 transition-transform ${isRoboDataHubOpen ? "rotate-180" : ""}`} />
-              </button>
-
-              {isRoboDataHubOpen && (
-                <div className="absolute top-full left-0 mt-3 min-w-[240px] border border-border bg-background/95 backdrop-blur-md shadow-2xl shadow-black/30 rounded-sm overflow-hidden">
-                  {roboDataHubItems.map((item) => (
-                    <Link
-                      key={item.label}
-                      to={item.href}
-                      className="block px-4 py-3 text-sm font-sans-tech text-foreground hover:bg-primary/10 hover:text-primary transition-colors border-b border-border last:border-b-0"
-                      onClick={() => setIsRoboDataHubOpen(false)}
-                    >
-                      {item.label}
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {primaryNavItems.slice(2).map((item) => (
+          <div className="hidden items-center gap-6 xl:flex">
+            {allNavItems.map((item) => (
               <Link
                 key={item.label}
                 to={item.href}
-                className="text-muted-foreground hover:text-primary transition-colors duration-200 font-mono-tech text-sm tracking-wide uppercase"
+                className="font-mono-tech text-sm uppercase tracking-wide text-muted-foreground transition-colors duration-200 hover:text-primary"
               >
                 {item.label}
               </Link>
             ))}
           </div>
 
-          <div className="hidden md:flex items-center gap-4">
-            <Button variant="ghost" className="font-mono-tech text-sm hover:text-primary transition-colors">Sign In</Button>
-            <Button variant="default" className="font-mono-tech text-sm rounded-sm bg-primary hover:bg-primary-glow text-primary-foreground shadow-glow border border-primary/20">Get Started</Button>
+          <div className="hidden items-center gap-3 xl:flex">
+            {isAuthenticated ? (
+              <>
+                <div className="rounded-sm border border-border bg-card/40 px-3 py-2 text-right">
+                  <div className="font-mono-tech text-[10px] uppercase tracking-wide text-muted-foreground">
+                    {isApproved ? user?.role ?? "user" : "pending"}
+                  </div>
+                  <div className="max-w-[220px] truncate font-sans-tech text-sm text-foreground">
+                    {user?.displayName ?? user?.email}
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  className="font-mono-tech text-sm transition-colors hover:text-primary"
+                  onClick={() => void logout()}
+                >
+                  Sign Out
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="ghost"
+                  className="font-mono-tech text-sm transition-colors hover:text-primary"
+                  onClick={() => login(loginTarget)}
+                >
+                  Sign In
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="font-mono-tech text-sm transition-colors hover:text-primary"
+                  onClick={() => register(loginTarget)}
+                >
+                  Register
+                </Button>
+              </>
+            )}
           </div>
 
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden"
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            className="shrink-0 xl:hidden"
+            onClick={() => setIsMenuOpen((open) => !open)}
+            aria-label={isMenuOpen ? "Close navigation menu" : "Open navigation menu"}
           >
-            {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
         </div>
 
         {isMenuOpen && (
-          <div className="md:hidden border-t border-border py-4 bg-background">
-            <div className="flex flex-col gap-4">
-              <Link
-                to="/"
-                className="text-muted-foreground hover:text-primary transition-colors duration-200 font-mono-tech text-sm uppercase py-2"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Home
-              </Link>
-
-              <Link
-                to="/explore"
-                className="text-muted-foreground hover:text-primary transition-colors duration-200 font-mono-tech text-sm uppercase py-2"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Explore Datasets
-              </Link>
-
-              <div className="border border-border rounded-sm overflow-hidden">
-                <button
-                  type="button"
-                  onClick={() => setIsMobileRoboDataHubOpen((open) => !open)}
-                  className="w-full flex items-center justify-between px-3 py-3 text-left text-muted-foreground hover:text-primary transition-colors duration-200 font-mono-tech text-sm uppercase"
-                >
-                  RoboDataHub
-                  <ChevronDown className={`w-4 h-4 transition-transform ${isMobileRoboDataHubOpen ? "rotate-180" : ""}`} />
-                </button>
-                {isMobileRoboDataHubOpen && (
-                  <div className="border-t border-border bg-card/20">
-                    {roboDataHubItems.map((item) => (
-                      <Link
-                        key={item.label}
-                        to={item.href}
-                        className="block px-3 py-3 text-sm font-sans-tech text-foreground hover:bg-primary/10 hover:text-primary transition-colors border-b border-border last:border-b-0"
-                        onClick={() => {
-                          setIsMobileRoboDataHubOpen(false);
-                          setIsMenuOpen(false);
-                        }}
-                      >
-                        {item.label}
-                      </Link>
-                    ))}
-                  </div>
-                )}
+          <div className="border-t border-border bg-background/98 xl:hidden">
+            <div className="custom-scrollbar max-h-[calc(100svh-4rem)] overflow-y-auto py-4">
+              <div className="grid gap-2 sm:grid-cols-2">
+                {allNavItems.map((item) => (
+                  <Link
+                    key={item.label}
+                    to={item.href}
+                    className="rounded-sm border border-border bg-card/30 px-4 py-3 font-mono-tech text-sm uppercase tracking-wide text-muted-foreground transition-colors duration-200 hover:border-primary/40 hover:text-primary"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
               </div>
 
-              {primaryNavItems.slice(2).map((item) => (
-                <Link
-                  key={item.label}
-                  to={item.href}
-                  className="text-muted-foreground hover:text-primary transition-colors duration-200 font-mono-tech text-sm uppercase py-2"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  {item.label}
-                </Link>
-              ))}
+              <div className="mt-4 space-y-3 border-t border-border pt-4">
+                {isAuthenticated && (
+                  <div className="rounded-sm border border-border bg-card/30 px-4 py-3">
+                    <div className="font-mono-tech text-[10px] uppercase tracking-wide text-muted-foreground">
+                      {isApproved ? user?.role ?? "user" : "pending approval"}
+                    </div>
+                    <div className="mt-1 truncate font-sans-tech text-sm text-foreground">
+                      {user?.displayName ?? user?.email}
+                    </div>
+                  </div>
+                )}
 
-              <div className="flex flex-col gap-2 pt-4 border-t border-border">
-                <Button variant="ghost" className="font-mono-tech w-full justify-start">Sign In</Button>
-                <Button variant="default" className="font-mono-tech w-full justify-start rounded-sm">Get Started</Button>
+                {!isAuthenticated ? (
+                  <>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start font-mono-tech"
+                      onClick={() => login(loginTarget)}
+                    >
+                      Sign In
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start font-mono-tech"
+                      onClick={() => register(loginTarget)}
+                    >
+                      Register
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start font-mono-tech"
+                    onClick={() => void logout()}
+                  >
+                    Sign Out
+                  </Button>
+                )}
               </div>
             </div>
           </div>

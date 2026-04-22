@@ -31,3 +31,6 @@ dashboard/package-lock.json
 backend/saas_config.py
 /backend/pnpm-lock.yaml
 /dashboard/pnpm-lock.yaml
+
+config/.env
+backend/data/

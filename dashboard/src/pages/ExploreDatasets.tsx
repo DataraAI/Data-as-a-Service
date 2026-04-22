@@ -1,23 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
-import { Database, Loader2, Search, FolderOpen } from "lucide-react";
+import { Database, Loader2, Search, FolderOpen, Shield, UserRound } from "lucide-react";
 import { DatasetFolderCover } from "@/components/DatasetFolderCover";
 import Navigation from "@/components/Navigation";
+import AuthRequiredState from "@/components/AuthRequiredState";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/auth/useAuth";
 
 const SENSOR_MODALITIES = ["video", "audio", "radio", "lidar", "IMU", "thermal"] as const;
-const ANNOTATION_TYPES = [
-  "object detection",
-  "segmentation",
-  "3d bounding boxes",
-  "3d mesh",
-] as const;
+const ANNOTATION_TYPES = ["object detection", "segmentation", "3d bounding boxes", "3d mesh"] as const;
 
-/** Match folder paths when filters are on (path names often encode modality / task). */
 const MODALITY_KEYWORDS: Record<string, string[]> = {
   video: ["video", "rgb", "camera", "mp4", "frame", "image"],
   audio: ["audio", "wav", "sound", "mic"],
@@ -34,8 +30,19 @@ const ANNOTATION_KEYWORDS: Record<string, string[]> = {
   "3d mesh": ["mesh", "stl", "obj", "glb", "gltf", "cad"],
 };
 
+interface DatasetPathRecord {
+  id: string;
+  full_path: string;
+  viewer_path: string;
+  source_path?: string;
+  visibility: "private" | "public";
+  owner_storage_slug: string;
+  is_owner: boolean;
+  is_admin_view: boolean;
+}
+
 function pathMatchesKeywords(pathLower: string, keys: string[]): boolean {
-  return keys.some((k) => pathLower.includes(k));
+  return keys.some((keyword) => pathLower.includes(keyword));
 }
 
 function toggleSet<T>(set: Set<T>, value: T): Set<T> {
@@ -45,29 +52,14 @@ function toggleSet<T>(set: Set<T>, value: T): Set<T> {
   return next;
 }
 
-function viewerHref(fullPath: string): string {
-  const trimmed = fullPath.replace(/^\/+/, "");
-  const segments = trimmed.split("/").filter(Boolean).map(encodeURIComponent);
-  return `/viewer/${segments.join("/")}`;
-}
-
 function displayTitle(fullPath: string): string {
   const parts = fullPath.split("/").filter(Boolean);
   return parts[parts.length - 1] || fullPath;
 }
 
-/** Keep only paths shaped as category/brand/dataset (three segments, no trailing slash). */
-function isDatasetRootPath(p: string): boolean {
-  return p.split("/").filter(Boolean).length === 3;
-}
-
-function pathSegments(p: string): [string, string, string] {
-  const parts = p.split("/").filter(Boolean);
-  return [parts[0] ?? "", parts[1] ?? "", parts[2] ?? ""];
-}
-
 export default function ExploreDatasets() {
-  const [paths, setPaths] = useState<string[]>([]);
+  const { isLoading, isAuthenticated, isApproved } = useAuth();
+  const [paths, setPaths] = useState<DatasetPathRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [searchCategory, setSearchCategory] = useState("");
@@ -77,69 +69,63 @@ export default function ExploreDatasets() {
   const [annotations, setAnnotations] = useState<Set<string>>(new Set());
 
   const fetchPaths = useCallback(async () => {
+    if (!isAuthenticated || !isApproved) {
+      setPaths([]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setLoadError(null);
     try {
-      const res = await axios.get<string[]>("/api/dataset-paths");
-      const raw = res.data;
-      const list = Array.isArray(raw)
-        ? raw
-            .map((p) => (typeof p === "string" ? p : String((p as { full_path?: string }).full_path ?? p)))
-            .filter(Boolean)
-            .map((p) => p.replace(/\/+$/, ""))
-            .filter(isDatasetRootPath)
-        : [];
-      setPaths([...new Set(list)].sort((a, b) => a.localeCompare(b)));
-    } catch (e: unknown) {
-      console.error("ExploreDatasets: dataset-paths failed, falling back to root", e);
-      try {
-        const fallback = await axios.get<{ full_path: string }[]>("/api/datasets", { params: { path: "" } });
-        setPaths(
-          [...new Set((fallback.data ?? []).map((d) => d.full_path.replace(/\/+$/, "")).filter(isDatasetRootPath))].sort(
-            (a, b) => a.localeCompare(b)
-          )
-        );
-      } catch (e2: unknown) {
-        const msg =
-          (axios.isAxiosError(e2) && e2.response?.data?.error) ||
-          (e2 instanceof Error ? e2.message : "Could not load datasets");
-        setLoadError(typeof msg === "string" ? msg : "Could not load datasets");
-        setPaths([]);
-      }
+      const response = await axios.get<DatasetPathRecord[]>("/api/dataset-paths");
+      setPaths(Array.isArray(response.data) ? response.data : []);
+    } catch (error: unknown) {
+      const message =
+        axios.isAxiosError(error) && error.response?.data?.error
+          ? String(error.response.data.error)
+          : error instanceof Error
+            ? error.message
+            : "Could not load datasets";
+      setLoadError(message);
+      setPaths([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isAuthenticated, isApproved]);
 
   useEffect(() => {
     void fetchPaths();
   }, [fetchPaths]);
 
   const filteredPaths = useMemo(() => {
-    const sc = searchCategory.trim().toLowerCase();
-    const sb = searchBrand.trim().toLowerCase();
-    const sd = searchDataset.trim().toLowerCase();
-    return paths.filter((p) => {
-      const pl = p.toLowerCase();
-      const [cat, brand, dataset] = pathSegments(p);
-      if (sc && !cat.toLowerCase().includes(sc)) return false;
-      if (sb && !brand.toLowerCase().includes(sb)) return false;
-      if (sd && !dataset.toLowerCase().includes(sd)) return false;
+    const searchCategoryValue = searchCategory.trim().toLowerCase();
+    const searchBrandValue = searchBrand.trim().toLowerCase();
+    const searchDatasetValue = searchDataset.trim().toLowerCase();
+
+    return paths.filter((record) => {
+      const parts = record.full_path.split("/").filter(Boolean);
+      const category = parts[parts.length - 3] ?? "";
+      const brand = parts[parts.length - 2] ?? "";
+      const dataset = parts[parts.length - 1] ?? "";
+      const loweredPath = record.full_path.toLowerCase();
+
+      if (searchCategoryValue && !category.toLowerCase().includes(searchCategoryValue)) return false;
+      if (searchBrandValue && !brand.toLowerCase().includes(searchBrandValue)) return false;
+      if (searchDatasetValue && !dataset.toLowerCase().includes(searchDatasetValue)) return false;
 
       if (modalities.size > 0) {
-        const okMod = [...modalities].some((m) => {
-          const keys = MODALITY_KEYWORDS[m];
-          return keys && pathMatchesKeywords(pl, keys);
-        });
-        if (!okMod) return false;
+        const modalityMatch = [...modalities].some((modality) =>
+          pathMatchesKeywords(loweredPath, MODALITY_KEYWORDS[modality] ?? []),
+        );
+        if (!modalityMatch) return false;
       }
 
       if (annotations.size > 0) {
-        const okAnn = [...annotations].some((a) => {
-          const keys = ANNOTATION_KEYWORDS[a];
-          return keys && pathMatchesKeywords(pl, keys);
-        });
-        if (!okAnn) return false;
+        const annotationMatch = [...annotations].some((annotation) =>
+          pathMatchesKeywords(loweredPath, ANNOTATION_KEYWORDS[annotation] ?? []),
+        );
+        if (!annotationMatch) return false;
       }
 
       return true;
@@ -154,247 +140,281 @@ export default function ExploreDatasets() {
     setSearchDataset("");
   };
 
-  const trimSearchFields = () => {
-    setSearchCategory((s) => s.trim());
-    setSearchBrand((s) => s.trim());
-    setSearchDataset((s) => s.trim());
-  };
-
-  const hasSearchInput =
-    searchCategory.trim() || searchBrand.trim() || searchDataset.trim();
+  const hasSearchInput = searchCategory.trim() || searchBrand.trim() || searchDataset.trim();
 
   return (
-    <div className="min-h-screen flex flex-col text-foreground bg-background font-sans-tech relative">
-      <div className="absolute inset-0 bg-grid-pattern opacity-[0.05] pointer-events-none" aria-hidden />
+    <div className="relative flex min-h-screen flex-col bg-background font-sans-tech text-foreground">
+      <div className="pointer-events-none absolute inset-0 bg-grid-pattern opacity-[0.05]" aria-hidden />
       <Navigation />
 
-      <main className="flex-1 flex flex-col pt-16 relative z-10 min-h-0">
-        <header className="border-b border-border bg-card/30 backdrop-blur-sm px-4 py-6 md:px-8">
-          <div className="max-w-7xl mx-auto">
-            <p className="text-xs font-mono-tech uppercase tracking-widest text-muted-foreground mb-2">Datara DataHub</p>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">
+      <main className="relative z-10 flex min-h-0 flex-1 flex-col pt-16">
+        <header className="border-b border-border bg-card/30 px-4 py-6 backdrop-blur-sm sm:px-6">
+          <div className="mx-auto max-w-[1440px]">
+            <p className="mb-2 font-mono-tech text-xs uppercase tracking-widest text-muted-foreground">
+              Datara DataHub
+            </p>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
               Explore <span className="text-primary">Datasets</span>
             </h1>
-            <p className="text-sm text-muted-foreground mt-2 max-w-2xl">
-              Browse dataset paths (category / brand / dataset name) in the roboteyeview container. Search each segment,
-              filter by modality and annotation, then open a path in the data viewer.
+            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+              Browse the datasets your account can access, including shared public data and your
+              private uploads.
             </p>
           </div>
         </header>
 
-        <div className="flex-1 flex flex-col md:flex-row min-h-0 max-w-7xl mx-auto w-full">
-          <aside className="w-full md:w-[min(100%,280px)] lg:w-1/4 shrink-0 border-b md:border-b-0 md:border-r border-border bg-card/20 overflow-y-auto custom-scrollbar">
-            <div className="p-5 space-y-8">
-              <div className="space-y-3">
-                <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Path search
-                </h3>
-                <div className="space-y-2">
-                  <div className="space-y-1">
-                    <Label htmlFor="explore-search-category" className="text-[10px] uppercase tracking-wide text-muted-foreground font-mono-tech">
-                      Category
-                    </Label>
-                    <div className="relative">
-                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-                      <Input
-                        id="explore-search-category"
-                        type="search"
-                        placeholder="Search category…"
-                        value={searchCategory}
-                        onChange={(e) => setSearchCategory(e.target.value)}
-                        className="pl-8 h-9 text-sm font-sans-tech bg-background/80 border-border rounded-sm"
-                        autoComplete="off"
-                      />
+        {isLoading ? (
+          <div className="flex flex-1 items-center justify-center text-muted-foreground">
+            Loading account access...
+          </div>
+        ) : !isAuthenticated || !isApproved ? (
+          <div className="mx-auto w-full max-w-[1440px] flex-1 px-4 py-10 sm:px-6">
+            <AuthRequiredState description="Explore Datasets only opens for approved accounts, because even public datasets remain account-scoped and should not be exposed anonymously." />
+          </div>
+        ) : (
+          <div className="mx-auto flex min-h-0 w-full max-w-[1440px] flex-1 flex-col lg:flex-row">
+            <aside className="custom-scrollbar w-full shrink-0 overflow-y-auto border-b border-border bg-card/20 lg:w-[320px] lg:border-b-0 lg:border-r">
+              <div className="space-y-8 p-5">
+                <div className="space-y-3">
+                  <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Path search
+                  </h3>
+                  <div className="space-y-2">
+                    <div className="space-y-1">
+                      <Label
+                        htmlFor="explore-search-category"
+                        className="font-mono-tech text-[10px] uppercase tracking-wide text-muted-foreground"
+                      >
+                        Category
+                      </Label>
+                      <div className="relative">
+                        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          id="explore-search-category"
+                          type="search"
+                          placeholder="Search category..."
+                          value={searchCategory}
+                          onChange={(event) => setSearchCategory(event.target.value)}
+                          className="h-9 rounded-sm border-border bg-background/80 pl-8 text-sm font-sans-tech"
+                          autoComplete="off"
+                        />
+                      </div>
                     </div>
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="explore-search-brand" className="text-[10px] uppercase tracking-wide text-muted-foreground font-mono-tech">
-                      Brand
-                    </Label>
-                    <div className="relative">
-                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-                      <Input
-                        id="explore-search-brand"
-                        type="search"
-                        placeholder="Search brand…"
-                        value={searchBrand}
-                        onChange={(e) => setSearchBrand(e.target.value)}
-                        className="pl-8 h-9 text-sm font-sans-tech bg-background/80 border-border rounded-sm"
-                        autoComplete="off"
-                      />
+                    <div className="space-y-1">
+                      <Label
+                        htmlFor="explore-search-brand"
+                        className="font-mono-tech text-[10px] uppercase tracking-wide text-muted-foreground"
+                      >
+                        Brand
+                      </Label>
+                      <div className="relative">
+                        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          id="explore-search-brand"
+                          type="search"
+                          placeholder="Search brand..."
+                          value={searchBrand}
+                          onChange={(event) => setSearchBrand(event.target.value)}
+                          className="h-9 rounded-sm border-border bg-background/80 pl-8 text-sm font-sans-tech"
+                          autoComplete="off"
+                        />
+                      </div>
                     </div>
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="explore-search-dataset" className="text-[10px] uppercase tracking-wide text-muted-foreground font-mono-tech">
-                      Dataset name
-                    </Label>
-                    <div className="relative">
-                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-                      <Input
-                        id="explore-search-dataset"
-                        type="search"
-                        placeholder="Search dataset…"
-                        value={searchDataset}
-                        onChange={(e) => setSearchDataset(e.target.value)}
-                        className="pl-8 h-9 text-sm font-sans-tech bg-background/80 border-border rounded-sm"
-                        autoComplete="off"
-                      />
+                    <div className="space-y-1">
+                      <Label
+                        htmlFor="explore-search-dataset"
+                        className="font-mono-tech text-[10px] uppercase tracking-wide text-muted-foreground"
+                      >
+                        Dataset name
+                      </Label>
+                      <div className="relative">
+                        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          id="explore-search-dataset"
+                          type="search"
+                          placeholder="Search dataset..."
+                          value={searchDataset}
+                          onChange={(event) => setSearchDataset(event.target.value)}
+                          className="h-9 rounded-sm border-border bg-background/80 pl-8 text-sm font-sans-tech"
+                          autoComplete="off"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  className="w-full font-mono-tech text-xs uppercase tracking-wide"
-                  onClick={trimSearchFields}
-                >
-                  Search
-                </Button>
-              </div>
 
-              <div>
-                <h2 className="text-xs font-bold font-mono-tech uppercase tracking-widest text-foreground mb-3">
-                  Data attributes and filtering
-                </h2>
-                <p className="text-xs text-muted-foreground mb-4">
-                  Narrow paths by keywords in folder names. Leave a group empty to include all.
+                <div>
+                  <h2 className="mb-3 font-mono-tech text-xs font-bold uppercase tracking-widest text-foreground">
+                    Data attributes and filtering
+                  </h2>
+                  <p className="mb-4 text-xs text-muted-foreground">
+                    Narrow paths by keywords in folder names. Leave a group empty to include all.
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Sensor modality
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {SENSOR_MODALITIES.map((modality) => (
+                      <button
+                        key={modality}
+                        type="button"
+                        onClick={() => setModalities((set) => toggleSet(set, modality))}
+                        className={cn(
+                          "rounded-full border px-3 py-1.5 font-mono-tech text-xs transition-colors",
+                          modalities.has(modality)
+                            ? "border-primary bg-primary text-primary-foreground shadow-glow/30"
+                            : "border-border bg-background/80 text-muted-foreground hover:border-primary/40 hover:text-foreground",
+                        )}
+                      >
+                        {modality}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Annotation type
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {ANNOTATION_TYPES.map((annotation) => (
+                      <button
+                        key={annotation}
+                        type="button"
+                        onClick={() => setAnnotations((set) => toggleSet(set, annotation))}
+                        className={cn(
+                          "rounded-full border px-3 py-1.5 font-mono-tech text-xs transition-colors",
+                          annotations.has(annotation)
+                            ? "border-primary bg-primary text-primary-foreground shadow-glow/30"
+                            : "border-border bg-background/80 text-muted-foreground hover:border-primary/40 hover:text-foreground",
+                        )}
+                      >
+                        {annotation}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {(modalities.size > 0 || annotations.size > 0 || hasSearchInput) && (
+                  <Button variant="outline" size="sm" className="w-full font-mono-tech text-xs" onClick={clearFilters}>
+                    Clear filters
+                  </Button>
+                )}
+              </div>
+            </aside>
+
+            <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-background/40">
+              <div className="sticky top-16 z-20 shrink-0 border-b border-border bg-background/95 px-4 py-3 backdrop-blur-md md:px-6">
+                <p className="font-mono-tech text-xs text-muted-foreground">
+                  {loading
+                    ? "Loading..."
+                    : `${filteredPaths.length} dataset path${filteredPaths.length === 1 ? "" : "s"} shown`}
                 </p>
               </div>
 
-              <div>
-                <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-                  Sensor modality
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {SENSOR_MODALITIES.map((m) => (
+              <div className="custom-scrollbar flex-1 overflow-y-auto p-4 md:p-6">
+                {loading && (
+                  <div className="flex flex-col items-center justify-center gap-4 py-24 text-muted-foreground">
+                    <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                    <span className="font-mono-tech text-sm">Loading datasets...</span>
+                  </div>
+                )}
+
+                {!loading && loadError && (
+                  <div className="rounded-sm border border-destructive/40 bg-destructive/5 p-6 text-center">
+                    <p className="mb-2 font-sans-tech text-sm text-destructive">{loadError}</p>
+                    <Button variant="outline" size="sm" onClick={() => void fetchPaths()}>
+                      Retry
+                    </Button>
+                  </div>
+                )}
+
+                {!loading && !loadError && filteredPaths.length === 0 && (
+                  <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/10 py-20 text-muted-foreground">
+                    <Database className="mb-4 h-12 w-12 opacity-40" />
+                    <p className="font-sans-tech text-sm">No paths match your filters.</p>
                     <button
-                      key={m}
                       type="button"
-                      onClick={() => setModalities((s) => toggleSet(s, m))}
-                      className={cn(
-                        "px-3 py-1.5 rounded-full text-xs font-mono-tech border transition-colors",
-                        modalities.has(m)
-                          ? "bg-primary text-primary-foreground border-primary shadow-glow/30"
-                          : "bg-background/80 text-muted-foreground border-border hover:border-primary/40 hover:text-foreground"
-                      )}
+                      onClick={clearFilters}
+                      className="mt-4 text-sm font-medium text-primary underline-offset-4 hover:underline"
                     >
-                      {m}
+                      Reset filters
                     </button>
-                  ))}
-                </div>
-              </div>
+                  </div>
+                )}
 
-              <div>
-                <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-                  Annotation type
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {ANNOTATION_TYPES.map((a) => (
-                    <button
-                      key={a}
-                      type="button"
-                      onClick={() => setAnnotations((s) => toggleSet(s, a))}
-                      className={cn(
-                        "px-3 py-1.5 rounded-full text-xs font-mono-tech border transition-colors",
-                        annotations.has(a)
-                          ? "bg-primary text-primary-foreground border-primary shadow-glow/30"
-                          : "bg-background/80 text-muted-foreground border-border hover:border-primary/40 hover:text-foreground"
-                      )}
-                    >
-                      {a}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {(modalities.size > 0 || annotations.size > 0 || hasSearchInput) && (
-                <Button variant="outline" size="sm" className="w-full font-mono-tech text-xs" onClick={clearFilters}>
-                  Clear filters
-                </Button>
-              )}
-            </div>
-          </aside>
-
-          <section className="flex-1 flex flex-col min-w-0 min-h-0 bg-background/40">
-            <div className="sticky top-16 z-20 shrink-0 border-b border-border bg-background/95 backdrop-blur-md px-4 py-3 md:px-6">
-              <p className="text-xs text-muted-foreground font-mono-tech">
-                {loading
-                  ? "Loading…"
-                  : `${filteredPaths.length} path${filteredPaths.length === 1 ? "" : "s"} shown`}
-              </p>
-            </div>
-
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6">
-              {loading && (
-                <div className="flex flex-col items-center justify-center py-24 gap-4 text-muted-foreground">
-                  <Loader2 className="w-10 h-10 text-primary animate-spin" />
-                  <span className="text-sm font-mono-tech">Loading datasets…</span>
-                </div>
-              )}
-
-              {!loading && loadError && (
-                <div className="rounded-sm border border-destructive/40 bg-destructive/5 p-6 text-center">
-                  <p className="text-sm text-destructive font-sans-tech mb-2">{loadError}</p>
-                  <Button variant="outline" size="sm" onClick={() => void fetchPaths()}>
-                    Retry
-                  </Button>
-                </div>
-              )}
-
-              {!loading && !loadError && filteredPaths.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-20 text-muted-foreground border border-dashed border-border rounded-sm bg-card/10">
-                  <Database className="w-12 h-12 mb-4 opacity-40" />
-                  <p className="font-sans-tech text-sm">No paths match your filters.</p>
-                  <button type="button" onClick={clearFilters} className="mt-4 text-primary text-sm font-medium underline-offset-4 hover:underline">
-                    Reset filters
-                  </button>
-                </div>
-              )}
-
-              {!loading && !loadError && filteredPaths.length > 0 && (
-                <ul className="space-y-4">
-                  {filteredPaths.map((fullPath) => (
-                    <li key={fullPath}>
-                      <Link
-                        to={viewerHref(fullPath)}
-                        className="group block rounded-sm border border-border bg-card/30 overflow-hidden hover:border-primary/50 hover:bg-card/50 transition-all duration-300 shadow-elegant/0 hover:shadow-elegant"
-                      >
-                        <div className="flex flex-col sm:flex-row sm:items-stretch min-h-[100px]">
-                          <div className="sm:w-36 shrink-0 bg-primary/10 border-b sm:border-b-0 sm:border-r border-border flex items-center justify-center p-4 overflow-hidden">
-                            <DatasetFolderCover
-                              key={fullPath}
-                              fullPath={fullPath}
-                              FallbackIcon={FolderOpen}
-                              className="flex items-center justify-center w-full max-w-[8rem] sm:max-w-none h-24 sm:h-28"
-                              imgClassName="w-full h-full object-cover rounded-sm group-hover:scale-105 transition-transform duration-300"
-                              iconClassName="w-10 h-10 text-primary opacity-90 group-hover:scale-105 transition-transform"
-                            />
+                {!loading && !loadError && filteredPaths.length > 0 && (
+                  <ul className="space-y-4">
+                    {filteredPaths.map((record) => (
+                      <li key={record.id}>
+                        <Link
+                          to={record.viewer_path}
+                          className="group block overflow-hidden rounded-sm border border-border bg-card/30 transition-all duration-300 hover:border-primary/50 hover:bg-card/50 hover:shadow-elegant"
+                        >
+                          <div className="flex min-h-[100px] flex-col sm:flex-row sm:items-stretch">
+                            <div className="flex shrink-0 items-center justify-center overflow-hidden border-b border-border bg-primary/10 p-4 sm:w-36 sm:border-b-0 sm:border-r">
+                              <DatasetFolderCover
+                                key={record.id}
+                                fullPath={record.source_path ?? record.full_path}
+                                FallbackIcon={FolderOpen}
+                                className="flex h-24 w-full max-w-[8rem] items-center justify-center sm:h-28 sm:max-w-none"
+                                imgClassName="h-full w-full rounded-sm object-cover transition-transform duration-300 group-hover:scale-105"
+                                iconClassName="h-10 w-10 text-primary opacity-90 transition-transform group-hover:scale-105"
+                              />
+                            </div>
+                            <div className="flex min-w-0 flex-1 flex-col justify-center p-4">
+                              <div className="mb-2 flex flex-wrap items-center gap-2">
+                                <p className="truncate font-sans-tech text-lg font-bold uppercase tracking-wide text-foreground transition-colors group-hover:text-primary">
+                                  {displayTitle(record.full_path)}
+                                </p>
+                                <span
+                                  className={`rounded-full px-2 py-1 text-[10px] uppercase tracking-wide ${
+                                    record.visibility === "public"
+                                      ? "bg-primary/15 text-primary"
+                                      : "bg-amber-500/15 text-amber-300"
+                                  }`}
+                                >
+                                  {record.visibility}
+                                </span>
+                                {record.is_owner && (
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-background/70 px-2 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+                                    <UserRound className="h-3 w-3" />
+                                    yours
+                                  </span>
+                                )}
+                                {record.is_admin_view && (
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-background/70 px-2 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+                                    <Shield className="h-3 w-3" />
+                                    admin view
+                                  </span>
+                                )}
+                              </div>
+                              <p className="break-all font-mono-tech text-xs text-muted-foreground">
+                                {record.full_path}
+                              </p>
+                            </div>
                           </div>
-                          <div className="flex-1 p-4 flex flex-col justify-center min-w-0">
-                            <p className="text-lg font-bold font-sans-tech uppercase tracking-wide text-foreground group-hover:text-primary transition-colors truncate">
-                              {displayTitle(fullPath)}
-                            </p>
-                            <p className="text-xs font-mono-tech text-muted-foreground mt-1 break-all">{fullPath}</p>
+                          <div className="flex items-center justify-between gap-2 border-t border-border bg-muted/40 px-4 py-2">
+                            <span className="font-mono-tech text-[10px] uppercase tracking-wider text-muted-foreground">
+                              owner: {record.owner_storage_slug}
+                            </span>
+                            <span className="flex items-center gap-1 font-mono-tech text-xs text-primary transition-colors group-hover:text-primary-glow">
+                              Open in viewer
+                              <span aria-hidden>&rarr;</span>
+                            </span>
                           </div>
-                        </div>
-                        <div className="px-4 py-2 bg-muted/40 border-t border-border flex items-center justify-between gap-2">
-                          <span className="text-[10px] font-mono-tech uppercase tracking-wider text-muted-foreground">
-                            roboteyeview
-                          </span>
-                          <span className="text-xs font-mono-tech text-primary group-hover:text-primary-glow flex items-center gap-1">
-                            Open in viewer
-                            <span aria-hidden>→</span>
-                          </span>
-                        </div>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </section>
-        </div>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </section>
+          </div>
+        )}
       </main>
     </div>
   );
