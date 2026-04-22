@@ -255,7 +255,7 @@ export default function AuthPage() {
                   <form onSubmit={handleRegister} className="space-y-5">
                     <div className="mb-2 flex items-center gap-2">
                       <UserPlus className="h-5 w-5 text-primary" />
-                      <h2 className="font-sans-tech text-2xl font-bold text-foreground">Create account</h2>
+                      <h2 className="font-sans-tech text-2xl font-bold text-foreground">Register</h2>
                     </div>
                     <p className="text-sm leading-relaxed text-muted-foreground">
                       New accounts are created in a pending state and unlock after Datara approval.
@@ -331,10 +331,10 @@ export default function AuthPage() {
                       {submitting ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Creating account...
+                          Registering...
                         </>
                       ) : (
-                        "Create account"
+                        "Register"
                       )}
                     </Button>
 
