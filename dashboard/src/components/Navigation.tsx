@@ -16,7 +16,7 @@ const allNavItems = [...primaryNavItems, ...secondaryNavItems];
 
 const Navigation = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { isAuthenticated, isApproved, user, login, logout } = useAuth();
+  const { isAuthenticated, isApproved, user, login, register, logout } = useAuth();
   const location = useLocation();
 
   const loginTarget = `${location.pathname}${location.search}`;
@@ -70,20 +70,31 @@ const Navigation = () => {
                 </Button>
               </>
             ) : (
-              <Button
-                variant="ghost"
-                className="font-mono-tech text-sm transition-colors hover:text-primary"
-                onClick={() => login(loginTarget)}
-              >
-                Sign In
-              </Button>
+              <>
+                <Button
+                  variant="ghost"
+                  className="font-mono-tech text-sm transition-colors hover:text-primary"
+                  onClick={() => login(loginTarget)}
+                >
+                  Sign In
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="font-mono-tech text-sm transition-colors hover:text-primary"
+                  onClick={() => register(loginTarget)}
+                >
+                  Register
+                </Button>
+              </>
             )}
             <Button
               variant="default"
               className="rounded-sm border border-primary/20 bg-primary font-mono-tech text-sm text-primary-foreground shadow-glow hover:bg-primary-glow"
-              onClick={() => (isAuthenticated ? window.location.assign("/viewer") : login(loginTarget))}
+              onClick={() =>
+                isAuthenticated ? window.location.assign("/viewer") : register(loginTarget)
+              }
             >
-              {isAuthenticated ? "Open Platform" : "Get Started"}
+              {isAuthenticated ? "Open Platform" : "Create Account"}
             </Button>
           </div>
 
@@ -127,13 +138,22 @@ const Navigation = () => {
                 )}
 
                 {!isAuthenticated ? (
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-start font-mono-tech"
-                    onClick={() => login(loginTarget)}
-                  >
-                    Sign In
-                  </Button>
+                  <>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start font-mono-tech"
+                      onClick={() => login(loginTarget)}
+                    >
+                      Sign In
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start font-mono-tech"
+                      onClick={() => register(loginTarget)}
+                    >
+                      Register
+                    </Button>
+                  </>
                 ) : (
                   <Button
                     variant="ghost"
@@ -147,10 +167,10 @@ const Navigation = () => {
                   variant="default"
                   className="w-full justify-start rounded-sm font-mono-tech"
                   onClick={() =>
-                    isAuthenticated ? window.location.assign("/viewer") : login(loginTarget)
+                    isAuthenticated ? window.location.assign("/viewer") : register(loginTarget)
                   }
                 >
-                  {isAuthenticated ? "Open Platform" : "Get Started"}
+                  {isAuthenticated ? "Open Platform" : "Create Account"}
                 </Button>
               </div>
             </div>

@@ -11,7 +11,7 @@ export default function AuthRequiredState({
   title = "Sign in required",
   description = "You need an approved account before this part of the data platform becomes available.",
 }: AuthRequiredStateProps) {
-  const { isAuthenticated, isApproved, login, logout, isLoading } = useAuth();
+  const { isAuthenticated, isApproved, login, register, logout, isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -38,14 +38,19 @@ export default function AuthRequiredState({
         </h2>
         <p className="mx-auto mt-3 max-w-xl font-sans-tech text-sm leading-relaxed text-muted-foreground">
           {pendingApproval
-            ? "Your Microsoft Entra account signed in successfully, but data access still needs to be approved by an admin. Once approved, this page will unlock automatically the next time you refresh."
+            ? "Your Datara account was created successfully, but data access still needs to be approved by an admin. Once approved, this page will unlock automatically the next time you refresh."
             : description}
         </p>
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
           {!pendingApproval ? (
-            <Button onClick={() => login()} className="font-sans-tech">
-              Sign in with Microsoft
-            </Button>
+            <>
+              <Button onClick={() => login()} className="font-sans-tech">
+                Sign in
+              </Button>
+              <Button onClick={() => register()} variant="outline" className="font-sans-tech">
+                Create account
+              </Button>
+            </>
           ) : (
             <Button onClick={() => void logout()} variant="outline" className="font-sans-tech">
               Sign out
