@@ -102,6 +102,7 @@ def migrate_prefix(
 
 def main() -> None:
     args = parse_args()
+    print(f"Using auth catalog: {settings.sqlite_path}")
     store = SQLStore()
     azure = AzureService()
 
@@ -127,11 +128,12 @@ def main() -> None:
             continue
         category, brand, dataset_name = route_parts
         target_prefix = f"{category}/{brand}/{dataset_name}"
+        resolved_storage_prefix = prefix if args.source_container == args.target_container else target_prefix
 
         if args.source_container == args.target_container and prefix == target_prefix:
             print(f"Registering existing public dataset {prefix}")
         else:
-            print(f"Migrating {prefix} -> {target_prefix}")
+            print(f"Migrating {prefix} -> {target_prefix} (storage: {resolved_storage_prefix})")
 
         if args.dry_run:
             migrated += 1
@@ -146,7 +148,7 @@ def main() -> None:
                 brand=brand,
                 dataset_name=dataset_name,
                 storage_container=args.target_container,
-                storage_prefix=target_prefix,
+                storage_prefix=resolved_storage_prefix,
                 source_kind="migration",
             )
 
@@ -155,7 +157,7 @@ def main() -> None:
                 source_container=args.source_container,
                 source_prefix=prefix,
                 target_container=args.target_container,
-                target_prefix=target_prefix,
+                target_prefix=resolved_storage_prefix,
                 dataset=dataset,
             )
             print(
