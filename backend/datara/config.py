@@ -105,17 +105,12 @@ class Settings:
     auth_post_login_path: str = field(default_factory=lambda: os.getenv("AUTH_POST_LOGIN_PATH", "/viewer"))
     auth_sqlite_path: str = field(default_factory=lambda: os.getenv("AUTH_SQLITE_PATH", str(DEFAULT_SQLITE_PATH)))
     auth_bootstrap_admin_emails: list[str] = field(default_factory=lambda: _env_list("AUTH_BOOTSTRAP_ADMIN_EMAILS"))
-    auth_allow_unapproved_login_session: bool = field(default_factory=lambda: _env_bool("AUTH_ALLOW_UNAPPROVED_LOGIN_SESSION", True))
-
-    entra_tenant_id: str | None = field(default_factory=lambda: os.getenv("ENTRA_TENANT_ID") or os.getenv("AZURE_TENANT_ID"))
-    entra_client_id: str | None = field(default_factory=lambda: os.getenv("ENTRA_CLIENT_ID") or os.getenv("AZURE_CLIENT_ID"))
-    entra_client_secret: str | None = field(default_factory=lambda: os.getenv("ENTRA_CLIENT_SECRET") or os.getenv("AZURE_CLIENT_SECRET"))
-    entra_authority: str | None = field(default_factory=lambda: os.getenv("ENTRA_AUTHORITY"))
-    entra_redirect_path: str = field(default_factory=lambda: os.getenv("ENTRA_REDIRECT_PATH", "/api/auth/callback"))
-    entra_scopes: list[str] = field(
-        default_factory=lambda: _env_list(
-            "ENTRA_SCOPES",
-            ["openid", "profile", "email", "offline_access", "User.Read"],
+    auth_registration_enabled: bool = field(default_factory=lambda: _env_bool("AUTH_REGISTRATION_ENABLED", True))
+    auth_min_password_length: int = field(default_factory=lambda: _env_int("AUTH_MIN_PASSWORD_LENGTH", 10))
+    auth_allow_pending_login_session: bool = field(
+        default_factory=lambda: _env_bool(
+            "AUTH_ALLOW_PENDING_LOGIN_SESSION",
+            _env_bool("AUTH_ALLOW_UNAPPROVED_LOGIN_SESSION", True),
         )
     )
 
@@ -130,17 +125,6 @@ class Settings:
     @property
     def is_development(self) -> bool:
         return self.environment.lower() == "development"
-
-    @property
-    def has_entra_config(self) -> bool:
-        return bool(self.entra_client_id and self.entra_client_secret and (self.entra_authority or self.entra_tenant_id))
-
-    def get_entra_authority(self) -> str | None:
-        if self.entra_authority:
-            return self.entra_authority.rstrip("/")
-        if self.entra_tenant_id:
-            return f"https://login.microsoftonline.com/{self.entra_tenant_id}"
-        return None
 
 
 settings = Settings()
