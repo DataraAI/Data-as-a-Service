@@ -185,6 +185,19 @@ class SQLStore:
     def get_user(self, user_ref: str) -> dict[str, Any] | None:
         return self.get_user_by_id(user_ref) or self.get_user_by_email(user_ref)
 
+    def get_first_admin_user(self) -> dict[str, Any] | None:
+        return self._decorate_user(
+            self._fetchone(
+                """
+                SELECT *
+                FROM users
+                WHERE role = 'admin'
+                ORDER BY created_at ASC
+                LIMIT 1
+                """
+            )
+        )
+
     def list_users(self) -> list[dict[str, Any]]:
         return [
             self._decorate_user(record) or record
@@ -463,6 +476,55 @@ class SQLStore:
             (container_name, storage_prefix.rstrip("/")),
         )
 
+    def get_dataset_by_route(
+        self,
+        *,
+        visibility: str,
+        category: str,
+        brand: str,
+        dataset_name: str,
+        owner_user_id: str | None = None,
+    ) -> dict[str, Any] | None:
+        params: list[Any] = [visibility, category, brand, dataset_name]
+        owner_clause = ""
+        if visibility == "private":
+            if not owner_user_id:
+                raise ValueError("owner_user_id is required for private dataset route lookup")
+            owner_clause = " AND owner_user_id = ?"
+            params.append(owner_user_id)
+
+        return self._fetchone(
+            f"""
+            SELECT *
+            FROM datasets
+            WHERE deleted_at IS NULL
+              AND visibility = ?
+              AND category = ?
+              AND brand = ?
+              AND dataset_name = ?
+              {owner_clause}
+            """,
+            tuple(params),
+        )
+
+    def update_dataset_storage(
+        self,
+        dataset_id: str,
+        *,
+        storage_container: str,
+        storage_prefix: str,
+    ) -> dict[str, Any] | None:
+        with self.connection() as conn:
+            conn.execute(
+                """
+                UPDATE datasets
+                SET storage_container = ?, storage_prefix = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                (storage_container, storage_prefix.rstrip("/"), utc_now(), dataset_id),
+            )
+        return self.get_dataset_by_id(dataset_id)
+
     def mark_dataset_deleted(self, dataset_id: str) -> None:
         now = utc_now()
         with self.connection() as conn:
@@ -622,10 +684,39 @@ class SQLStore:
         source_kind: str = "migration",
         task: str = "",
     ) -> dict[str, Any]:
-        existing = self.get_dataset_by_storage(storage_container, storage_prefix.rstrip("/"))
+        normalized_prefix = storage_prefix.rstrip("/")
+        existing = self.get_dataset_by_storage(storage_container, normalized_prefix)
         if existing:
             logger.info("Dataset catalog already contains %s/%s", storage_container, storage_prefix)
             return existing
+
+        route_existing = self.get_dataset_by_route(
+            visibility=visibility,
+            category=category,
+            brand=brand,
+            dataset_name=dataset_name,
+            owner_user_id=owner_user["id"] if visibility == "private" else None,
+        )
+        if route_existing:
+            if (
+                route_existing["storage_container"] != storage_container
+                or route_existing["storage_prefix"] != normalized_prefix
+            ):
+                logger.info(
+                    "Repairing dataset route %s/%s/%s to use %s/%s",
+                    category,
+                    brand,
+                    dataset_name,
+                    storage_container,
+                    normalized_prefix,
+                )
+                return self.update_dataset_storage(
+                    route_existing["id"],
+                    storage_container=storage_container,
+                    storage_prefix=normalized_prefix,
+                ) or route_existing
+            return route_existing
+
         return self.create_dataset(
             owner_user=owner_user,
             created_by_user=created_by_user,
@@ -634,7 +725,7 @@ class SQLStore:
             brand=brand,
             dataset_name=dataset_name,
             storage_container=storage_container,
-            storage_prefix=storage_prefix.rstrip("/"),
+            storage_prefix=normalized_prefix,
             source_kind=source_kind,
             task=task,
         )

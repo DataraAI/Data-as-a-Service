@@ -6,8 +6,10 @@ import base64
 import json
 import os
 import re
+import time
 from typing import Any
 
+from datara.config import settings
 from datara.logging import logger
 from datara.services.sql_store import SQLStore
 
@@ -25,8 +27,78 @@ class DatasetService:
     def __init__(self, azure_service, sql_store: SQLStore):
         self.azure_service = azure_service
         self.sql_store = sql_store
+        self._last_public_catalog_sync = 0.0
+
+    @staticmethod
+    def _route_parts_for_storage_prefix(prefix: str) -> tuple[str, str, str] | None:
+        parts = [segment for segment in prefix.split("/") if segment]
+        if len(parts) < 3:
+            return None
+
+        legacy_category = parts[0]
+        if legacy_category == "humanoid":
+            return "dexterity", parts[1], parts[2]
+        if legacy_category.lower() == "peeling":
+            return "dexterity", "peeling", parts[2]
+        if legacy_category.lower() == "washingmachine":
+            return "dexterity", "washingMachine", parts[2]
+
+        if legacy_category not in {"carAutomation", "serverrack", "warehouse", "dexterity"}:
+            return None
+
+        return legacy_category, parts[1], parts[2]
+
+    def _discover_public_dataset_roots(self) -> set[str]:
+        container_name = settings.azure_public_container
+        roots: set[str] = set()
+        for blob in self.azure_service.get_container_client(container_name).list_blobs():
+            parts = [segment for segment in blob.name.split("/") if segment]
+            if len(parts) >= 3:
+                roots.add("/".join(parts[:3]))
+        return roots
+
+    def _ensure_public_catalog(self, current_user: dict[str, Any], *, force: bool = False) -> None:
+        now = time.monotonic()
+        if not force and now - self._last_public_catalog_sync < 60:
+            return
+
+        owner_user = self.sql_store.get_first_admin_user()
+        if not owner_user:
+            owner_user = current_user
+
+        if not owner_user:
+            return
+
+        container_name = settings.azure_public_container
+        discovered = 0
+        try:
+            for storage_prefix in sorted(self._discover_public_dataset_roots()):
+                route_parts = self._route_parts_for_storage_prefix(storage_prefix)
+                if not route_parts:
+                    continue
+
+                category, brand, dataset_name = route_parts
+                self.sql_store.backfill_dataset(
+                    owner_user=owner_user,
+                    created_by_user=owner_user,
+                    visibility="public",
+                    category=category,
+                    brand=brand,
+                    dataset_name=dataset_name,
+                    storage_container=container_name,
+                    storage_prefix=storage_prefix,
+                    source_kind="catalog_sync",
+                )
+                discovered += 1
+        except Exception as exc:
+            logger.warning("Public dataset catalog sync failed: %s", exc)
+        finally:
+            self._last_public_catalog_sync = now
+
+        logger.info("Public dataset catalog sync complete (%s roots scanned)", discovered)
 
     def list_datasets(self, path: str, current_user: dict[str, Any]) -> list[dict[str, Any]]:
+        self._ensure_public_catalog(current_user)
         path = path.strip("/ ")
         if not path:
             return self._list_root_entries(current_user)
@@ -86,6 +158,7 @@ class DatasetService:
         return sorted(roots.values(), key=lambda item: item["full_path"].lower())
 
     def list_all_dataset_paths(self, current_user: dict[str, Any]) -> list[dict[str, Any]]:
+        self._ensure_public_catalog(current_user)
         datasets = self.sql_store.list_accessible_datasets(current_user)
         return [
             self.sql_store.build_dataset_summary(dataset, current_user)
@@ -101,6 +174,7 @@ class DatasetService:
         ]
 
     def get_dataset_images(self, route_path: str, current_user: dict[str, Any]) -> list[dict[str, Any]]:
+        self._ensure_public_catalog(current_user)
         dataset, extra_segments = self.sql_store.resolve_dataset_route(route_path, current_user)
         self.sql_store.assert_user_can_access_dataset(dataset, current_user)
 
