@@ -28,10 +28,18 @@ def route_parts_for_prefix(prefix: str) -> tuple[str, str, str] | None:
     parts = [segment for segment in prefix.split("/") if segment]
     if len(parts) < 3:
         return None
-    category = parts[0]
-    if category == "humanoid":
-        category = "dexterity"
-    return category, parts[1], parts[2]
+    legacy_category = parts[0]
+
+    if legacy_category == "humanoid":
+        return "dexterity", parts[1], parts[2]
+
+    if legacy_category.lower() == "peeling":
+        return "dexterity", "peeling", parts[2]
+
+    if legacy_category.lower() == "washingmachine":
+        return "dexterity", "washingMachine", parts[2]
+
+    return legacy_category, parts[1], parts[2]
 
 
 def migrate_prefix(
@@ -44,13 +52,22 @@ def migrate_prefix(
     dataset: dict[str, str],
 ) -> tuple[int, int]:
     copied_or_moved = 0
+    source_prefix = source_prefix.rstrip("/")
+    target_prefix = target_prefix.rstrip("/")
 
-    if source_container == target_container and source_prefix.rstrip("/") == target_prefix.rstrip("/"):
+    if source_container == target_container and source_prefix == target_prefix:
         print(f"Backfilling catalog only for {target_prefix}")
     else:
         for blob in azure.list_blobs(source_container, source_prefix):
-            suffix = blob.name[len(source_prefix.rstrip("/")) + 1 :]
+            suffix = blob.name[len(source_prefix) + 1 :]
             target_blob = f"{target_prefix}/{suffix}"
+
+            if blob.name == target_blob:
+                continue
+
+            if azure.blob_exists(target_container, target_blob):
+                print(f"Skipping existing blob {target_container}/{target_blob}")
+                continue
 
             if source_container == target_container:
                 azure.move_blob(
@@ -103,6 +120,7 @@ def main() -> None:
             prefixes.add("/".join(parts[:3]))
 
     migrated = 0
+    failures: list[tuple[str, str]] = []
     for prefix in sorted(prefixes):
         route_parts = route_parts_for_prefix(prefix)
         if not route_parts:
@@ -119,32 +137,42 @@ def main() -> None:
             migrated += 1
             continue
 
-        dataset = store.backfill_dataset(
-            owner_user=admin_user,
-            created_by_user=admin_user,
-            visibility="public",
-            category=category,
-            brand=brand,
-            dataset_name=dataset_name,
-            storage_container=args.target_container,
-            storage_prefix=target_prefix,
-            source_kind="migration",
-        )
+        try:
+            dataset = store.backfill_dataset(
+                owner_user=admin_user,
+                created_by_user=admin_user,
+                visibility="public",
+                category=category,
+                brand=brand,
+                dataset_name=dataset_name,
+                storage_container=args.target_container,
+                storage_prefix=target_prefix,
+                source_kind="migration",
+            )
 
-        blob_count, doc_count = migrate_prefix(
-            azure=azure,
-            source_container=args.source_container,
-            source_prefix=prefix,
-            target_container=args.target_container,
-            target_prefix=target_prefix,
-            dataset=dataset,
-        )
-        print(
-            f"Finished {target_prefix}: migrated {blob_count} blobs and rewrote {doc_count} Cosmos documents"
-        )
-        migrated += 1
+            blob_count, doc_count = migrate_prefix(
+                azure=azure,
+                source_container=args.source_container,
+                source_prefix=prefix,
+                target_container=args.target_container,
+                target_prefix=target_prefix,
+                dataset=dataset,
+            )
+            print(
+                f"Finished {target_prefix}: migrated {blob_count} blobs and rewrote {doc_count} Cosmos documents"
+            )
+            migrated += 1
+        except Exception as exc:
+            failures.append((prefix, str(exc)))
+            print(f"Failed {prefix}: {exc}")
 
     print(f"Migrated {migrated} dataset roots")
+    if failures:
+        print("")
+        print("Migration finished with failures:")
+        for prefix, message in failures:
+            print(f" - {prefix}: {message}")
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
