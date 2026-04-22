@@ -66,12 +66,20 @@ def register_routes(app: Flask) -> None:
         )
 
     @app.route("/api/auth/login", methods=["GET"])
+    def auth_login_redirect():
+        return auth_service.login_redirect()
+
+    @app.route("/api/auth/login", methods=["POST"])
     def auth_login():
         return auth_service.login()
 
-    @app.route("/api/auth/callback", methods=["GET"])
-    def auth_callback():
-        return auth_service.handle_callback()
+    @app.route("/api/auth/register", methods=["GET"])
+    def auth_register_redirect():
+        return auth_service.register_redirect()
+
+    @app.route("/api/auth/register", methods=["POST"])
+    def auth_register():
+        return auth_service.register()
 
     @app.route("/api/auth/logout", methods=["POST"])
     def auth_logout():
