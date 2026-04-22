@@ -1,5 +1,7 @@
 import { createContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
+export type ApprovalStatus = "pending" | "approved" | "rejected" | null;
+
 export interface AuthUser {
   id: string;
   email: string;
@@ -9,23 +11,40 @@ export interface AuthUser {
   privateContainerName: string;
 }
 
-interface AuthContextValue {
-  isLoading: boolean;
+export interface AuthState {
   isAuthenticated: boolean;
   isApproved: boolean;
+  approvalStatus: ApprovalStatus;
   user: AuthUser | null;
-  refreshAuth: () => Promise<void>;
+}
+
+interface AuthContextValue extends AuthState {
+  isLoading: boolean;
+  refreshAuth: () => Promise<AuthState>;
   login: (nextPath?: string) => void;
+  register: (nextPath?: string) => void;
+  submitLogin: (email: string, password: string) => Promise<AuthState>;
+  submitRegister: (payload: {
+    displayName: string;
+    email: string;
+    password: string;
+  }) => Promise<AuthState>;
   logout: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
 
-async function fetchAuthState(): Promise<{
-  isAuthenticated: boolean;
-  isApproved: boolean;
-  user: AuthUser | null;
-}> {
+function buildAuthPageUrl(mode: "login" | "register", nextPath?: string) {
+  const params = new URLSearchParams({ mode });
+  const rawTarget = nextPath ?? `${window.location.pathname}${window.location.search}`;
+  const target = rawTarget.startsWith("/auth") ? "/viewer" : rawTarget;
+  if (target) {
+    params.set("next", target);
+  }
+  return `/auth?${params.toString()}`;
+}
+
+async function fetchAuthState(): Promise<AuthState> {
   const response = await fetch("/api/auth/me", {
     method: "GET",
     credentials: "same-origin",
@@ -35,6 +54,7 @@ async function fetchAuthState(): Promise<{
     return {
       isAuthenticated: false,
       isApproved: false,
+      approvalStatus: null,
       user: null,
     };
   }
@@ -43,27 +63,55 @@ async function fetchAuthState(): Promise<{
   return {
     isAuthenticated: Boolean(data.isAuthenticated),
     isApproved: Boolean(data.isApproved),
+    approvalStatus: (data.approvalStatus as ApprovalStatus) ?? null,
     user: data.user ?? null,
   };
 }
 
+async function postAuthJson<TPayload>(url: string, payload: TPayload) {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error =
+      typeof data.error === "string" && data.error.trim()
+        ? data.error
+        : "Authentication request failed";
+    throw new Error(error);
+  }
+
+  return data;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isApproved, setIsApproved] = useState(false);
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const [authState, setAuthState] = useState<AuthState>({
+    isAuthenticated: false,
+    isApproved: false,
+    approvalStatus: null,
+    user: null,
+  });
 
-  const refreshAuth = async () => {
+  const refreshAuth = async (): Promise<AuthState> => {
     setIsLoading(true);
     try {
       const next = await fetchAuthState();
-      setIsAuthenticated(next.isAuthenticated);
-      setIsApproved(next.isApproved);
-      setUser(next.user);
+      setAuthState(next);
+      return next;
     } catch {
-      setIsAuthenticated(false);
-      setIsApproved(false);
-      setUser(null);
+      const fallback = {
+        isAuthenticated: false,
+        isApproved: false,
+        approvalStatus: null,
+        user: null,
+      } satisfies AuthState;
+      setAuthState(fallback);
+      return fallback;
     } finally {
       setIsLoading(false);
     }
@@ -74,8 +122,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = (nextPath?: string) => {
-    const target = nextPath ?? `${window.location.pathname}${window.location.search}`;
-    window.location.assign(`/api/auth/login?next=${encodeURIComponent(target)}`);
+    window.location.assign(buildAuthPageUrl("login", nextPath));
+  };
+
+  const register = (nextPath?: string) => {
+    window.location.assign(buildAuthPageUrl("register", nextPath));
+  };
+
+  const submitLogin = async (email: string, password: string) => {
+    await postAuthJson("/api/auth/login", { email, password });
+    return refreshAuth();
+  };
+
+  const submitRegister = async (payload: {
+    displayName: string;
+    email: string;
+    password: string;
+  }) => {
+    await postAuthJson("/api/auth/register", payload);
+    return refreshAuth();
   };
 
   const logout = async () => {
@@ -89,15 +154,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<AuthContextValue>(
     () => ({
+      ...authState,
       isLoading,
-      isAuthenticated,
-      isApproved,
-      user,
       refreshAuth,
       login,
+      register,
+      submitLogin,
+      submitRegister,
       logout,
     }),
-    [isLoading, isAuthenticated, isApproved, user],
+    [authState, isLoading],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
