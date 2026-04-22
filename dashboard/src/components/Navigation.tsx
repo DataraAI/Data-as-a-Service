@@ -87,15 +87,6 @@ const Navigation = () => {
                 </Button>
               </>
             )}
-            <Button
-              variant="default"
-              className="rounded-sm border border-primary/20 bg-primary font-mono-tech text-sm text-primary-foreground shadow-glow hover:bg-primary-glow"
-              onClick={() =>
-                isAuthenticated ? window.location.assign("/viewer") : register(loginTarget)
-              }
-            >
-              {isAuthenticated ? "Open Platform" : "Create Account"}
-            </Button>
           </div>
 
           <Button
@@ -163,15 +154,6 @@ const Navigation = () => {
                     Sign Out
                   </Button>
                 )}
-                <Button
-                  variant="default"
-                  className="w-full justify-start rounded-sm font-mono-tech"
-                  onClick={() =>
-                    isAuthenticated ? window.location.assign("/viewer") : register(loginTarget)
-                  }
-                >
-                  {isAuthenticated ? "Open Platform" : "Create Account"}
-                </Button>
               </div>
             </div>
           </div>

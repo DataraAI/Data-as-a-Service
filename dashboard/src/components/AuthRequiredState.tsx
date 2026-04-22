@@ -48,7 +48,7 @@ export default function AuthRequiredState({
                 Sign in
               </Button>
               <Button onClick={() => register()} variant="outline" className="font-sans-tech">
-                Create account
+                Register
               </Button>
             </>
           ) : (
