@@ -414,7 +414,7 @@ class ProcessingService:
         brand = str(data.get("brand") or source_dataset["brand"]).strip()
         requested_name = str(data.get("dataset_name") or "").strip()
         owner_user = (
-            self.sql_store.get_user_by_entra_object_id(source_dataset["owner_user_id"])
+            self.sql_store.get_user_by_id(source_dataset["owner_user_id"])
             if visibility == "private" and source_dataset["visibility"] == "private"
             else current_user
         )
@@ -493,7 +493,7 @@ class ProcessingService:
         brand = str(data.get("brand") or source_dataset["brand"]).strip()
         requested_name = str(data.get("dataset_name") or "").strip()
         owner_user = (
-            self.sql_store.get_user_by_entra_object_id(source_dataset["owner_user_id"])
+            self.sql_store.get_user_by_id(source_dataset["owner_user_id"])
             if visibility == "private" and source_dataset["visibility"] == "private"
             else current_user
         )

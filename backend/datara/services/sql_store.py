@@ -1,4 +1,4 @@
-"""SQLite-backed catalog for application auth and dataset routing."""
+"""SQLite-backed catalog for Datara auth and dataset routing."""
 
 from __future__ import annotations
 
@@ -16,6 +16,7 @@ from datara.logging import logger
 
 ALLOWED_VISIBILITY = {"private", "public"}
 ALLOWED_ROLES = {"user", "admin"}
+ALLOWED_APPROVAL_STATUSES = {"pending", "approved", "rejected"}
 SLUG_PATTERN = re.compile(r"[^a-z0-9-]+")
 
 
@@ -56,21 +57,48 @@ class SQLStore:
         finally:
             conn.close()
 
+    @staticmethod
+    def _table_exists(conn: sqlite3.Connection, table_name: str) -> bool:
+        row = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
+            (table_name,),
+        ).fetchone()
+        return row is not None
+
+    @staticmethod
+    def _table_columns(conn: sqlite3.Connection, table_name: str) -> set[str]:
+        rows = conn.execute(f"PRAGMA table_info({table_name})").fetchall()
+        return {str(row["name"]) for row in rows}
+
+    def _assert_supported_schema(self, conn: sqlite3.Connection) -> None:
+        if self._table_exists(conn, "users"):
+            user_columns = self._table_columns(conn, "users")
+            if "entra_object_id" in user_columns and "id" not in user_columns:
+                raise RuntimeError(
+                    "The configured auth SQLite file still uses the retired Entra schema. "
+                    "Point AUTH_SQLITE_PATH to a fresh file or remove the old SQLite database "
+                    "before starting the app."
+                )
+
     def initialize(self) -> None:
         with self.connection() as conn:
+            self._assert_supported_schema(conn)
             conn.executescript(
                 """
                 CREATE TABLE IF NOT EXISTS users (
-                    entra_object_id TEXT PRIMARY KEY,
-                    email TEXT NOT NULL,
+                    id TEXT PRIMARY KEY,
+                    email TEXT NOT NULL UNIQUE COLLATE NOCASE,
                     display_name TEXT NOT NULL,
-                    approved INTEGER NOT NULL DEFAULT 0,
+                    password_hash TEXT NOT NULL,
+                    approval_status TEXT NOT NULL DEFAULT 'pending',
                     role TEXT NOT NULL DEFAULT 'user',
                     storage_slug TEXT NOT NULL UNIQUE,
                     private_container_name TEXT NOT NULL UNIQUE,
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL,
-                    last_login_at TEXT
+                    last_login_at TEXT,
+                    CHECK (approval_status IN ('pending', 'approved', 'rejected')),
+                    CHECK (role IN ('user', 'admin'))
                 );
 
                 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
@@ -93,8 +121,8 @@ class SQLStore:
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL,
                     deleted_at TEXT,
-                    FOREIGN KEY(owner_user_id) REFERENCES users(entra_object_id),
-                    FOREIGN KEY(created_by_user_id) REFERENCES users(entra_object_id),
+                    FOREIGN KEY(owner_user_id) REFERENCES users(id),
+                    FOREIGN KEY(created_by_user_id) REFERENCES users(id),
                     FOREIGN KEY(source_dataset_id) REFERENCES datasets(id)
                 );
 
@@ -104,6 +132,15 @@ class SQLStore:
                 CREATE INDEX IF NOT EXISTS idx_datasets_route ON datasets(category, brand, dataset_name);
                 """
             )
+
+    @staticmethod
+    def _decorate_user(record: dict[str, Any] | None) -> dict[str, Any] | None:
+        if not record:
+            return None
+        approval_status = str(record.get("approval_status") or "pending")
+        record["approval_status"] = approval_status
+        record["approved"] = approval_status == "approved" or record.get("role") == "admin"
+        return record
 
     def _fetchone(self, query: str, params: tuple[Any, ...] = ()) -> dict[str, Any] | None:
         with self.connection() as conn:
@@ -116,7 +153,7 @@ class SQLStore:
             return [dict(row) for row in rows]
 
     def _storage_slug_exists(self, slug: str) -> bool:
-        return self._fetchone("SELECT entra_object_id FROM users WHERE storage_slug = ?", (slug,)) is not None
+        return self._fetchone("SELECT id FROM users WHERE storage_slug = ?", (slug,)) is not None
 
     def generate_unique_storage_slug(self, *candidates: str) -> str:
         base_candidates = [slugify_storage_name(candidate) for candidate in candidates if candidate and candidate.strip()]
@@ -136,77 +173,66 @@ class SQLStore:
         result = self._fetchone("SELECT COUNT(*) AS count FROM users WHERE role = 'admin'")
         return int(result["count"]) if result else 0
 
-    def get_user_by_entra_object_id(self, entra_object_id: str) -> dict[str, Any] | None:
-        return self._fetchone("SELECT * FROM users WHERE entra_object_id = ?", (entra_object_id,))
+    def get_user_by_id(self, user_id: str) -> dict[str, Any] | None:
+        return self._decorate_user(self._fetchone("SELECT * FROM users WHERE id = ?", (user_id,)))
 
     def get_user_by_email(self, email: str) -> dict[str, Any] | None:
-        return self._fetchone("SELECT * FROM users WHERE LOWER(email) = LOWER(?)", (email,))
+        return self._decorate_user(self._fetchone("SELECT * FROM users WHERE email = ?", (email.strip().lower(),)))
 
     def get_user_by_storage_slug(self, storage_slug: str) -> dict[str, Any] | None:
-        return self._fetchone("SELECT * FROM users WHERE storage_slug = ?", (storage_slug,))
+        return self._decorate_user(self._fetchone("SELECT * FROM users WHERE storage_slug = ?", (storage_slug,)))
+
+    def get_user(self, user_ref: str) -> dict[str, Any] | None:
+        return self.get_user_by_id(user_ref) or self.get_user_by_email(user_ref)
 
     def list_users(self) -> list[dict[str, Any]]:
-        return self._fetchall(
-            "SELECT * FROM users ORDER BY CASE role WHEN 'admin' THEN 0 ELSE 1 END, email ASC"
-        )
+        return [
+            self._decorate_user(record) or record
+            for record in self._fetchall(
+                """
+                SELECT *
+                FROM users
+                ORDER BY
+                    CASE role WHEN 'admin' THEN 0 ELSE 1 END,
+                    CASE approval_status WHEN 'pending' THEN 0 WHEN 'approved' THEN 1 ELSE 2 END,
+                    email ASC
+                """
+            )
+        ]
 
-    def upsert_user(
+    def create_user(
         self,
         *,
-        entra_object_id: str,
         email: str,
         display_name: str,
-        bootstrap_admin_emails: list[str] | None = None,
+        password_hash: str,
+        approval_status: str = "pending",
+        role: str = "user",
     ) -> dict[str, Any]:
-        existing = self.get_user_by_entra_object_id(entra_object_id)
-        now = utc_now()
+        if approval_status not in ALLOWED_APPROVAL_STATUSES:
+            raise ValueError(f"Unsupported approval status: {approval_status}")
+        if role not in ALLOWED_ROLES:
+            raise ValueError(f"Unsupported role: {role}")
+
         normalized_email = email.strip().lower()
         display_name = display_name.strip() or normalized_email
-        bootstrap_admin_emails = [value.strip().lower() for value in (bootstrap_admin_emails or []) if value.strip()]
-        should_bootstrap_admin = normalized_email in bootstrap_admin_emails
-
-        if existing:
-            approved = int(existing["approved"])
-            role = existing["role"]
-            if should_bootstrap_admin:
-                approved = 1
-                role = "admin"
-
-            with self.connection() as conn:
-                conn.execute(
-                    """
-                    UPDATE users
-                    SET email = ?, display_name = ?, approved = ?, role = ?, updated_at = ?, last_login_at = ?
-                    WHERE entra_object_id = ?
-                    """,
-                    (
-                        normalized_email,
-                        display_name,
-                        approved,
-                        role,
-                        now,
-                        now,
-                        entra_object_id,
-                    ),
-                )
-            return self.get_user_by_entra_object_id(entra_object_id) or existing
-
         storage_slug = self.generate_unique_storage_slug(
             normalized_email.split("@", 1)[0],
             display_name,
             normalized_email,
         )
-        approved = 1 if should_bootstrap_admin else 0
-        role = "admin" if should_bootstrap_admin else "user"
+        now = utc_now()
+        user_id = uuid.uuid4().hex
 
         with self.connection() as conn:
             conn.execute(
                 """
                 INSERT INTO users (
-                    entra_object_id,
+                    id,
                     email,
                     display_name,
-                    approved,
+                    password_hash,
+                    approval_status,
                     role,
                     storage_slug,
                     private_container_name,
@@ -214,48 +240,83 @@ class SQLStore:
                     updated_at,
                     last_login_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
                 """,
                 (
-                    entra_object_id,
+                    user_id,
                     normalized_email,
                     display_name,
-                    approved,
+                    password_hash,
+                    approval_status,
                     role,
                     storage_slug,
                     storage_slug,
                     now,
                     now,
-                    now,
                 ),
             )
-        return self.get_user_by_entra_object_id(entra_object_id)
+        return self.get_user_by_id(user_id)
 
-    def set_user_approval(self, user_ref: str, approved: bool) -> dict[str, Any] | None:
+    def touch_user_login(self, user_id: str) -> None:
+        now = utc_now()
+        with self.connection() as conn:
+            conn.execute(
+                "UPDATE users SET last_login_at = ?, updated_at = ? WHERE id = ?",
+                (now, now, user_id),
+            )
+
+    def set_user_approval_status(self, user_ref: str, approval_status: str) -> dict[str, Any] | None:
+        if approval_status not in ALLOWED_APPROVAL_STATUSES:
+            raise ValueError(f"Unsupported approval status: {approval_status}")
+        now = utc_now()
         with self.connection() as conn:
             conn.execute(
                 """
                 UPDATE users
-                SET approved = ?, updated_at = ?
-                WHERE entra_object_id = ? OR LOWER(email) = LOWER(?)
+                SET approval_status = ?, updated_at = ?
+                WHERE id = ? OR email = ?
                 """,
-                (1 if approved else 0, utc_now(), user_ref, user_ref),
+                (approval_status, now, user_ref, user_ref.strip().lower()),
             )
-        return self.get_user_by_entra_object_id(user_ref) or self.get_user_by_email(user_ref)
+        return self.get_user(user_ref)
 
     def set_user_role(self, user_ref: str, role: str) -> dict[str, Any] | None:
         if role not in ALLOWED_ROLES:
             raise ValueError(f"Unsupported role: {role}")
+
+        user = self.get_user(user_ref)
+        if not user:
+            return None
+
+        approval_status = user["approval_status"]
+        if role == "admin":
+            approval_status = "approved"
+
         with self.connection() as conn:
             conn.execute(
                 """
                 UPDATE users
-                SET role = ?, approved = CASE WHEN ? = 'admin' THEN 1 ELSE approved END, updated_at = ?
-                WHERE entra_object_id = ? OR LOWER(email) = LOWER(?)
+                SET role = ?, approval_status = ?, updated_at = ?
+                WHERE id = ?
                 """,
-                (role, role, utc_now(), user_ref, user_ref),
+                (role, approval_status, utc_now(), user["id"]),
             )
-        return self.get_user_by_entra_object_id(user_ref) or self.get_user_by_email(user_ref)
+        return self.get_user_by_id(user["id"])
+
+    def update_user_password(self, user_ref: str, password_hash: str) -> dict[str, Any] | None:
+        user = self.get_user(user_ref)
+        if not user:
+            return None
+        with self.connection() as conn:
+            conn.execute(
+                """
+                UPDATE users
+                SET password_hash = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                (password_hash, utc_now(), user["id"]),
+            )
+        return self.get_user_by_id(user["id"])
 
     def route_path_for_dataset(self, dataset: dict[str, Any], viewer_mode: str = "default") -> str:
         base = f"{dataset['category']}/{dataset['brand']}/{dataset['dataset_name']}"
@@ -275,7 +336,7 @@ class SQLStore:
             return self._fetchall(query, tuple(params))
 
         clauses.append("(visibility = 'public' OR owner_user_id = ?)")
-        params.append(current_user["entra_object_id"])
+        params.append(current_user["id"])
         where = " AND ".join(clauses)
         query = f"SELECT * FROM datasets WHERE {where} ORDER BY visibility ASC, category ASC, brand ASC, dataset_name ASC"
         return self._fetchall(query, tuple(params))
@@ -339,7 +400,7 @@ class SQLStore:
             category=category,
             brand=brand,
             dataset_name=dataset_name,
-            owner_user_id=owner_user["entra_object_id"],
+            owner_user_id=owner_user["id"],
         ):
             raise ValueError(f"Dataset route already exists: {category}/{brand}/{dataset_name}")
 
@@ -370,9 +431,9 @@ class SQLStore:
                 """,
                 (
                     dataset_id,
-                    owner_user["entra_object_id"],
+                    owner_user["id"],
                     owner_user["storage_slug"],
-                    created_by_user["entra_object_id"],
+                    created_by_user["id"],
                     visibility,
                     category,
                     brand,
@@ -403,10 +464,11 @@ class SQLStore:
         )
 
     def mark_dataset_deleted(self, dataset_id: str) -> None:
+        now = utc_now()
         with self.connection() as conn:
             conn.execute(
                 "UPDATE datasets SET deleted_at = ?, updated_at = ? WHERE id = ?",
-                (utc_now(), utc_now(), dataset_id),
+                (now, now, dataset_id),
             )
 
     def parse_route_path(self, route_path: str) -> dict[str, Any]:
@@ -477,7 +539,7 @@ class SQLStore:
                     return dataset, parsed.get("extra_segments", [])
                 continue
 
-            if scope == "my" and dataset["owner_user_id"] == current_user["entra_object_id"]:
+            if scope == "my" and dataset["owner_user_id"] == current_user["id"]:
                 if (
                     dataset["category"] == parsed["category"]
                     and dataset["brand"] == parsed["brand"]
@@ -498,7 +560,7 @@ class SQLStore:
 
     def build_dataset_summary(self, dataset: dict[str, Any], current_user: dict[str, Any]) -> dict[str, Any]:
         viewer_mode = "default"
-        if dataset["visibility"] == "private" and dataset["owner_user_id"] != current_user["entra_object_id"]:
+        if dataset["visibility"] == "private" and dataset["owner_user_id"] != current_user["id"]:
             viewer_mode = "admin"
         full_path = self.route_path_for_dataset(dataset, viewer_mode=viewer_mode)
         return {
@@ -506,7 +568,7 @@ class SQLStore:
             "full_path": full_path,
             "viewer_path": f"/viewer/{full_path}",
             "source_path": dataset["storage_prefix"],
-            "is_owner": dataset["owner_user_id"] == current_user["entra_object_id"],
+            "is_owner": dataset["owner_user_id"] == current_user["id"],
             "is_admin_view": viewer_mode == "admin",
         }
 
@@ -526,7 +588,7 @@ class SQLStore:
             category=category,
             brand=brand,
             dataset_name=candidate,
-            owner_user_id=owner_user["entra_object_id"],
+            owner_user_id=owner_user["id"],
         ):
             candidate = f"{preferred_name}-{counter}"
             counter += 1
@@ -535,14 +597,14 @@ class SQLStore:
     def assert_user_can_access_dataset(self, dataset: dict[str, Any], current_user: dict[str, Any]) -> None:
         if dataset["visibility"] == "public":
             return
-        if dataset["owner_user_id"] == current_user["entra_object_id"]:
+        if dataset["owner_user_id"] == current_user["id"]:
             return
         if current_user["role"] == "admin":
             return
         raise PermissionError("Dataset access denied")
 
     def assert_user_can_manage_dataset(self, dataset: dict[str, Any], current_user: dict[str, Any]) -> None:
-        if dataset["owner_user_id"] == current_user["entra_object_id"] or current_user["role"] == "admin":
+        if dataset["owner_user_id"] == current_user["id"] or current_user["role"] == "admin":
             return
         raise PermissionError("Dataset management denied")
 

@@ -1,13 +1,13 @@
-"""Microsoft Entra auth helpers and Flask session enforcement."""
+"""Datara-managed email/password auth helpers and Flask session enforcement."""
 
 from __future__ import annotations
 
 from functools import wraps
 from typing import Any, Callable, TypeVar
-from urllib.parse import urljoin
+from urllib.parse import urlencode, urljoin
 
-import msal
 from flask import jsonify, redirect, request, session
+from werkzeug.security import check_password_hash, generate_password_hash
 
 from datara.config import settings
 from datara.logging import logger
@@ -15,45 +15,40 @@ from datara.services.sql_store import SQLStore
 
 
 SESSION_USER_KEY = "datara_user_id"
-SESSION_FLOW_KEY = "datara_auth_flow"
-SESSION_NEXT_KEY = "datara_auth_next"
 F = TypeVar("F", bound=Callable[..., Any])
 
 
 class AuthService:
-    """Encapsulates Microsoft Entra OIDC auth and current-user helpers."""
+    """Encapsulates Datara-managed auth and current-user helpers."""
 
     def __init__(self, sql_store: SQLStore) -> None:
         self.sql_store = sql_store
 
-    def is_configured(self) -> bool:
-        return settings.has_entra_config
+    @staticmethod
+    def _normalize_email(email: str | None) -> str:
+        return str(email or "").strip().lower()
 
-    def _build_redirect_uri(self) -> str:
-        return f"{request.host_url.rstrip('/')}{settings.entra_redirect_path}"
-
-    def _build_msal_app(self) -> msal.ConfidentialClientApplication:
-        authority = settings.get_entra_authority()
-        if not authority or not settings.entra_client_id or not settings.entra_client_secret:
-            raise RuntimeError("Microsoft Entra configuration is incomplete")
-        return msal.ConfidentialClientApplication(
-            client_id=settings.entra_client_id,
-            client_credential=settings.entra_client_secret,
-            authority=authority,
-        )
+    @staticmethod
+    def _sanitize_display_name(display_name: str | None, fallback_email: str) -> str:
+        name = str(display_name or "").strip()
+        return name or fallback_email
 
     @staticmethod
     def _sanitize_next(next_path: str | None) -> str:
         if not next_path:
             return settings.auth_post_login_path
+
         next_path = next_path.strip()
         if not next_path:
             return settings.auth_post_login_path
+
+        frontend_root = settings.frontend_url.rstrip("/")
         if next_path.startswith("http://") or next_path.startswith("https://"):
-            if next_path.startswith(settings.frontend_url.rstrip("/")):
-                suffix = next_path[len(settings.frontend_url.rstrip("/")) :]
+            if next_path.startswith(frontend_root):
+                suffix = next_path[len(frontend_root) :]
                 return suffix or settings.auth_post_login_path
             return settings.auth_post_login_path
+
         if not next_path.startswith("/"):
             next_path = f"/{next_path}"
         return next_path
@@ -61,75 +56,117 @@ class AuthService:
     def _frontend_redirect(self, path: str) -> str:
         return urljoin(f"{settings.frontend_url.rstrip('/')}/", path.lstrip("/"))
 
-    def login(self):
-        if not self.is_configured():
-            return jsonify({"error": "Microsoft Entra is not configured"}), 503
+    def _frontend_auth_url(self, *, mode: str, next_path: str | None = None) -> str:
+        query = {"mode": mode}
+        sanitized_next = self._sanitize_next(next_path)
+        if sanitized_next:
+            query["next"] = sanitized_next
+        return self._frontend_redirect(f"/auth?{urlencode(query)}")
 
-        next_path = self._sanitize_next(request.args.get("next"))
-        session[SESSION_NEXT_KEY] = next_path
-        flow = self._build_msal_app().initiate_auth_code_flow(
-            scopes=settings.entra_scopes,
-            redirect_uri=self._build_redirect_uri(),
+    def _user_is_approved(self, user: dict[str, Any] | None) -> bool:
+        if not user:
+            return False
+        return user["role"] == "admin" or user["approval_status"] == "approved"
+
+    def _password_error(self, password: str) -> str | None:
+        if len(password) < settings.auth_min_password_length:
+            return f"Password must be at least {settings.auth_min_password_length} characters long"
+        return None
+
+    def login_redirect(self):
+        next_path = request.args.get("next")
+        return redirect(self._frontend_auth_url(mode="login", next_path=next_path))
+
+    def register_redirect(self):
+        next_path = request.args.get("next")
+        return redirect(self._frontend_auth_url(mode="register", next_path=next_path))
+
+    def register(self):
+        if not settings.auth_registration_enabled:
+            return jsonify({"error": "Registration is currently disabled"}), 503
+
+        payload = request.get_json(silent=True) or {}
+        email = self._normalize_email(payload.get("email"))
+        display_name = self._sanitize_display_name(payload.get("displayName"), email)
+        password = str(payload.get("password") or "")
+
+        if not email or "@" not in email:
+            return jsonify({"error": "A valid email address is required"}), 400
+        if not display_name:
+            return jsonify({"error": "Display name is required"}), 400
+
+        password_error = self._password_error(password)
+        if password_error:
+            return jsonify({"error": password_error}), 400
+
+        existing = self.sql_store.get_user_by_email(email)
+        if existing:
+            if existing["approval_status"] == "rejected":
+                return jsonify({"error": "This account has been rejected. Please contact Datara."}), 403
+            return jsonify({"error": "An account with this email already exists"}), 409
+
+        should_bootstrap_admin = (
+            email in settings.auth_bootstrap_admin_emails and self.sql_store.count_admin_users() == 0
         )
-        session[SESSION_FLOW_KEY] = flow
-        logger.info("Redirecting to Microsoft Entra login")
-        return redirect(flow["auth_uri"])
+        approval_status = "approved" if should_bootstrap_admin else "pending"
+        role = "admin" if should_bootstrap_admin else "user"
 
-    def handle_callback(self):
-        if not self.is_configured():
-            return redirect(self._frontend_redirect("/"))
-
-        flow = session.pop(SESSION_FLOW_KEY, None)
-        if not flow:
-            logger.warning("Missing auth flow during callback")
-            return redirect(self._frontend_redirect("/?auth=flow-missing"))
-
-        result = self._build_msal_app().acquire_token_by_auth_code_flow(
-            flow,
-            auth_response=request.args,
-        )
-
-        if "error" in result:
-            logger.warning("Microsoft Entra login failed: %s", result.get("error_description") or result["error"])
-            return redirect(self._frontend_redirect("/?auth=failed"))
-
-        claims = result.get("id_token_claims") or {}
-        entra_object_id = claims.get("oid") or claims.get("sub")
-        email = claims.get("preferred_username") or claims.get("email")
-        display_name = claims.get("name") or email
-
-        if not entra_object_id or not email:
-            logger.warning("Entra callback missing required identity claims")
-            return redirect(self._frontend_redirect("/?auth=claims-missing"))
-
-        user = self.sql_store.upsert_user(
-            entra_object_id=entra_object_id,
+        user = self.sql_store.create_user(
             email=email,
-            display_name=display_name or email,
-            bootstrap_admin_emails=settings.auth_bootstrap_admin_emails,
+            display_name=display_name,
+            password_hash=generate_password_hash(password),
+            approval_status=approval_status,
+            role=role,
         )
-
-        session[SESSION_USER_KEY] = user["entra_object_id"]
+        session[SESSION_USER_KEY] = user["id"]
         session.permanent = True
-        next_path = session.pop(SESSION_NEXT_KEY, settings.auth_post_login_path)
-        if not user["approved"] and not settings.auth_allow_unapproved_login_session:
-            session.pop(SESSION_USER_KEY, None)
-            return redirect(self._frontend_redirect("/?auth=pending"))
 
-        logger.info("User %s authenticated successfully", user["email"])
-        return redirect(self._frontend_redirect(self._sanitize_next(next_path)))
+        logger.info("Registered Datara account for %s with status=%s role=%s", email, approval_status, role)
+        response = self.serialize_user(user)
+        response["message"] = (
+            "Account created successfully"
+            if self._user_is_approved(user)
+            else "Account created and pending Datara approval"
+        )
+        return jsonify(response), 201
+
+    def login(self):
+        payload = request.get_json(silent=True) or {}
+        email = self._normalize_email(payload.get("email"))
+        password = str(payload.get("password") or "")
+
+        if not email or not password:
+            return jsonify({"error": "Email and password are required"}), 400
+
+        user = self.sql_store.get_user_by_email(email)
+        if not user or not check_password_hash(str(user["password_hash"]), password):
+            return jsonify({"error": "Invalid email or password"}), 401
+
+        if user["approval_status"] == "rejected" and user["role"] != "admin":
+            return jsonify({"error": "This account has been rejected. Please contact Datara."}), 403
+
+        if not self._user_is_approved(user) and not settings.auth_allow_pending_login_session:
+            return jsonify({"error": "Your account is pending approval"}), 403
+
+        self.sql_store.touch_user_login(user["id"])
+        user = self.sql_store.get_user_by_id(user["id"]) or user
+        session[SESSION_USER_KEY] = user["id"]
+        session.permanent = True
+
+        logger.info("Datara login successful for %s", user["email"])
+        response = self.serialize_user(user)
+        response["message"] = "Login successful"
+        return jsonify(response)
 
     def logout(self):
         session.pop(SESSION_USER_KEY, None)
-        session.pop(SESSION_FLOW_KEY, None)
-        session.pop(SESSION_NEXT_KEY, None)
         return jsonify({"ok": True})
 
     def get_current_user(self) -> dict[str, Any] | None:
         user_id = session.get(SESSION_USER_KEY)
         if not user_id:
             return None
-        user = self.sql_store.get_user_by_entra_object_id(user_id)
+        user = self.sql_store.get_user_by_id(str(user_id))
         if not user:
             session.pop(SESSION_USER_KEY, None)
             return None
@@ -139,25 +176,30 @@ class AuthService:
         user = self.get_current_user()
         if not user:
             raise PermissionError("Authentication required")
-        if not user["approved"] and user["role"] != "admin":
+        if not self._user_is_approved(user):
             raise PermissionError("Account approval required")
         return user
 
     def serialize_user(self, user: dict[str, Any] | None) -> dict[str, Any]:
         if not user:
+            next_path = self._sanitize_next(request.args.get("next"))
             return {
                 "isAuthenticated": False,
                 "isApproved": False,
-                "loginUrl": f"/api/auth/login?next={request.args.get('next', settings.auth_post_login_path)}",
+                "approvalStatus": None,
+                "loginUrl": self._frontend_auth_url(mode="login", next_path=next_path),
+                "registerUrl": self._frontend_auth_url(mode="register", next_path=next_path),
                 "user": None,
             }
 
         return {
             "isAuthenticated": True,
-            "isApproved": bool(user["approved"]) or user["role"] == "admin",
-            "loginUrl": "/api/auth/login",
+            "isApproved": self._user_is_approved(user),
+            "approvalStatus": user["approval_status"],
+            "loginUrl": self._frontend_auth_url(mode="login"),
+            "registerUrl": self._frontend_auth_url(mode="register"),
             "user": {
-                "id": user["entra_object_id"],
+                "id": user["id"],
                 "email": user["email"],
                 "displayName": user["display_name"],
                 "role": user["role"],
@@ -171,14 +213,12 @@ class AuthService:
         def wrapper(*args: Any, **kwargs: Any):
             user = self.get_current_user()
             if not user:
-                next_path = request.headers.get("X-Requested-With")
                 login_target = self._sanitize_next(request.args.get("next") or request.path)
                 return (
                     jsonify(
                         {
                             "error": "authentication_required",
-                            "login_url": f"/api/auth/login?next={login_target}",
-                            "requested_with": next_path,
+                            "login_url": self._frontend_auth_url(mode="login", next_path=login_target),
                         }
                     ),
                     401,
@@ -194,8 +234,8 @@ class AuthService:
             user = self.get_current_user()
             if not user:
                 return jsonify({"error": "authentication_required"}), 401
-            if not user["approved"] and user["role"] != "admin":
-                return jsonify({"error": "approval_required"}), 403
+            if not self._user_is_approved(user):
+                return jsonify({"error": "approval_required", "approval_status": user["approval_status"]}), 403
             return func(*args, **kwargs)
 
         return wrapper  # type: ignore[return-value]
