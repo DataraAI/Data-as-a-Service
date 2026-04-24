@@ -103,8 +103,8 @@ export default function AuthPage() {
               Datara-managed accounts for private robotics data
             </h1>
             <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground md:text-base">
-              Accounts are created directly with Datara, reviewed by an admin, and then used to
-              control access to public datasets, private uploads, and derived outputs.
+              Accounts are created directly with Datara, reviewed by an analyst or admin, and then
+              used to control access to public datasets, private uploads, and derived outputs.
             </p>
 
             <div className="mt-8 grid gap-4 sm:grid-cols-2">
@@ -145,7 +145,7 @@ export default function AuthPage() {
                 </h2>
                 <p className="mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
                   Your Datara account exists and can sign in, but dataset access stays locked until
-                  an admin approves it.
+                  a Datara reviewer approves it.
                 </p>
                 <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
                   <Button onClick={() => void logout()} variant="outline" className="font-sans-tech">
