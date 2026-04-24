@@ -39,7 +39,7 @@ const Navigation = () => {
             </span>
           </Link>
 
-          <div className="hidden items-center gap-6 xl:flex">
+          <div className="hidden items-center gap-6 lg:flex">
             {allNavItems.map((item) => (
               <Link
                 key={item.label}
@@ -51,7 +51,7 @@ const Navigation = () => {
             ))}
           </div>
 
-          <div className="hidden items-center gap-3 xl:flex">
+          <div className="hidden items-center gap-3 lg:flex">
             {isAuthenticated ? (
               <>
                 {canManageUsers && (
@@ -101,7 +101,7 @@ const Navigation = () => {
           <Button
             variant="ghost"
             size="icon"
-            className="shrink-0 xl:hidden"
+            className="shrink-0 lg:hidden"
             onClick={() => setIsMenuOpen((open) => !open)}
             aria-label={isMenuOpen ? "Close navigation menu" : "Open navigation menu"}
           >
@@ -110,7 +110,7 @@ const Navigation = () => {
         </div>
 
         {isMenuOpen && (
-          <div className="border-t border-border bg-background/98 xl:hidden">
+          <div className="border-t border-border bg-background/98 lg:hidden">
             <div className="custom-scrollbar max-h-[calc(100svh-4rem)] overflow-y-auto py-4">
               <div className="grid gap-2 sm:grid-cols-2">
                 {allNavItems.map((item) => (
