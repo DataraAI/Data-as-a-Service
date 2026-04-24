@@ -1,12 +1,13 @@
 import { createContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 export type ApprovalStatus = "pending" | "approved" | "rejected" | null;
+export type AuthRole = "customer" | "analyst" | "admin";
 
 export interface AuthUser {
-  id: string;
+  id: number;
   email: string;
   displayName: string;
-  role: "user" | "admin";
+  role: AuthRole;
   storageSlug: string;
   privateContainerName: string;
 }
