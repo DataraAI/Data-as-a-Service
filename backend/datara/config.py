@@ -5,13 +5,13 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
+from urllib.parse import quote_plus
 
 from dotenv import load_dotenv
 
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 PROJECT_ROOT = BACKEND_DIR.parent
-DEFAULT_SQLITE_PATH = BACKEND_DIR / "data" / "datara_app.sqlite3"
 
 load_dotenv(PROJECT_ROOT / "config" / ".env")
 load_dotenv(BACKEND_DIR / ".env")
@@ -40,6 +40,39 @@ def _env_list(name: str, default: list[str] | None = None) -> list[str]:
     if value is None:
         return list(default or [])
     return [item.strip() for item in value.split(",") if item.strip()]
+
+
+def _build_azure_sqlalchemy_url(
+    *,
+    server: str | None,
+    database: str | None,
+    username: str | None,
+    password: str | None,
+    driver: str,
+) -> str | None:
+    if not (server and database and username and password):
+        return None
+
+    quoted_username = quote_plus(username)
+    quoted_password = quote_plus(password)
+    quoted_driver = quote_plus(driver)
+    return (
+        f"mssql+pyodbc://{quoted_username}:{quoted_password}@{server}/{database}"
+        f"?driver={quoted_driver}&Encrypt=yes&TrustServerCertificate=no"
+    )
+
+
+def _redact_database_url(value: str) -> str:
+    if "://" not in value or "@" not in value:
+        return value
+
+    scheme, remainder = value.split("://", 1)
+    credentials, rest = remainder.split("@", 1)
+    if ":" not in credentials:
+        return f"{scheme}://{credentials}@{rest}"
+
+    username = credentials.split(":", 1)[0]
+    return f"{scheme}://{username}:***@{rest}"
 
 
 @dataclass(slots=True)
@@ -103,7 +136,6 @@ class Settings:
 
     frontend_url: str = field(default_factory=lambda: os.getenv("FRONTEND_URL", "http://localhost:5173"))
     auth_post_login_path: str = field(default_factory=lambda: os.getenv("AUTH_POST_LOGIN_PATH", "/viewer"))
-    auth_sqlite_path: str = field(default_factory=lambda: os.getenv("AUTH_SQLITE_PATH", str(DEFAULT_SQLITE_PATH)))
     auth_bootstrap_admin_emails: list[str] = field(default_factory=lambda: _env_list("AUTH_BOOTSTRAP_ADMIN_EMAILS"))
     auth_registration_enabled: bool = field(default_factory=lambda: _env_bool("AUTH_REGISTRATION_ENABLED", True))
     auth_min_password_length: int = field(default_factory=lambda: _env_int("AUTH_MIN_PASSWORD_LENGTH", 10))
@@ -113,10 +145,40 @@ class Settings:
             _env_bool("AUTH_ALLOW_UNAPPROVED_LOGIN_SESSION", True),
         )
     )
+    auth_database_url_override: str | None = field(default_factory=lambda: os.getenv("AUTH_DATABASE_URL"))
+    azure_sql_server: str | None = field(default_factory=lambda: os.getenv("AZURE_SQL_SERVER"))
+    azure_sql_database: str | None = field(default_factory=lambda: os.getenv("AZURE_SQL_DATABASE"))
+    azure_sql_username: str | None = field(default_factory=lambda: os.getenv("AZURE_SQL_USERNAME"))
+    azure_sql_password: str | None = field(default_factory=lambda: os.getenv("AZURE_SQL_PASSWORD"))
+    azure_sql_driver: str = field(default_factory=lambda: os.getenv("AZURE_SQL_DRIVER", "ODBC Driver 18 for SQL Server"))
 
     @property
-    def sqlite_path(self) -> Path:
-        return Path(self.auth_sqlite_path).expanduser().resolve()
+    def auth_database_url(self) -> str:
+        if self.auth_database_url_override:
+            return self.auth_database_url_override
+
+        built = _build_azure_sqlalchemy_url(
+            server=self.azure_sql_server,
+            database=self.azure_sql_database,
+            username=self.azure_sql_username,
+            password=self.azure_sql_password,
+            driver=self.azure_sql_driver,
+        )
+        if built:
+            return built
+
+        raise RuntimeError(
+            "Auth database is not configured. Set AUTH_DATABASE_URL or provide "
+            "AZURE_SQL_SERVER, AZURE_SQL_DATABASE, AZURE_SQL_USERNAME, and AZURE_SQL_PASSWORD."
+        )
+
+    @property
+    def auth_database_label(self) -> str:
+        if self.azure_sql_server and self.azure_sql_database:
+            return f"{self.azure_sql_server}/{self.azure_sql_database}"
+        if self.auth_database_url_override:
+            return _redact_database_url(self.auth_database_url_override)
+        return "unconfigured-auth-database"
 
     @property
     def is_production(self) -> bool:
