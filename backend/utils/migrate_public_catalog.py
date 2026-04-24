@@ -93,7 +93,7 @@ def migrate_prefix(
         target_container=target_container,
         target_prefix=target_prefix,
         dataset_id=dataset["id"],
-        owner_user_id=dataset["owner_user_id"],
+        owner_user_id=str(dataset["owner_user_id"]),
         visibility="public",
         source_dataset_id=None,
     )
@@ -102,7 +102,7 @@ def migrate_prefix(
 
 def main() -> None:
     args = parse_args()
-    print(f"Using auth catalog: {settings.sqlite_path}")
+    print(f"Using auth database: {settings.auth_database_label}")
     store = SQLStore()
     azure = AzureService()
 
