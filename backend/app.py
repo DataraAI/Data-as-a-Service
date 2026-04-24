@@ -141,6 +141,21 @@ def register_routes(app: Flask) -> None:
             return jsonify({"error": "User not found"}), 404
         return jsonify({"user": auth_service.serialize_managed_user(updated_user)})
 
+    @app.route("/api/admin/users/<int:user_id>", methods=["DELETE"])
+    @auth_service.require_account_manager
+    def admin_delete_user(user_id: int):
+        current_user = _require_account_manager()
+        target_user = sql_store.get_user_by_id(user_id)
+        if not target_user:
+            return jsonify({"error": "User not found"}), 404
+        if current_user["id"] == user_id:
+            return jsonify({"error": "You cannot delete your own account from this page"}), 400
+        if current_user["role"] == "analyst" and target_user["role"] == "admin":
+            return jsonify({"error": "Analysts cannot delete admin accounts"}), 403
+
+        sql_store.delete_user(user_id)
+        return jsonify({"ok": True, "deletedUserId": user_id})
+
     @app.route("/api/datasets", methods=["GET"])
     @auth_service.require_approved_user
     def get_datasets():
