@@ -15,6 +15,7 @@ from datara.services.sql_store import SQLStore
 
 
 SESSION_USER_KEY = "datara_user_id"
+ELEVATED_ACCOUNT_ROLES = {"analyst", "admin"}
 F = TypeVar("F", bound=Callable[..., Any])
 
 
@@ -27,6 +28,24 @@ class AuthService:
     @staticmethod
     def _normalize_email(email: str | None) -> str:
         return str(email or "").strip().lower()
+
+    @staticmethod
+    def _is_valid_email(email: str) -> bool:
+        if not email or " " in email:
+            return False
+        if email.count("@") != 1:
+            return False
+
+        local_part, domain = email.split("@", 1)
+        if not local_part or not domain:
+            return False
+        if "." not in domain:
+            return False
+        if domain.startswith(".") or domain.endswith("."):
+            return False
+        if local_part.startswith(".") or local_part.endswith("."):
+            return False
+        return True
 
     @staticmethod
     def _sanitize_display_name(display_name: str | None, fallback_email: str) -> str:
@@ -66,12 +85,30 @@ class AuthService:
     def _user_is_approved(self, user: dict[str, Any] | None) -> bool:
         if not user:
             return False
-        return user["role"] == "admin" or user["approval_status"] == "approved"
+        return user["approval_status"] == "approved"
 
     def _password_error(self, password: str) -> str | None:
         if len(password) < settings.auth_min_password_length:
             return f"Password must be at least {settings.auth_min_password_length} characters long"
         return None
+
+    @staticmethod
+    def user_is_admin(user: dict[str, Any] | None) -> bool:
+        return bool(user and user.get("role") == "admin")
+
+    @staticmethod
+    def user_can_manage_accounts(user: dict[str, Any] | None) -> bool:
+        return bool(user and user.get("role") in ELEVATED_ACCOUNT_ROLES and user.get("approval_status") == "approved")
+
+    def assert_account_manager(self, user: dict[str, Any] | None) -> dict[str, Any]:
+        if not self.user_can_manage_accounts(user):
+            raise PermissionError("Account management requires an approved analyst or admin account")
+        return user or {}
+
+    def assert_admin(self, user: dict[str, Any] | None) -> dict[str, Any]:
+        if not self.user_is_admin(user) or not self._user_is_approved(user):
+            raise PermissionError("Admin access required")
+        return user or {}
 
     def login_redirect(self):
         next_path = request.args.get("next")
@@ -90,7 +127,7 @@ class AuthService:
         display_name = self._sanitize_display_name(payload.get("displayName"), email)
         password = str(payload.get("password") or "")
 
-        if not email or "@" not in email:
+        if not self._is_valid_email(email):
             return jsonify({"error": "A valid email address is required"}), 400
         if not display_name:
             return jsonify({"error": "Display name is required"}), 400
@@ -109,7 +146,7 @@ class AuthService:
             email in settings.auth_bootstrap_admin_emails and self.sql_store.count_admin_users() == 0
         )
         approval_status = "approved" if should_bootstrap_admin else "pending"
-        role = "admin" if should_bootstrap_admin else "user"
+        role = "admin" if should_bootstrap_admin else "customer"
 
         user = self.sql_store.create_user(
             email=email,
@@ -117,6 +154,7 @@ class AuthService:
             password_hash=generate_password_hash(password),
             approval_status=approval_status,
             role=role,
+            approved_by_user_id=None,
         )
         session[SESSION_USER_KEY] = user["id"]
         session.permanent = True
@@ -142,7 +180,7 @@ class AuthService:
         if not user or not check_password_hash(str(user["password_hash"]), password):
             return jsonify({"error": "Invalid email or password"}), 401
 
-        if user["approval_status"] == "rejected" and user["role"] != "admin":
+        if user["approval_status"] == "rejected":
             return jsonify({"error": "This account has been rejected. Please contact Datara."}), 403
 
         if not self._user_is_approved(user) and not settings.auth_allow_pending_login_session:
@@ -164,9 +202,9 @@ class AuthService:
 
     def get_current_user(self) -> dict[str, Any] | None:
         user_id = session.get(SESSION_USER_KEY)
-        if not user_id:
+        if user_id is None:
             return None
-        user = self.sql_store.get_user_by_id(str(user_id))
+        user = self.sql_store.get_user_by_id(user_id)
         if not user:
             session.pop(SESSION_USER_KEY, None)
             return None
@@ -208,6 +246,25 @@ class AuthService:
             },
         }
 
+    @staticmethod
+    def serialize_managed_user(user: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "id": user["id"],
+            "email": user["email"],
+            "displayName": user["display_name"],
+            "role": user["role"],
+            "approvalStatus": user["approval_status"],
+            "isApproved": user["approval_status"] == "approved",
+            "approvedByUserId": user.get("approved_by_user_id"),
+            "approvedByEmail": user.get("approved_by_email"),
+            "approvedByDisplayName": user.get("approved_by_display_name"),
+            "storageSlug": user["storage_slug"],
+            "privateContainerName": user["private_container_name"],
+            "createdAt": user.get("created_at"),
+            "updatedAt": user.get("updated_at"),
+            "lastLoginAt": user.get("last_login_at"),
+        }
+
     def require_login(self, func: F) -> F:
         @wraps(func)
         def wrapper(*args: Any, **kwargs: Any):
@@ -236,6 +293,28 @@ class AuthService:
                 return jsonify({"error": "authentication_required"}), 401
             if not self._user_is_approved(user):
                 return jsonify({"error": "approval_required", "approval_status": user["approval_status"]}), 403
+            return func(*args, **kwargs)
+
+        return wrapper  # type: ignore[return-value]
+
+    def require_account_manager(self, func: F) -> F:
+        @self.require_approved_user
+        @wraps(func)
+        def wrapper(*args: Any, **kwargs: Any):
+            user = self.get_current_user()
+            if not self.user_can_manage_accounts(user):
+                return jsonify({"error": "account_manager_required"}), 403
+            return func(*args, **kwargs)
+
+        return wrapper  # type: ignore[return-value]
+
+    def require_admin(self, func: F) -> F:
+        @self.require_approved_user
+        @wraps(func)
+        def wrapper(*args: Any, **kwargs: Any):
+            user = self.get_current_user()
+            if not self.user_is_admin(user):
+                return jsonify({"error": "admin_required"}), 403
             return func(*args, **kwargs)
 
         return wrapper  # type: ignore[return-value]

@@ -329,7 +329,7 @@ class AzureService:
         target_container: str,
         target_prefix: str,
         dataset_id: str,
-        owner_user_id: str,
+        owner_user_id: str | int,
         visibility: str,
         source_dataset_id: str | None = None,
     ) -> int:
