@@ -285,6 +285,26 @@ class SQLStore:
             ).scalar_one()
         return int(value)
 
+    def count_dataset_user_references(self, user_id: int | str, *, include_deleted: bool = False) -> int:
+        normalized_user_id = self._coerce_user_id(user_id)
+        if normalized_user_id is None:
+            return 0
+
+        filters = [
+            or_(
+                self.datasets.c.owner_user_id == normalized_user_id,
+                self.datasets.c.created_by_user_id == normalized_user_id,
+            )
+        ]
+        if not include_deleted:
+            filters.append(self.datasets.c.deleted_at.is_(None))
+
+        with self.session_factory() as session:
+            value = session.execute(
+                select(func.count()).select_from(self.datasets).where(and_(*filters))
+            ).scalar_one()
+        return int(value)
+
     def get_user_by_id(self, user_id: int | str) -> dict[str, Any] | None:
         normalized_user_id = self._coerce_user_id(user_id)
         if normalized_user_id is None:
@@ -542,10 +562,15 @@ class SQLStore:
         ):
             raise ValueError("Cannot delete the last approved admin user.")
 
-        if self.count_owned_datasets(user["id"], include_deleted=True) > 0:
+        if self.count_dataset_user_references(user["id"], include_deleted=True) > 0:
             raise ValueError("Cannot delete a user who still has dataset records.")
 
         with self.session_factory.begin() as session:
+            session.execute(
+                update(self.users)
+                .where(self.users.c.approved_by_user_id == user["id"])
+                .values(approved_by_user_id=None, updated_at=utc_now())
+            )
             session.execute(delete(self.users).where(self.users.c.user_id == user["id"]))
         return True
 
