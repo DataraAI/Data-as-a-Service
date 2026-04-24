@@ -54,6 +54,14 @@ def create_app() -> Flask:
 
 
 def register_routes(app: Flask) -> None:
+    def _require_account_manager() -> dict[str, object]:
+        current_user = auth_service.get_current_user_or_raise()
+        return auth_service.assert_account_manager(current_user)
+
+    def _require_admin() -> dict[str, object]:
+        current_user = auth_service.get_current_user_or_raise()
+        return auth_service.assert_admin(current_user)
+
     @app.route("/health", methods=["GET"])
     def health_check():
         return jsonify(
@@ -89,6 +97,49 @@ def register_routes(app: Flask) -> None:
     def auth_me():
         user = auth_service.get_current_user()
         return jsonify(auth_service.serialize_user(user))
+
+    @app.route("/api/admin/users", methods=["GET"])
+    @auth_service.require_account_manager
+    def admin_list_users():
+        current_user = _require_account_manager()
+        users = [auth_service.serialize_managed_user(user) for user in sql_store.list_users()]
+        return jsonify({"users": users, "currentUserId": current_user["id"]})
+
+    @app.route("/api/admin/users/<int:user_id>/approval", methods=["PATCH"])
+    @auth_service.require_account_manager
+    def admin_update_user_approval(user_id: int):
+        current_user = _require_account_manager()
+        target_user = sql_store.get_user_by_id(user_id)
+        if not target_user:
+            return jsonify({"error": "User not found"}), 404
+        if current_user["role"] == "analyst" and target_user["role"] == "admin":
+            return jsonify({"error": "Analysts cannot change admin approval states"}), 403
+
+        payload = request.get_json(silent=True) or {}
+        approval_status = str(payload.get("approvalStatus") or "").strip().lower()
+        updated_user = sql_store.set_user_approval_status(
+            user_id,
+            approval_status,
+            actor_user_id=current_user["id"],
+        )
+        if not updated_user:
+            return jsonify({"error": "User not found"}), 404
+        return jsonify({"user": auth_service.serialize_managed_user(updated_user)})
+
+    @app.route("/api/admin/users/<int:user_id>/role", methods=["PATCH"])
+    @auth_service.require_admin
+    def admin_update_user_role(user_id: int):
+        current_user = _require_admin()
+        payload = request.get_json(silent=True) or {}
+        role = str(payload.get("role") or "").strip().lower()
+        updated_user = sql_store.set_user_role(
+            user_id,
+            role,
+            actor_user_id=current_user["id"],
+        )
+        if not updated_user:
+            return jsonify({"error": "User not found"}), 404
+        return jsonify({"user": auth_service.serialize_managed_user(updated_user)})
 
     @app.route("/api/datasets", methods=["GET"])
     @auth_service.require_approved_user
@@ -242,13 +293,12 @@ def register_routes(app: Flask) -> None:
 
     @app.route("/api/stats", methods=["GET"])
     def get_stats():
-        all_rows = sql_store._fetchone("SELECT COUNT(*) AS count FROM datasets WHERE deleted_at IS NULL AND visibility = 'public'")
         return jsonify(
             {
                 "app": settings.app_name,
                 "environment": settings.environment,
                 "public_container": settings.azure_public_container,
-                "datasets_count": int(all_rows["count"]) if all_rows else 0,
+                "datasets_count": sql_store.count_datasets(visibility="public"),
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         )
