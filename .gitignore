@@ -33,4 +33,4 @@ backend/saas_config.py
 /dashboard/pnpm-lock.yaml
 
 config/.env
-backend/data/
+
