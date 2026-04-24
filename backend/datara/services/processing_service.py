@@ -352,7 +352,7 @@ class ProcessingService:
             "--dataset_id",
             dataset["id"],
             "--owner_user_id",
-            dataset["owner_user_id"],
+            str(dataset["owner_user_id"]),
             "--visibility",
             dataset["visibility"],
         ]
