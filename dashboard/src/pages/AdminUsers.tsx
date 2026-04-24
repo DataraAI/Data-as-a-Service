@@ -5,6 +5,7 @@ import {
   Loader2,
   RefreshCw,
   ShieldCheck,
+  Trash2,
   UserCog,
   XCircle,
 } from "lucide-react";
@@ -115,6 +116,7 @@ function ApprovalBadge({ status }: { status: ApprovalStatus }) {
 export default function AdminUsers() {
   const { isLoading: authLoading, isAuthenticated, isApproved, user } = useAuth();
   const [users, setUsers] = useState<ManagedUser[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [roleDrafts, setRoleDrafts] = useState<Record<number, AuthRole>>({});
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -129,6 +131,7 @@ export default function AdminUsers() {
   const loadUsers = useCallback(async () => {
     if (!canManageUsers) {
       setUsers([]);
+      setCurrentUserId(null);
       setRoleDrafts({});
       setLoading(false);
       return;
@@ -137,9 +140,10 @@ export default function AdminUsers() {
     setLoading(true);
     setErrorMessage(null);
     try {
-      const payload = await fetchJson<{ users: ManagedUser[] }>("/api/admin/users");
+      const payload = await fetchJson<{ users: ManagedUser[]; currentUserId: number }>("/api/admin/users");
       const nextUsers = Array.isArray(payload.users) ? payload.users : [];
       setUsers(nextUsers);
+      setCurrentUserId(typeof payload.currentUserId === "number" ? payload.currentUserId : null);
       setRoleDrafts(
         Object.fromEntries(nextUsers.map((managedUser) => [managedUser.id, managedUser.role])) as Record<
           number,
@@ -148,6 +152,7 @@ export default function AdminUsers() {
       );
     } catch (error) {
       setUsers([]);
+      setCurrentUserId(null);
       setErrorMessage(error instanceof Error ? error.message : "Could not load users");
     } finally {
       setLoading(false);
@@ -170,6 +175,7 @@ export default function AdminUsers() {
   const handleApproval = async (targetUserId: number, approvalStatus: ApprovalStatus) => {
     setBusyAction(`approval:${targetUserId}:${approvalStatus}`);
     setStatusMessage(null);
+    setErrorMessage(null);
     try {
       await fetchJson<{ user: ManagedUser }>(`/api/admin/users/${targetUserId}/approval`, {
         method: "PATCH",
@@ -195,6 +201,7 @@ export default function AdminUsers() {
 
     setBusyAction(`role:${targetUserId}`);
     setStatusMessage(null);
+    setErrorMessage(null);
     try {
       await fetchJson<{ user: ManagedUser }>(`/api/admin/users/${targetUserId}/role`, {
         method: "PATCH",
@@ -210,10 +217,33 @@ export default function AdminUsers() {
     }
   };
 
+  const handleDeleteUser = async (managedUser: ManagedUser) => {
+    const confirmed = window.confirm(
+      `Delete ${managedUser.displayName || managedUser.email} (${managedUser.email})?\n\nThis permanently removes the account if it has no dataset records.`,
+    );
+    if (!confirmed) return;
+
+    setBusyAction(`delete:${managedUser.id}`);
+    setStatusMessage(null);
+    setErrorMessage(null);
+    try {
+      await fetchJson<{ ok: boolean; deletedUserId: number }>(`/api/admin/users/${managedUser.id}`, {
+        method: "DELETE",
+      });
+      setStatusMessage("User deleted successfully.");
+      await loadUsers();
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Could not delete user");
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
   const renderUserCard = (managedUser: ManagedUser) => {
     const analystCannotManageAdmin = user?.role === "analyst" && managedUser.role === "admin";
     const canApproveReject = !analystCannotManageAdmin;
     const canEditRole = user?.role === "admin";
+    const canDeleteUser = !analystCannotManageAdmin && managedUser.id !== currentUserId;
     const currentRoleDraft = roleDrafts[managedUser.id] ?? managedUser.role;
 
     return (
@@ -301,7 +331,24 @@ export default function AdminUsers() {
                 )}
                 Reject
               </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                className="font-mono-tech text-xs"
+                disabled={!canDeleteUser || busyAction !== null}
+                onClick={() => void handleDeleteUser(managedUser)}
+              >
+                {busyAction === `delete:${managedUser.id}` ? (
+                  <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Trash2 className="mr-2 h-3.5 w-3.5" />
+                )}
+                Delete
+              </Button>
             </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Delete is only available when the account has no dataset records.
+            </p>
 
             <div className="mt-5 border-t border-border pt-4">
               <div className="mb-2 font-mono-tech text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
@@ -341,6 +388,11 @@ export default function AdminUsers() {
               {!canEditRole && (
                 <p className="mt-2 text-xs text-muted-foreground">
                   Analysts can review approvals but only admins can change roles.
+                </p>
+              )}
+              {managedUser.id === currentUserId && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  You cannot delete your own account from this page.
                 </p>
               )}
             </div>
@@ -418,7 +470,7 @@ export default function AdminUsers() {
                 </h1>
                 <p className="mt-4 text-sm leading-relaxed text-muted-foreground md:text-base">
                   This page is the supported approval workflow for Datara-managed accounts. Analysts
-                  can approve or reject users, while admins can also change account roles.
+                  can approve, reject, or delete users, while admins can also change account roles.
                 </p>
               </div>
               <Button variant="outline" className="font-mono-tech text-xs" onClick={() => void loadUsers()}>

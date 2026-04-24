@@ -100,11 +100,11 @@ export default function AuthPage() {
               Datara Access
             </div>
             <h1 className="font-sans-tech text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-              Datara-managed accounts for private robotics data
+              Datara-managed accounts for robotics data
             </h1>
             <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground md:text-base">
-              Accounts are created directly with Datara, reviewed by an analyst or admin, and then
-              used to control access to public datasets, private uploads, and derived outputs.
+              Sign up to access our shared catalog of data in the RoboDataHub and create your own
+              private data workspaces with full access to our generation tools.
             </p>
 
             <div className="mt-8 grid gap-4 sm:grid-cols-2">
@@ -113,8 +113,7 @@ export default function AuthPage() {
                   Shared catalog
                 </div>
                 <p className="text-sm leading-relaxed text-muted-foreground">
-                  Approved accounts can browse the shared public dataset library without exposing it
-                  anonymously on the internet.
+                  Approved accounts can browse all public data in our RoboDataHub.
                 </p>
               </div>
               <div className="rounded-sm border border-border bg-background/60 p-4">
@@ -122,8 +121,8 @@ export default function AuthPage() {
                   Private workspaces
                 </div>
                 <p className="text-sm leading-relaxed text-muted-foreground">
-                  Each account keeps private datasets and derived outputs inside its own container
-                  namespace and route scope.
+                  Keep your own private datasets stored in our library with full access to our
+                  generation tools.
                 </p>
               </div>
             </div>
@@ -351,10 +350,6 @@ export default function AuthPage() {
                   </form>
                 )}
 
-                <div className="mt-6 border-t border-border pt-5 text-center text-xs text-muted-foreground">
-                  <span>Next destination: </span>
-                  <span className="font-mono-tech text-foreground">{nextPath}</span>
-                </div>
               </>
             )}
           </section>
