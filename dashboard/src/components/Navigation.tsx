@@ -20,6 +20,7 @@ const Navigation = () => {
   const location = useLocation();
 
   const loginTarget = `${location.pathname}${location.search}`;
+  const canManageUsers = isAuthenticated && isApproved && (user?.role === "admin" || user?.role === "analyst");
 
   return (
     <nav className="fixed left-0 right-0 top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md">
@@ -53,9 +54,17 @@ const Navigation = () => {
           <div className="hidden items-center gap-3 xl:flex">
             {isAuthenticated ? (
               <>
+                {canManageUsers && (
+                  <Link
+                    to="/admin/users"
+                    className="font-mono-tech text-sm uppercase tracking-wide text-muted-foreground transition-colors duration-200 hover:text-primary"
+                  >
+                    User Access
+                  </Link>
+                )}
                 <div className="rounded-sm border border-border bg-card/40 px-3 py-2 text-right">
                   <div className="font-mono-tech text-[10px] uppercase tracking-wide text-muted-foreground">
-                    {isApproved ? user?.role ?? "user" : "pending"}
+                    {isApproved ? user?.role ?? "customer" : "pending"}
                   </div>
                   <div className="max-w-[220px] truncate font-sans-tech text-sm text-foreground">
                     {user?.displayName ?? user?.email}
@@ -120,7 +129,7 @@ const Navigation = () => {
                 {isAuthenticated && (
                   <div className="rounded-sm border border-border bg-card/30 px-4 py-3">
                     <div className="font-mono-tech text-[10px] uppercase tracking-wide text-muted-foreground">
-                      {isApproved ? user?.role ?? "user" : "pending approval"}
+                      {isApproved ? user?.role ?? "customer" : "pending approval"}
                     </div>
                     <div className="mt-1 truncate font-sans-tech text-sm text-foreground">
                       {user?.displayName ?? user?.email}
@@ -146,13 +155,24 @@ const Navigation = () => {
                     </Button>
                   </>
                 ) : (
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-start font-mono-tech"
-                    onClick={() => void logout()}
-                  >
-                    Sign Out
-                  </Button>
+                  <>
+                    {canManageUsers && (
+                      <Link
+                        to="/admin/users"
+                        className="block rounded-sm px-3 py-2 font-mono-tech text-sm uppercase tracking-wide text-muted-foreground transition-colors hover:text-primary"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        User Access
+                      </Link>
+                    )}
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start font-mono-tech"
+                      onClick={() => void logout()}
+                    >
+                      Sign Out
+                    </Button>
+                  </>
                 )}
               </div>
             </div>
