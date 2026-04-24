@@ -129,10 +129,10 @@ def main() -> None:
             print(f"No user found for {args.user_ref}")
             sys.exit(1)
 
-        owned_count = store.count_owned_datasets(user["id"], include_deleted=True)
-        if owned_count > 0:
+        dataset_reference_count = store.count_dataset_user_references(user["id"], include_deleted=True)
+        if dataset_reference_count > 0:
             raise SystemExit(
-                f"Cannot delete {user['email']}: {owned_count} dataset record(s) still reference this user."
+                f"Cannot delete {user['email']}: {dataset_reference_count} dataset record(s) still reference this user."
             )
 
         deleted = store.delete_user(args.user_ref)
