@@ -437,7 +437,7 @@ class ProcessingService:
         route_images = [
             image
             for image in self.dataset_service.get_dataset_images(route_path, current_user)
-            if image.get("type") != "3d"
+            if image.get("type") == "image"
         ]
         route_images.sort(key=self._image_sort_key)
 

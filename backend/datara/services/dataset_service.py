@@ -138,8 +138,9 @@ class DatasetService:
         for blob in blobs:
             lower_name = blob.name.lower()
             is_image = lower_name.endswith((".png", ".jpg", ".jpeg", ".webp"))
+            is_video = lower_name.endswith((".mp4", ".mov", ".m4v", ".webm"))
             is_3d = lower_name.endswith((".stl", ".obj", ".glb", ".gltf"))
-            if not (is_image or is_3d):
+            if not (is_image or is_video or is_3d):
                 continue
 
             cosmos_doc = metadata_map.get(blob.name, {}) or {}
@@ -161,13 +162,15 @@ class DatasetService:
                     tags.append("combined_mask")
                 elif "/instances/" in blob.name:
                     tags.append("instance_mask")
+            if is_video:
+                tags.append("video")
 
             if cosmos_doc.get("clear") is True:
                 tags.append("clear")
             elif cosmos_doc.get("clear") is False:
                 tags.append("blurry")
 
-            media_type = "3d" if is_3d else "image"
+            media_type = "3d" if is_3d else "video" if is_video else "image"
             asset_id = self.encode_asset_id(dataset["id"], blob.name)
 
             image_list.append(
@@ -200,6 +203,8 @@ class DatasetService:
                         "view": cosmos_doc.get("view"),
                         "task": cosmos_doc.get("task"),
                         "visibility": cosmos_doc.get("visibility", dataset["visibility"]),
+                        "frame_count": cosmos_doc.get("frameCount"),
+                        "fps": cosmos_doc.get("fps"),
                         "vlm": vlm,
                     },
                 }
