@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 from datetime import datetime, timedelta, timezone
 
@@ -106,14 +107,39 @@ def register_routes(app: Flask) -> None:
     def proxy_blob(asset_id: str):
         current_user = auth_service.get_current_user_or_raise()
         asset = dataset_service.resolve_asset(asset_id, current_user)
-        stream = azure_service.download_blob(asset["dataset"]["storage_container"], asset["blob_name"])
+        container_name = asset["dataset"]["storage_container"]
+        blob_name = asset["blob_name"]
+        blob_client = azure_service.get_container_client(container_name).get_blob_client(blob_name)
+        stream = blob_client.download_blob()
+        blob_size = int(stream.properties.size or 0)
 
         def generate():
             for chunk in stream.chunks():
                 yield chunk
 
         mime_type = stream.properties.content_settings.content_type or "application/octet-stream"
-        return Response(stream_with_context(generate()), mimetype=mime_type)
+        range_header = request.headers.get("Range", "").strip()
+        if range_header:
+            match = re.match(r"bytes=(\d+)-(\d*)", range_header)
+            if match:
+                start = int(match.group(1))
+                end = int(match.group(2)) if match.group(2) else blob_size - 1
+                if start >= blob_size:
+                    return Response(status=416, headers={"Content-Range": f"bytes */{blob_size}"})
+                end = min(end, blob_size - 1)
+                length = max(0, end - start + 1)
+                partial_stream = blob_client.download_blob(offset=start, length=length)
+                response = Response(partial_stream.readall(), 206, mimetype=mime_type, direct_passthrough=True)
+                response.headers["Accept-Ranges"] = "bytes"
+                response.headers["Content-Range"] = f"bytes {start}-{end}/{blob_size}"
+                response.headers["Content-Length"] = str(length)
+                return response
+
+        response = Response(stream_with_context(generate()), mimetype=mime_type)
+        response.headers["Accept-Ranges"] = "bytes"
+        if blob_size > 0:
+            response.headers["Content-Length"] = str(blob_size)
+        return response
 
     @app.route("/api/process_video", methods=["POST"])
     @auth_service.require_approved_user
