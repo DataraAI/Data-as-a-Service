@@ -379,6 +379,15 @@ function getCategoryByRouteKey(value?: string | null) {
   return CATEGORIES.find((category) => category.routeKey === value) ?? null;
 }
 
+function pathBelongsToCategory(fullPath: string, routeKey: CategoryKey) {
+  const segments = fullPath.split("/").filter(Boolean);
+  if (segments.length === 0) return false;
+  if (segments[0] === routeKey) return true;
+  if (segments[0] === "my") return segments[1] === routeKey;
+  if (segments[0] === "admin") return segments[2] === routeKey;
+  return false;
+}
+
 function buildCategoryHeroImagePaths(category: CategoryConfig) {
   return [0, 1, 2, 3].map(
     (index) =>
@@ -544,8 +553,10 @@ function PathSearchPanel({
   loading,
   suggestions,
   placeholder,
+  submitDisabled,
   onFocus,
   onChange,
+  onSubmit,
   onSuggestionClick,
   renderHighlightedPath,
 }: {
@@ -555,8 +566,10 @@ function PathSearchPanel({
   loading: boolean;
   suggestions: FolderItem[];
   placeholder: string;
+  submitDisabled: boolean;
   onFocus: () => void;
   onChange: (value: string) => void;
+  onSubmit: () => void;
   onSuggestionClick: (fullPath: string) => void;
   renderHighlightedPath: (fullPath: string) => ReactNode;
 }) {
@@ -569,20 +582,35 @@ function PathSearchPanel({
         </p>
       </div>
       <div className="relative mt-6 w-full">
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
-          <input
-            type="text"
-            value={value}
-            onFocus={onFocus}
-            onChange={(event) => onChange(event.target.value)}
-            placeholder={placeholder}
-            className="h-12 w-full rounded-sm border border-primary/40 bg-background/90 pl-11 pr-4 font-sans-tech text-sm text-foreground shadow-lg shadow-primary/10 placeholder:text-muted-foreground focus:border-primary focus:outline-none"
-          />
-          {loading && (
-            <Loader2 className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-primary" />
-          )}
-        </div>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            onSubmit();
+          }}
+          className="flex flex-col gap-3 sm:flex-row"
+        >
+          <div className="relative flex-1">
+            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
+            <input
+              type="text"
+              value={value}
+              onFocus={onFocus}
+              onChange={(event) => onChange(event.target.value)}
+              placeholder={placeholder}
+              className="h-12 w-full rounded-sm border border-primary/40 bg-background/90 pl-11 pr-10 font-sans-tech text-sm text-foreground shadow-lg shadow-primary/10 placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+            />
+            {loading && (
+              <Loader2 className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-primary" />
+            )}
+          </div>
+          <button
+            type="submit"
+            disabled={submitDisabled}
+            className="inline-flex h-12 shrink-0 items-center justify-center rounded-sm border border-primary/30 bg-primary px-5 font-sans-tech text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-glow disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Open path
+          </button>
+        </form>
 
         {value.trim() !== "" && (
           <div className="mt-2 overflow-hidden rounded-sm border border-primary/20 bg-card/95 text-left shadow-xl shadow-black/20 backdrop-blur-sm">
@@ -757,6 +785,7 @@ export default function DataViewer() {
   const [pathSearchText, setPathSearchText] = useState("");
   const [allFolderPaths, setAllFolderPaths] = useState<FolderItem[]>([]);
   const [pathSearchLoading, setPathSearchLoading] = useState(false);
+  const [pathSearchLoaded, setPathSearchLoaded] = useState(false);
   const [pathSearchTouched, setPathSearchTouched] = useState(false);
   const [reloadTick, setReloadTick] = useState(0);
 
@@ -853,7 +882,14 @@ export default function DataViewer() {
   }, [currentDisplayPath, isAuthenticated, isApproved, isRootLanding, isCategoryLanding, reloadTick]);
 
   useEffect(() => {
-    if (!isAuthenticated || !isApproved || !pathSearchTouched || allFolderPaths.length > 0) return;
+    if (!isAuthenticated || !isApproved) {
+      setAllFolderPaths([]);
+      setPathSearchLoaded(false);
+      return;
+    }
+
+    const shouldLoadPaths = isRootLanding || isCategoryLanding || pathSearchTouched;
+    if (!shouldLoadPaths || pathSearchLoaded || pathSearchLoading) return;
 
     let cancelled = false;
 
@@ -868,6 +904,7 @@ export default function DataViewer() {
         );
 
         setAllFolderPaths(nextPaths);
+        setPathSearchLoaded(true);
       } catch (error) {
         if (!cancelled) {
           console.error("Failed to load dataset paths", error);
@@ -885,7 +922,20 @@ export default function DataViewer() {
     return () => {
       cancelled = true;
     };
-  }, [allFolderPaths.length, isAuthenticated, isApproved, pathSearchTouched]);
+  }, [
+    isAuthenticated,
+    isApproved,
+    isRootLanding,
+    isCategoryLanding,
+    pathSearchTouched,
+    pathSearchLoaded,
+    pathSearchLoading,
+  ]);
+
+  useEffect(() => {
+    setAllFolderPaths([]);
+    setPathSearchLoaded(false);
+  }, [reloadTick]);
 
   useEffect(() => {
     if (!imageQueryParam || images.length === 0) return;
@@ -964,7 +1014,7 @@ export default function DataViewer() {
     return allFolderPaths
       .filter((item) => {
         if (!scopedPrefix || isRootLanding) return true;
-        return item.full_path === scopedPrefix || item.full_path.startsWith(`${scopedPrefix}/`);
+        return pathBelongsToCategory(item.full_path, scopedPrefix);
       })
       .map((item) => ({
         item,
@@ -1003,6 +1053,11 @@ export default function DataViewer() {
   function handlePathSuggestionClick(fullPath: string) {
     setPathSearchText("");
     navigate(buildViewerPath(fullPath));
+  }
+
+  function handlePathSearchSubmit() {
+    if (pathSuggestions.length === 0) return;
+    handlePathSuggestionClick(pathSuggestions[0].full_path);
   }
 
   function handleShowcaseImageClick(item: ShowcaseImageConfig) {
@@ -1214,11 +1269,13 @@ export default function DataViewer() {
           loading={pathSearchLoading}
           suggestions={pathSuggestions}
           placeholder="Search any folder or path, e.g. BMW or carAutomation/BMW/frontGrille"
+          submitDisabled={pathSuggestions.length === 0}
           onFocus={() => setPathSearchTouched(true)}
           onChange={(value) => {
             setPathSearchTouched(true);
             setPathSearchText(value);
           }}
+          onSubmit={handlePathSearchSubmit}
           onSuggestionClick={handlePathSuggestionClick}
           renderHighlightedPath={renderHighlightedPath}
         />
@@ -1323,11 +1380,13 @@ export default function DataViewer() {
             loading={pathSearchLoading}
             suggestions={pathSuggestions}
             placeholder={`Search ${category.routeKey} paths, e.g. ${category.routeKey}/bmw`}
+            submitDisabled={pathSuggestions.length === 0}
             onFocus={() => setPathSearchTouched(true)}
             onChange={(value) => {
               setPathSearchTouched(true);
               setPathSearchText(value);
             }}
+            onSubmit={handlePathSearchSubmit}
             onSuggestionClick={handlePathSuggestionClick}
             renderHighlightedPath={renderHighlightedPath}
           />
