@@ -1,6 +1,8 @@
 import argparse
 import json
 import re
+import shutil
+import subprocess
 import tempfile
 from pathlib import Path
 
@@ -166,6 +168,45 @@ def mask_frame_to_bgr(mask_frame: np.ndarray) -> np.ndarray:
     return frame
 
 
+def convert_video_for_browser(raw_path: Path, output_stem: Path) -> Path:
+    ffmpeg = shutil.which("ffmpeg")
+    if ffmpeg:
+        attempts = [
+            (
+                output_stem.with_suffix(".mp4"),
+                ["-an", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "+faststart"],
+            ),
+            (
+                output_stem.with_suffix(".webm"),
+                ["-an", "-c:v", "libvpx-vp9", "-pix_fmt", "yuv420p"],
+            ),
+        ]
+
+        for destination, codec_args in attempts:
+            try:
+                subprocess.check_call(
+                    [
+                        ffmpeg,
+                        "-y",
+                        "-i",
+                        str(raw_path),
+                        *codec_args,
+                        str(destination),
+                    ],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+                raw_path.unlink(missing_ok=True)
+                return destination
+            except Exception:
+                destination.unlink(missing_ok=True)
+
+    fallback_destination = output_stem.with_suffix(".mp4")
+    if raw_path != fallback_destination:
+        raw_path.replace(fallback_destination)
+    return fallback_destination
+
+
 def write_mask_videos(
     outputs_per_frame: dict[int, dict],
     out_dir: Path,
@@ -181,9 +222,10 @@ def write_mask_videos(
     frame_indexes = sorted(outputs_per_frame)
     video_size = (width, height)
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    combined_raw_path = combined_dir / "_combined_mask_raw.mp4"
 
     combined_writer = cv2.VideoWriter(
-        str(combined_dir / "combined_mask.mp4"),
+        str(combined_raw_path),
         fourcc,
         float(fps),
         video_size,
@@ -202,10 +244,12 @@ def write_mask_videos(
                 instance_ids.append(object_id)
 
     instance_writers: dict[str, cv2.VideoWriter] = {}
+    instance_raw_paths: dict[str, Path] = {}
     try:
         for object_id in instance_ids:
+            raw_path = instances_root / f"_object_{object_id}_raw.mp4"
             writer = cv2.VideoWriter(
-                str(instances_root / f"object_{object_id}.mp4"),
+                str(raw_path),
                 fourcc,
                 float(fps),
                 video_size,
@@ -213,6 +257,7 @@ def write_mask_videos(
             if not writer.isOpened():
                 raise RuntimeError(f"Could not open writer for instance video {object_id}")
             instance_writers[object_id] = writer
+            instance_raw_paths[object_id] = raw_path
 
         blank_frame = np.zeros((height, width), dtype=np.uint8)
 
@@ -239,6 +284,10 @@ def write_mask_videos(
         combined_writer.release()
         for writer in instance_writers.values():
             writer.release()
+
+    convert_video_for_browser(combined_raw_path, combined_dir / "combined_mask")
+    for object_id, raw_path in instance_raw_paths.items():
+        convert_video_for_browser(raw_path, instances_root / f"object_{object_id}")
 
 
 def write_masks(
