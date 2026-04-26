@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { X, Loader2, Copy, ChevronLeft, ChevronRight, Info } from "lucide-react";
+import { X, Loader2, Copy, ChevronLeft, ChevronRight, Info, Download, Film } from "lucide-react";
 import { ThreeDViewer } from "./ThreeDViewer";
 
 interface ImageModalProps {
@@ -19,7 +19,7 @@ const VLM_PRESET_OPTIONS = [
 ];
 
 function isExoSourceImage(image: any): boolean {
-  if (!image || image.type === "3d") return false;
+  if (!image || image.type === "3d" || image.type === "video") return false;
   const blobId = typeof image.id === "string" ? image.id : "";
   if (blobId.includes("/egos/")) return false;
   if (image.metadata?.view === "exo") return true;
@@ -57,6 +57,9 @@ export function ImageModal({
 
   const sourceVisibility = image?.dataset?.visibility ?? image?.metadata?.visibility ?? "public";
   const sourceIsPrivate = sourceVisibility === "private";
+  const isVideo = image?.type === "video";
+  const isStillImage = image?.type === "image";
+  const assetUrl = image?.proxy_url || image?.url;
 
   useEffect(() => {
     setEgoVisibility(sourceIsPrivate ? "private" : "private");
@@ -198,11 +201,19 @@ export function ImageModal({
       <div className="relative flex flex-1 items-center justify-center overflow-hidden p-8">
         {image.type === "3d" ? (
           <div className="relative h-full w-full max-w-4xl rounded-lg border border-border bg-card/50">
-            <ThreeDViewer url={image.proxy_url || image.url} />
+            <ThreeDViewer url={assetUrl} />
           </div>
+        ) : isVideo ? (
+          <video
+            src={assetUrl}
+            controls
+            playsInline
+            preload="metadata"
+            className="max-h-full max-w-full rounded-sm border border-border bg-black/50 shadow-2xl"
+          />
         ) : (
           <img
-            src={image.proxy_url || image.url}
+            src={assetUrl}
             alt={image.name}
             className="max-h-full max-w-full rounded-sm border border-border bg-black/50 object-contain shadow-2xl"
           />
@@ -216,7 +227,7 @@ export function ImageModal({
       </div>
       <div className="z-20 flex w-96 flex-col border-l border-border bg-card shadow-2xl">
         <div className="flex items-center justify-between border-b border-border bg-card p-4">
-          <h2 className="font-sans-tech font-bold text-foreground tracking-tight">Image Details</h2>
+          <h2 className="font-sans-tech font-bold text-foreground tracking-tight">Asset Details</h2>
           <button
             onClick={onClose}
             className="rounded-sm p-1 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
@@ -251,6 +262,16 @@ export function ImageModal({
                 </button>
               </div>
             </div>
+            {isVideo && (
+              <a
+                href={assetUrl}
+                download={image.name}
+                className="inline-flex items-center gap-2 rounded-sm border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-sans-tech font-semibold uppercase tracking-wider text-primary transition-colors hover:bg-primary/20"
+              >
+                <Download className="h-3.5 w-3.5" />
+                Download video
+              </a>
+            )}
           </div>
 
           <div>
@@ -273,6 +294,21 @@ export function ImageModal({
                 <span className="font-medium text-muted-foreground">View</span>
                 <span className="text-right text-foreground">{image.metadata?.view || "N/A"}</span>
               </div>
+              <div className="flex justify-between gap-3 p-3">
+                <span className="font-medium text-muted-foreground">Asset Type</span>
+                <span className="text-right text-foreground">
+                  {image.type === "3d" ? "3D model" : isVideo ? "Video" : "Image"}
+                </span>
+              </div>
+              {isVideo && (
+                <div className="flex justify-between gap-3 p-3">
+                  <span className="font-medium text-muted-foreground">Playback</span>
+                  <span className="inline-flex items-center gap-1 text-right text-foreground">
+                    <Film className="h-3.5 w-3.5 text-primary" />
+                    Watch in browser or download
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between gap-3 p-3">
                 <span className="font-medium text-muted-foreground">Visibility</span>
                 <span className="text-right text-foreground">{sourceVisibility}</span>
@@ -318,7 +354,7 @@ export function ImageModal({
             </div>
           )}
 
-          {image.type !== "3d" && (
+          {isStillImage && (
             <div>
               <label className="mb-2 block font-sans-tech text-xs font-bold uppercase tracking-widest text-muted-foreground">
                 Create VLM tags
