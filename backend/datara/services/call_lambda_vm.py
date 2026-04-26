@@ -297,7 +297,7 @@ def generate_masks(*, prompt, input_mode, local_input_path, local_output_dir, fr
 
             remote_command = (
                 f'cd "{_shell_escape(REMOTE_SAAS_ROOT)}" && '
-                f'PYTHONPATH="{_shell_escape(REMOTE_SAAS_ROOT)}:$PYTHONPATH" '
+                f'PYTHONPATH="/home/{saas_config.USER}:/home/{saas_config.USER}/packages/sam3:{_shell_escape(REMOTE_SAAS_ROOT)}:$PYTHONPATH" '
                 + " ".join(command_parts)
             )
             stdout, stderr = _run_command(ssh_client, remote_command)
