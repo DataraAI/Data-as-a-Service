@@ -1,4 +1,7 @@
 import os
+import posixpath
+import stat
+import uuid
 from contextlib import contextmanager
 from datara.logging import logger
 
@@ -8,7 +11,9 @@ import saas_config
 
 # Save ego/corner outputs under backend/utils/dataset_list for upload_frames_to_azure
 BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+UTILS_DIR = os.path.join(BACKEND_DIR, "utils")
 DATASET_LIST_DIR = os.path.join(BACKEND_DIR, "utils", "dataset_list")
+REMOTE_SAAS_ROOT = f"/home/{saas_config.USER}/Software-as-a-Service"
 
 
 @contextmanager
@@ -48,6 +53,45 @@ def _run_command(client, command):
     logger.info(f"datara services call_lambda_vm._run_command() command output: {out}")
     logger.info(f"datara services call_lambda_vm._run_command() command error: {err}")
     return out, err
+
+
+def _sftp_mkdir_p(sftp, remote_dir):
+    current = ""
+    for part in remote_dir.strip("/").split("/"):
+        current = f"{current}/{part}" if current else f"/{part}"
+        try:
+            sftp.stat(current)
+        except OSError:
+            sftp.mkdir(current)
+
+
+def _sftp_put_tree(sftp, local_path, remote_path):
+    local_path = os.path.abspath(local_path)
+    if os.path.isdir(local_path):
+        _sftp_mkdir_p(sftp, remote_path)
+        for entry in os.scandir(local_path):
+            child_remote = posixpath.join(remote_path, entry.name)
+            if entry.is_dir():
+                _sftp_put_tree(sftp, entry.path, child_remote)
+            else:
+                _sftp_mkdir_p(sftp, posixpath.dirname(child_remote))
+                sftp.put(entry.path, child_remote)
+        return
+
+    _sftp_mkdir_p(sftp, posixpath.dirname(remote_path))
+    sftp.put(local_path, remote_path)
+
+
+def _sftp_get_tree(sftp, remote_path, local_path):
+    os.makedirs(local_path, exist_ok=True)
+    for entry in sftp.listdir_attr(remote_path):
+        remote_child = posixpath.join(remote_path, entry.filename)
+        local_child = os.path.join(local_path, entry.filename)
+        if stat.S_ISDIR(entry.st_mode):
+            _sftp_get_tree(sftp, remote_child, local_child)
+        else:
+            os.makedirs(os.path.dirname(local_child), exist_ok=True)
+            sftp.get(remote_child, local_child)
 
 
 def generate_ego_image(prompt, imageURL, container_name, output_name):
@@ -196,4 +240,83 @@ def invoke_corner_case(text, image_url, container_name, output_name):
             return local_path, 200
     except Exception as e:
         print(f"An error occurred: {e}")
+        return None, 500
+
+
+def generate_masks(*, prompt, input_mode, local_input_path, local_output_dir, frame_names_path=None):
+    """
+    Upload local mask-generation inputs to the Lambda VM, run DataraAI_segmentation.py,
+    fetch the resulting combined/instances tree locally, and remove the remote job folder.
+    Returns (local_output_dir, status_code).
+    """
+    if not prompt or not input_mode or not local_input_path or not local_output_dir:
+        return None, 400
+
+    job_id = uuid.uuid4().hex[:12]
+    remote_root = f"/home/{saas_config.USER}/datara_mask_jobs/{job_id}"
+    remote_input_root = posixpath.join(remote_root, "input")
+    remote_output_root = posixpath.join(remote_root, "output")
+    remote_script_path = posixpath.join(remote_root, "DataraAI_segmentation.py")
+    remote_frame_names = None
+
+    if input_mode == "video":
+        remote_input_path = posixpath.join(remote_input_root, "source.mp4")
+    elif input_mode == "image":
+        remote_input_path = posixpath.join(remote_input_root, os.path.basename(local_input_path))
+    elif input_mode == "folder":
+        remote_input_path = remote_input_root
+    else:
+        return None, 400
+
+    try:
+        with _ssh_session() as ssh_client:
+            sftp = ssh_client.open_sftp()
+            try:
+                _sftp_put_tree(sftp, os.path.join(UTILS_DIR, "DataraAI_segmentation.py"), remote_script_path)
+                _sftp_put_tree(sftp, local_input_path, remote_input_path)
+                if frame_names_path:
+                    remote_frame_names = posixpath.join(remote_root, "frame_names.json")
+                    _sftp_put_tree(sftp, frame_names_path, remote_frame_names)
+            finally:
+                sftp.close()
+
+            command_parts = [
+                f'python "{_shell_escape(remote_script_path)}"',
+                f'--input_mode "{_shell_escape(input_mode)}"',
+                f'--segment "{_shell_escape(prompt)}"',
+                f'--output_dir "{_shell_escape(remote_output_root)}"',
+            ]
+            if input_mode == "video":
+                command_parts.append(f'--video_path "{_shell_escape(remote_input_path)}"')
+            elif input_mode == "image":
+                command_parts.append(f'--image_path "{_shell_escape(remote_input_path)}"')
+            else:
+                command_parts.append(f'--image_dir "{_shell_escape(remote_input_path)}"')
+            if remote_frame_names:
+                command_parts.append(f'--frame_names_json "{_shell_escape(remote_frame_names)}"')
+
+            remote_command = (
+                f'cd "{_shell_escape(REMOTE_SAAS_ROOT)}" && '
+                f'PYTHONPATH="{_shell_escape(REMOTE_SAAS_ROOT)}:$PYTHONPATH" '
+                + " ".join(command_parts)
+            )
+            stdout, stderr = _run_command(ssh_client, remote_command)
+            remote_result_dir = (stdout.strip().split("\n")[-1].strip() if stdout else "") or ""
+            if not remote_result_dir.startswith(remote_output_root):
+                logger.error("Mask generation returned invalid output path: %s | stderr=%s", remote_result_dir, stderr)
+                _run_command(ssh_client, f'rm -rf "{_shell_escape(remote_root)}"')
+                return None, 500
+
+            sftp = ssh_client.open_sftp()
+            try:
+                _sftp_get_tree(sftp, remote_result_dir, local_output_dir)
+            finally:
+                sftp.close()
+
+            _run_command(ssh_client, f'rm -rf "{_shell_escape(remote_root)}"')
+            if os.path.isdir(local_output_dir):
+                return local_output_dir, 200
+            return None, 500
+    except Exception as e:
+        logger.error("generate_masks error: %s", e, exc_info=True)
         return None, 500
