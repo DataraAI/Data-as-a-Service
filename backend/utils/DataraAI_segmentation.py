@@ -159,6 +159,88 @@ def fallback_frame_name(frame_index: int) -> str:
     return f"frame_{frame_index:04d}.png"
 
 
+def mask_frame_to_bgr(mask_frame: np.ndarray) -> np.ndarray:
+    frame = mask_frame.astype(np.uint8)
+    if frame.ndim == 2:
+        return cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
+    return frame
+
+
+def write_mask_videos(
+    outputs_per_frame: dict[int, dict],
+    out_dir: Path,
+    frame_size: tuple[int, int],
+    fps: float = DEFAULT_FPS,
+) -> None:
+    combined_dir = out_dir / "combined"
+    instances_root = out_dir / "instances"
+    combined_dir.mkdir(parents=True, exist_ok=True)
+    instances_root.mkdir(parents=True, exist_ok=True)
+
+    height, width = frame_size
+    frame_indexes = sorted(outputs_per_frame)
+    video_size = (width, height)
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+
+    combined_writer = cv2.VideoWriter(
+        str(combined_dir / "combined_mask.mp4"),
+        fourcc,
+        float(fps),
+        video_size,
+    )
+    if not combined_writer.isOpened():
+        raise RuntimeError("Could not open writer for combined mask video")
+
+    instance_ids: list[str] = []
+    for frame_index in frame_indexes:
+        output = outputs_per_frame[frame_index]
+        mask_arrays = infer_mask_arrays(output)
+        obj_ids = list(output.get("out_obj_ids", []))
+        for index, _mask in enumerate(mask_arrays):
+            object_id = str(int(obj_ids[index])) if index < len(obj_ids) else str(index)
+            if object_id not in instance_ids:
+                instance_ids.append(object_id)
+
+    instance_writers: dict[str, cv2.VideoWriter] = {}
+    try:
+        for object_id in instance_ids:
+            writer = cv2.VideoWriter(
+                str(instances_root / f"object_{object_id}.mp4"),
+                fourcc,
+                float(fps),
+                video_size,
+            )
+            if not writer.isOpened():
+                raise RuntimeError(f"Could not open writer for instance video {object_id}")
+            instance_writers[object_id] = writer
+
+        blank_frame = np.zeros((height, width), dtype=np.uint8)
+
+        for frame_index in frame_indexes:
+            output = outputs_per_frame[frame_index]
+            mask_arrays = infer_mask_arrays(output)
+            obj_ids = list(output.get("out_obj_ids", []))
+
+            if mask_arrays:
+                combined_mask = np.any(np.stack(mask_arrays), axis=0).astype(np.uint8) * 255
+            else:
+                combined_mask = blank_frame
+            combined_writer.write(mask_frame_to_bgr(combined_mask))
+
+            frame_masks_by_object: dict[str, np.ndarray] = {}
+            for index, mask in enumerate(mask_arrays):
+                object_id = str(int(obj_ids[index])) if index < len(obj_ids) else str(index)
+                frame_masks_by_object[object_id] = (mask.astype(np.uint8)) * 255
+
+            for object_id, writer in instance_writers.items():
+                frame_mask = frame_masks_by_object.get(object_id, blank_frame)
+                writer.write(mask_frame_to_bgr(frame_mask))
+    finally:
+        combined_writer.release()
+        for writer in instance_writers.values():
+            writer.release()
+
+
 def write_masks(
     outputs_per_frame: dict[int, dict],
     out_dir: Path,
@@ -241,7 +323,10 @@ def main():
             video_path, frame_size = build_temp_video([image_path], Path(temp_dir.name) / "source.mp4")
 
         outputs_per_frame = mask_generation(video_path, args.segment)
-        write_masks(outputs_per_frame, output_dir, frame_names, frame_size)
+        if args.input_mode == "video":
+            write_mask_videos(outputs_per_frame, output_dir, frame_size, fps=DEFAULT_FPS)
+        else:
+            write_masks(outputs_per_frame, output_dir, frame_names, frame_size)
         print(output_dir)
     finally:
         if temp_dir is not None:
