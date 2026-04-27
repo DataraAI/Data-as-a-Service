@@ -8,6 +8,8 @@ import os
 import re
 from typing import Any
 
+from azure.core.exceptions import ResourceNotFoundError
+
 from datara.logging import logger
 from datara.services.sql_store import SQLStore
 
@@ -132,7 +134,15 @@ class DatasetService:
             dataset["storage_container"],
             dataset["storage_prefix"],
         )
-        blobs = self.azure_service.list_blobs(dataset["storage_container"], prefix)
+        try:
+            blobs = self.azure_service.list_blobs(dataset["storage_container"], prefix)
+        except ResourceNotFoundError:
+            logger.warning(
+                "Skipping asset listing for %s because container %s was not found",
+                route_path,
+                dataset["storage_container"],
+            )
+            return []
         image_list: list[dict[str, Any]] = []
 
         for blob in blobs:
@@ -265,10 +275,20 @@ class DatasetService:
             storage_prefix = f"{storage_prefix}/{'/'.join(extra_segments).strip('/')}"
 
         children: dict[str, dict[str, Any]] = {}
-        for child_prefix in self.azure_service.list_immediate_child_folders(
-            dataset["storage_container"],
-            storage_prefix,
-        ):
+        try:
+            child_prefixes = self.azure_service.list_immediate_child_folders(
+                dataset["storage_container"],
+                storage_prefix,
+            )
+        except ResourceNotFoundError:
+            logger.warning(
+                "Skipping child-folder listing for %s because container %s was not found",
+                route_path,
+                dataset["storage_container"],
+            )
+            return []
+
+        for child_prefix in child_prefixes:
             child_name = child_prefix.rstrip("/").split("/")[-1]
             child_route = f"{route_path.rstrip('/')}/{child_name}"
             children[child_route] = self._build_folder_record(
@@ -289,7 +309,17 @@ class DatasetService:
         storage_root = dataset["storage_prefix"].rstrip("/")
         nested_paths: dict[str, dict[str, Any]] = {}
 
-        for blob in self.azure_service.list_blobs(dataset["storage_container"], storage_root):
+        try:
+            blobs = self.azure_service.list_blobs(dataset["storage_container"], storage_root)
+        except ResourceNotFoundError:
+            logger.warning(
+                "Skipping recursive storage listing for dataset %s because container %s was not found",
+                summary["full_path"],
+                dataset["storage_container"],
+            )
+            return []
+
+        for blob in blobs:
             blob_name = str(getattr(blob, "name", "") or "").rstrip("/")
             if not blob_name:
                 continue

@@ -278,6 +278,7 @@ def generate_masks(*, prompt, local_input_dir, local_output_dir):
 
             command_parts = [
                 f'python "{_shell_escape(remote_script_path)}"',
+                '--input_mode "folder"',
                 f'--image_dir "{_shell_escape(remote_input_dir)}"',
                 f'--segment "{_shell_escape(prompt)}"',
                 f'--output_dir "{_shell_escape(remote_output_root)}"',
