@@ -1,4 +1,4 @@
-"""Upload a generated mask tree into Azure Blob Storage and Cosmos metadata."""
+"""Upload prompt-scoped instance mask folders into Azure Blob Storage and Cosmos metadata."""
 
 from __future__ import annotations
 
@@ -21,17 +21,15 @@ from utils import azure_client
 
 
 VALID_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
-VIDEO_EXTENSIONS = {".mp4", ".mov", ".m4v", ".webm"}
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Upload recursive mask outputs to Azure")
+    parser = argparse.ArgumentParser(description="Upload recursive instance mask outputs to Azure")
     parser.add_argument("--container_name", required=True)
     parser.add_argument("--target_prefix", required=True, help="Destination blob prefix under the dataset root")
     parser.add_argument("--dataset_prefix", required=True, help="Root dataset storage prefix (category/brand/dataset)")
-    parser.add_argument("--input_dir", required=True, help="Local directory containing combined/ and instances/")
+    parser.add_argument("--input_dir", required=True, help="Local directory containing prompt-level instance folders")
     parser.add_argument("--prompt", required=True)
-    parser.add_argument("--mode", choices=["all_images", "single_image", "video"], required=True)
     parser.add_argument("--dataset_id", required=True)
     parser.add_argument("--owner_user_id", required=True)
     parser.add_argument("--visibility", choices=["private", "public"], required=True)
@@ -67,17 +65,22 @@ def query_existing_doc(cosmos_container: Any, container_name: str, blob_path: st
     return items[0] if items else {}
 
 
-def probe_video_metadata(video_path: Path) -> tuple[int, int, int | None, float | None]:
-    capture = cv2.VideoCapture(str(video_path))
-    try:
-        width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH) or 0)
-        height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT) or 0)
-        frame_count = int(capture.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
-        fps = float(capture.get(cv2.CAP_PROP_FPS) or 0.0)
-    finally:
-        capture.release()
+def content_type_for_suffix(suffix: str) -> str:
+    if suffix == ".png":
+        return "image/png"
+    if suffix == ".webp":
+        return "image/webp"
+    return "image/jpeg"
 
-    return width, height, (frame_count or None), (fps or None)
+
+def extract_object_id(relative_path: str) -> str | None:
+    parts = relative_path.split("/")
+    if len(parts) < 2:
+        return None
+    folder_name = parts[0].strip()
+    if not folder_name:
+        return None
+    return folder_name[len("object_") :] if folder_name.startswith("object_") else folder_name
 
 
 def main() -> None:
@@ -99,68 +102,49 @@ def main() -> None:
 
     for local_path in sorted(input_root.rglob("*")):
         suffix = local_path.suffix.lower()
-        is_image = suffix in VALID_EXTENSIONS
-        is_video = suffix in VIDEO_EXTENSIONS
-        if not local_path.is_file() or not (is_image or is_video):
+        if not local_path.is_file() or suffix not in VALID_EXTENSIONS:
             continue
 
         relative_path = local_path.relative_to(input_root).as_posix()
+        object_id = extract_object_id(relative_path)
+        if not object_id:
+            continue
+
         blob_name = f"{target_prefix}/{relative_path}"
-        object_id = None
-        if relative_path.startswith("instances/"):
-            parts = relative_path.split("/")
-            if len(parts) >= 3:
-                object_id = parts[1]
-            elif len(parts) == 2:
-                stem = Path(parts[1]).stem
-                object_id = stem[len("object_") :] if stem.startswith("object_") else stem
-
-        frame_count = None
-        fps = None
-        if is_video:
-            width, height, frame_count, fps = probe_video_metadata(local_path)
+        image = cv2.imread(str(local_path), cv2.IMREAD_UNCHANGED)
+        if image is None:
             sharpness_score = None
-            is_clear = None
+            is_clear = False
+            height, width = 0, 0
         else:
-            image = cv2.imread(str(local_path), cv2.IMREAD_UNCHANGED)
-            if image is None:
-                sharpness_score = None
-                is_clear = False
-                height, width = 0, 0
-            else:
-                if image.ndim == 2:
-                    image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
-                elif image.shape[2] == 4:
-                    image = cv2.cvtColor(image, cv2.COLOR_BGRA2BGR)
-                sharpness_score = laplacian_sharpness_score(image)
-                is_clear = sharpness_score >= 100.0
-                height, width = image.shape[:2]
-
-        content_type = "video/mp4" if is_video else ("image/png" if suffix == ".png" else "image/jpeg")
+            if image.ndim == 2:
+                image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+            elif image.shape[2] == 4:
+                image = cv2.cvtColor(image, cv2.COLOR_BGRA2BGR)
+            sharpness_score = laplacian_sharpness_score(image)
+            is_clear = sharpness_score >= 100.0
+            height, width = image.shape[:2]
 
         with open(local_path, "rb") as handle:
             container_client.upload_blob(
                 name=blob_name,
                 data=handle,
                 overwrite=True,
-                content_settings=ContentSettings(content_type=content_type),
+                content_settings=ContentSettings(content_type=content_type_for_suffix(suffix)),
             )
 
         existing_doc = query_existing_doc(cosmos_container, args.container_name, blob_name)
         misc_tags = [
             "mask",
             "generated_mask",
+            "instance_mask",
             args.prompt,
-            args.mode.replace("_", " "),
-            "video_mask" if is_video else None,
-            "instance_mask" if relative_path.startswith("instances/") else "combined_mask",
+            f"object_{object_id}",
         ]
-        if object_id:
-            misc_tags.append(f"object_{object_id}")
 
         metadata_item = {
             "id": existing_doc.get("id", uuid.uuid4().hex),
-            "docType": "video_annotation" if is_video else "frame_annotation",
+            "docType": "frame_annotation",
             "containerName": args.container_name,
             "datasetName": dataset_prefix,
             "datasetId": args.dataset_id,
@@ -168,13 +152,12 @@ def main() -> None:
             "visibility": args.visibility,
             "sourceDatasetId": args.source_dataset_id or None,
             "view": "masks",
-            "maskMode": args.mode,
             "maskPrompt": args.prompt,
             "maskObjectId": object_id,
             "frameName": local_path.name,
             "blobPath": blob_name,
             "date": existing_doc.get("date", ""),
-            "frameId": None if is_video else extract_frame_id_from_filename(local_path.name),
+            "frameId": extract_frame_id_from_filename(local_path.name),
             "width": width,
             "height": height,
             "miscTags": list(dict.fromkeys(tag for tag in misc_tags if tag)),
@@ -186,9 +169,9 @@ def main() -> None:
             "vlm": existing_doc.get("vlm"),
             "sharpnessScore": sharpness_score,
             "clear": is_clear,
-            "sourceType": "video" if is_video else existing_doc.get("sourceType"),
-            "frameCount": frame_count if is_video else existing_doc.get("frameCount"),
-            "fps": fps if is_video else existing_doc.get("fps"),
+            "sourceType": existing_doc.get("sourceType"),
+            "frameCount": existing_doc.get("frameCount"),
+            "fps": existing_doc.get("fps"),
         }
         cosmos_container.upsert_item(metadata_item)
         uploaded_count += 1
