@@ -3,7 +3,7 @@ import { ChevronDown, ChevronRight, Images, Loader2, WandSparkles } from "lucide
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
 
-type SectionKey = "overview" | "prompt" | "source";
+type SectionKey = "overview" | "prompt";
 
 interface MaskGenerationPanelProps {
   routePath: string;
@@ -21,7 +21,6 @@ export function MaskGenerationPanel({
   const [expandedSections, setExpandedSections] = useState<Record<SectionKey, boolean>>({
     overview: true,
     prompt: true,
-    source: true,
   });
   const [prompt, setPrompt] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -150,34 +149,6 @@ export function MaskGenerationPanel({
               </label>
               <div className="rounded-sm border border-primary/20 bg-primary/5 px-3 py-2 text-[11px] text-muted-foreground">
                 A short, specific subject usually gives the cleanest results.
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="border-b border-border">
-          <button
-            type="button"
-            onClick={() => toggleSection("source")}
-            className="group flex w-full items-center px-4 py-3 transition-colors hover:bg-background/80"
-          >
-            {expandedSections.source ? (
-              <ChevronDown className="mr-2 h-3 w-3 text-primary" />
-            ) : (
-              <ChevronRight className="mr-2 h-3 w-3" />
-            )}
-            <span className="font-sans-tech font-bold tracking-wider text-foreground transition-colors group-hover:text-primary">
-              Source
-            </span>
-          </button>
-          {expandedSections.source && (
-            <div className="space-y-3 bg-background/30 px-4 pb-4">
-              <div className="rounded-sm border border-primary/20 bg-primary/5 px-3 py-3 text-[11px] leading-relaxed text-muted-foreground">
-                This run will process every image in the current folder and create one prompt-based
-                mask folder with separate instance subfolders inside it.
-              </div>
-              <div className="rounded-sm border border-border bg-background/50 px-3 py-2 text-[11px] text-muted-foreground">
-                Current folder: <span className="break-all text-foreground">{routePath}</span>
               </div>
             </div>
           )}
