@@ -16,6 +16,7 @@ UTILS_DIR = os.path.join(BACKEND_DIR, "utils")
 REMOTE_USER_HOME = f"/home/{saas_config.USER}"
 REMOTE_SAAS_ROOT = f"/home/{saas_config.USER}/Software-as-a-Service"
 REMOTE_SAM3_PACKAGE_ROOT = f"/home/{saas_config.USER}/packages/sam3"
+REMOTE_MASK_PYTHON = getattr(saas_config, "PYTHON_BIN", "python")
 LOCAL_SEGMENTATION_SCRIPT = os.path.join(UTILS_DIR, "DataraAI_segmentation.py")
 
 
@@ -277,7 +278,7 @@ def generate_masks(*, prompt, local_input_dir, local_output_dir):
                 sftp.close()
 
             command_parts = [
-                f'python "{_shell_escape(remote_script_path)}"',
+                f'"{_shell_escape(REMOTE_MASK_PYTHON)}" -s "{_shell_escape(remote_script_path)}"',
                 '--input_mode "folder"',
                 f'--image_dir "{_shell_escape(remote_input_dir)}"',
                 f'--segment "{_shell_escape(prompt)}"',
@@ -286,7 +287,7 @@ def generate_masks(*, prompt, local_input_dir, local_output_dir):
 
             remote_command = (
                 f'cd "{_shell_escape(REMOTE_SAAS_ROOT)}" && '
-                f'PYTHONPATH="{_shell_escape(REMOTE_USER_HOME)}:{_shell_escape(REMOTE_SAM3_PACKAGE_ROOT)}:{_shell_escape(REMOTE_SAAS_ROOT)}:$PYTHONPATH" '
+                f'PYTHONNOUSERSITE=1 PYTHONPATH="{_shell_escape(REMOTE_USER_HOME)}:{_shell_escape(REMOTE_SAM3_PACKAGE_ROOT)}:{_shell_escape(REMOTE_SAAS_ROOT)}:$PYTHONPATH" '
                 + " ".join(command_parts)
             )
             stdout, stderr = _run_command(ssh_client, remote_command)
