@@ -158,10 +158,12 @@ class DatasetService:
                 tags.append("corner_case")
             elif "/masks/" in blob.name:
                 tags.append("mask")
-                if "/combined/" in blob.name:
-                    tags.append("combined_mask")
-                elif "/instances/" in blob.name:
-                    tags.append("instance_mask")
+                tags.append("instance_mask")
+                mask_object_id = str(cosmos_doc.get("maskObjectId") or "").strip()
+                if mask_object_id:
+                    tags.append(
+                        mask_object_id if mask_object_id.startswith("object_") else f"object_{mask_object_id}"
+                    )
             if is_video:
                 tags.append("video")
 

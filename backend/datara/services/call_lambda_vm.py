@@ -11,9 +11,11 @@ import saas_config
 
 # Save ego/corner outputs under backend/utils/dataset_list for upload_frames_to_azure
 BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-UTILS_DIR = os.path.join(BACKEND_DIR, "utils")
 DATASET_LIST_DIR = os.path.join(BACKEND_DIR, "utils", "dataset_list")
+REMOTE_USER_HOME = f"/home/{saas_config.USER}"
 REMOTE_SAAS_ROOT = f"/home/{saas_config.USER}/Software-as-a-Service"
+REMOTE_SEGMENTATION_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "DataraAI_segmentation.py")
+REMOTE_SAM3_PACKAGE_ROOT = f"/home/{saas_config.USER}/packages/sam3"
 
 
 @contextmanager
@@ -243,61 +245,53 @@ def invoke_corner_case(text, image_url, container_name, output_name):
         return None, 500
 
 
-def generate_masks(*, prompt, input_mode, local_input_path, local_output_dir, frame_names_path=None):
+def generate_masks(*, prompt, local_input_dir, local_output_dir):
     """
-    Upload local mask-generation inputs to the Lambda VM, run DataraAI_segmentation.py,
-    fetch the resulting combined/instances tree locally, and remove the remote job folder.
-    Returns (local_output_dir, status_code).
+    Upload a local image folder to the Lambda VM, run the SaaS-owned
+    DataraAI_segmentation.py from the remote Software-as-a-Service checkout,
+    fetch the resulting prompt-level instance folders locally, and remove the
+    remote job folder. Returns (local_output_dir, status_code).
     """
-    if not prompt or not input_mode or not local_input_path or not local_output_dir:
+    if not prompt or not local_input_dir or not local_output_dir:
+        return None, 400
+    if not os.path.isdir(local_input_dir):
         return None, 400
 
     job_id = uuid.uuid4().hex[:12]
     remote_root = f"/home/{saas_config.USER}/datara_mask_jobs/{job_id}"
-    remote_input_root = posixpath.join(remote_root, "input")
+    remote_input_dir = posixpath.join(remote_root, "input")
     remote_output_root = posixpath.join(remote_root, "output")
-    remote_script_path = posixpath.join(remote_root, "DataraAI_segmentation.py")
-    remote_frame_names = None
-
-    if input_mode == "video":
-        remote_input_path = posixpath.join(remote_input_root, "source.mp4")
-    elif input_mode == "image":
-        remote_input_path = posixpath.join(remote_input_root, os.path.basename(local_input_path))
-    elif input_mode == "folder":
-        remote_input_path = remote_input_root
-    else:
-        return None, 400
 
     try:
         with _ssh_session() as ssh_client:
+            script_exists_stdout, script_exists_stderr = _run_command(
+                ssh_client,
+                f'test -f "{_shell_escape(REMOTE_SEGMENTATION_SCRIPT)}" && echo "__FOUND__"',
+            )
+            if "__FOUND__" not in script_exists_stdout:
+                logger.error(
+                    "Remote DataraAI_segmentation.py was not found at %s | stderr=%s",
+                    REMOTE_SEGMENTATION_SCRIPT,
+                    script_exists_stderr,
+                )
+                return None, 500
+
             sftp = ssh_client.open_sftp()
             try:
-                _sftp_put_tree(sftp, os.path.join(UTILS_DIR, "DataraAI_segmentation.py"), remote_script_path)
-                _sftp_put_tree(sftp, local_input_path, remote_input_path)
-                if frame_names_path:
-                    remote_frame_names = posixpath.join(remote_root, "frame_names.json")
-                    _sftp_put_tree(sftp, frame_names_path, remote_frame_names)
+                _sftp_put_tree(sftp, local_input_dir, remote_input_dir)
             finally:
                 sftp.close()
 
             command_parts = [
-                f'python "{_shell_escape(remote_script_path)}"',
-                f'--input_mode "{_shell_escape(input_mode)}"',
+                f'python "{_shell_escape(REMOTE_SEGMENTATION_SCRIPT)}"',
+                f'--image_dir "{_shell_escape(remote_input_dir)}"',
                 f'--segment "{_shell_escape(prompt)}"',
                 f'--output_dir "{_shell_escape(remote_output_root)}"',
             ]
-            if input_mode == "video":
-                command_parts.append(f'--video_path "{_shell_escape(remote_input_path)}"')
-            elif input_mode == "image":
-                command_parts.append(f'--image_path "{_shell_escape(remote_input_path)}"')
-            else:
-                command_parts.append(f'--image_dir "{_shell_escape(remote_input_path)}"')
-            if remote_frame_names:
-                command_parts.append(f'--frame_names_json "{_shell_escape(remote_frame_names)}"')
 
             remote_command = (
                 f'cd "{_shell_escape(REMOTE_SAAS_ROOT)}" && '
-                f'PYTHONPATH="/home/{saas_config.USER}:/home/{saas_config.USER}/packages/sam3:{_shell_escape(REMOTE_SAAS_ROOT)}:$PYTHONPATH" '
+                f'PYTHONPATH="{_shell_escape(REMOTE_USER_HOME)}:{_shell_escape(REMOTE_SAM3_PACKAGE_ROOT)}:{_shell_escape(REMOTE_SAAS_ROOT)}:$PYTHONPATH" '
                 + " ".join(command_parts)
             )
             stdout, stderr = _run_command(ssh_client, remote_command)

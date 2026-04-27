@@ -23,12 +23,6 @@ from datara.services.sql_store import SQLStore
 BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 UTILS_DIR = os.path.join(BACKEND_DIR, "utils")
 DATASET_LIST_DIR = os.path.join(UTILS_DIR, "dataset_list")
-MASK_VIDEO_FPS = 30.0
-MASK_MODE_FOLDERS = {
-    "all_images": "all-images",
-    "single_image": "single-image",
-    "video": "video",
-}
 
 
 class ProcessingService:
@@ -376,13 +370,6 @@ class ProcessingService:
         return (normalized[:64].strip("-") or "mask")
 
     @staticmethod
-    def _mask_mode_folder(mode: str) -> str:
-        try:
-            return MASK_MODE_FOLDERS[mode]
-        except KeyError as exc:
-            raise ValueError(f"Unsupported mask mode: {mode}") from exc
-
-    @staticmethod
     def _image_sort_key(image: dict[str, Any]) -> tuple[int, int, str]:
         frame_value = None
         metadata = image.get("metadata") if isinstance(image, dict) else None
@@ -418,15 +405,11 @@ class ProcessingService:
     def generate_masks(self, current_user: dict[str, Any], data: dict[str, Any]) -> tuple[dict[str, Any], int]:
         prompt = str(data.get("prompt") or "").strip()
         route_path = str(data.get("route_path") or "").strip().strip("/")
-        mode = str(data.get("mode") or "").strip().lower()
-        asset_id = str(data.get("asset_id") or "").strip()
 
         if not prompt:
             return {"error": "Missing prompt"}, 400
         if not route_path:
             return {"error": "Missing route_path"}, 400
-        if mode not in MASK_MODE_FOLDERS:
-            return {"error": "Unsupported mask mode"}, 400
 
         dataset, extra_segments = self.sql_store.resolve_dataset_route(route_path, current_user)
         self.sql_store.assert_user_can_access_dataset(dataset, current_user)
@@ -444,73 +427,35 @@ class ProcessingService:
         if not route_images:
             return {"error": "No images found in this folder"}, 400
 
-        selected_images = route_images
-        if mode == "single_image":
-            if not asset_id:
-                return {"error": "Missing asset_id for single_image mode"}, 400
-            selected_image = next((image for image in route_images if image.get("asset_id") == asset_id), None)
-            if not selected_image:
-                return {"error": "Selected image is not available in this folder"}, 400
-            selected_images = [selected_image]
-
         summary = self.sql_store.build_dataset_summary(dataset, current_user)
         prompt_slug = self._slugify_prompt(prompt)
-        mode_folder = self._mask_mode_folder(mode)
-        combined_route_path = f"{summary['full_path'].rstrip('/')}/masks/{prompt_slug}/{mode_folder}/combined"
-        instances_route_path = f"{summary['full_path'].rstrip('/')}/masks/{prompt_slug}/{mode_folder}/instances"
-        target_storage_prefix = f"{dataset['storage_prefix'].rstrip('/')}/masks/{prompt_slug}/{mode_folder}"
+        mask_route_path = f"{summary['full_path'].rstrip('/')}/masks/{prompt_slug}"
+        target_storage_prefix = f"{dataset['storage_prefix'].rstrip('/')}/masks/{prompt_slug}"
 
         job_root = tempfile.mkdtemp(prefix="mask_job_", dir=DATASET_LIST_DIR)
         staged_image_dir = os.path.join(job_root, "source_images")
         local_output_dir = os.path.join(job_root, "mask_output")
-        frame_names_path = ""
 
         try:
             self._download_route_images(
                 dataset=dataset,
-                images=selected_images,
+                images=route_images,
                 destination_dir=staged_image_dir,
             )
-
-            input_mode = "folder"
-            local_input_path = staged_image_dir
-            if mode == "single_image":
-                input_mode = "image"
-                local_input_path = os.path.join(staged_image_dir, selected_images[0]["name"])
-            elif mode == "video":
-                input_mode = "video"
-                local_input_path = os.path.join(job_root, "source_video.mp4")
-                frame_names_path = os.path.join(job_root, "frame_names.json")
-                with open(frame_names_path, "w", encoding="utf-8") as handle:
-                    json.dump([image["name"] for image in selected_images], handle)
-                subprocess.check_call(
-                    [
-                        sys.executable,
-                        os.path.join(UTILS_DIR, "images_to_video.py"),
-                        "--input_dir",
-                        staged_image_dir,
-                        "--output_path",
-                        local_input_path,
-                        "--fps",
-                        str(MASK_VIDEO_FPS),
-                    ],
-                    cwd=BACKEND_DIR,
-                )
 
             from datara.services import call_lambda_vm
 
             fetched_output_dir, status_code = call_lambda_vm.generate_masks(
                 prompt=prompt,
-                input_mode=input_mode,
-                local_input_path=local_input_path,
+                local_input_dir=staged_image_dir,
                 local_output_dir=local_output_dir,
-                frame_names_path=frame_names_path or None,
             )
             if status_code != 200 or not fetched_output_dir:
                 return {"error": "Mask generation failed"}, status_code or 500
 
-            if not os.path.isdir(os.path.join(fetched_output_dir, "combined")):
-                return {"error": "Combined masks were not returned"}, 500
+            has_mask_files = any(file_names for _root, _dirs, file_names in os.walk(fetched_output_dir))
+            if not has_mask_files:
+                return {"error": "No mask files were returned"}, 500
 
             self.azure_service.delete_blobs_with_prefix(dataset["storage_container"], target_storage_prefix)
             self.azure_service.delete_cosmos_docs_for_prefix(dataset["storage_container"], target_storage_prefix)
@@ -528,8 +473,6 @@ class ProcessingService:
                 str(fetched_output_dir),
                 "--prompt",
                 str(prompt),
-                "--mode",
-                str(mode),
                 "--dataset_id",
                 str(dataset["id"]),
                 "--owner_user_id",
@@ -553,12 +496,9 @@ class ProcessingService:
 
         return {
             "message": "Mask generation finished successfully.",
-            "combined_route_path": combined_route_path,
-            "combined_viewer_path": f"/viewer/{combined_route_path}",
-            "instances_route_path": instances_route_path,
-            "instances_viewer_path": f"/viewer/{instances_route_path}",
+            "mask_route_path": mask_route_path,
+            "mask_viewer_path": f"/viewer/{mask_route_path}",
             "prompt_slug": prompt_slug,
-            "mode": mode,
         }, 200
 
     def _resolve_source_asset(self, current_user: dict[str, Any], asset_id: str) -> dict[str, Any]:
