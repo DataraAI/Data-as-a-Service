@@ -960,7 +960,11 @@ export default function DataViewer() {
     () => pathSegments.slice(datasetRootDepth).some((segment) => segment.toLowerCase() === "masks"),
     [datasetRootDepth, pathSegments],
   );
-  const showMaskPanel = isLeaf && !isMaskPath;
+  const maskSourceImageCount = useMemo(
+    () => images.filter((image) => image.type === "image").length,
+    [images],
+  );
+  const showMaskPanel = isLeaf && !isMaskPath && maskSourceImageCount > 0;
 
   const allSelectableTags = useMemo(
     () =>
@@ -1546,7 +1550,7 @@ export default function DataViewer() {
             {showMaskPanel && (
               <MaskGenerationPanel
                 routePath={currentDisplayPath}
-                images={images}
+                imageCount={maskSourceImageCount}
                 onGenerationSuccess={() => setReloadTick((value) => value + 1)}
                 onOpenViewerPath={(viewerPath) => navigate(viewerPath)}
               />
