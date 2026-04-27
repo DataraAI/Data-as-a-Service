@@ -1,8 +1,5 @@
 import argparse
-import json
 import re
-import shutil
-import subprocess
 import tempfile
 from pathlib import Path
 
@@ -43,7 +40,11 @@ def normalize_frame(frame: np.ndarray) -> np.ndarray:
     return frame
 
 
-def build_temp_video(image_paths: list[Path], output_path: Path, fps: float = DEFAULT_FPS) -> tuple[Path, tuple[int, int]]:
+def build_temp_video(
+    image_paths: list[Path],
+    output_path: Path,
+    fps: float = DEFAULT_FPS,
+) -> tuple[Path, tuple[int, int]]:
     if not image_paths:
         raise ValueError("No source images were provided")
 
@@ -78,33 +79,6 @@ def build_temp_video(image_paths: list[Path], output_path: Path, fps: float = DE
     return output_path, (height, width)
 
 
-def load_frame_names(frame_names_json: Path | None) -> list[str]:
-    if frame_names_json is None:
-        return []
-    payload = json.loads(frame_names_json.read_text(encoding="utf-8"))
-    if not isinstance(payload, list):
-        raise ValueError("frame_names_json must contain a JSON list")
-    names: list[str] = []
-    for value in payload:
-        name = Path(str(value)).stem.strip()
-        if not name:
-            continue
-        names.append(f"{name}.png")
-    return names
-
-
-def video_frame_size(video_path: Path) -> tuple[int, int]:
-    cap = cv2.VideoCapture(str(video_path))
-    try:
-        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    finally:
-        cap.release()
-    if width <= 0 or height <= 0:
-        raise ValueError(f"Could not determine frame size for {video_path}")
-    return height, width
-
-
 def propagate_in_video(predictor, session_id):
     outputs_per_frame = {}
     for response in predictor.handle_stream_request(
@@ -118,33 +92,33 @@ def propagate_in_video(predictor, session_id):
 
 
 def mask_generation(video_path: Path, segment: str = "humans"):
-    video_predictor = build_sam3_video_predictor()
-    response = video_predictor.handle_request(
+    predictor = build_sam3_video_predictor()
+    response = predictor.handle_request(
         request=dict(
             type="start_session",
             resource_path=str(video_path),
         )
     )
     session_id = response["session_id"]
-    video_predictor.handle_request(
-        request=dict(
-            type="add_prompt",
-            session_id=session_id,
-            frame_index=0,
-            text=segment,
-        )
-    )
 
-    outputs_per_frame = propagate_in_video(video_predictor, session_id)
-
-    video_predictor.handle_request(
-        request=dict(
-            type="close_session",
-            session_id=session_id,
+    try:
+        predictor.handle_request(
+            request=dict(
+                type="add_prompt",
+                session_id=session_id,
+                frame_index=0,
+                text=segment,
+            )
         )
-    )
-    video_predictor.shutdown()
-    return outputs_per_frame
+        return propagate_in_video(predictor, session_id)
+    finally:
+        predictor.handle_request(
+            request=dict(
+                type="close_session",
+                session_id=session_id,
+            )
+        )
+        predictor.shutdown()
 
 
 def infer_mask_arrays(output: dict) -> list[np.ndarray]:
@@ -161,225 +135,84 @@ def fallback_frame_name(frame_index: int) -> str:
     return f"frame_{frame_index:04d}.png"
 
 
-def mask_frame_to_bgr(mask_frame: np.ndarray) -> np.ndarray:
-    frame = mask_frame.astype(np.uint8)
-    if frame.ndim == 2:
-        return cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
-    return frame
+def object_folder_name(object_id: str) -> str:
+    return f"object_{object_id}"
 
 
-def convert_video_for_browser(raw_path: Path, output_stem: Path) -> Path:
-    ffmpeg = shutil.which("ffmpeg")
-    if ffmpeg:
-        attempts = [
-            (
-                output_stem.with_suffix(".mp4"),
-                ["-an", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "+faststart"],
-            ),
-            (
-                output_stem.with_suffix(".webm"),
-                ["-an", "-c:v", "libvpx-vp9", "-pix_fmt", "yuv420p"],
-            ),
-        ]
-
-        for destination, codec_args in attempts:
-            try:
-                subprocess.check_call(
-                    [
-                        ffmpeg,
-                        "-y",
-                        "-i",
-                        str(raw_path),
-                        *codec_args,
-                        str(destination),
-                    ],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
-                raw_path.unlink(missing_ok=True)
-                return destination
-            except Exception:
-                destination.unlink(missing_ok=True)
-
-    fallback_destination = output_stem.with_suffix(".mp4")
-    if raw_path != fallback_destination:
-        raw_path.replace(fallback_destination)
-    return fallback_destination
-
-
-def write_mask_videos(
+def write_instance_masks(
     outputs_per_frame: dict[int, dict],
-    out_dir: Path,
+    output_dir: Path,
+    frame_names: list[str],
     frame_size: tuple[int, int],
-    fps: float = DEFAULT_FPS,
 ) -> None:
-    combined_dir = out_dir / "combined"
-    instances_root = out_dir / "instances"
-    combined_dir.mkdir(parents=True, exist_ok=True)
-    instances_root.mkdir(parents=True, exist_ok=True)
-
+    output_dir.mkdir(parents=True, exist_ok=True)
     height, width = frame_size
-    frame_indexes = sorted(outputs_per_frame)
-    video_size = (width, height)
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    combined_raw_path = combined_dir / "_combined_mask_raw.mp4"
 
-    combined_writer = cv2.VideoWriter(
-        str(combined_raw_path),
-        fourcc,
-        float(fps),
-        video_size,
-    )
-    if not combined_writer.isOpened():
-        raise RuntimeError("Could not open writer for combined mask video")
-
-    instance_ids: list[str] = []
-    for frame_index in frame_indexes:
+    object_ids: list[str] = []
+    for frame_index in sorted(outputs_per_frame):
         output = outputs_per_frame[frame_index]
         mask_arrays = infer_mask_arrays(output)
         obj_ids = list(output.get("out_obj_ids", []))
         for index, _mask in enumerate(mask_arrays):
             object_id = str(int(obj_ids[index])) if index < len(obj_ids) else str(index)
-            if object_id not in instance_ids:
-                instance_ids.append(object_id)
+            if object_id not in object_ids:
+                object_ids.append(object_id)
 
-    instance_writers: dict[str, cv2.VideoWriter] = {}
-    instance_raw_paths: dict[str, Path] = {}
-    try:
-        for object_id in instance_ids:
-            raw_path = instances_root / f"_object_{object_id}_raw.mp4"
-            writer = cv2.VideoWriter(
-                str(raw_path),
-                fourcc,
-                float(fps),
-                video_size,
-            )
-            if not writer.isOpened():
-                raise RuntimeError(f"Could not open writer for instance video {object_id}")
-            instance_writers[object_id] = writer
-            instance_raw_paths[object_id] = raw_path
+    if not object_ids:
+        raise ValueError("No mask instances were returned by SAM3")
 
-        blank_frame = np.zeros((height, width), dtype=np.uint8)
-
-        for frame_index in frame_indexes:
-            output = outputs_per_frame[frame_index]
-            mask_arrays = infer_mask_arrays(output)
-            obj_ids = list(output.get("out_obj_ids", []))
-
-            if mask_arrays:
-                combined_mask = np.any(np.stack(mask_arrays), axis=0).astype(np.uint8) * 255
-            else:
-                combined_mask = blank_frame
-            combined_writer.write(mask_frame_to_bgr(combined_mask))
-
-            frame_masks_by_object: dict[str, np.ndarray] = {}
-            for index, mask in enumerate(mask_arrays):
-                object_id = str(int(obj_ids[index])) if index < len(obj_ids) else str(index)
-                frame_masks_by_object[object_id] = (mask.astype(np.uint8)) * 255
-
-            for object_id, writer in instance_writers.items():
-                frame_mask = frame_masks_by_object.get(object_id, blank_frame)
-                writer.write(mask_frame_to_bgr(frame_mask))
-    finally:
-        combined_writer.release()
-        for writer in instance_writers.values():
-            writer.release()
-
-    convert_video_for_browser(combined_raw_path, combined_dir / "combined_mask")
-    for object_id, raw_path in instance_raw_paths.items():
-        convert_video_for_browser(raw_path, instances_root / f"object_{object_id}")
-
-
-def write_masks(
-    outputs_per_frame: dict[int, dict],
-    out_dir: Path,
-    frame_names: list[str],
-    frame_size: tuple[int, int],
-) -> None:
-    combined_dir = out_dir / "combined"
-    instances_root = out_dir / "instances"
-    combined_dir.mkdir(parents=True, exist_ok=True)
-    instances_root.mkdir(parents=True, exist_ok=True)
-
-    height, width = frame_size
+    blank_mask = np.zeros((height, width), dtype=np.uint8)
+    object_dirs = {
+        object_id: output_dir / object_folder_name(object_id)
+        for object_id in object_ids
+    }
+    for directory in object_dirs.values():
+        directory.mkdir(parents=True, exist_ok=True)
 
     for frame_index in sorted(outputs_per_frame):
         output = outputs_per_frame[frame_index]
         mask_arrays = infer_mask_arrays(output)
         output_name = frame_names[frame_index] if frame_index < len(frame_names) else fallback_frame_name(frame_index)
-
-        if mask_arrays:
-            combined_mask = np.any(np.stack(mask_arrays), axis=0).astype(np.uint8) * 255
-        else:
-            combined_mask = np.zeros((height, width), dtype=np.uint8)
-
-        Image.fromarray(combined_mask, mode="L").save(combined_dir / output_name)
-
         obj_ids = list(output.get("out_obj_ids", []))
+
+        frame_masks_by_object: dict[str, np.ndarray] = {}
         for index, mask in enumerate(mask_arrays):
             object_id = str(int(obj_ids[index])) if index < len(obj_ids) else str(index)
-            object_dir = instances_root / object_id
-            object_dir.mkdir(parents=True, exist_ok=True)
-            instance_mask = (mask.astype(np.uint8)) * 255
-            Image.fromarray(instance_mask, mode="L").save(object_dir / output_name)
+            frame_masks_by_object[object_id] = (mask.astype(np.uint8)) * 255
+
+        for object_id, object_dir in object_dirs.items():
+            mask_frame = frame_masks_by_object.get(object_id, blank_mask)
+            Image.fromarray(mask_frame, mode="L").save(object_dir / output_name)
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input_mode", choices=["video", "folder", "image"], required=True)
-    parser.add_argument("--video_path", type=Path)
-    parser.add_argument("--image_dir", type=Path)
-    parser.add_argument("--image_path", type=Path)
+    parser.add_argument("--input_mode", choices=["folder"], default="folder")
+    parser.add_argument("--image_dir", type=Path, required=True)
     parser.add_argument("--segment", type=str, required=True)
     parser.add_argument("--output_dir", type=Path, required=True)
-    parser.add_argument("--frame_names_json", type=Path)
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
+    if args.input_mode != "folder":
+        raise ValueError("Only folder input_mode is supported in this mask-generation flow")
+    image_dir = args.image_dir.expanduser().resolve()
     output_dir = args.output_dir.expanduser().resolve()
+    image_paths = collect_images(image_dir)
+    if not image_paths:
+        raise ValueError(f"No supported image files found in {image_dir}")
+
+    frame_names = [f"{path.stem}.png" for path in image_paths]
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    temp_dir = None
-    try:
-        if args.input_mode == "video":
-            if args.video_path is None:
-                raise ValueError("video_path is required for video mode")
-            video_path = args.video_path.expanduser().resolve()
-            if video_path.suffix.lower() != ".mp4":
-                raise ValueError("Video path must end with .mp4")
-            frame_names = load_frame_names(args.frame_names_json)
-            frame_size = video_frame_size(video_path)
-        elif args.input_mode == "folder":
-            if args.image_dir is None:
-                raise ValueError("image_dir is required for folder mode")
-            image_dir = args.image_dir.expanduser().resolve()
-            image_paths = collect_images(image_dir)
-            if not image_paths:
-                raise ValueError(f"No supported image files found in {image_dir}")
-            frame_names = [f"{path.stem}.png" for path in image_paths]
-            temp_dir = tempfile.TemporaryDirectory(prefix="sam3_masks_")
-            video_path, frame_size = build_temp_video(image_paths, Path(temp_dir.name) / "source.mp4")
-        else:
-            if args.image_path is None:
-                raise ValueError("image_path is required for image mode")
-            image_path = args.image_path.expanduser().resolve()
-            if image_path.suffix.lower() not in VALID_EXTENSIONS:
-                raise ValueError("Unsupported image type")
-            frame_names = [f"{image_path.stem}.png"]
-            temp_dir = tempfile.TemporaryDirectory(prefix="sam3_masks_")
-            video_path, frame_size = build_temp_video([image_path], Path(temp_dir.name) / "source.mp4")
-
+    with tempfile.TemporaryDirectory(prefix="sam3_masks_") as temp_dir:
+        video_path, frame_size = build_temp_video(image_paths, Path(temp_dir) / "source.mp4")
         outputs_per_frame = mask_generation(video_path, args.segment)
-        if args.input_mode == "video":
-            write_mask_videos(outputs_per_frame, output_dir, frame_size, fps=DEFAULT_FPS)
-        else:
-            write_masks(outputs_per_frame, output_dir, frame_names, frame_size)
-        print(output_dir)
-    finally:
-        if temp_dir is not None:
-            temp_dir.cleanup()
+        write_instance_masks(outputs_per_frame, output_dir, frame_names, frame_size)
+
+    print(output_dir)
 
 
 if __name__ == "__main__":
