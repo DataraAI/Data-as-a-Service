@@ -28,7 +28,7 @@ def _ssh_session():
     """
     hostname = saas_config.HOST
     username = saas_config.USER
-    key_filename = saas_config.KEY_PATH
+    key_filename = os.getenv("SAAS_KEY_PATH", saas_config.KEY_PATH)
 
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
