@@ -12,11 +12,12 @@ import saas_config
 # Save ego/corner outputs under backend/utils/dataset_list for upload_frames_to_azure
 BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DATASET_LIST_DIR = os.path.join(BACKEND_DIR, "utils", "dataset_list")
+UTILS_DIR = os.path.join(BACKEND_DIR, "utils")
 REMOTE_USER_HOME = f"/home/{saas_config.USER}"
 REMOTE_SAAS_ROOT = f"/home/{saas_config.USER}/Software-as-a-Service"
-REMOTE_SEGMENTATION_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "DataraAI_segmentation.py")
 REMOTE_SAM3_PACKAGE_ROOT = f"/home/{saas_config.USER}/packages/sam3"
 REMOTE_MASK_PYTHON = getattr(saas_config, "PYTHON_BIN", "python")
+LOCAL_SEGMENTATION_SCRIPT = os.path.join(UTILS_DIR, "DataraAI_segmentation.py")
 
 
 @contextmanager
@@ -248,43 +249,36 @@ def invoke_corner_case(text, image_url, container_name, output_name):
 
 def generate_masks(*, prompt, local_input_dir, local_output_dir):
     """
-    Upload a local image folder to the Lambda VM, run the SaaS-owned
-    DataraAI_segmentation.py from the remote Software-as-a-Service checkout,
-    fetch the resulting prompt-level instance folders locally, and remove the
-    remote job folder. Returns (local_output_dir, status_code).
+    Upload a local image folder plus the DaaS-held DataraAI_segmentation.py to
+    the Lambda VM, run that uploaded script against the SaaS environment, fetch
+    the resulting prompt-level instance folders locally, and remove the remote
+    job folder. Returns (local_output_dir, status_code).
     """
     if not prompt or not local_input_dir or not local_output_dir:
         return None, 400
     if not os.path.isdir(local_input_dir):
         return None, 400
+    if not os.path.isfile(LOCAL_SEGMENTATION_SCRIPT):
+        logger.error("Local DataraAI_segmentation.py was not found at %s", LOCAL_SEGMENTATION_SCRIPT)
+        return None, 500
 
     job_id = uuid.uuid4().hex[:12]
     remote_root = f"/home/{saas_config.USER}/datara_mask_jobs/{job_id}"
     remote_input_dir = posixpath.join(remote_root, "input")
     remote_output_root = posixpath.join(remote_root, "output")
+    remote_script_path = posixpath.join(remote_root, "DataraAI_segmentation.py")
 
     try:
         with _ssh_session() as ssh_client:
-            script_exists_stdout, script_exists_stderr = _run_command(
-                ssh_client,
-                f'test -f "{_shell_escape(REMOTE_SEGMENTATION_SCRIPT)}" && echo "__FOUND__"',
-            )
-            if "__FOUND__" not in script_exists_stdout:
-                logger.error(
-                    "Remote DataraAI_segmentation.py was not found at %s | stderr=%s",
-                    REMOTE_SEGMENTATION_SCRIPT,
-                    script_exists_stderr,
-                )
-                return None, 500
-
             sftp = ssh_client.open_sftp()
             try:
                 _sftp_put_tree(sftp, local_input_dir, remote_input_dir)
+                _sftp_put_tree(sftp, LOCAL_SEGMENTATION_SCRIPT, remote_script_path)
             finally:
                 sftp.close()
 
             command_parts = [
-                f'"{_shell_escape(REMOTE_MASK_PYTHON)}" -s "{_shell_escape(REMOTE_SEGMENTATION_SCRIPT)}"',
+                f'"{_shell_escape(REMOTE_MASK_PYTHON)}" -s "{_shell_escape(remote_script_path)}"',
                 '--input_mode "folder"',
                 f'--image_dir "{_shell_escape(remote_input_dir)}"',
                 f'--segment "{_shell_escape(prompt)}"',
