@@ -4,6 +4,7 @@ services:
       - "5000:5151"
     environment:
       - FLASK_ENV=production
+      - FLASK_HOST=0.0.0.0
     volumes:
       - ./dataset:/app/dataset
       - ./uploads:/app/uploads
