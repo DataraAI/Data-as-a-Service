@@ -9,8 +9,12 @@ services:
     container_name: datara-backend
     expose:
       - "5151"
+    env_file:
+      - ../config/.env
+      - ../backend/.env
     environment:
       - FLASK_ENV=production
+      - FLASK_HOST=0.0.0.0
       - PYTHONUNBUFFERED=1
     volumes:
       - ./uploads:/app/backend/uploads
