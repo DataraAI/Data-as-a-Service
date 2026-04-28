@@ -4,6 +4,8 @@ import Home from "./pages/Home";
 import Product from "./pages/Product";
 import DataViewer from "./pages/DataViewer";
 import RoboEyeView from "./pages/RoboEyeView";
+import AuthPage from "./pages/AuthPage";
+import AdminUsers from "./pages/AdminUsers";
 import { Toaster } from "./components/ui/sonner";
 
 const App = () => (
@@ -14,6 +16,8 @@ const App = () => (
         <Route path="/product" element={<Product />} />
         <Route path="/explore" element={<ExploreDatasets />} />
         <Route path="/roboeyeview" element={<RoboEyeView />} />
+        <Route path="/auth" element={<AuthPage />} />
+        <Route path="/admin/users" element={<AdminUsers />} />
         <Route path="/viewer/*" element={<DataViewer />} />
       </Routes>
       <Toaster richColors />
