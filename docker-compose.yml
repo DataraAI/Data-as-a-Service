@@ -5,9 +5,11 @@ services:
     environment:
       - FLASK_ENV=production
       - FLASK_HOST=0.0.0.0
+      - SAAS_KEY_PATH=/run/secrets/azure_to_lambda
     volumes:
       - ./dataset:/app/dataset
       - ./uploads:/app/uploads
+      - /home/roboteyeview/.ssh/azure_to_lambda:/run/secrets/azure_to_lambda:ro
     restart: unless-stopped
 
   dashboard:
