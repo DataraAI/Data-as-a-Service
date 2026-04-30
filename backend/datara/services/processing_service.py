@@ -79,6 +79,14 @@ class ProcessingService:
         stem = stem[:24]
         return f"{source_name}-{suffix}-{stem}".strip("-")
 
+    @staticmethod
+    def _run_command(cmd: list[Any], **kwargs: Any) -> None:
+        normalized_cmd = [
+            os.fspath(part) if isinstance(part, os.PathLike) else str(part)
+            for part in cmd
+        ]
+        subprocess.check_call(normalized_cmd, **kwargs)
+
     def _build_dataset_row(
         self,
         *,
@@ -319,7 +327,7 @@ class ProcessingService:
             "--view",
             target_view_dir,
         ]
-        subprocess.check_call(cmd)
+        self._run_command(cmd)
 
     def _upload_to_azure(
         self,
@@ -362,7 +370,7 @@ class ProcessingService:
             cmd.extend(["--source_dataset_id", source_dataset_id])
         if create_video_annotation:
             cmd.append("--create_video_annotation")
-        subprocess.check_call(cmd)
+        self._run_command(cmd)
 
     @staticmethod
     def _slugify_prompt(prompt: str) -> str:
@@ -484,7 +492,7 @@ class ProcessingService:
                 "--source_dataset_id",
                 str(dataset["id"]),
             ]
-            subprocess.check_call(upload_cmd, cwd=BACKEND_DIR)
+            self._run_command(upload_cmd, cwd=BACKEND_DIR)
         except subprocess.CalledProcessError as exc:
             logger.error("Mask generation helper failed: %s", exc, exc_info=True)
             return {"error": str(exc)}, 500
@@ -714,7 +722,7 @@ class ProcessingService:
                 return {"error": "VLM tags invocation failed"}, status_code or 500
 
             append_script = os.path.join(UTILS_DIR, "append_tags_to_image.py")
-            subprocess.check_call(
+            self._run_command(
                 [
                     sys.executable,
                     append_script,
