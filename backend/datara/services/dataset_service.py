@@ -104,6 +104,13 @@ class DatasetService:
             ),
         ):
             summary = self.sql_store.build_dataset_summary(dataset, current_user)
+            has_storage_content, nested_paths = self._list_searchable_storage_paths(
+                dataset,
+                current_user,
+            )
+            if not has_storage_content:
+                continue
+
             route_segments = [segment for segment in summary["full_path"].split("/") if segment]
 
             for index in range(1, len(route_segments) + 1):
@@ -117,7 +124,7 @@ class DatasetService:
                     ),
                 )
 
-            for nested_path in self._list_recursive_storage_paths(dataset, current_user):
+            for nested_path in nested_paths:
                 all_paths.setdefault(nested_path["full_path"], nested_path)
 
         return sorted(all_paths.values(), key=lambda item: item["full_path"].lower())
@@ -299,15 +306,16 @@ class DatasetService:
 
         return sorted(children.values(), key=lambda item: item["full_path"].lower())
 
-    def _list_recursive_storage_paths(
+    def _list_searchable_storage_paths(
         self,
         dataset: dict[str, Any],
         current_user: dict[str, Any],
-    ) -> list[dict[str, Any]]:
+    ) -> tuple[bool, list[dict[str, Any]]]:
         summary = self.sql_store.build_dataset_summary(dataset, current_user)
         route_root = summary["full_path"].rstrip("/")
         storage_root = dataset["storage_prefix"].rstrip("/")
         nested_paths: dict[str, dict[str, Any]] = {}
+        has_storage_content = False
 
         try:
             blobs = self.azure_service.list_blobs(dataset["storage_container"], storage_root)
@@ -317,7 +325,7 @@ class DatasetService:
                 summary["full_path"],
                 dataset["storage_container"],
             )
-            return []
+            return False, []
 
         for blob in blobs:
             blob_name = str(getattr(blob, "name", "") or "").rstrip("/")
@@ -328,6 +336,7 @@ class DatasetService:
             if not blob_name.startswith(prefix_with_slash):
                 continue
 
+            has_storage_content = True
             remainder = blob_name[len(prefix_with_slash) :]
             if "/" not in remainder:
                 continue
@@ -350,7 +359,10 @@ class DatasetService:
                     ),
                 )
 
-        return sorted(nested_paths.values(), key=lambda item: item["full_path"].lower())
+        return has_storage_content, sorted(
+            nested_paths.values(),
+            key=lambda item: item["full_path"].lower(),
+        )
 
     def resolve_asset(self, asset_id: str, current_user: dict[str, Any]) -> dict[str, Any]:
         try:
