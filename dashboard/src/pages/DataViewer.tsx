@@ -889,7 +889,7 @@ export default function DataViewer() {
     }
 
     const shouldLoadPaths = isRootLanding || isCategoryLanding || pathSearchTouched;
-    if (!shouldLoadPaths || pathSearchLoaded || pathSearchLoading) return;
+    if (!shouldLoadPaths || pathSearchLoaded) return;
 
     let cancelled = false;
 
@@ -929,7 +929,6 @@ export default function DataViewer() {
     isCategoryLanding,
     pathSearchTouched,
     pathSearchLoaded,
-    pathSearchLoading,
   ]);
 
   useEffect(() => {
@@ -1102,7 +1101,7 @@ export default function DataViewer() {
           const isClosest = bestIndex === index;
 
           const className = isClosest
-            ? "text-primary underline decoration-primary underline-offset-4"
+            ? "rounded-sm bg-primary/15 px-1 text-primary underline decoration-primary underline-offset-4"
             : isMatched
               ? "text-primary/90"
               : "";
