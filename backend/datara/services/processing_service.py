@@ -14,6 +14,8 @@ from typing import Any
 
 import cv2
 import gdown
+import numpy as np
+from azure.storage.blob import ContentSettings
 
 from datara.config import settings
 from datara.logging import logger
@@ -78,14 +80,6 @@ class ProcessingService:
         stem = stem or suffix
         stem = stem[:24]
         return f"{source_name}-{suffix}-{stem}".strip("-")
-
-    @staticmethod
-    def _run_command(cmd: list[Any], **kwargs: Any) -> None:
-        normalized_cmd = [
-            os.fspath(part) if isinstance(part, os.PathLike) else str(part)
-            for part in cmd
-        ]
-        subprocess.check_call(normalized_cmd, **kwargs)
 
     def _build_dataset_row(
         self,
@@ -327,7 +321,7 @@ class ProcessingService:
             "--view",
             target_view_dir,
         ]
-        self._run_command(cmd)
+        subprocess.check_call(cmd)
 
     def _upload_to_azure(
         self,
@@ -370,7 +364,7 @@ class ProcessingService:
             cmd.extend(["--source_dataset_id", source_dataset_id])
         if create_video_annotation:
             cmd.append("--create_video_annotation")
-        self._run_command(cmd)
+        subprocess.check_call(cmd)
 
     @staticmethod
     def _slugify_prompt(prompt: str) -> str:
@@ -492,7 +486,7 @@ class ProcessingService:
                 "--source_dataset_id",
                 str(dataset["id"]),
             ]
-            self._run_command(upload_cmd, cwd=BACKEND_DIR)
+            subprocess.check_call(upload_cmd, cwd=BACKEND_DIR)
         except subprocess.CalledProcessError as exc:
             logger.error("Mask generation helper failed: %s", exc, exc_info=True)
             return {"error": str(exc)}, 500
@@ -507,6 +501,667 @@ class ProcessingService:
             "mask_route_path": mask_route_path,
             "mask_viewer_path": f"/viewer/{mask_route_path}",
             "prompt_slug": prompt_slug,
+        }, 200
+
+    @staticmethod
+    def _frame_lookup_key(image: dict[str, Any]) -> str:
+        metadata = image.get("metadata") if isinstance(image, dict) else None
+        frame_value = metadata.get("frame_id") if isinstance(metadata, dict) else None
+
+        if isinstance(frame_value, int):
+            return str(frame_value)
+        if isinstance(frame_value, str) and frame_value.strip().isdigit():
+            return str(int(frame_value.strip()))
+
+        name = str(image.get("name") or "")
+        match = re.search(r"_(\d+)(?:_|$)", os.path.splitext(name)[0])
+        if match:
+            return str(int(match.group(1)))
+
+        return name.lower()
+
+    @staticmethod
+    def _mask_instance_sort_key(instance_name: str) -> tuple[int, int, str]:
+        match = re.match(r"object[_-]?(\d+)$", instance_name.strip().lower())
+        if match:
+            return (0, int(match.group(1)), instance_name.lower())
+        return (1, 0, instance_name.lower())
+
+    @staticmethod
+    def _instance_label(instance_name: str) -> str:
+        match = re.match(r"object[_-]?(\d+)$", instance_name.strip().lower())
+        if match:
+            return f"Object {int(match.group(1))}"
+        return instance_name.replace("_", " ").strip() or instance_name
+
+    @staticmethod
+    def _selection_slug(prompt_slug: str, mode: str, instance_name: str | None) -> str:
+        if mode == "combined":
+            return "combined"
+        instance_name = str(instance_name or "").strip()
+        if not instance_name:
+            raise ValueError("Missing instance selection")
+        return re.sub(r"[^a-z0-9]+", "-", instance_name.lower()).strip("-") or prompt_slug
+
+    @staticmethod
+    def _build_occlusion_prompt(primary_prompt_slug: str, subtract_prompt_slug: str | None = None) -> str:
+        primary_text = primary_prompt_slug.replace("-", " ").strip()
+        if not primary_text:
+            primary_text = "selected object"
+        if subtract_prompt_slug:
+            subtract_text = subtract_prompt_slug.replace("-", " ").strip() or "overlap region"
+            return f"Remove the {primary_text} from the scene while preserving the {subtract_text}."
+        return f"Remove the {primary_text} from the scene while preserving the background."
+
+    @staticmethod
+    def _resolve_sample_size(width: int, height: int) -> tuple[int, int]:
+        max_width = 720
+        max_height = 720
+        scale = min(max_width / max(width, 1), max_height / max(height, 1), 1.0)
+        scaled_width = max(16, int(round((width * scale) / 16.0) * 16))
+        scaled_height = max(16, int(round((height * scale) / 16.0) * 16))
+        return scaled_height, scaled_width
+
+    def _validate_occlusion_route(
+        self,
+        *,
+        current_user: dict[str, Any],
+        route_path: str,
+    ) -> tuple[dict[str, Any], list[str], dict[str, Any]]:
+        dataset, extra_segments = self.sql_store.resolve_dataset_route(route_path, current_user)
+        self.sql_store.assert_user_can_access_dataset(dataset, current_user)
+
+        lower_segments = [segment.lower() for segment in extra_segments]
+        if "masks" in lower_segments:
+            raise ValueError("Occlusion removal is unavailable inside mask folders")
+        if "occl_del" in lower_segments:
+            raise ValueError("Occlusion removal is unavailable inside occlusion result folders")
+
+        summary = self.sql_store.build_dataset_summary(dataset, current_user)
+        return dataset, extra_segments, summary
+
+    def _build_mask_prompt_options(
+        self,
+        *,
+        current_user: dict[str, Any],
+        dataset_summary_path: str,
+    ) -> list[dict[str, Any]]:
+        mask_root_path = f"{dataset_summary_path.rstrip('/')}/masks"
+        prompt_folders = self.dataset_service.list_datasets(mask_root_path, current_user)
+        options: list[dict[str, Any]] = []
+
+        for prompt_folder in prompt_folders:
+            if prompt_folder.get("type") != "folder":
+                continue
+
+            prompt_slug = str(prompt_folder.get("name") or "").strip()
+            if not prompt_slug:
+                continue
+
+            instance_folders = self.dataset_service.list_datasets(prompt_folder["full_path"], current_user)
+            instances = []
+            for instance_folder in instance_folders:
+                if instance_folder.get("type") != "folder":
+                    continue
+
+                instance_name = str(instance_folder.get("name") or "").strip()
+                if not instance_name:
+                    continue
+
+                instance_id = instance_name
+                match = re.match(r"object[_-]?(\d+)$", instance_name.lower())
+                if match:
+                    instance_id = match.group(1)
+
+                instances.append(
+                    {
+                        "instance_name": instance_name,
+                        "instance_id": instance_id,
+                        "label": self._instance_label(instance_name),
+                        "viewer_path": instance_folder.get("viewer_path"),
+                    }
+                )
+
+            instances.sort(key=lambda item: self._mask_instance_sort_key(str(item["instance_name"])))
+            options.append(
+                {
+                    "prompt_slug": prompt_slug,
+                    "prompt_label": prompt_slug.replace("-", " "),
+                    "viewer_path": prompt_folder.get("viewer_path"),
+                    "instance_count": len(instances),
+                    "instances": instances,
+                }
+            )
+
+        options.sort(key=lambda item: str(item["prompt_slug"]).lower())
+        return options
+
+    def get_occlusion_mask_options(
+        self,
+        current_user: dict[str, Any],
+        route_path: str,
+    ) -> tuple[dict[str, Any], int]:
+        route_path = str(route_path or "").strip().strip("/")
+        if not route_path:
+            return {"error": "Missing route_path"}, 400
+
+        try:
+            _dataset, _extra_segments, summary = self._validate_occlusion_route(
+                current_user=current_user,
+                route_path=route_path,
+            )
+            prompts = self._build_mask_prompt_options(
+                current_user=current_user,
+                dataset_summary_path=summary["full_path"],
+            )
+        except Exception as exc:
+            logger.error("Error loading occlusion mask options: %s", exc, exc_info=True)
+            return {"error": str(exc)}, 400
+
+        return {
+            "route_path": route_path,
+            "mask_root_path": f"{summary['full_path'].rstrip('/')}/masks",
+            "prompts": prompts,
+        }, 200
+
+    def _collect_prompt_mask_assets(
+        self,
+        *,
+        current_user: dict[str, Any],
+        dataset: dict[str, Any],
+        dataset_summary_path: str,
+        prompt_slug: str,
+    ) -> dict[str, list[dict[str, Any]]]:
+        prompt_route_path = f"{dataset_summary_path.rstrip('/')}/masks/{prompt_slug}"
+        prompt_assets = [
+            image
+            for image in self.dataset_service.get_dataset_images(prompt_route_path, current_user)
+            if image.get("type") == "image"
+        ]
+        prompt_assets.sort(key=self._image_sort_key)
+
+        relative_prefix = f"{dataset['storage_prefix'].rstrip('/')}/masks/{prompt_slug}/"
+        grouped: dict[str, list[dict[str, Any]]] = {}
+        for asset in prompt_assets:
+            blob_name = str(asset.get("id") or "")
+            if not blob_name.startswith(relative_prefix):
+                continue
+            relative_path = blob_name[len(relative_prefix) :]
+            parts = [part for part in relative_path.split("/") if part]
+            if len(parts) < 2:
+                continue
+            instance_name = parts[0]
+            grouped.setdefault(instance_name, []).append(asset)
+
+        return grouped
+
+    def _resolve_selected_instance_names(
+        self,
+        *,
+        selection: dict[str, Any],
+        prompt_options: dict[str, Any],
+        prompt_assets: dict[str, list[dict[str, Any]]],
+    ) -> list[str]:
+        mode = str(selection.get("mode") or "").strip().lower()
+        if mode not in {"instance", "combined"}:
+            raise ValueError("Selection mode must be 'instance' or 'combined'")
+
+        available_names = sorted(prompt_assets.keys(), key=self._mask_instance_sort_key)
+        if not available_names:
+            raise ValueError(f"No mask instances were found for '{prompt_options['prompt_slug']}'")
+
+        if mode == "combined":
+            return available_names
+
+        instance_name = str(selection.get("instance_name") or "").strip()
+        if instance_name and instance_name in prompt_assets:
+            return [instance_name]
+
+        instance_id = str(selection.get("instance_id") or "").strip()
+        if instance_id:
+            for available_name in available_names:
+                match = re.match(r"object[_-]?(\d+)$", available_name.lower())
+                if match and match.group(1) == instance_id:
+                    return [available_name]
+                if available_name == instance_id:
+                    return [available_name]
+
+        raise ValueError(f"Selected instance was not found for '{prompt_options['prompt_slug']}'")
+
+    def _download_mask_selection(
+        self,
+        *,
+        dataset: dict[str, Any],
+        prompt_assets: dict[str, list[dict[str, Any]]],
+        selected_instance_names: list[str],
+        destination_dir: str,
+    ) -> dict[str, list[str]]:
+        frame_map: dict[str, list[str]] = {}
+        for instance_name in selected_instance_names:
+            instance_dir = os.path.join(destination_dir, instance_name)
+            os.makedirs(instance_dir, exist_ok=True)
+
+            for asset in prompt_assets.get(instance_name, []):
+                local_path = os.path.join(instance_dir, asset["name"])
+                blob_bytes = self.azure_service.download_blob(dataset["storage_container"], asset["id"]).readall()
+                with open(local_path, "wb") as handle:
+                    handle.write(blob_bytes)
+
+                frame_key = self._frame_lookup_key(asset)
+                frame_map.setdefault(frame_key, []).append(local_path)
+
+        return frame_map
+
+    @staticmethod
+    def _load_binary_mask(mask_path: str, width: int, height: int) -> np.ndarray:
+        mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
+        if mask is None:
+            raise ValueError(f"Failed to read mask frame: {mask_path}")
+        if mask.shape[1] != width or mask.shape[0] != height:
+            mask = cv2.resize(mask, (width, height), interpolation=cv2.INTER_NEAREST)
+        return (mask > 0).astype(np.uint8) * 255
+
+    def _compose_occlusion_videos(
+        self,
+        *,
+        route_images: list[dict[str, Any]],
+        source_dir: str,
+        include_masks: dict[str, list[str]],
+        subtract_masks: dict[str, list[str]],
+        source_video_path: str,
+        mask_video_path: str,
+    ) -> dict[str, Any]:
+        if not route_images:
+            raise ValueError("No source images were found in this folder")
+
+        first_source_path = os.path.join(source_dir, route_images[0]["name"])
+        first_frame = cv2.imread(first_source_path, cv2.IMREAD_COLOR)
+        if first_frame is None:
+            raise ValueError(f"Failed to read source frame: {route_images[0]['name']}")
+
+        height, width = first_frame.shape[:2]
+        fps = 30.0
+        for image in route_images:
+            metadata = image.get("metadata") if isinstance(image, dict) else None
+            candidate = metadata.get("fps") if isinstance(metadata, dict) else None
+            try:
+                numeric_fps = float(candidate)
+            except (TypeError, ValueError):
+                numeric_fps = 0.0
+            if numeric_fps > 0:
+                fps = numeric_fps
+                break
+
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        source_writer = cv2.VideoWriter(source_video_path, fourcc, fps, (width, height))
+        mask_writer = cv2.VideoWriter(mask_video_path, fourcc, fps, (width, height))
+        if not source_writer.isOpened() or not mask_writer.isOpened():
+            source_writer.release()
+            mask_writer.release()
+            raise ValueError("Failed to create temporary source or mask videos")
+
+        total_primary_pixels = 0
+        total_overlap_pixels = 0
+        total_final_pixels = 0
+
+        try:
+            for image in route_images:
+                source_path = os.path.join(source_dir, image["name"])
+                frame = cv2.imread(source_path, cv2.IMREAD_COLOR)
+                if frame is None:
+                    raise ValueError(f"Failed to read source frame: {image['name']}")
+                if frame.shape[1] != width or frame.shape[0] != height:
+                    frame = cv2.resize(frame, (width, height), interpolation=cv2.INTER_AREA)
+                source_writer.write(frame)
+
+                frame_key = self._frame_lookup_key(image)
+                primary_mask = np.zeros((height, width), dtype=np.uint8)
+                subtract_mask = np.zeros((height, width), dtype=np.uint8)
+
+                for mask_path in include_masks.get(frame_key, []):
+                    primary_mask = cv2.bitwise_or(primary_mask, self._load_binary_mask(mask_path, width, height))
+
+                for mask_path in subtract_masks.get(frame_key, []):
+                    subtract_mask = cv2.bitwise_or(subtract_mask, self._load_binary_mask(mask_path, width, height))
+
+                total_primary_pixels += int(np.count_nonzero(primary_mask))
+                if subtract_masks:
+                    overlap_mask = cv2.bitwise_and(primary_mask, subtract_mask)
+                    total_overlap_pixels += int(np.count_nonzero(overlap_mask))
+                    final_mask = cv2.bitwise_and(primary_mask, cv2.bitwise_not(subtract_mask))
+                else:
+                    final_mask = primary_mask
+
+                total_final_pixels += int(np.count_nonzero(final_mask))
+                mask_writer.write(cv2.cvtColor(final_mask, cv2.COLOR_GRAY2BGR))
+        finally:
+            source_writer.release()
+            mask_writer.release()
+
+        if total_primary_pixels == 0:
+            raise ValueError("No mask pixels were found for the selected object")
+        if subtract_masks and total_overlap_pixels == 0:
+            raise ValueError("The selected subtraction mask does not overlap the primary mask")
+        if total_final_pixels == 0:
+            raise ValueError("The selected masks produced an empty occlusion-removal region")
+
+        return {
+            "fps": fps,
+            "frame_count": len(route_images),
+            "width": width,
+            "height": height,
+        }
+
+    @staticmethod
+    def _resize_video_to_dimensions(
+        *,
+        input_path: str,
+        output_path: str,
+        width: int,
+        height: int,
+        fps: float,
+    ) -> None:
+        capture = cv2.VideoCapture(input_path)
+        if not capture.isOpened():
+            raise ValueError("Failed to open generated ROSE output video")
+
+        current_width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH) or 0)
+        current_height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT) or 0)
+        current_fps = float(capture.get(cv2.CAP_PROP_FPS) or 0.0)
+        if current_width == width and current_height == height and current_fps > 0:
+            capture.release()
+            shutil.copy2(input_path, output_path)
+            return
+
+        writer = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*"mp4v"), fps, (width, height))
+        if not writer.isOpened():
+            capture.release()
+            raise ValueError("Failed to create resized output video")
+
+        try:
+            while True:
+                success, frame = capture.read()
+                if not success:
+                    break
+                if frame.shape[1] != width or frame.shape[0] != height:
+                    frame = cv2.resize(frame, (width, height), interpolation=cv2.INTER_AREA)
+                writer.write(frame)
+        finally:
+            capture.release()
+            writer.release()
+
+    def _upload_occlusion_video(
+        self,
+        *,
+        dataset: dict[str, Any],
+        output_prefix: str,
+        local_video_path: str,
+        source_task: str,
+        prompt_slug: str,
+        selection_slug: str,
+        subtract_prompt_slug: str | None,
+        fps: float,
+        frame_count: int,
+        width: int,
+        height: int,
+    ) -> str:
+        blob_name = f"{output_prefix.rstrip('/')}/rose_removed.mp4"
+        container_client = self.azure_service.get_container_client(dataset["storage_container"])
+
+        with open(local_video_path, "rb") as handle:
+            container_client.upload_blob(
+                name=blob_name,
+                data=handle,
+                overwrite=True,
+                content_settings=ContentSettings(content_type="video/mp4"),
+            )
+
+        existing_doc = self.azure_service.get_cosmos_doc_for_blob(dataset["storage_container"], blob_name) or {}
+        misc_tags = [
+            "video",
+            "occlusion_removed",
+            prompt_slug,
+            selection_slug,
+        ]
+        if subtract_prompt_slug:
+            misc_tags.append(f"minus_{subtract_prompt_slug}")
+
+        self.azure_service.upsert_cosmos_item(
+            {
+                "id": existing_doc.get("id", os.urandom(16).hex()),
+                "docType": "video_annotation",
+                "containerName": dataset["storage_container"],
+                "datasetName": output_prefix.rstrip("/"),
+                "datasetId": dataset["id"],
+                "ownerUserId": dataset["owner_user_id"],
+                "visibility": dataset["visibility"],
+                "sourceDatasetId": dataset["id"],
+                "view": "occl_del",
+                "frameName": "rose_removed.mp4",
+                "blobPath": blob_name,
+                "date": existing_doc.get("date", ""),
+                "frameId": None,
+                "width": width,
+                "height": height,
+                "miscTags": list(dict.fromkeys(tag for tag in misc_tags if tag)),
+                "task": source_task,
+                "maskPrompt": prompt_slug,
+                "occlusionSelection": selection_slug,
+                "subtractMaskPrompt": subtract_prompt_slug,
+                "VLM_tags": existing_doc.get("VLM_tags", []),
+                "VLM_tags_by_prompt": existing_doc.get("VLM_tags_by_prompt", {}),
+                "VLM_effective_prompts": existing_doc.get("VLM_effective_prompts", {}),
+                "VLM_last_prompt_label": existing_doc.get("VLM_last_prompt_label"),
+                "vlm": existing_doc.get("vlm"),
+                "sharpnessScore": None,
+                "clear": None,
+                "sourceType": "occlusion_removed_video",
+                "frameCount": frame_count,
+                "fps": fps,
+            }
+        )
+
+        return blob_name
+
+    def remove_occlusion(self, current_user: dict[str, Any], data: dict[str, Any]) -> tuple[dict[str, Any], int]:
+        route_path = str(data.get("route_path") or "").strip().strip("/")
+        include = data.get("include")
+        subtract = data.get("subtract")
+
+        if not route_path:
+            return {"error": "Missing route_path"}, 400
+        if not isinstance(include, dict):
+            return {"error": "Missing include selection"}, 400
+        if subtract is not None and not isinstance(subtract, dict):
+            return {"error": "subtract must be an object when provided"}, 400
+
+        try:
+            dataset, _extra_segments, summary = self._validate_occlusion_route(
+                current_user=current_user,
+                route_path=route_path,
+            )
+            prompt_options = {
+                option["prompt_slug"]: option
+                for option in self._build_mask_prompt_options(
+                    current_user=current_user,
+                    dataset_summary_path=summary["full_path"],
+                )
+            }
+
+            include_prompt_slug = str(include.get("prompt_slug") or "").strip()
+            if not include_prompt_slug:
+                raise ValueError("Missing primary prompt selection")
+            if include_prompt_slug not in prompt_options:
+                raise ValueError(f"Mask prompt '{include_prompt_slug}' was not found")
+
+            route_images = [
+                image
+                for image in self.dataset_service.get_dataset_images(route_path, current_user)
+                if image.get("type") == "image"
+            ]
+            route_images.sort(key=self._image_sort_key)
+            if not route_images:
+                raise ValueError("No source images were found in this folder")
+
+            include_prompt_assets = self._collect_prompt_mask_assets(
+                current_user=current_user,
+                dataset=dataset,
+                dataset_summary_path=summary["full_path"],
+                prompt_slug=include_prompt_slug,
+            )
+            include_instance_names = self._resolve_selected_instance_names(
+                selection=include,
+                prompt_options=prompt_options[include_prompt_slug],
+                prompt_assets=include_prompt_assets,
+            )
+            include_mode = str(include.get("mode") or "").strip().lower()
+            include_selection_slug = self._selection_slug(
+                include_prompt_slug,
+                include_mode,
+                include_instance_names[0] if include_mode == "instance" else None,
+            )
+
+            subtract_prompt_slug = None
+            subtract_instance_names: list[str] = []
+            subtract_prompt_assets: dict[str, list[dict[str, Any]]] = {}
+            subtract_selection_slug = ""
+            if subtract:
+                subtract_prompt_slug = str(subtract.get("prompt_slug") or "").strip()
+                if not subtract_prompt_slug:
+                    raise ValueError("Missing subtraction prompt selection")
+                if subtract_prompt_slug not in prompt_options:
+                    raise ValueError(f"Subtract prompt '{subtract_prompt_slug}' was not found")
+
+                subtract_prompt_assets = self._collect_prompt_mask_assets(
+                    current_user=current_user,
+                    dataset=dataset,
+                    dataset_summary_path=summary["full_path"],
+                    prompt_slug=subtract_prompt_slug,
+                )
+                subtract_instance_names = self._resolve_selected_instance_names(
+                    selection=subtract,
+                    prompt_options=prompt_options[subtract_prompt_slug],
+                    prompt_assets=subtract_prompt_assets,
+                )
+                subtract_mode = str(subtract.get("mode") or "").strip().lower()
+                subtract_selection_slug = self._selection_slug(
+                    subtract_prompt_slug,
+                    subtract_mode,
+                    subtract_instance_names[0] if subtract_mode == "instance" else None,
+                )
+
+            output_selection_slug = include_selection_slug
+            if subtract_prompt_slug:
+                output_selection_slug = (
+                    f"{include_selection_slug}-minus-{subtract_prompt_slug}-{subtract_selection_slug}"
+                )
+
+            output_route_path = (
+                f"{summary['full_path'].rstrip('/')}/occl_del/{include_prompt_slug}/{output_selection_slug}"
+            )
+            output_storage_prefix = (
+                f"{dataset['storage_prefix'].rstrip('/')}/occl_del/{include_prompt_slug}/{output_selection_slug}"
+            )
+
+            source_task = ""
+            for image in route_images:
+                metadata = image.get("metadata") if isinstance(image, dict) else None
+                candidate_task = str((metadata or {}).get("task") or "").strip()
+                if candidate_task:
+                    source_task = candidate_task
+                    break
+            source_task = source_task or str(dataset.get("task") or "")
+
+            job_root = tempfile.mkdtemp(prefix="occlusion_job_", dir=DATASET_LIST_DIR)
+            source_dir = os.path.join(job_root, "source_frames")
+            include_dir = os.path.join(job_root, "include_masks")
+            subtract_dir = os.path.join(job_root, "subtract_masks")
+            source_video_path = os.path.join(job_root, "source.mp4")
+            mask_video_path = os.path.join(job_root, "mask.mp4")
+            fetched_output_path = os.path.join(job_root, "rose_removed_raw.mp4")
+            final_output_path = os.path.join(job_root, "rose_removed.mp4")
+
+            try:
+                self._download_route_images(
+                    dataset=dataset,
+                    images=route_images,
+                    destination_dir=source_dir,
+                )
+                include_masks = self._download_mask_selection(
+                    dataset=dataset,
+                    prompt_assets=include_prompt_assets,
+                    selected_instance_names=include_instance_names,
+                    destination_dir=include_dir,
+                )
+                subtract_masks = {}
+                if subtract_prompt_slug:
+                    subtract_masks = self._download_mask_selection(
+                        dataset=dataset,
+                        prompt_assets=subtract_prompt_assets,
+                        selected_instance_names=subtract_instance_names,
+                        destination_dir=subtract_dir,
+                    )
+
+                video_metadata = self._compose_occlusion_videos(
+                    route_images=route_images,
+                    source_dir=source_dir,
+                    include_masks=include_masks,
+                    subtract_masks=subtract_masks,
+                    source_video_path=source_video_path,
+                    mask_video_path=mask_video_path,
+                )
+                sample_height, sample_width = self._resolve_sample_size(
+                    video_metadata["width"],
+                    video_metadata["height"],
+                )
+
+                from datara.services import call_lambda_vm
+
+                _remote_output, status_code, error_message = call_lambda_vm.remove_occlusion(
+                    local_input_video=source_video_path,
+                    local_mask_video=mask_video_path,
+                    local_output_video=fetched_output_path,
+                    prompt=self._build_occlusion_prompt(include_prompt_slug, subtract_prompt_slug),
+                    sample_height=sample_height,
+                    sample_width=sample_width,
+                )
+                if status_code != 200:
+                    return {"error": error_message or "Occlusion removal failed"}, status_code
+
+                self._resize_video_to_dimensions(
+                    input_path=fetched_output_path,
+                    output_path=final_output_path,
+                    width=video_metadata["width"],
+                    height=video_metadata["height"],
+                    fps=video_metadata["fps"],
+                )
+
+                self.azure_service.delete_blobs_with_prefix(dataset["storage_container"], output_storage_prefix)
+                self.azure_service.delete_cosmos_docs_for_prefix(dataset["storage_container"], output_storage_prefix)
+                self._upload_occlusion_video(
+                    dataset=dataset,
+                    output_prefix=output_storage_prefix,
+                    local_video_path=final_output_path,
+                    source_task=source_task,
+                    prompt_slug=include_prompt_slug,
+                    selection_slug=output_selection_slug,
+                    subtract_prompt_slug=subtract_prompt_slug,
+                    fps=video_metadata["fps"],
+                    frame_count=video_metadata["frame_count"],
+                    width=video_metadata["width"],
+                    height=video_metadata["height"],
+                )
+            finally:
+                shutil.rmtree(job_root, ignore_errors=True)
+        except Exception as exc:
+            logger.error("Error removing occlusion: %s", exc, exc_info=True)
+            return {"error": str(exc)}, 400 if isinstance(exc, ValueError) else 500
+
+        return {
+            "message": "Occlusion removal finished successfully.",
+            "output_route_path": output_route_path,
+            "output_viewer_path": f"/viewer/{output_route_path}",
+            "video_name": "rose_removed.mp4",
         }, 200
 
     def _resolve_source_asset(self, current_user: dict[str, Any], asset_id: str) -> dict[str, Any]:
@@ -722,7 +1377,7 @@ class ProcessingService:
                 return {"error": "VLM tags invocation failed"}, status_code or 500
 
             append_script = os.path.join(UTILS_DIR, "append_tags_to_image.py")
-            self._run_command(
+            subprocess.check_call(
                 [
                     sys.executable,
                     append_script,
