@@ -45,6 +45,28 @@ class ProcessingService:
         os.makedirs(DATASET_LIST_DIR, exist_ok=True)
 
     @staticmethod
+    def _open_mp4_writer(output_path: str, fps: float, width: int, height: int) -> cv2.VideoWriter:
+        effective_fps = fps if fps > 0 else 30.0
+        codec_attempts = ("avc1", "H264", "mp4v")
+        last_writer = None
+
+        for codec in codec_attempts:
+            writer = cv2.VideoWriter(
+                output_path,
+                cv2.VideoWriter_fourcc(*codec),
+                effective_fps,
+                (width, height),
+            )
+            if writer.isOpened():
+                return writer
+            last_writer = writer
+            writer.release()
+
+        if last_writer is not None:
+            last_writer.release()
+        raise ValueError(f"Failed to create MP4 video writer for {output_path}")
+
+    @staticmethod
     def _normalize_path_segment(value: str, field_name: str) -> str:
         value = str(value or "").strip().strip("/")
         if not value:
@@ -914,10 +936,11 @@ class ProcessingService:
         capture = cv2.VideoCapture(input_path)
         if not capture.isOpened():
             raise ValueError("Failed to reopen generated ROSE output video")
-        writer = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*"mp4v"), effective_fps, (width, height))
-        if not writer.isOpened():
+        try:
+            writer = self._open_mp4_writer(output_path, effective_fps, width, height)
+        except ValueError as exc:
             capture.release()
-            raise ValueError("Failed to create resized output video")
+            raise ValueError("Failed to create resized output video") from exc
 
         try:
             while True:
