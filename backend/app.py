@@ -287,6 +287,13 @@ def register_routes(app: Flask) -> None:
         payload, status_code = processing_service.remove_occlusion(current_user, data)
         return jsonify(payload), status_code
 
+    @app.route("/api/remove_occlusion/<job_id>", methods=["GET"])
+    @auth_service.require_approved_user
+    def get_occlusion_job(job_id: str):
+        current_user = auth_service.get_current_user_or_raise()
+        payload, status_code = processing_service.get_occlusion_job_status(current_user, job_id)
+        return jsonify(payload), status_code
+
     @app.route("/api/delete_dataset", methods=["POST"])
     @auth_service.require_approved_user
     def delete_dataset():
