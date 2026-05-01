@@ -15,7 +15,6 @@ from datara.logging import logger
 BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DATASET_LIST_DIR = os.path.join(BACKEND_DIR, "utils", "dataset_list")
 PROJECT_ROOT = os.path.dirname(BACKEND_DIR)
-REMOTE_RUNTIME_DIR = os.path.join(BACKEND_DIR, "remote_runtime")
 
 
 def _load_legacy_saas_config():
@@ -59,11 +58,10 @@ SAAS_ROSE_PYTHON_BIN = (
 REMOTE_USER_HOME = f"/home/{SAAS_USER}"
 REMOTE_SAAS_ROOT = os.getenv("SAAS_REMOTE_ROOT") or f"{REMOTE_USER_HOME}/Software-as-a-Service"
 REMOTE_SEGMENTATION_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "DataraAI_segmentation.py")
+REMOTE_ROSE_RUNNER_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "DataraAI_rose_occlusion.py")
+REMOTE_ROSE_VERIFY_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "verify_rose_runtime.sh")
+REMOTE_ROSE_SETUP_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "setup_rose_runtime.sh")
 REMOTE_SAM3_PACKAGE_ROOT = f"{REMOTE_USER_HOME}/packages/sam3"
-
-LOCAL_ROSE_RUNNER_SCRIPT = os.path.join(REMOTE_RUNTIME_DIR, "DataraAI_rose_occlusion.py")
-LOCAL_ROSE_SETUP_SCRIPT = os.path.join(REMOTE_RUNTIME_DIR, "setup_rose_runtime.sh")
-LOCAL_ROSE_VERIFY_SCRIPT = os.path.join(REMOTE_RUNTIME_DIR, "verify_rose_runtime.sh")
 
 
 @contextmanager
@@ -398,16 +396,15 @@ def remove_occlusion(
     window_length=49,
 ):
     """
-    Upload locally staged source/mask videos to the SaaS VM, verify the remote
-    ROSE runtime, run the lightweight ROSE occlusion script, and fetch the final
-    MP4 output locally. Returns (local_output_video, status_code, error_message).
+    Upload locally staged source/mask videos to the SaaS VM, verify the
+    SaaS-owned ROSE runtime, run the remote DataraAI_rose_occlusion.py script,
+    and fetch the final MP4 output locally.
+    Returns (local_output_video, status_code, error_message).
     """
     if not prompt:
         return None, 400, "Missing ROSE prompt"
     if not os.path.isfile(local_input_video) or not os.path.isfile(local_mask_video):
         return None, 400, "Source or mask video is missing"
-    if not os.path.isfile(LOCAL_ROSE_RUNNER_SCRIPT) or not os.path.isfile(LOCAL_ROSE_VERIFY_SCRIPT):
-        return None, 500, "Local ROSE runtime scripts are missing"
 
     os.makedirs(os.path.dirname(local_output_video), exist_ok=True)
 
@@ -415,31 +412,50 @@ def remove_occlusion(
     remote_root = f"/home/{SAAS_USER}/datara_rose_jobs/{job_id}"
     remote_input_dir = posixpath.join(remote_root, "input")
     remote_output_dir = posixpath.join(remote_root, "output")
-    remote_script_dir = posixpath.join(remote_root, "scripts")
     remote_source_video = posixpath.join(remote_input_dir, "source.mp4")
     remote_mask_video = posixpath.join(remote_input_dir, "mask.mp4")
-    remote_runner_script = posixpath.join(remote_script_dir, os.path.basename(LOCAL_ROSE_RUNNER_SCRIPT))
-    remote_verify_script = posixpath.join(remote_script_dir, os.path.basename(LOCAL_ROSE_VERIFY_SCRIPT))
 
     try:
         with _ssh_session() as ssh_client:
+            rose_runner_found, runner_err = _run_command(
+                ssh_client,
+                f'test -f "{_shell_escape(REMOTE_ROSE_RUNNER_SCRIPT)}" && echo "__FOUND__"',
+            )
+            if "__FOUND__" not in rose_runner_found:
+                logger.error(
+                    "Remote DataraAI_rose_occlusion.py was not found at %s | stderr=%s",
+                    REMOTE_ROSE_RUNNER_SCRIPT,
+                    runner_err,
+                )
+                return None, 500, "ROSE runner script was not found on the SaaS VM"
+
+            rose_verify_found, verify_err = _run_command(
+                ssh_client,
+                f'test -f "{_shell_escape(REMOTE_ROSE_VERIFY_SCRIPT)}" && echo "__FOUND__"',
+            )
+            if "__FOUND__" not in rose_verify_found:
+                logger.error(
+                    "Remote verify_rose_runtime.sh was not found at %s | stderr=%s",
+                    REMOTE_ROSE_VERIFY_SCRIPT,
+                    verify_err,
+                )
+                return None, 500, "ROSE verify script was not found on the SaaS VM"
+
             sftp = ssh_client.open_sftp()
             try:
                 _sftp_put_tree(sftp, local_input_video, remote_source_video)
                 _sftp_put_tree(sftp, local_mask_video, remote_mask_video)
-                _sftp_put_tree(sftp, LOCAL_ROSE_RUNNER_SCRIPT, remote_runner_script)
-                _sftp_put_tree(sftp, LOCAL_ROSE_VERIFY_SCRIPT, remote_verify_script)
             finally:
                 sftp.close()
 
             _run_command(
                 ssh_client,
-                f'chmod +x "{_shell_escape(remote_verify_script)}" "{_shell_escape(remote_runner_script)}"',
+                f'chmod +x "{_shell_escape(REMOTE_ROSE_VERIFY_SCRIPT)}" "{_shell_escape(REMOTE_ROSE_RUNNER_SCRIPT)}"',
             )
 
             export_prefix = _rose_env_exports()
             verify_script = export_prefix + "; " if export_prefix else ""
-            verify_script += f'bash "{remote_verify_script}"'
+            verify_script += f'bash "{REMOTE_ROSE_VERIFY_SCRIPT}"'
             _verify_stdout, verify_stderr, verify_status = _run_bash_script(ssh_client, verify_script)
             if verify_status != 0:
                 message = verify_stderr or "ROSE runtime is not installed/configured on the SaaS VM"
@@ -449,7 +465,7 @@ def remove_occlusion(
 
             runner_script = export_prefix + "; " if export_prefix else ""
             runner_script += (
-                f'"{_shell_escape(SAAS_ROSE_PYTHON_BIN)}" "{_shell_escape(remote_runner_script)}" '
+                f'"{_shell_escape(SAAS_ROSE_PYTHON_BIN)}" "{_shell_escape(REMOTE_ROSE_RUNNER_SCRIPT)}" '
                 f'--source_video "{_shell_escape(remote_source_video)}" '
                 f'--mask_video "{_shell_escape(remote_mask_video)}" '
                 f'--output_dir "{_shell_escape(remote_output_dir)}" '
