@@ -22,6 +22,19 @@ interface MaskOptionsResponse {
   prompts?: MaskPromptOption[];
 }
 
+interface OcclusionJobResponse {
+  job_id: string;
+  status: "queued" | "running" | "completed" | "failed";
+  phase: string;
+  progress_current: number;
+  progress_total: number;
+  progress_percent: number;
+  output_route_path?: string;
+  output_viewer_path?: string;
+  error?: string;
+  message?: string;
+}
+
 interface MaskGenerationPanelProps {
   routePath: string;
   imageCount: number;
@@ -34,6 +47,17 @@ interface MaskGenerationPanelProps {
 function isChecked(value: boolean | "indeterminate") {
   return value === true;
 }
+
+const OCCLUSION_PHASE_LABELS: Record<string, string> = {
+  queued: "Queued",
+  staging: "Preparing source and mask frames",
+  uploading: "Uploading inputs to the SaaS runtime",
+  running_rose: "Running ROSE inference",
+  finalizing: "Finalizing the ROSE video",
+  uploading_result: "Uploading the finished result",
+  completed: "Completed",
+  failed: "Failed",
+};
 
 export function MaskGenerationPanel({
   routePath,
@@ -69,8 +93,14 @@ export function MaskGenerationPanel({
   const [selectedSubtractInstance, setSelectedSubtractInstance] = useState("");
 
   const [isSubmittingOcclusion, setIsSubmittingOcclusion] = useState(false);
+  const [activeOcclusionJobId, setActiveOcclusionJobId] = useState("");
+  const [activeOcclusionJob, setActiveOcclusionJob] = useState<OcclusionJobResponse | null>(null);
 
   const canSubmitMask = prompt.trim().length > 0 && !isSubmittingMask;
+  const occlusionStorageKey = useMemo(
+    () => `datara:occlusion-job:${routePath}`,
+    [routePath],
+  );
 
   const primaryPromptOptions = useMemo(() => {
     const needle = primaryPromptSearch.trim().toLowerCase();
@@ -130,7 +160,13 @@ export function MaskGenerationPanel({
   }, [subtractInstanceSearch, subtractPrompt]);
 
   const canSubmitOcclusion = useMemo(() => {
-    if (isSubmittingOcclusion || isLoadingMaskOptions || maskOptions.length === 0) return false;
+    const hasActiveOcclusionJob =
+      !!activeOcclusionJobId ||
+      activeOcclusionJob?.status === "queued" ||
+      activeOcclusionJob?.status === "running";
+    if (isSubmittingOcclusion || hasActiveOcclusionJob || isLoadingMaskOptions || maskOptions.length === 0) {
+      return false;
+    }
     if (!selectedPrimaryPrompt) return false;
     if (!combinePrimaryInstances && !selectedPrimaryInstance) return false;
     if (!subtractEnabled) return true;
@@ -148,10 +184,27 @@ export function MaskGenerationPanel({
     selectedSubtractInstance,
     selectedSubtractPrompt,
     subtractEnabled,
+    activeOcclusionJobId,
+    activeOcclusionJob?.status,
   ]);
 
   const toggleSection = (section: SectionKey) =>
     setExpandedSections((previous) => ({ ...previous, [section]: !previous[section] }));
+
+  useEffect(() => {
+    setActiveOcclusionJob(null);
+    setActiveOcclusionJobId("");
+    try {
+      const raw = window.localStorage.getItem(occlusionStorageKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as { jobId?: string };
+      if (typeof parsed.jobId === "string" && parsed.jobId.trim()) {
+        setActiveOcclusionJobId(parsed.jobId.trim());
+      }
+    } catch {
+      // Ignore malformed persisted job state.
+    }
+  }, [occlusionStorageKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -205,6 +258,90 @@ export function MaskGenerationPanel({
       cancelled = true;
     };
   }, [refreshKey, routePath]);
+
+  useEffect(() => {
+    if (!activeOcclusionJobId) return;
+
+    let cancelled = false;
+    let timeoutId: number | undefined;
+
+    async function pollJob() {
+      try {
+        const response = await fetch(`/api/remove_occlusion/${encodeURIComponent(activeOcclusionJobId)}`, {
+          credentials: "include",
+        });
+
+        const data = (await response.json().catch(() => ({}))) as OcclusionJobResponse & {
+          error?: string;
+        };
+        if (!response.ok) {
+          if (response.status === 403 || response.status === 404) {
+            try {
+              window.localStorage.removeItem(occlusionStorageKey);
+            } catch {
+              // Ignore localStorage cleanup failures.
+            }
+            setActiveOcclusionJobId("");
+            setActiveOcclusionJob(null);
+            return;
+          }
+          throw new Error(data.error || "Failed to load occlusion job status");
+        }
+
+        if (cancelled) return;
+        setActiveOcclusionJob(data);
+
+        if (data.status === "completed") {
+          try {
+            window.localStorage.removeItem(occlusionStorageKey);
+          } catch {
+            // Ignore localStorage cleanup failures.
+          }
+          setActiveOcclusionJobId("");
+          onOcclusionSuccess?.();
+          toast.success("Occlusion removal finished successfully.", {
+            description: "The new ROSE output is ready under occl_del.",
+          });
+          if (typeof data.output_viewer_path === "string" && data.output_viewer_path.trim()) {
+            onOpenViewerPath(data.output_viewer_path);
+          }
+          return;
+        }
+
+        if (data.status === "failed") {
+          try {
+            window.localStorage.removeItem(occlusionStorageKey);
+          } catch {
+            // Ignore localStorage cleanup failures.
+          }
+          setActiveOcclusionJobId("");
+          toast.error("Occlusion removal failed", {
+            description: data.error || "The background ROSE job did not complete.",
+          });
+          return;
+        }
+
+        timeoutId = window.setTimeout(() => {
+          void pollJob();
+        }, 4000);
+      } catch (error) {
+        if (cancelled) return;
+        timeoutId = window.setTimeout(() => {
+          if (!cancelled) {
+            void pollJob();
+          }
+        }, 6000);
+      }
+    }
+
+    void pollJob();
+    return () => {
+      cancelled = true;
+      if (timeoutId) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [activeOcclusionJobId, occlusionStorageKey, onOcclusionSuccess, onOpenViewerPath]);
 
   useEffect(() => {
     if (!primaryPrompt?.instances.length) {
@@ -315,26 +452,20 @@ export function MaskGenerationPanel({
         throw new Error(data.error || "Occlusion removal failed");
       }
 
-      toast.success(
-        typeof data.message === "string" && data.message.trim()
-          ? data.message
-          : "Occlusion removal finished successfully.",
-        {
-          description: "A new ROSE video was saved under occl_del for this selection.",
-          action:
-            typeof data.output_viewer_path === "string" && data.output_viewer_path.trim()
-              ? {
-                  label: "Open result",
-                  onClick: () => onOpenViewerPath(data.output_viewer_path),
-                }
-              : undefined,
-        },
-      );
-
-      onOcclusionSuccess?.();
-      if (typeof data.output_viewer_path === "string" && data.output_viewer_path.trim()) {
-        onOpenViewerPath(data.output_viewer_path);
+      const job = data as OcclusionJobResponse;
+      if (!job.job_id) {
+        throw new Error("Occlusion job was accepted without returning a job id");
       }
+      setActiveOcclusionJob(job);
+      setActiveOcclusionJobId(job.job_id);
+      try {
+        window.localStorage.setItem(occlusionStorageKey, JSON.stringify({ jobId: job.job_id }));
+      } catch {
+        // Ignore localStorage persistence failures.
+      }
+      toast.success(job.message || "Occlusion removal job queued.", {
+        description: "We’ll keep tracking progress in the panel while ROSE runs in the background.",
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Occlusion removal failed";
       toast.error("Occlusion removal did not complete", {
@@ -344,6 +475,14 @@ export function MaskGenerationPanel({
       setIsSubmittingOcclusion(false);
     }
   }
+
+  const activeOcclusionPhaseLabel =
+    OCCLUSION_PHASE_LABELS[activeOcclusionJob?.phase || ""] || "Working";
+  const activeOcclusionHasProgress =
+    !!activeOcclusionJob &&
+    activeOcclusionJob.progress_total > 0 &&
+    activeOcclusionJob.status !== "completed" &&
+    activeOcclusionJob.status !== "failed";
 
   return (
     <div className="z-20 flex w-full shrink-0 flex-col border-t border-border bg-sidebar-background font-sans-tech text-xs text-muted-foreground xl:h-full xl:w-80 xl:border-l xl:border-t-0 2xl:w-96">
@@ -615,8 +754,39 @@ export function MaskGenerationPanel({
                 className="h-10 w-full font-sans-tech text-xs text-primary-foreground"
               >
                 {isSubmittingOcclusion && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                {isSubmittingOcclusion ? "Running ROSE..." : "Remove occlusion with ROSE"}
+                {isSubmittingOcclusion
+                  ? "Queueing ROSE job..."
+                  : activeOcclusionJob?.status === "queued" || activeOcclusionJob?.status === "running"
+                    ? "ROSE job in progress"
+                    : "Remove occlusion with ROSE"}
               </Button>
+
+              {activeOcclusionJob && (
+                <div className="rounded-sm border border-primary/20 bg-primary/5 px-3 py-3 text-[11px] text-muted-foreground">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-sans-tech uppercase tracking-[0.18em] text-primary">
+                      {activeOcclusionPhaseLabel}
+                    </span>
+                    <span>{activeOcclusionJob.status}</span>
+                  </div>
+                  {activeOcclusionHasProgress && (
+                    <>
+                      <div className="mt-3 h-2 overflow-hidden rounded-full bg-background/80">
+                        <div
+                          className="h-full rounded-full bg-primary transition-all"
+                          style={{ width: `${activeOcclusionJob.progress_percent}%` }}
+                        />
+                      </div>
+                      <div className="mt-2 flex items-center justify-between text-[10px] uppercase tracking-[0.12em]">
+                        <span>
+                          {activeOcclusionJob.progress_current}/{activeOcclusionJob.progress_total}
+                        </span>
+                        <span>{activeOcclusionJob.progress_percent}%</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
