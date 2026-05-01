@@ -5,6 +5,7 @@ import {
   AlertCircle,
   ArrowRight,
   Database,
+  Download,
   Folder,
   Loader2,
   LockKeyhole,
@@ -889,7 +890,7 @@ export default function DataViewer() {
     }
 
     const shouldLoadPaths = isRootLanding || isCategoryLanding || pathSearchTouched;
-    if (!shouldLoadPaths || pathSearchLoaded) return;
+    if (!shouldLoadPaths || pathSearchLoaded || pathSearchLoading) return;
 
     let cancelled = false;
 
@@ -929,6 +930,7 @@ export default function DataViewer() {
     isCategoryLanding,
     pathSearchTouched,
     pathSearchLoaded,
+    pathSearchLoading,
   ]);
 
   useEffect(() => {
@@ -1008,6 +1010,19 @@ export default function DataViewer() {
   }, [filterText, frameRange.max, frameRange.min, images, visibleTags]);
 
   const filteredFolders = useMemo(() => folders, [folders]);
+  const isOcclusionResultPath = useMemo(
+    () => pathSegments.slice(datasetRootDepth).some((segment) => segment.toLowerCase() === "occl_del"),
+    [datasetRootDepth, pathSegments],
+  );
+  const primaryOcclusionVideo = useMemo(
+    () => filteredImages.find((image) => image.type === "video") ?? null,
+    [filteredImages],
+  );
+  const gridImages = useMemo(() => {
+    if (!primaryOcclusionVideo) return filteredImages;
+    return filteredImages.filter((image) => image !== primaryOcclusionVideo);
+  }, [filteredImages, primaryOcclusionVideo]);
+  const showLeafAssetGrid = !isOcclusionResultPath || !primaryOcclusionVideo || gridImages.length > 0;
 
   const pathSuggestions = useMemo(() => {
     if (!isAuthenticated || !isApproved || !pathSearchText.trim()) return [];
@@ -1101,7 +1116,7 @@ export default function DataViewer() {
           const isClosest = bestIndex === index;
 
           const className = isClosest
-            ? "rounded-sm bg-primary/15 px-1 text-primary underline decoration-primary underline-offset-4"
+            ? "text-primary underline decoration-primary underline-offset-4"
             : isMatched
               ? "text-primary/90"
               : "";
@@ -1535,9 +1550,42 @@ export default function DataViewer() {
                   </div>
                 )}
 
-                {isLeaf && (
+                {isLeaf && isOcclusionResultPath && primaryOcclusionVideo && (
+                  <div className="mx-auto w-full max-w-6xl p-4 sm:p-6">
+                    <div className="overflow-hidden rounded-sm border border-border bg-card/20 shadow-xl shadow-black/10">
+                      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-background/70 px-4 py-3">
+                        <div>
+                          <p className="font-sans-tech text-xs uppercase tracking-[0.2em] text-primary">
+                            Occlusion Removal Output
+                          </p>
+                          <p className="mt-1 font-sans-tech text-sm text-muted-foreground">
+                            {primaryOcclusionVideo.name}
+                          </p>
+                        </div>
+                        <a
+                          href={primaryOcclusionVideo.proxy_url || primaryOcclusionVideo.url}
+                          download={primaryOcclusionVideo.name}
+                          className="inline-flex h-10 items-center gap-2 rounded-sm border border-primary/30 bg-primary/10 px-4 font-sans-tech text-xs font-medium text-primary transition-colors hover:bg-primary/20"
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                          Download video
+                        </a>
+                      </div>
+                      <div className="bg-black/60 p-2 sm:p-4">
+                        <video
+                          controls
+                          preload="metadata"
+                          src={primaryOcclusionVideo.proxy_url || primaryOcclusionVideo.url}
+                          className="w-full rounded-sm bg-black"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {isLeaf && showLeafAssetGrid && (
                   <ImageGrid
-                    images={filteredImages}
+                    images={gridImages}
                     onImageClick={setSelectedImage}
                     visibleTags={visibleTags}
                     visiblePrimitives={visiblePrimitives}
@@ -1550,7 +1598,9 @@ export default function DataViewer() {
               <MaskGenerationPanel
                 routePath={currentDisplayPath}
                 imageCount={maskSourceImageCount}
+                refreshKey={reloadTick}
                 onGenerationSuccess={() => setReloadTick((value) => value + 1)}
+                onOcclusionSuccess={() => setReloadTick((value) => value + 1)}
                 onOpenViewerPath={(viewerPath) => navigate(viewerPath)}
               />
             )}
@@ -1562,15 +1612,15 @@ export default function DataViewer() {
             image={selectedImage}
             onClose={() => setSelectedImage(null)}
             onNext={() => {
-              const index = filteredImages.indexOf(selectedImage);
-              if (index < filteredImages.length - 1) {
-                setSelectedImage(filteredImages[index + 1]);
+              const index = gridImages.indexOf(selectedImage);
+              if (index < gridImages.length - 1) {
+                setSelectedImage(gridImages[index + 1]);
               }
             }}
             onPrev={() => {
-              const index = filteredImages.indexOf(selectedImage);
+              const index = gridImages.indexOf(selectedImage);
               if (index > 0) {
-                setSelectedImage(filteredImages[index - 1]);
+                setSelectedImage(gridImages[index - 1]);
               }
             }}
             onEgoGenSuccess={() => setReloadTick((value) => value + 1)}
