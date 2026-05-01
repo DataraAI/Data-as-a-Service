@@ -102,7 +102,7 @@ def register_routes(app: Flask) -> None:
         current_user = auth_service.get_current_user_or_raise()
         return jsonify(dataset_service.get_dataset_images(route_path, current_user))
 
-    @app.route("/api/proxy/<asset_id>", methods=["GET"])
+    @app.route("/api/proxy/<asset_id>", methods=["GET", "HEAD"])
     @auth_service.require_approved_user
     def proxy_blob(asset_id: str):
         current_user = auth_service.get_current_user_or_raise()
@@ -110,14 +110,23 @@ def register_routes(app: Flask) -> None:
         container_name = asset["dataset"]["storage_container"]
         blob_name = asset["blob_name"]
         blob_client = azure_service.get_container_client(container_name).get_blob_client(blob_name)
-        stream = blob_client.download_blob()
-        blob_size = int(stream.properties.size or 0)
+        blob_properties = blob_client.get_blob_properties()
+        blob_size = int(blob_properties.size or 0)
+        mime_type = blob_properties.content_settings.content_type or "application/octet-stream"
+
+        def apply_common_headers(response: Response, *, content_length: int | None = None) -> Response:
+            response.headers["Accept-Ranges"] = "bytes"
+            if content_length is not None and content_length >= 0:
+                response.headers["Content-Length"] = str(content_length)
+            response.headers["Cache-Control"] = "no-store, no-cache, max-age=0"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Content-Disposition"] = "inline"
+            return response
 
         def generate():
+            stream = blob_client.download_blob()
             for chunk in stream.chunks():
                 yield chunk
-
-        mime_type = stream.properties.content_settings.content_type or "application/octet-stream"
         range_header = request.headers.get("Range", "").strip()
         if range_header:
             match = re.match(r"bytes=(\d+)-(\d*)", range_header)
@@ -128,24 +137,18 @@ def register_routes(app: Flask) -> None:
                     return Response(status=416, headers={"Content-Range": f"bytes */{blob_size}"})
                 end = min(end, blob_size - 1)
                 length = max(0, end - start + 1)
-                partial_stream = blob_client.download_blob(offset=start, length=length)
-                response = Response(partial_stream.readall(), 206, mimetype=mime_type, direct_passthrough=True)
-                response.headers["Accept-Ranges"] = "bytes"
+                if request.method == "HEAD":
+                    response = Response(status=206, mimetype=mime_type)
+                else:
+                    partial_stream = blob_client.download_blob(offset=start, length=length)
+                    response = Response(partial_stream.readall(), 206, mimetype=mime_type, direct_passthrough=True)
                 response.headers["Content-Range"] = f"bytes {start}-{end}/{blob_size}"
-                response.headers["Content-Length"] = str(length)
-                response.headers["Cache-Control"] = "no-store, no-cache, max-age=0"
-                response.headers["Pragma"] = "no-cache"
-                response.headers["Content-Disposition"] = "inline"
-                return response
+                return apply_common_headers(response, content_length=length)
 
+        if request.method == "HEAD":
+            return apply_common_headers(Response(status=200, mimetype=mime_type), content_length=blob_size)
         response = Response(stream_with_context(generate()), mimetype=mime_type)
-        response.headers["Accept-Ranges"] = "bytes"
-        if blob_size > 0:
-            response.headers["Content-Length"] = str(blob_size)
-        response.headers["Cache-Control"] = "no-store, no-cache, max-age=0"
-        response.headers["Pragma"] = "no-cache"
-        response.headers["Content-Disposition"] = "inline"
-        return response
+        return apply_common_headers(response, content_length=blob_size if blob_size > 0 else None)
 
     @app.route("/api/process_video", methods=["POST"])
     @auth_service.require_approved_user
