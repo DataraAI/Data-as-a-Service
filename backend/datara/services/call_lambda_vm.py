@@ -168,6 +168,7 @@ def _rose_env_exports():
         exports.append(f'export ROSE_ROOT="{_shell_escape(SAAS_ROSE_ROOT)}"')
     if SAAS_ROSE_PYTHON_BIN:
         exports.append(f'export ROSE_PYTHON_BIN="{_shell_escape(SAAS_ROSE_PYTHON_BIN)}"')
+    exports.append("export PYTHONNOUSERSITE=1")
     return "; ".join(exports)
 
 
@@ -465,7 +466,7 @@ def remove_occlusion(
 
             runner_script = export_prefix + "; " if export_prefix else ""
             runner_script += (
-                f'"{_shell_escape(SAAS_ROSE_PYTHON_BIN)}" "{_shell_escape(REMOTE_ROSE_RUNNER_SCRIPT)}" '
+                f'"{_shell_escape(SAAS_ROSE_PYTHON_BIN)}" -s "{_shell_escape(REMOTE_ROSE_RUNNER_SCRIPT)}" '
                 f'--source_video "{_shell_escape(remote_source_video)}" '
                 f'--mask_video "{_shell_escape(remote_mask_video)}" '
                 f'--output_dir "{_shell_escape(remote_output_dir)}" '
