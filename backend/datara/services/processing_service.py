@@ -868,12 +868,53 @@ class ProcessingService:
         current_width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH) or 0)
         current_height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT) or 0)
         current_fps = float(capture.get(cv2.CAP_PROP_FPS) or 0.0)
-        if current_width == width and current_height == height and current_fps > 0:
-            capture.release()
-            shutil.copy2(input_path, output_path)
-            return
+        capture.release()
 
-        writer = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*"mp4v"), fps, (width, height))
+        effective_fps = fps if fps > 0 else current_fps if current_fps > 0 else 30.0
+        ffmpeg_path = shutil.which("ffmpeg")
+        if ffmpeg_path:
+            filter_parts = []
+            if width > 0 and height > 0:
+                filter_parts.append(f"scale={width}:{height}:flags=lanczos")
+            if effective_fps > 0:
+                filter_parts.append(f"fps={effective_fps:.6f}")
+
+            command = [
+                ffmpeg_path,
+                "-y",
+                "-i",
+                input_path,
+                "-an",
+                "-c:v",
+                "libx264",
+                "-pix_fmt",
+                "yuv420p",
+                "-movflags",
+                "+faststart",
+            ]
+            if filter_parts:
+                command.extend(["-vf", ",".join(filter_parts)])
+            command.append(output_path)
+
+            completed = subprocess.run(
+                command,
+                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+            if completed.returncode == 0 and os.path.isfile(output_path):
+                return
+
+            logger.warning(
+                "ffmpeg transcode failed for occlusion output; falling back to OpenCV writer. stderr=%s",
+                (completed.stderr or completed.stdout or "").strip(),
+            )
+
+        capture = cv2.VideoCapture(input_path)
+        if not capture.isOpened():
+            raise ValueError("Failed to reopen generated ROSE output video")
+        writer = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*"mp4v"), effective_fps, (width, height))
         if not writer.isOpened():
             capture.release()
             raise ValueError("Failed to create resized output video")
