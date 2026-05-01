@@ -133,12 +133,18 @@ def register_routes(app: Flask) -> None:
                 response.headers["Accept-Ranges"] = "bytes"
                 response.headers["Content-Range"] = f"bytes {start}-{end}/{blob_size}"
                 response.headers["Content-Length"] = str(length)
+                response.headers["Cache-Control"] = "no-store, no-cache, max-age=0"
+                response.headers["Pragma"] = "no-cache"
+                response.headers["Content-Disposition"] = "inline"
                 return response
 
         response = Response(stream_with_context(generate()), mimetype=mime_type)
         response.headers["Accept-Ranges"] = "bytes"
         if blob_size > 0:
             response.headers["Content-Length"] = str(blob_size)
+        response.headers["Cache-Control"] = "no-store, no-cache, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Content-Disposition"] = "inline"
         return response
 
     @app.route("/api/process_video", methods=["POST"])
