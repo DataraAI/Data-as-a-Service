@@ -111,9 +111,32 @@ class AzureService:
 
     def delete_blobs_with_prefix(self, container_name: str, prefix: str) -> list[str]:
         deleted: list[str] = []
-        for blob in self.list_blobs(container_name, prefix):
-            self.delete_blob(container_name, blob.name)
-            deleted.append(blob.name)
+        deferred: list[str] = []
+        blobs = sorted(
+            self.list_blobs(container_name, prefix),
+            key=lambda blob: (len(getattr(blob, "name", "")), getattr(blob, "name", "")),
+            reverse=True,
+        )
+
+        for blob in blobs:
+            try:
+                self.delete_blob(container_name, blob.name)
+                deleted.append(blob.name)
+            except ResourceExistsError as exc:
+                if getattr(exc, "error_code", "") == "DirectoryIsNotEmpty" or "DirectoryIsNotEmpty" in str(exc):
+                    deferred.append(blob.name)
+                    continue
+                raise
+
+        for blob_name in deferred:
+            try:
+                self.delete_blob(container_name, blob_name)
+                deleted.append(blob_name)
+            except ResourceExistsError as exc:
+                if getattr(exc, "error_code", "") == "DirectoryIsNotEmpty" or "DirectoryIsNotEmpty" in str(exc):
+                    logger.info("Directory marker still non-empty during cleanup: %s/%s", container_name, blob_name)
+                    continue
+                raise
         return deleted
 
     def generate_sas_url(self, container_name: str, blob_name: str, expiry_hours: int = 1) -> str:
@@ -340,7 +363,7 @@ class AzureService:
         target_container: str,
         target_prefix: str,
         dataset_id: str,
-        owner_user_id: str | int,
+        owner_user_id: str,
         visibility: str,
         source_dataset_id: str | None = None,
     ) -> int:
