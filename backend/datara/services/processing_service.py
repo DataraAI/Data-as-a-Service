@@ -932,6 +932,10 @@ class ProcessingService:
                 "ffmpeg transcode failed for occlusion output; falling back to OpenCV writer. stderr=%s",
                 (completed.stderr or completed.stdout or "").strip(),
             )
+        else:
+            logger.warning(
+                "ffmpeg was not found in the backend runtime; falling back to OpenCV writer for occlusion output"
+            )
 
         capture = cv2.VideoCapture(input_path)
         if not capture.isOpened():
