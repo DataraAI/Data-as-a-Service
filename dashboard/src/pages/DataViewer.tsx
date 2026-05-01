@@ -79,6 +79,20 @@ interface ImageItem {
   };
 }
 
+function buildVersionedAssetUrl(image: ImageItem | null): string {
+  if (!image) return "";
+  const baseUrl = image.proxy_url || image.url || "";
+  if (!baseUrl) return "";
+
+  const version =
+    image.metadata?.uploaded_at ??
+    image.metadata?.date ??
+    image.metadata?.frame_id ??
+    image.asset_id;
+  const separator = baseUrl.includes("?") ? "&" : "?";
+  return `${baseUrl}${separator}v=${encodeURIComponent(String(version))}`;
+}
+
 interface VlmPromptGroup {
   prompt: string;
   tags: string[];
@@ -1018,6 +1032,10 @@ export default function DataViewer() {
     () => filteredImages.find((image) => image.type === "video") ?? null,
     [filteredImages],
   );
+  const primaryOcclusionVideoUrl = useMemo(
+    () => buildVersionedAssetUrl(primaryOcclusionVideo),
+    [primaryOcclusionVideo],
+  );
   const gridImages = useMemo(() => {
     if (!primaryOcclusionVideo) return filteredImages;
     return filteredImages.filter((image) => image !== primaryOcclusionVideo);
@@ -1561,27 +1579,29 @@ export default function DataViewer() {
                           <p className="mt-1 font-sans-tech text-sm text-muted-foreground">
                             {primaryOcclusionVideo.name}
                           </p>
-                        </div>
-                        <a
-                          href={primaryOcclusionVideo.proxy_url || primaryOcclusionVideo.url}
+                          </div>
+                          <a
+                          href={primaryOcclusionVideoUrl}
                           download={primaryOcclusionVideo.name}
-                          className="inline-flex h-10 items-center gap-2 rounded-sm border border-primary/30 bg-primary/10 px-4 font-sans-tech text-xs font-medium text-primary transition-colors hover:bg-primary/20"
-                        >
-                          <Download className="h-3.5 w-3.5" />
-                          Download video
-                        </a>
-                      </div>
-                      <div className="bg-black/60 p-2 sm:p-4">
-                        <video
-                          controls
-                          preload="metadata"
-                          src={primaryOcclusionVideo.proxy_url || primaryOcclusionVideo.url}
-                          className="w-full rounded-sm bg-black"
-                        />
+                            className="inline-flex h-10 items-center gap-2 rounded-sm border border-primary/30 bg-primary/10 px-4 font-sans-tech text-xs font-medium text-primary transition-colors hover:bg-primary/20"
+                          >
+                            <Download className="h-3.5 w-3.5" />
+                            Download video
+                          </a>
+                        </div>
+                        <div className="bg-black/60 p-2 sm:p-4">
+                          <video
+                            key={primaryOcclusionVideoUrl}
+                            controls
+                            preload="metadata"
+                            className="w-full rounded-sm bg-black"
+                          >
+                            <source src={primaryOcclusionVideoUrl} type="video/mp4" />
+                          </video>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
                 {isLeaf && showLeafAssetGrid && (
                   <ImageGrid
