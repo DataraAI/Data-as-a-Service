@@ -937,7 +937,7 @@ class ProcessingService:
         if not capture.isOpened():
             raise ValueError("Failed to reopen generated ROSE output video")
         try:
-            writer = self._open_mp4_writer(output_path, effective_fps, width, height)
+            writer = ProcessingService._open_mp4_writer(output_path, effective_fps, width, height)
         except ValueError as exc:
             capture.release()
             raise ValueError("Failed to create resized output video") from exc
