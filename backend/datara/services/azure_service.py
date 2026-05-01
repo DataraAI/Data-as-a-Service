@@ -317,8 +317,19 @@ class AzureService:
 
         for doc in docs:
             partition_value = doc.get(partition_key_field) if partition_key_field else doc["id"]
-            cosmos_container.delete_item(item=doc["id"], partition_key=partition_value)
-            deleted += 1
+            try:
+                cosmos_container.delete_item(item=doc["id"], partition_key=partition_value)
+                deleted += 1
+            except HttpResponseError as exc:
+                if getattr(exc, "status_code", None) == 404:
+                    logger.info(
+                        "Cosmos document already absent during prefix cleanup: id=%s prefix=%s partition=%s",
+                        doc.get("id"),
+                        dataset_prefix,
+                        partition_value,
+                    )
+                    continue
+                raise
         return deleted
 
     def rewrite_cosmos_docs_for_prefix(
