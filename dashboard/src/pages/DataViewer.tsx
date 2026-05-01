@@ -803,6 +803,8 @@ export default function DataViewer() {
   const [pathSearchLoaded, setPathSearchLoaded] = useState(false);
   const [pathSearchTouched, setPathSearchTouched] = useState(false);
   const [reloadTick, setReloadTick] = useState(0);
+  const [primaryOcclusionPlaybackUrl, setPrimaryOcclusionPlaybackUrl] = useState("");
+  const [occlusionVideoLoading, setOcclusionVideoLoading] = useState(false);
 
   const pathSegments = useMemo(
     () => location.pathname.split("/").filter((part) => part && part !== "viewer"),
@@ -1036,11 +1038,56 @@ export default function DataViewer() {
     () => buildVersionedAssetUrl(primaryOcclusionVideo),
     [primaryOcclusionVideo],
   );
+  const resolvedPrimaryOcclusionVideoUrl =
+    primaryOcclusionPlaybackUrl || primaryOcclusionVideoUrl;
   const gridImages = useMemo(() => {
     if (!primaryOcclusionVideo) return filteredImages;
     return filteredImages.filter((image) => image !== primaryOcclusionVideo);
   }, [filteredImages, primaryOcclusionVideo]);
   const showLeafAssetGrid = !isOcclusionResultPath || !primaryOcclusionVideo || gridImages.length > 0;
+
+  useEffect(() => {
+    let objectUrl = "";
+    let cancelled = false;
+
+    setPrimaryOcclusionPlaybackUrl("");
+    if (!primaryOcclusionVideoUrl) {
+      setOcclusionVideoLoading(false);
+      return undefined;
+    }
+
+    setOcclusionVideoLoading(true);
+
+    axios
+      .get(primaryOcclusionVideoUrl, { responseType: "blob" })
+      .then((response) => {
+        if (cancelled) return;
+        const videoBlob =
+          response.data instanceof Blob
+            ? response.data
+            : new Blob([response.data], { type: "video/mp4" });
+        objectUrl = URL.createObjectURL(videoBlob);
+        setPrimaryOcclusionPlaybackUrl(objectUrl);
+      })
+      .catch((error) => {
+        console.error("Failed to preload occlusion video blob", error);
+        if (!cancelled) {
+          setPrimaryOcclusionPlaybackUrl(primaryOcclusionVideoUrl);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setOcclusionVideoLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [primaryOcclusionVideoUrl]);
 
   const pathSuggestions = useMemo(() => {
     if (!isAuthenticated || !isApproved || !pathSearchText.trim()) return [];
@@ -1590,13 +1637,18 @@ export default function DataViewer() {
                           </a>
                         </div>
                         <div className="bg-black/60 p-2 sm:p-4">
+                          {occlusionVideoLoading && !primaryOcclusionPlaybackUrl && (
+                            <div className="flex min-h-24 items-center justify-center text-xs text-muted-foreground">
+                              Preparing video playback...
+                            </div>
+                          )}
                           <video
-                            key={primaryOcclusionVideoUrl}
+                            key={resolvedPrimaryOcclusionVideoUrl}
                             controls
                             preload="metadata"
                             className="w-full rounded-sm bg-black"
                           >
-                            <source src={primaryOcclusionVideoUrl} type="video/mp4" />
+                            <source src={resolvedPrimaryOcclusionVideoUrl} type="video/mp4" />
                           </video>
                         </div>
                       </div>
