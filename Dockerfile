@@ -17,6 +17,7 @@ FROM python:3.12-slim AS backend
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
+    ffmpeg \
     libglib2.0-0 \
     libsm6 \
     libxext6 \
@@ -66,6 +67,7 @@ FROM python:3.12-slim AS production
 
 # Install system dependencies including nginx
 RUN apt-get update && apt-get install -y \
+    ffmpeg \
     libglib2.0-0 \
     libsm6 \
     libxext6 \
