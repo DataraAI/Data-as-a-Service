@@ -1,10 +1,13 @@
 import importlib.util
+import json
 import os
 import posixpath
 import stat
+import time
 import uuid
 from contextlib import contextmanager
 from pathlib import Path
+from typing import Any, Callable
 
 import paramiko
 
@@ -15,6 +18,9 @@ from datara.logging import logger
 BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DATASET_LIST_DIR = os.path.join(BACKEND_DIR, "utils", "dataset_list")
 PROJECT_ROOT = os.path.dirname(BACKEND_DIR)
+REMOTE_RUNTIME_DIR = os.path.join(BACKEND_DIR, "remote_runtime")
+LOCAL_ROSE_RUNNER_SCRIPT = os.path.join(REMOTE_RUNTIME_DIR, "DataraAI_rose_occlusion.py")
+LOCAL_ROSE_VERIFY_SCRIPT = os.path.join(REMOTE_RUNTIME_DIR, "verify_rose_runtime.sh")
 
 
 def _load_legacy_saas_config():
@@ -160,6 +166,12 @@ def _sftp_get_tree(sftp, remote_path, local_path):
 def _shell_escape(s):
     """Escape a string for safe use inside double-quoted bash argument."""
     return s.replace("\\", "\\\\").replace('"', '\\"').replace("$", "\\$").replace("`", "\\`")
+
+
+def _decode_sftp_text(value):
+    if isinstance(value, bytes):
+        return value.decode().strip()
+    return str(value).strip()
 
 
 def _rose_env_exports():
@@ -395,6 +407,7 @@ def remove_occlusion(
     sample_height,
     sample_width,
     window_length=49,
+    status_callback: Callable[[dict[str, Any]], None] | None = None,
 ):
     """
     Upload locally staged source/mask videos to the SaaS VM, verify the
@@ -415,37 +428,20 @@ def remove_occlusion(
     remote_output_dir = posixpath.join(remote_root, "output")
     remote_source_video = posixpath.join(remote_input_dir, "source.mp4")
     remote_mask_video = posixpath.join(remote_input_dir, "mask.mp4")
+    remote_status_path = posixpath.join(remote_root, "status.json")
 
     try:
         with _ssh_session() as ssh_client:
-            rose_runner_found, runner_err = _run_command(
-                ssh_client,
-                f'test -f "{_shell_escape(REMOTE_ROSE_RUNNER_SCRIPT)}" && echo "__FOUND__"',
-            )
-            if "__FOUND__" not in rose_runner_found:
-                logger.error(
-                    "Remote DataraAI_rose_occlusion.py was not found at %s | stderr=%s",
-                    REMOTE_ROSE_RUNNER_SCRIPT,
-                    runner_err,
-                )
-                return None, 500, "ROSE runner script was not found on the SaaS VM"
-
-            rose_verify_found, verify_err = _run_command(
-                ssh_client,
-                f'test -f "{_shell_escape(REMOTE_ROSE_VERIFY_SCRIPT)}" && echo "__FOUND__"',
-            )
-            if "__FOUND__" not in rose_verify_found:
-                logger.error(
-                    "Remote verify_rose_runtime.sh was not found at %s | stderr=%s",
-                    REMOTE_ROSE_VERIFY_SCRIPT,
-                    verify_err,
-                )
-                return None, 500, "ROSE verify script was not found on the SaaS VM"
-
             sftp = ssh_client.open_sftp()
             try:
+                _sftp_put_tree(sftp, LOCAL_ROSE_RUNNER_SCRIPT, REMOTE_ROSE_RUNNER_SCRIPT)
+                _sftp_put_tree(sftp, LOCAL_ROSE_VERIFY_SCRIPT, REMOTE_ROSE_VERIFY_SCRIPT)
+                if status_callback:
+                    status_callback({"phase": "uploading", "progress_current": 0, "progress_total": 1})
                 _sftp_put_tree(sftp, local_input_video, remote_source_video)
                 _sftp_put_tree(sftp, local_mask_video, remote_mask_video)
+                if status_callback:
+                    status_callback({"phase": "uploading", "progress_current": 1, "progress_total": 1})
             finally:
                 sftp.close()
 
@@ -470,19 +466,48 @@ def remove_occlusion(
                 f'--source_video "{_shell_escape(remote_source_video)}" '
                 f'--mask_video "{_shell_escape(remote_mask_video)}" '
                 f'--output_dir "{_shell_escape(remote_output_dir)}" '
+                f'--status_path "{_shell_escape(remote_status_path)}" '
                 f'--prompt "{_shell_escape(prompt)}" '
                 f'--video_length "{int(window_length)}" '
                 f'--sample_height "{int(sample_height)}" '
                 f'--sample_width "{int(sample_width)}"'
             )
-            stdout, stderr, runner_status = _run_bash_script(ssh_client, runner_script)
+            runner_command = f'bash -lc "{_shell_escape(runner_script)}"'
+            stdin, stdout, stderr = ssh_client.exec_command(runner_command)
+            _ = stdin
+            channel = stdout.channel
+            last_status_raw = ""
+            while not channel.exit_status_ready():
+                if status_callback:
+                    try:
+                        with ssh_client.open_sftp().open(remote_status_path, "r") as status_handle:
+                            status_raw = _decode_sftp_text(status_handle.read())
+                        if status_raw and status_raw != last_status_raw:
+                            last_status_raw = status_raw
+                            status_callback(json.loads(status_raw))
+                    except Exception:
+                        pass
+                time.sleep(2)
+
+            if status_callback:
+                try:
+                    with ssh_client.open_sftp().open(remote_status_path, "r") as status_handle:
+                        status_raw = _decode_sftp_text(status_handle.read())
+                    if status_raw and status_raw != last_status_raw:
+                        status_callback(json.loads(status_raw))
+                except Exception:
+                    pass
+
+            stdout_text = stdout.read().decode().strip() if stdout else ""
+            stderr_text = stderr.read().decode().strip() if stderr else ""
+            runner_status = channel.recv_exit_status()
             if runner_status != 0:
-                logger.error("ROSE occlusion runner failed: %s", stderr or stdout)
+                logger.error("ROSE occlusion runner failed: %s", stderr_text or stdout_text)
                 _run_command(ssh_client, f'rm -rf "{_shell_escape(remote_root)}"')
-                return None, 500, stderr or stdout or "ROSE occlusion removal failed"
+                return None, 500, stderr_text or stdout_text or "ROSE occlusion removal failed"
 
             remote_output_path = ""
-            for line in reversed(stdout.splitlines()):
+            for line in reversed(stdout_text.splitlines()):
                 candidate = line.strip()
                 if candidate.endswith((".mp4", ".mov", ".m4v", ".webm")):
                     remote_output_path = candidate
@@ -497,7 +522,11 @@ def remove_occlusion(
                 if find_status == 0:
                     remote_output_path = (find_stdout.strip().splitlines()[-1].strip() if find_stdout else "") or ""
                 if not remote_output_path:
-                    logger.error("ROSE output discovery failed: stdout=%s stderr=%s", stdout, stderr or find_stderr)
+                    logger.error(
+                        "ROSE output discovery failed: stdout=%s stderr=%s",
+                        stdout_text,
+                        stderr_text or find_stderr,
+                    )
                     _run_command(ssh_client, f'rm -rf "{_shell_escape(remote_root)}"')
                     return None, 500, "ROSE completed without returning an output video"
 
