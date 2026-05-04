@@ -48,6 +48,26 @@ SAAS_KEY_PATH = (
     or os.path.expanduser("~/.ssh/azure_to_lambda")
 )
 SAAS_PYTHON_BIN = os.getenv("SAAS_PYTHON_BIN") or _legacy_saas_attr("PYTHON_BIN") or "python"
+SAAS_IMAGE_PYTHON_BIN = (
+    os.getenv("SAAS_IMAGE_PYTHON_BIN")
+    or _legacy_saas_attr("IMAGE_PYTHON_BIN")
+    or SAAS_PYTHON_BIN
+)
+SAAS_EGO_PYTHON_BIN = (
+    os.getenv("SAAS_EGO_PYTHON_BIN")
+    or _legacy_saas_attr("EGO_PYTHON_BIN")
+    or SAAS_IMAGE_PYTHON_BIN
+)
+SAAS_VLM_PYTHON_BIN = (
+    os.getenv("SAAS_VLM_PYTHON_BIN")
+    or _legacy_saas_attr("VLM_PYTHON_BIN")
+    or SAAS_IMAGE_PYTHON_BIN
+)
+SAAS_CORNER_PYTHON_BIN = (
+    os.getenv("SAAS_CORNER_PYTHON_BIN")
+    or _legacy_saas_attr("CORNER_PYTHON_BIN")
+    or SAAS_IMAGE_PYTHON_BIN
+)
 SAAS_ROSE_ROOT = os.getenv("SAAS_ROSE_ROOT") or _legacy_saas_attr("ROSE_ROOT")
 SAAS_ROSE_PYTHON_BIN = (
     os.getenv("SAAS_ROSE_PYTHON_BIN")
@@ -57,6 +77,9 @@ SAAS_ROSE_PYTHON_BIN = (
 
 REMOTE_USER_HOME = f"/home/{SAAS_USER}"
 REMOTE_SAAS_ROOT = os.getenv("SAAS_REMOTE_ROOT") or f"{REMOTE_USER_HOME}/Software-as-a-Service"
+REMOTE_IMAGE_PROMPT_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "image_prompt_tool.py")
+REMOTE_CORNER_CASE_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "Corner_case_tool.py")
+REMOTE_VLM_IMAGE_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "Post Annotation", "qwen_vlm_image.py")
 REMOTE_SEGMENTATION_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "DataraAI_segmentation.py")
 REMOTE_ROSE_RUNNER_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "DataraAI_rose_occlusion.py")
 REMOTE_ROSE_VERIFY_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "verify_rose_runtime.sh")
@@ -172,13 +195,21 @@ def _rose_env_exports():
     return "; ".join(exports)
 
 
+def _remote_image_env_prefix():
+    return (
+        f'cd "{_shell_escape(REMOTE_SAAS_ROOT)}" && '
+        f'PYTHONNOUSERSITE=1 '
+        f'PYTHONPATH="{_shell_escape(REMOTE_USER_HOME)}:{_shell_escape(REMOTE_SAAS_ROOT)}:$PYTHONPATH" '
+    )
+
+
 def generate_ego_image(prompt, imageURL, container_name, output_name):
     """
     Run ego image generation on the Lambda VM and save the result under
     backend/utils/dataset_list/{output_name}/egos/. Returns (local_path, status_code).
     """
     command = (
-        "python ~/Software-as-a-Service/image_prompt_tool.py"
+        f'"{_shell_escape(SAAS_EGO_PYTHON_BIN)}" -s "{_shell_escape(REMOTE_IMAGE_PROMPT_SCRIPT)}"'
         ' --prompt "' + _shell_escape(prompt) + '"'
         ' --imageURL "' + _shell_escape(imageURL) + '"'
         ' --container_name "' + _shell_escape(container_name) + '"'
@@ -189,7 +220,7 @@ def generate_ego_image(prompt, imageURL, container_name, output_name):
     try:
         with _ssh_session() as ssh_client:
             logger.info("datara services call_lambda_vm.generate_ego_image() SSH session established")
-            stdout, stderr = _run_command(ssh_client, command)
+            stdout, stderr = _run_command(ssh_client, _remote_image_env_prefix() + command)
             ego_image_path = (stdout.strip().split("\n")[-1].strip() if stdout else "") or ""
 
             if "/ego_images/" not in ego_image_path:
@@ -231,14 +262,14 @@ def run_vlm_tags(prompt: str, image_url: str):
     safe_prompt = _shell_escape(prompt)
     safe_url = _shell_escape(image_url)
     command = (
-        'python "$HOME/Software-as-a-Service/Post Annotation/qwen_vlm_image.py" '
+        f'"{_shell_escape(SAAS_VLM_PYTHON_BIN)}" -s "{_shell_escape(REMOTE_VLM_IMAGE_SCRIPT)}" '
         f'--prompt "{safe_prompt}" --egoURL "{safe_url}"'
     )
     logger.info("call_lambda_vm.run_vlm_tags() command: %s", command)
 
     try:
         with _ssh_session() as ssh_client:
-            stdout, stderr = _run_command(ssh_client, command)
+            stdout, stderr = _run_command(ssh_client, _remote_image_env_prefix() + command)
             remote_json_path = (stdout.strip().split("\n")[-1].strip() if stdout else "") or ""
 
             if not remote_json_path or not remote_json_path.endswith(".json"):
@@ -278,18 +309,18 @@ def invoke_corner_case(text, image_url, container_name, output_name):
     safe_url = _shell_escape(image_url)
     safe_container = _shell_escape(container_name)
     command = (
-        f'python ~/Software-as-a-Service/Corner_case_tool.py --prompt "{safe_text}" '
-        f'--imageURL "{safe_url}" --container_name "{safe_container}"'
+        f'"{_shell_escape(SAAS_CORNER_PYTHON_BIN)}" -s "{_shell_escape(REMOTE_CORNER_CASE_SCRIPT)}" '
+        f'--prompt "{safe_text}" --imageURL "{safe_url}" --container_name "{safe_container}"'
     )
     prefix = f"/corner_images_controlnet/{container_name}"
 
     try:
         with _ssh_session() as ssh_client:
-            stdout, _ = _run_command(ssh_client, command)
+            stdout, stderr = _run_command(ssh_client, _remote_image_env_prefix() + command)
 
             remote_path = (stdout.strip().split("\n")[-1].strip() if stdout else "") or ""
             if prefix not in remote_path:
-                print(f"Corner case tool failed or returned invalid path: {remote_path}")
+                logger.error("Corner case tool failed or returned invalid path: %s | stderr=%s", remote_path, stderr)
                 return None, 500
             logger.info("datara services call_lambda_vm.invoke_corner_case() remote path: %s", remote_path)
 
