@@ -63,6 +63,29 @@ const productGallery = {
   },
 } satisfies Record<string, GalleryItem>;
 
+const roboEyeViewGallery = {
+  automotive: {
+    imagePath: "carAutomation/ego_carautomation.png",
+    alt: "Automotive robot-eye-view example",
+    label: "Automotive",
+  },
+  datacenter: {
+    imagePath: "serverrack/ego_serverrack.png",
+    alt: "Data center robot-eye-view example",
+    label: "Data Center",
+  },
+  warehouse: {
+    imagePath: "warehouse/ego_warehouse.png",
+    alt: "Warehouse robot-eye-view example",
+    label: "Warehouse",
+  },
+  dexterity: {
+    imagePath: "humanoid/humanoid.png",
+    alt: "Dexterity robot-eye-view example",
+    label: "Dexterity",
+  },
+} satisfies Record<string, GalleryItem>;
+
 const productMenuItems: ProductMenuItem[] = [
   {
     label: "RoboDataHub",
@@ -143,10 +166,10 @@ const productSections: ProductSection[] = [
       },
     ],
     gallery: [
-      productGallery.automotive,
-      productGallery.datacenter,
-      productGallery.warehouse,
-      productGallery.manipulation,
+      roboEyeViewGallery.automotive,
+      roboEyeViewGallery.datacenter,
+      roboEyeViewGallery.warehouse,
+      roboEyeViewGallery.dexterity,
     ],
   },
   {
@@ -174,12 +197,7 @@ const productSections: ProductSection[] = [
           "Support manipulation learning for operations that demand steadiness, control, and consistent repeatability.",
       },
     ],
-    gallery: [
-      productGallery.manipulation,
-      productGallery.automotive,
-      productGallery.datacenter,
-      productGallery.warehouse,
-    ],
+    gallery: [],
   },
   {
     id: "robotaskmanipulator",
@@ -206,12 +224,7 @@ const productSections: ProductSection[] = [
           "Improve repeatability for multi-step routines that combine perception, manipulation, and environment state.",
       },
     ],
-    gallery: [
-      productGallery.warehouse,
-      productGallery.automotive,
-      productGallery.datacenter,
-      productGallery.manipulation,
-    ],
+    gallery: [],
   },
 ];
 
@@ -383,7 +396,6 @@ export default function Product() {
                       </span>
                     ))}
                   </div>
-
                 </div>
               </section>
 
@@ -434,11 +446,13 @@ export default function Product() {
                             ))}
                           </div>
 
-                          <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                            {section.gallery.map((item) => (
-                              <ProductImageCard key={`${section.id}-${item.label}`} item={item} />
-                            ))}
-                          </div>
+                          {section.gallery.length > 0 && (
+                            <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                              {section.gallery.map((item) => (
+                                <ProductImageCard key={`${section.id}-${item.label}`} item={item} />
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </section>
