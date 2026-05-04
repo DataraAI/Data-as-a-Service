@@ -66,13 +66,21 @@ def register_routes(app: Flask) -> None:
             }
         )
 
-    @app.route("/api/auth/login", methods=["GET"])
+    @app.route("/api/auth/login", methods=["GET", "POST"])
     def auth_login():
+        if request.method == "GET":
+            return auth_service.login_redirect()
         return auth_service.login()
+
+    @app.route("/api/auth/register", methods=["GET", "POST"])
+    def auth_register():
+        if request.method == "GET":
+            return auth_service.register_redirect()
+        return auth_service.register()
 
     @app.route("/api/auth/callback", methods=["GET"])
     def auth_callback():
-        return auth_service.handle_callback()
+        return auth_service.login_redirect()
 
     @app.route("/api/auth/logout", methods=["POST"])
     def auth_logout():
@@ -127,6 +135,7 @@ def register_routes(app: Flask) -> None:
             stream = blob_client.download_blob()
             for chunk in stream.chunks():
                 yield chunk
+
         range_header = request.headers.get("Range", "").strip()
         if range_header:
             match = re.match(r"bytes=(\d+)-(\d*)", range_header)
