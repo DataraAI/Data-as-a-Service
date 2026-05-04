@@ -320,7 +320,7 @@ export function MaskGenerationPanel({
           ? data.message
           : "Occlusion removal finished successfully.",
         {
-          description: "A new ROSE video was saved under occl_del for this selection.",
+          description: "A new video was saved under occl_del for this selection.",
           action:
             typeof data.output_viewer_path === "string" && data.output_viewer_path.trim()
               ? {
@@ -419,7 +419,7 @@ export function MaskGenerationPanel({
           {expandedSections.occlusionRemoval && (
             <div className="space-y-4 bg-background/30 px-4 pb-4">
               <p className="text-[11px] leading-relaxed text-muted-foreground">
-                Pick a mask folder, choose one instance or combine them all, and ROSE will remove
+                Pick a mask folder, choose one instance or combine them all, and we will remove
                 that object into a new occl_del result video.
               </p>
 
@@ -615,7 +615,7 @@ export function MaskGenerationPanel({
                 className="h-10 w-full font-sans-tech text-xs text-primary-foreground"
               >
                 {isSubmittingOcclusion && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                {isSubmittingOcclusion ? "Running ROSE..." : "Remove occlusion with ROSE"}
+                {isSubmittingOcclusion ? "Running model..." : "Remove occlusion"}
               </Button>
             </div>
           )}
