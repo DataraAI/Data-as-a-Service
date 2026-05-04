@@ -5,7 +5,6 @@ import {
   AlertCircle,
   ArrowRight,
   Database,
-  Download,
   Folder,
   Loader2,
   LockKeyhole,
@@ -77,20 +76,6 @@ interface ImageItem {
     owner_slug: string;
     viewer_path: string;
   };
-}
-
-function buildVersionedAssetUrl(image: ImageItem | null): string {
-  if (!image) return "";
-  const baseUrl = image.proxy_url || image.url || "";
-  if (!baseUrl) return "";
-
-  const version =
-    image.metadata?.uploaded_at ??
-    image.metadata?.date ??
-    image.metadata?.frame_id ??
-    image.asset_id;
-  const separator = baseUrl.includes("?") ? "&" : "?";
-  return `${baseUrl}${separator}v=${encodeURIComponent(String(version))}`;
 }
 
 interface VlmPromptGroup {
@@ -404,6 +389,15 @@ function pathBelongsToCategory(fullPath: string, routeKey: CategoryKey) {
 }
 
 function buildCategoryHeroImagePaths(category: CategoryConfig) {
+  if (category.routeKey === "serverrack") {
+    return [
+      "serverrack/serverrack (1).png",
+      "serverrack/serverrack1.png",
+      "serverrack/serverrack2.png",
+      "serverrack/serverrack3.png",
+    ];
+  }
+
   return [0, 1, 2, 3].map(
     (index) =>
       `${category.previewKey}/${category.previewKey}${index === 0 ? "" : index}.png`,
@@ -803,8 +797,6 @@ export default function DataViewer() {
   const [pathSearchLoaded, setPathSearchLoaded] = useState(false);
   const [pathSearchTouched, setPathSearchTouched] = useState(false);
   const [reloadTick, setReloadTick] = useState(0);
-  const [primaryOcclusionPlaybackUrl, setPrimaryOcclusionPlaybackUrl] = useState("");
-  const [occlusionVideoLoading, setOcclusionVideoLoading] = useState(false);
 
   const pathSegments = useMemo(
     () => location.pathname.split("/").filter((part) => part && part !== "viewer"),
@@ -906,7 +898,7 @@ export default function DataViewer() {
     }
 
     const shouldLoadPaths = isRootLanding || isCategoryLanding || pathSearchTouched;
-    if (!shouldLoadPaths || pathSearchLoaded || pathSearchLoading) return;
+    if (!shouldLoadPaths || pathSearchLoaded) return;
 
     let cancelled = false;
 
@@ -946,7 +938,6 @@ export default function DataViewer() {
     isCategoryLanding,
     pathSearchTouched,
     pathSearchLoaded,
-    pathSearchLoading,
   ]);
 
   useEffect(() => {
@@ -1026,68 +1017,6 @@ export default function DataViewer() {
   }, [filterText, frameRange.max, frameRange.min, images, visibleTags]);
 
   const filteredFolders = useMemo(() => folders, [folders]);
-  const isOcclusionResultPath = useMemo(
-    () => pathSegments.slice(datasetRootDepth).some((segment) => segment.toLowerCase() === "occl_del"),
-    [datasetRootDepth, pathSegments],
-  );
-  const primaryOcclusionVideo = useMemo(
-    () => filteredImages.find((image) => image.type === "video") ?? null,
-    [filteredImages],
-  );
-  const primaryOcclusionVideoUrl = useMemo(
-    () => buildVersionedAssetUrl(primaryOcclusionVideo),
-    [primaryOcclusionVideo],
-  );
-  const resolvedPrimaryOcclusionVideoUrl =
-    primaryOcclusionPlaybackUrl || primaryOcclusionVideoUrl;
-  const gridImages = useMemo(() => {
-    if (!primaryOcclusionVideo) return filteredImages;
-    return filteredImages.filter((image) => image !== primaryOcclusionVideo);
-  }, [filteredImages, primaryOcclusionVideo]);
-  const showLeafAssetGrid = !isOcclusionResultPath || !primaryOcclusionVideo || gridImages.length > 0;
-
-  useEffect(() => {
-    let objectUrl = "";
-    let cancelled = false;
-
-    setPrimaryOcclusionPlaybackUrl("");
-    if (!primaryOcclusionVideoUrl) {
-      setOcclusionVideoLoading(false);
-      return undefined;
-    }
-
-    setOcclusionVideoLoading(true);
-
-    axios
-      .get(primaryOcclusionVideoUrl, { responseType: "blob" })
-      .then((response) => {
-        if (cancelled) return;
-        const videoBlob =
-          response.data instanceof Blob
-            ? response.data
-            : new Blob([response.data], { type: "video/mp4" });
-        objectUrl = URL.createObjectURL(videoBlob);
-        setPrimaryOcclusionPlaybackUrl(objectUrl);
-      })
-      .catch((error) => {
-        console.error("Failed to preload occlusion video blob", error);
-        if (!cancelled) {
-          setPrimaryOcclusionPlaybackUrl(primaryOcclusionVideoUrl);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setOcclusionVideoLoading(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-      }
-    };
-  }, [primaryOcclusionVideoUrl]);
 
   const pathSuggestions = useMemo(() => {
     if (!isAuthenticated || !isApproved || !pathSearchText.trim()) return [];
@@ -1181,7 +1110,7 @@ export default function DataViewer() {
           const isClosest = bestIndex === index;
 
           const className = isClosest
-            ? "text-primary underline decoration-primary underline-offset-4"
+            ? "rounded-sm bg-primary/15 px-1 text-primary underline decoration-primary underline-offset-4"
             : isMatched
               ? "text-primary/90"
               : "";
@@ -1615,49 +1544,9 @@ export default function DataViewer() {
                   </div>
                 )}
 
-                {isLeaf && isOcclusionResultPath && primaryOcclusionVideo && (
-                  <div className="mx-auto w-full max-w-6xl p-4 sm:p-6">
-                    <div className="overflow-hidden rounded-sm border border-border bg-card/20 shadow-xl shadow-black/10">
-                      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-background/70 px-4 py-3">
-                        <div>
-                          <p className="font-sans-tech text-xs uppercase tracking-[0.2em] text-primary">
-                            Occlusion Removal Output
-                          </p>
-                          <p className="mt-1 font-sans-tech text-sm text-muted-foreground">
-                            {primaryOcclusionVideo.name}
-                          </p>
-                          </div>
-                          <a
-                          href={primaryOcclusionVideoUrl}
-                          download={primaryOcclusionVideo.name}
-                            className="inline-flex h-10 items-center gap-2 rounded-sm border border-primary/30 bg-primary/10 px-4 font-sans-tech text-xs font-medium text-primary transition-colors hover:bg-primary/20"
-                          >
-                            <Download className="h-3.5 w-3.5" />
-                            Download video
-                          </a>
-                        </div>
-                        <div className="bg-black/60 p-2 sm:p-4">
-                          {occlusionVideoLoading && !primaryOcclusionPlaybackUrl && (
-                            <div className="flex min-h-24 items-center justify-center text-xs text-muted-foreground">
-                              Preparing video playback...
-                            </div>
-                          )}
-                          <video
-                            key={resolvedPrimaryOcclusionVideoUrl}
-                            controls
-                            preload="metadata"
-                            className="w-full rounded-sm bg-black"
-                          >
-                            <source src={resolvedPrimaryOcclusionVideoUrl} type="video/mp4" />
-                          </video>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                {isLeaf && showLeafAssetGrid && (
+                {isLeaf && (
                   <ImageGrid
-                    images={gridImages}
+                    images={filteredImages}
                     onImageClick={setSelectedImage}
                     visibleTags={visibleTags}
                     visiblePrimitives={visiblePrimitives}
@@ -1670,9 +1559,7 @@ export default function DataViewer() {
               <MaskGenerationPanel
                 routePath={currentDisplayPath}
                 imageCount={maskSourceImageCount}
-                refreshKey={reloadTick}
                 onGenerationSuccess={() => setReloadTick((value) => value + 1)}
-                onOcclusionSuccess={() => setReloadTick((value) => value + 1)}
                 onOpenViewerPath={(viewerPath) => navigate(viewerPath)}
               />
             )}
@@ -1684,15 +1571,15 @@ export default function DataViewer() {
             image={selectedImage}
             onClose={() => setSelectedImage(null)}
             onNext={() => {
-              const index = gridImages.indexOf(selectedImage);
-              if (index < gridImages.length - 1) {
-                setSelectedImage(gridImages[index + 1]);
+              const index = filteredImages.indexOf(selectedImage);
+              if (index < filteredImages.length - 1) {
+                setSelectedImage(filteredImages[index + 1]);
               }
             }}
             onPrev={() => {
-              const index = gridImages.indexOf(selectedImage);
+              const index = filteredImages.indexOf(selectedImage);
               if (index > 0) {
-                setSelectedImage(gridImages[index - 1]);
+                setSelectedImage(filteredImages[index - 1]);
               }
             }}
             onEgoGenSuccess={() => setReloadTick((value) => value + 1)}
