@@ -383,7 +383,7 @@ class ProcessingService:
             dataset["visibility"],
         ]
         if source_dataset_id:
-            cmd.extend(["--source_dataset_id", source_dataset_id])
+            cmd.extend(["--source_dataset_id", str(source_dataset_id)])
         if create_video_annotation:
             cmd.append("--create_video_annotation")
         subprocess.check_call(cmd)
