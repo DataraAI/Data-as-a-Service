@@ -1279,40 +1279,7 @@ class ProcessingService:
         source_dataset = source["dataset"]
         source_blob = source["blob_name"]
         source_image_url = self.azure_service.generate_sas_url(source_dataset["storage_container"], source_blob, expiry_hours=2)
-        visibility = self._resolve_visibility(data.get("visibility"), source_dataset)
-        category = str(data.get("category") or source_dataset["category"]).strip()
-        brand = str(data.get("brand") or source_dataset["brand"]).strip()
-        requested_name = str(data.get("dataset_name") or "").strip()
-        owner_user = (
-            self.sql_store.get_user_by_entra_object_id(source_dataset["owner_user_id"])
-            if visibility == "private" and source_dataset["visibility"] == "private"
-            else current_user
-        )
-        owner_user = owner_user or current_user
-        if visibility == "public":
-            preferred_name = requested_name or self._auto_named_variant(source_dataset["dataset_name"], prompt, "ego")
-            dataset_name = self.sql_store.reserve_unique_dataset_name(
-                owner_user=owner_user,
-                visibility=visibility,
-                category=category,
-                brand=brand,
-                preferred_name=preferred_name,
-            )
-        else:
-            dataset_name = requested_name or self._auto_named_variant(source_dataset["dataset_name"], prompt, "ego")
-
-        target_dataset = self._build_dataset_row(
-            owner_user=owner_user,
-            created_by_user=current_user,
-            visibility=visibility,
-            category=category,
-            brand=brand,
-            dataset_name=dataset_name,
-            task=str(source["metadata"].get("task") or ""),
-            source_kind="derived_ego",
-            source_dataset_id=source_dataset["id"],
-        )
-
+        target_dataset = source_dataset
         local_root = os.path.join(DATASET_LIST_DIR, target_dataset["storage_prefix"])
         try:
             from datara.services import call_lambda_vm
@@ -1324,7 +1291,6 @@ class ProcessingService:
                 target_dataset["storage_prefix"],
             )
             if status_code != 200:
-                self.sql_store.mark_dataset_deleted(target_dataset["id"])
                 return {"error": "Ego generation failed"}, status_code
 
             self._upload_to_azure(
@@ -1338,7 +1304,6 @@ class ProcessingService:
                 source_dataset_id=source_dataset["id"],
             )
         except Exception as exc:
-            self.sql_store.mark_dataset_deleted(target_dataset["id"])
             logger.error("Error generating ego image: %s", exc, exc_info=True)
             return {"error": str(exc)}, 500
         finally:
