@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, Images, Loader2, Search, WandSparkles } from "lucide-react";
+import { Box, ChevronDown, ChevronRight, Images, Loader2, Search, WandSparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
 
-type SectionKey = "maskGeneration" | "occlusionRemoval";
+type SectionKey = "maskGeneration" | "occlusionRemoval" | "handMotion";
 
 interface MaskInstanceOption {
   instance_name: string;
@@ -26,6 +26,7 @@ interface MaskGenerationPanelProps {
   routePath: string;
   imageCount: number;
   refreshKey?: number;
+  showHandMotionGeneration?: boolean;
   onGenerationSuccess?: () => void;
   onOcclusionSuccess?: () => void;
   onOpenViewerPath: (viewerPath: string) => void;
@@ -39,6 +40,7 @@ export function MaskGenerationPanel({
   routePath,
   imageCount,
   refreshKey = 0,
+  showHandMotionGeneration = false,
   onGenerationSuccess,
   onOcclusionSuccess,
   onOpenViewerPath,
@@ -46,6 +48,7 @@ export function MaskGenerationPanel({
   const [expandedSections, setExpandedSections] = useState<Record<SectionKey, boolean>>({
     maskGeneration: true,
     occlusionRemoval: true,
+    handMotion: true,
   });
 
   const [prompt, setPrompt] = useState("");
@@ -345,6 +348,12 @@ export function MaskGenerationPanel({
     }
   }
 
+  function handleHandMotionPlaceholder() {
+    toast.info("Hand motion generation UI is ready", {
+      description: "Backend execution will be connected separately.",
+    });
+  }
+
   return (
     <div className="z-20 flex w-full shrink-0 flex-col border-t border-border bg-sidebar-background font-sans-tech text-xs text-muted-foreground xl:h-full xl:w-80 xl:border-l xl:border-t-0 2xl:w-96">
       <div className="flex items-center justify-between border-b border-border bg-background/50 p-3">
@@ -620,6 +629,43 @@ export function MaskGenerationPanel({
             </div>
           )}
         </div>
+
+        {showHandMotionGeneration && (
+          <div className="border-b border-border">
+            <button
+              type="button"
+              onClick={() => toggleSection("handMotion")}
+              className="group flex w-full items-center px-4 py-3 transition-colors hover:bg-background/80"
+            >
+              {expandedSections.handMotion ? (
+                <ChevronDown className="mr-2 h-3 w-3 text-primary" />
+              ) : (
+                <ChevronRight className="mr-2 h-3 w-3" />
+              )}
+              <span className="font-sans-tech font-bold tracking-wider text-foreground transition-colors group-hover:text-primary">
+                Hand Motion Generation
+              </span>
+            </button>
+            {expandedSections.handMotion && (
+              <div className="space-y-3 bg-background/30 px-4 pb-4">
+                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  Create 3D hand meshes from this egocentric frame sequence.
+                </p>
+                <div className="rounded-sm border border-primary/20 bg-primary/5 px-3 py-2 text-[11px] text-muted-foreground">
+                  Available for ego folders where every source image is marked egocentric.
+                </div>
+                <Button
+                  type="button"
+                  onClick={handleHandMotionPlaceholder}
+                  className="h-10 w-full font-sans-tech text-xs text-primary-foreground"
+                >
+                  <Box className="h-3.5 w-3.5" />
+                  Create hand mesh
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex justify-between border-t border-border bg-background p-3 font-sans-tech text-[10px] select-none text-muted-foreground">
