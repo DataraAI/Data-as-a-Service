@@ -11,6 +11,7 @@ from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
 from flask import Flask, Response, jsonify, request, stream_with_context
 from flask_cors import CORS
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from datara.config import settings
 from datara.logging import logger
@@ -32,6 +33,7 @@ processing_service = ProcessingService(azure_service, dataset_service, sql_store
 
 def create_app() -> Flask:
     app = Flask(__name__)
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)  # type: ignore[assignment]
     app.config.update(
         DEBUG=settings.debug,
         JSON_SORT_KEYS=False,
@@ -74,21 +76,21 @@ def register_routes(app: Flask) -> None:
             }
         )
 
-    @app.route("/api/auth/login", methods=["GET", "POST"])
+    @app.route("/api/auth/login", methods=["GET"])
+    def auth_login_redirect():
+        return auth_service.login_redirect()
+
+    @app.route("/api/auth/login", methods=["POST"])
     def auth_login():
-        if request.method == "GET":
-            return auth_service.login_redirect()
         return auth_service.login()
 
-    @app.route("/api/auth/register", methods=["GET", "POST"])
-    def auth_register():
-        if request.method == "GET":
-            return auth_service.register_redirect()
-        return auth_service.register()
+    @app.route("/api/auth/register", methods=["GET"])
+    def auth_register_redirect():
+        return auth_service.register_redirect()
 
-    @app.route("/api/auth/callback", methods=["GET"])
-    def auth_callback():
-        return auth_service.login_redirect()
+    @app.route("/api/auth/register", methods=["POST"])
+    def auth_register():
+        return auth_service.register()
 
     @app.route("/api/auth/logout", methods=["POST"])
     def auth_logout():
@@ -141,23 +143,6 @@ def register_routes(app: Flask) -> None:
         if not updated_user:
             return jsonify({"error": "User not found"}), 404
         return jsonify({"user": auth_service.serialize_managed_user(updated_user)})
-
-    @app.route("/api/admin/users/<int:user_id>", methods=["DELETE"])
-    @auth_service.require_account_manager
-    def admin_delete_user(user_id: int):
-        current_user = _require_account_manager()
-        target_user = sql_store.get_user_by_id(user_id)
-        if not target_user:
-            return jsonify({"error": "User not found"}), 404
-        if user_id == current_user["id"]:
-            return jsonify({"error": "You cannot delete your own account from this page."}), 400
-        if current_user["role"] == "analyst" and target_user["role"] == "admin":
-            return jsonify({"error": "Analysts cannot delete admin accounts"}), 403
-
-        deleted = sql_store.delete_user(user_id)
-        if not deleted:
-            return jsonify({"error": "User not found"}), 404
-        return jsonify({"ok": True, "deletedUserId": user_id})
 
     @app.route("/api/datasets", methods=["GET"])
     @auth_service.require_approved_user
@@ -344,6 +329,16 @@ def register_routes(app: Flask) -> None:
         payload, status_code = processing_service.generate_masks(current_user, data)
         return jsonify(payload), status_code
 
+    @app.route("/api/generate_hand_meshes", methods=["POST"])
+    @auth_service.require_approved_user
+    def generate_hand_meshes():
+        current_user = auth_service.get_current_user_or_raise()
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "Invalid JSON body"}), 400
+        payload, status_code = processing_service.generate_hand_meshes(current_user, data)
+        return jsonify(payload), status_code
+
     @app.route("/api/occlusion-mask-options", methods=["GET"])
     @auth_service.require_approved_user
     def get_occlusion_mask_options():
@@ -364,6 +359,13 @@ def register_routes(app: Flask) -> None:
         payload, status_code = processing_service.remove_occlusion(current_user, data)
         return jsonify(payload), status_code
 
+    @app.route("/api/remove_occlusion/<job_id>", methods=["GET"])
+    @auth_service.require_approved_user
+    def get_occlusion_job(job_id: str):
+        current_user = auth_service.get_current_user_or_raise()
+        payload, status_code = processing_service.get_occlusion_job_status(current_user, job_id)
+        return jsonify(payload), status_code
+
     @app.route("/api/delete_dataset", methods=["POST"])
     @auth_service.require_approved_user
     def delete_dataset():
@@ -376,13 +378,12 @@ def register_routes(app: Flask) -> None:
 
     @app.route("/api/stats", methods=["GET"])
     def get_stats():
-        all_rows = sql_store._fetchone("SELECT COUNT(*) AS count FROM datasets WHERE deleted_at IS NULL AND visibility = 'public'")
         return jsonify(
             {
                 "app": settings.app_name,
                 "environment": settings.environment,
                 "public_container": settings.azure_public_container,
-                "datasets_count": int(all_rows["count"]) if all_rows else 0,
+                "datasets_count": sql_store.count_datasets(visibility="public"),
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         )
@@ -427,8 +428,10 @@ def main() -> None:
     logger.info("Host: %s:%s", settings.flask_host, settings.flask_port)
     logger.info("=" * 60)
 
-    app = create_app()
     app.run(host=settings.flask_host, port=settings.flask_port, debug=settings.debug, use_reloader=False)
+
+
+app = create_app()
 
 
 if __name__ == "__main__":
