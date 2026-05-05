@@ -651,9 +651,6 @@ export function MaskGenerationPanel({
                 <p className="text-[11px] leading-relaxed text-muted-foreground">
                   Create 3D hand meshes from this egocentric frame sequence.
                 </p>
-                <div className="rounded-sm border border-primary/20 bg-primary/5 px-3 py-2 text-[11px] text-muted-foreground">
-                  Available for ego folders where every source image is marked egocentric.
-                </div>
                 <Button
                   type="button"
                   onClick={handleHandMotionPlaceholder}
