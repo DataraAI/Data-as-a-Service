@@ -968,10 +968,22 @@ export default function DataViewer() {
     () => pathSegments.slice(datasetRootDepth).some((segment) => segment.toLowerCase() === "masks"),
     [datasetRootDepth, pathSegments],
   );
-  const maskSourceImageCount = useMemo(
-    () => images.filter((image) => image.type === "image").length,
+  const sourceImages = useMemo(
+    () => images.filter((image) => image.type === "image"),
     [images],
   );
+  const maskSourceImageCount = sourceImages.length;
+  const isEgoPath = useMemo(
+    () => pathSegments.slice(datasetRootDepth).some((segment) => segment.toLowerCase() === "egos"),
+    [datasetRootDepth, pathSegments],
+  );
+  const showHandMotionGeneration = useMemo(() => {
+    if (!isLeaf || !isEgoPath || sourceImages.length === 0) return false;
+    return sourceImages.every((image) => {
+      const view = String(image.metadata?.view ?? "").trim().toLowerCase();
+      return view === "ego" || view === "egos";
+    });
+  }, [isEgoPath, isLeaf, sourceImages]);
   const showMaskPanel = isLeaf && !isMaskPath && maskSourceImageCount > 0;
 
   const allSelectableTags = useMemo(
@@ -1559,6 +1571,7 @@ export default function DataViewer() {
               <MaskGenerationPanel
                 routePath={currentDisplayPath}
                 imageCount={maskSourceImageCount}
+                showHandMotionGeneration={showHandMotionGeneration}
                 onGenerationSuccess={() => setReloadTick((value) => value + 1)}
                 onOpenViewerPath={(viewerPath) => navigate(viewerPath)}
               />
