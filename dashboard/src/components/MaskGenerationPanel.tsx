@@ -3,7 +3,18 @@ import { Box, ChevronDown, ChevronRight, Images, Loader2, Search, WandSparkles }
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
 
-type SectionKey = "maskGeneration" | "occlusionRemoval" | "handMotion";
+type SectionKey = "maskGeneration" | "occlusionRemoval" | "egocentricGeneration" | "handMotion";
+
+const EGO_CAMERA_WORK_OPTIONS = [
+  "Rotate right 45 degrees",
+  "Rotate right 90 degrees",
+  "Rotate left 45 degrees",
+  "Rotate left 90 degrees",
+  "Rotate up 45 degrees",
+  "Rotate up 90 degrees",
+  "Rotate down 45 degrees",
+  "Rotate down 90 degrees",
+];
 
 interface MaskInstanceOption {
   instance_name: string;
@@ -26,6 +37,7 @@ interface MaskGenerationPanelProps {
   routePath: string;
   imageCount: number;
   refreshKey?: number;
+  showEgocentricGeneration?: boolean;
   showHandMotionGeneration?: boolean;
   onGenerationSuccess?: () => void;
   onOcclusionSuccess?: () => void;
@@ -40,6 +52,7 @@ export function MaskGenerationPanel({
   routePath,
   imageCount,
   refreshKey = 0,
+  showEgocentricGeneration = false,
   showHandMotionGeneration = false,
   onGenerationSuccess,
   onOcclusionSuccess,
@@ -48,11 +61,13 @@ export function MaskGenerationPanel({
   const [expandedSections, setExpandedSections] = useState<Record<SectionKey, boolean>>({
     maskGeneration: true,
     occlusionRemoval: true,
+    egocentricGeneration: true,
     handMotion: true,
   });
 
   const [prompt, setPrompt] = useState("");
   const [isSubmittingMask, setIsSubmittingMask] = useState(false);
+  const [selectedEgoCameraWork, setSelectedEgoCameraWork] = useState(EGO_CAMERA_WORK_OPTIONS[0]);
 
   const [maskOptions, setMaskOptions] = useState<MaskPromptOption[]>([]);
   const [isLoadingMaskOptions, setIsLoadingMaskOptions] = useState(false);
@@ -629,6 +644,46 @@ export function MaskGenerationPanel({
             </div>
           )}
         </div>
+
+        {showEgocentricGeneration && (
+          <div className="border-b border-border">
+            <button
+              type="button"
+              onClick={() => toggleSection("egocentricGeneration")}
+              className="group flex w-full items-center px-4 py-3 transition-colors hover:bg-background/80"
+            >
+              {expandedSections.egocentricGeneration ? (
+                <ChevronDown className="mr-2 h-3 w-3 text-primary" />
+              ) : (
+                <ChevronRight className="mr-2 h-3 w-3" />
+              )}
+              <span className="font-sans-tech font-bold tracking-wider text-foreground transition-colors group-hover:text-primary">
+                Egocentric generation
+              </span>
+            </button>
+            {expandedSections.egocentricGeneration && (
+              <div className="space-y-3 bg-background/30 px-4 pb-4">
+                <select
+                  value={selectedEgoCameraWork}
+                  onChange={(event) => setSelectedEgoCameraWork(event.target.value)}
+                  className="h-10 w-full rounded-sm border border-border bg-input px-3 font-sans-tech text-xs text-foreground focus:border-primary focus:outline-none"
+                >
+                  {EGO_CAMERA_WORK_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+                <Button
+                  type="button"
+                  className="h-10 w-full font-sans-tech text-xs text-primary-foreground"
+                >
+                  Generate ego view
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
 
         {showHandMotionGeneration && (
           <div className="border-b border-border">
