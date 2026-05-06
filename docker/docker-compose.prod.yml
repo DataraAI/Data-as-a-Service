@@ -12,9 +12,12 @@ services:
     environment:
       - FLASK_ENV=production
       - PYTHONUNBUFFERED=1
+      - SAAS_KEY_PATH=/run/secrets/azure_to_lambda
     volumes:
+      - ../config:/app/config:ro
       - ./uploads:/app/backend/uploads
       - ./logs:/app/backend/logs
+      - /home/roboteyeview/.ssh/azure_to_lambda:/run/secrets/azure_to_lambda:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:5151/health')"]

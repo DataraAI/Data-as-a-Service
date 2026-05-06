@@ -7,24 +7,25 @@ import {
   Database,
   Folder,
   Loader2,
+  LockKeyhole,
   MoreVertical,
   RefreshCw,
   Search,
+  Shield,
   Terminal,
   Trash2,
-  LockKeyhole,
-  Shield,
 } from "lucide-react";
 import { Sidebar } from "../components/Sidebar";
 import { UploadModal } from "../components/UploadModal";
 import { ImageGrid } from "../components/ImageGrid";
 import { ImageModal } from "../components/ImageModal";
+import { MaskGenerationPanel } from "../components/MaskGenerationPanel";
 import Navigation from "../components/Navigation";
 import { Breadcrumbs } from "../components/Breadcrumbs";
 import { DatasetFolderCover } from "../components/DatasetFolderCover";
-import { frontPageImageUrl } from "@/lib/datasetFolderCover";
 import AuthRequiredState from "@/components/AuthRequiredState";
 import { useAuth } from "@/auth/useAuth";
+import { frontPageImageUrl } from "@/lib/datasetFolderCover";
 
 interface FolderItem {
   name: string;
@@ -41,6 +42,11 @@ interface VlmRun {
   tags?: string[];
 }
 
+interface VlmMetadata {
+  last_prompt_label?: string | null;
+  runs?: Record<string, VlmRun>;
+}
+
 interface ImageMetadata {
   uuid?: string | null;
   date?: string | null;
@@ -52,10 +58,7 @@ interface ImageMetadata {
   view?: string | null;
   task?: string | null;
   visibility?: string | null;
-  vlm?: {
-    last_prompt_label?: string | null;
-    runs?: Record<string, VlmRun>;
-  };
+  vlm?: VlmMetadata;
 }
 
 interface ImageItem {
@@ -80,58 +83,76 @@ interface VlmPromptGroup {
   tags: string[];
 }
 
+type CategoryKey = "carAutomation" | "serverrack" | "dexterity" | "warehouse";
+type StoragePreviewKey = "carAutomation" | "serverrack" | "humanoid" | "warehouse";
+
 interface CategoryConfig {
   routeKey: CategoryKey;
-  storageKey: StorageKey;
+  previewKey: StoragePreviewKey;
   label: string;
   description: string;
   helperText: string;
+  searchTitle: string;
+  searchDescription: string;
 }
 
 interface ShowcaseImageConfig {
   previewBlobPath: string;
   targetFolderPath: string;
-  targetImageName: string;
+  targetImageName?: string;
   alt: string;
 }
 
-type CategoryKey = "carAutomation" | "serverrack" | "dexterity" | "warehouse";
-type StorageKey = "carAutomation" | "serverrack" | "humanoid" | "warehouse";
-
-const CATEGORIES: readonly CategoryConfig[] = [
+const CATEGORIES: CategoryConfig[] = [
   {
     routeKey: "carAutomation",
-    storageKey: "carAutomation",
+    previewKey: "carAutomation",
     label: "Car Automation",
-    description: "Assembly, inspection, and vehicle-production data for robotics workflows across automotive environments.",
+    description:
+      "Assembly, inspection, and vehicle-production data for robotics workflows across automotive environments.",
     helperText:
-      "Browse this category to explore automotive data collections through the same polished landing flow from design_ideas, then drill down into the shared datasets that are available to signed-in users.",
+      "Browse this category to explore automotive data collections, or search directly below to jump to a specific folder path.",
+    searchTitle: "Search within Car Automation",
+    searchDescription:
+      "Find folders, scenes, or specific path matches inside the Car Automation category.",
   },
   {
     routeKey: "serverrack",
-    storageKey: "serverrack",
+    previewKey: "serverrack",
     label: "Serverrack",
-    description: "Data-center interaction, port-level operation, and maintenance-focused datasets for rack and cabling tasks.",
+    description:
+      "Data-center interaction, port-level operation, and maintenance-focused datasets for rack and cabling tasks.",
     helperText:
-      "Start here for server-rack workflows, then move into the folder grid below to open the catalogued datasets now visible through the auth-aware viewer.",
+      "Start here for server-rack workflows, then browse further or search to move directly into a relevant dataset branch.",
+    searchTitle: "Search within Serverrack",
+    searchDescription:
+      "Search inside the Serverrack category for folders related to rack operations, cabling, and maintenance.",
   },
   {
     routeKey: "dexterity",
-    storageKey: "humanoid",
+    previewKey: "humanoid",
     label: "Dexterity",
-    description: "Fine-motor manipulation and embodied task data for dexterous robotic systems operating across practical, object-centric scenarios.",
+    description:
+      "Fine-motor manipulation and embodied task data for dexterous robotic systems operating across practical, object-centric scenarios.",
     helperText:
-      "This vertical brings together dexterity-related manipulation datasets, including legacy humanoid, peeling, and washing-machine flows migrated into the shared catalog.",
+      "Use this category for dexterity-focused tasks and embodied interaction data, including peeling, washing, and practical manipulation workflows.",
+    searchTitle: "Search within Dexterity",
+    searchDescription:
+      "Search only across dexterity-related folders to narrow down the most relevant dataset path quickly.",
   },
   {
     routeKey: "warehouse",
-    storageKey: "warehouse",
+    previewKey: "warehouse",
     label: "Warehouse",
-    description: "Logistics, handling, and storage-operation data for robotic movement, picking, and material flow.",
+    description:
+      "Logistics, handling, and storage-operation data for robotic movement, picking, and material flow.",
     helperText:
-      "Use the warehouse section to browse navigation and handling datasets with the same presentation-first layout used on the stronger design_ideas branch.",
+      "Explore warehouse-oriented robotics data collections, or search within this category to find a path faster.",
+    searchTitle: "Search within Warehouse",
+    searchDescription:
+      "Search only within warehouse data paths to keep results focused and easier to navigate.",
   },
- ] as const;
+];
 
 const CATEGORY_SHOWCASES: Record<CategoryKey, ShowcaseImageConfig[]> = {
   carAutomation: [
@@ -189,27 +210,23 @@ const CATEGORY_SHOWCASES: Record<CategoryKey, ShowcaseImageConfig[]> = {
   dexterity: [
     {
       previewBlobPath: "humanoid/humanoid4.png",
-      targetFolderPath: "dexterity/peeling/peas",
-      targetImageName: "peas_0123.png",
-      alt: "Dexterity peeling example one",
+      targetFolderPath: "dexterity/Awign/dishWasher",
+      alt: "Dexterity dish washer example one",
     },
     {
       previewBlobPath: "humanoid/humanoid5.png",
-      targetFolderPath: "dexterity/peeling/peas",
-      targetImageName: "peas_0344.png",
-      alt: "Dexterity peeling example two",
+      targetFolderPath: "dexterity/Awign/dishWasherUnloading",
+      alt: "Dexterity dish washer unloading example",
     },
     {
       previewBlobPath: "humanoid/humanoid6.png",
-      targetFolderPath: "dexterity/Awign/washingMachine",
-      targetImageName: "washingMachine_0077.png",
-      alt: "Dexterity washing machine example one",
+      targetFolderPath: "dexterity/Awign/peelingPeas",
+      alt: "Dexterity peeling example",
     },
     {
       previewBlobPath: "humanoid/humanoid7.png",
       targetFolderPath: "dexterity/Awign/washingMachine",
-      targetImageName: "washingMachine_0110.png",
-      alt: "Dexterity washing machine example two",
+      alt: "Dexterity washing machine example",
     },
   ],
   warehouse: [
@@ -240,29 +257,105 @@ const CATEGORY_SHOWCASES: Record<CategoryKey, ShowcaseImageConfig[]> = {
   ],
 };
 
-function buildViewerPath(fullPath: string, imageName?: string) {
-  const encodedPath = fullPath
-    .split("/")
-    .filter(Boolean)
-    .map((segment) => encodeURIComponent(segment))
-    .join("/");
+function normalizePathSearchValue(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/\\/g, "/")
+    .replace(/\s*>\s*/g, "/")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
-  const params = new URLSearchParams();
-  if (imageName) params.set("image", imageName);
-  const query = params.toString();
-  return `/viewer/${encodedPath}${query ? `?${query}` : ""}`;
+function getPathSearchTerms(query: string): string[] {
+  return normalizePathSearchValue(query)
+    .split(/[\/\s]+/)
+    .map((term) => term.trim())
+    .filter(Boolean);
+}
+
+function getSuggestionScore(fullPath: string, query: string): number | null {
+  const normalizedPath = normalizePathSearchValue(fullPath);
+  const normalizedQuery = normalizePathSearchValue(query);
+  const queryTerms = getPathSearchTerms(query);
+
+  if (!normalizedQuery || queryTerms.length === 0) return null;
+  if (!queryTerms.every((term) => normalizedPath.includes(term))) return null;
+
+  const segments = normalizedPath.split("/").filter(Boolean);
+  const finalSegment = segments[segments.length - 1] ?? "";
+
+  if (normalizedQuery.length >= 2 && finalSegment === normalizedQuery) return 0;
+  if (normalizedQuery.length >= 2 && finalSegment.startsWith(normalizedQuery)) return 1;
+  if (normalizedQuery.length >= 2 && finalSegment.includes(normalizedQuery)) return 2;
+  if (normalizedQuery.includes("/") && normalizedPath.includes(normalizedQuery)) return 3;
+
+  let bestStartsWithDistance = Number.POSITIVE_INFINITY;
+  let bestIncludesDistance = Number.POSITIVE_INFINITY;
+
+  segments.forEach((segment, index) => {
+    const distanceFromEnd = segments.length - 1 - index;
+    if (queryTerms.some((term) => segment.startsWith(term))) {
+      bestStartsWithDistance = Math.min(bestStartsWithDistance, distanceFromEnd);
+    }
+    if (queryTerms.some((term) => segment.includes(term))) {
+      bestIncludesDistance = Math.min(bestIncludesDistance, distanceFromEnd);
+    }
+  });
+
+  if (bestStartsWithDistance !== Number.POSITIVE_INFINITY) return 10 + bestStartsWithDistance;
+  if (bestIncludesDistance !== Number.POSITIVE_INFINITY) return 20 + bestIncludesDistance;
+
+  return 50 + segments.length;
+}
+
+function getBestMatchingSegmentIndex(fullPath: string, query: string): number | null {
+  const normalizedQuery = normalizePathSearchValue(query);
+  const terms = getPathSearchTerms(query);
+  if (!normalizedQuery && terms.length === 0) return null;
+
+  const segments = fullPath.split("/").filter(Boolean);
+  let bestIndex: number | null = null;
+  let bestRank = Number.POSITIVE_INFINITY;
+
+  segments.forEach((segment, index) => {
+    const normalizedSegment = normalizePathSearchValue(segment);
+    const distanceFromEnd = segments.length - 1 - index;
+    let rank: number | null = null;
+
+    if (normalizedQuery && normalizedSegment === normalizedQuery) {
+      rank = distanceFromEnd;
+    } else if (normalizedQuery.length >= 2 && normalizedSegment.startsWith(normalizedQuery)) {
+      rank = 100 + distanceFromEnd;
+    } else if (normalizedQuery.length >= 2 && normalizedSegment.includes(normalizedQuery)) {
+      rank = 200 + distanceFromEnd;
+    } else if (terms.some((term) => normalizedSegment.startsWith(term))) {
+      rank = 300 + distanceFromEnd;
+    } else if (terms.some((term) => normalizedSegment.includes(term))) {
+      rank = 400 + distanceFromEnd;
+    }
+
+    if (rank !== null && rank < bestRank) {
+      bestRank = rank;
+      bestIndex = index;
+    }
+  });
+
+  return bestIndex;
 }
 
 function normalizeFolderResults(payload: unknown): FolderItem[] {
   if (!Array.isArray(payload)) return [];
+
   return payload
     .map((item) => {
       if (!item || typeof item !== "object") return null;
-      const record = item as FolderItem;
-      if (!record.full_path) return null;
+      const record = item as Partial<FolderItem>;
+      const fullPath = typeof record.full_path === "string" ? record.full_path.trim() : "";
+      if (!fullPath) return null;
+
       return {
-        name: record.name || record.full_path.split("/").filter(Boolean).pop() || record.full_path,
-        full_path: record.full_path,
+        name: record.name || fullPath.split("/").filter(Boolean).pop() || fullPath,
+        full_path: fullPath,
         source_path: record.source_path,
         visibility: record.visibility,
         owner_slug: record.owner_slug,
@@ -280,6 +373,51 @@ function uniqueFolderItems(items: FolderItem[]) {
     seen.add(item.full_path);
     return true;
   });
+}
+
+function getCategoryByRouteKey(value?: string | null) {
+  return CATEGORIES.find((category) => category.routeKey === value) ?? null;
+}
+
+function pathBelongsToCategory(fullPath: string, routeKey: CategoryKey) {
+  const segments = fullPath.split("/").filter(Boolean);
+  if (segments.length === 0) return false;
+  if (segments[0] === routeKey) return true;
+  if (segments[0] === "my") return segments[1] === routeKey;
+  if (segments[0] === "admin") return segments[2] === routeKey;
+  return false;
+}
+
+function buildCategoryHeroImagePaths(category: CategoryConfig) {
+  if (category.routeKey === "serverrack") {
+    return [
+      "serverrack/serverrack (1).png",
+      "serverrack/serverrack1.png",
+      "serverrack/serverrack2.png",
+      "serverrack/serverrack3.png",
+    ];
+  }
+
+  return [0, 1, 2, 3].map(
+    (index) =>
+      `${category.previewKey}/${category.previewKey}${index === 0 ? "" : index}.png`,
+  );
+}
+
+function buildViewerPath(fullPath: string, imageName?: string) {
+  const encodedPath = fullPath
+    .split("/")
+    .filter(Boolean)
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+
+  const params = new URLSearchParams();
+  if (imageName) {
+    params.set("image", imageName);
+  }
+
+  const query = params.toString();
+  return `/viewer/${encodedPath}${query ? `?${query}` : ""}`;
 }
 
 function groupVlmPromptTags(tags: string[]) {
@@ -302,6 +440,7 @@ function groupVlmPromptTags(tags: string[]) {
     if (!promptTagMap.has(prompt)) {
       promptTagMap.set(prompt, new Set());
     }
+
     promptTagMap.get(prompt)?.add(tag);
   });
 
@@ -330,12 +469,6 @@ function isDatasetRoutePath(path: string) {
   if (parts[0] === "my") return parts.length === 4;
   if (parts[0] === "admin") return parts.length === 5;
   return parts.length === 3;
-}
-
-function buildCategoryHeroImagePaths(category: CategoryConfig) {
-  return [0, 1, 2, 3].map(
-    (index) => `${category.storageKey}/${category.storageKey}${index === 0 ? "" : index}.png`,
-  );
 }
 
 function ShowcasePreviewImage({
@@ -427,43 +560,89 @@ function PathSearchPanel({
   description,
   value,
   loading,
+  suggestions,
+  placeholder,
+  submitDisabled,
+  onFocus,
   onChange,
-  onClear,
+  onSubmit,
+  onSuggestionClick,
+  renderHighlightedPath,
 }: {
   title: string;
   description: string;
   value: string;
   loading: boolean;
+  suggestions: FolderItem[];
+  placeholder: string;
+  submitDisabled: boolean;
+  onFocus: () => void;
   onChange: (value: string) => void;
-  onClear: () => void;
+  onSubmit: () => void;
+  onSuggestionClick: (fullPath: string) => void;
+  renderHighlightedPath: (fullPath: string) => ReactNode;
 }) {
   return (
     <div className="rounded-sm border border-border bg-card/20 p-6 shadow-xl shadow-black/10 md:p-8">
       <div className="max-w-3xl">
         <h3 className="mb-2 font-sans-tech text-2xl font-bold text-foreground">{title}</h3>
-        <p className="font-sans-tech text-sm leading-relaxed text-muted-foreground">{description}</p>
+        <p className="font-sans-tech text-sm leading-relaxed text-muted-foreground">
+          {description}
+        </p>
       </div>
       <div className="relative mt-6 w-full">
-        <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
-        <input
-          type="text"
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          placeholder="Filter visible folders on this page"
-          className="h-12 w-full rounded-sm border border-primary/40 bg-background/90 pl-11 pr-24 font-sans-tech text-sm text-foreground shadow-lg shadow-primary/10 placeholder:text-muted-foreground focus:border-primary focus:outline-none"
-        />
-        <div className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-2">
-          {loading && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
-          {value.trim() && (
-            <button
-              type="button"
-              onClick={onClear}
-              className="rounded-sm border border-border px-2 py-1 text-[11px] uppercase tracking-[0.16em] text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
-            >
-              Clear
-            </button>
-          )}
-        </div>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            onSubmit();
+          }}
+          className="flex flex-col gap-3 sm:flex-row"
+        >
+          <div className="relative flex-1">
+            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
+            <input
+              type="text"
+              value={value}
+              onFocus={onFocus}
+              onChange={(event) => onChange(event.target.value)}
+              placeholder={placeholder}
+              className="h-12 w-full rounded-sm border border-primary/40 bg-background/90 pl-11 pr-10 font-sans-tech text-sm text-foreground shadow-lg shadow-primary/10 placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+            />
+            {loading && (
+              <Loader2 className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-primary" />
+            )}
+          </div>
+          <button
+            type="submit"
+            disabled={submitDisabled}
+            className="inline-flex h-12 shrink-0 items-center justify-center rounded-sm border border-primary/30 bg-primary px-5 font-sans-tech text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-glow disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Open path
+          </button>
+        </form>
+
+        {value.trim() !== "" && (
+          <div className="mt-2 overflow-hidden rounded-sm border border-primary/20 bg-card/95 text-left shadow-xl shadow-black/20 backdrop-blur-sm">
+            {suggestions.length > 0 ? (
+              <div className="divide-y divide-border">
+                {suggestions.map((suggestion) => (
+                  <button
+                    key={suggestion.full_path}
+                    type="button"
+                    onClick={() => onSuggestionClick(suggestion.full_path)}
+                    className="w-full px-4 py-3 text-left transition-colors hover:bg-primary/10"
+                  >
+                    {renderHighlightedPath(suggestion.full_path)}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="px-4 py-3 font-sans-tech text-sm text-muted-foreground">
+                {loading ? "Loading paths..." : "No matching paths found"}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -500,7 +679,9 @@ function RoboDataHubTopMenu({
             Explore by vertical
           </h2>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            A top-level navigation rail for moving across RoboDataHub without relying on the left sidebar on landing pages.
+            A top-level navigation rail for moving across RoboDataHub without relying on a sticky
+            left sidebar. It keeps the industrial feel while making the landing pages lighter and
+            more flexible.
           </p>
         </div>
 
@@ -508,34 +689,45 @@ function RoboDataHubTopMenu({
           <div className="flex min-w-max gap-3">
             {menuItems.map((item, index) => {
               const isActive = activeItem === item.key;
+              const badge = item.key === "home" ? "Hub" : String(index).padStart(2, "0");
+
               return (
                 <Link
                   key={item.key}
                   to={item.href}
-                  className={`group relative flex min-h-[120px] w-[220px] flex-col justify-between rounded-[22px] border p-4 transition-all duration-300 ${
+                  className={`group w-[244px] rounded-[24px] border p-5 transition-all duration-200 ${
                     isActive
-                      ? "border-primary/60 bg-primary/12 shadow-[0_0_0_1px_rgba(31,209,107,0.28)]"
-                      : "border-border bg-background/55 hover:border-primary/35 hover:bg-card/80"
+                      ? "border-primary/35 bg-primary/10 shadow-[0_14px_40px_rgba(0,0,0,0.24)]"
+                      : "border-border/80 bg-background/60 hover:-translate-y-0.5 hover:border-primary/25 hover:bg-background/80 hover:shadow-[0_14px_40px_rgba(0,0,0,0.2)]"
                   }`}
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="font-mono-tech text-[11px] uppercase tracking-[0.2em] text-primary/80">
-                      {String(index + 1).padStart(2, "0")}
-                    </div>
-                    {isActive && (
-                      <div className="rounded-full border border-primary/50 bg-primary/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-primary">
-                        Active
-                      </div>
-                    )}
+                  <div className="flex items-start justify-between gap-4">
+                    <span
+                      className={`inline-flex h-10 min-w-10 items-center justify-center rounded-2xl border px-3 font-mono-tech text-[11px] font-bold uppercase tracking-[0.18em] ${
+                        isActive
+                          ? "border-primary/50 bg-primary text-primary-foreground"
+                          : "border-border bg-background text-foreground"
+                      }`}
+                    >
+                      {badge}
+                    </span>
+                    <span
+                      className={`rounded-full border px-2.5 py-1 font-mono-tech text-[10px] uppercase tracking-[0.16em] ${
+                        isActive
+                          ? "border-primary-glow/25 bg-primary-glow/10 text-primary-glow"
+                          : "border-border bg-background/70 text-muted-foreground"
+                      }`}
+                    >
+                      {isActive ? "Open" : "Browse"}
+                    </span>
                   </div>
-                  <div className="space-y-2">
-                    <div className="font-sans-tech text-lg font-bold text-foreground transition-colors group-hover:text-primary">
-                      {item.label}
-                    </div>
-                    <p className="line-clamp-3 text-sm leading-5 text-muted-foreground">
-                      {item.description}
-                    </p>
-                  </div>
+
+                  <span className="mt-5 block font-sans-tech text-base font-semibold text-foreground">
+                    {item.label}
+                  </span>
+                  <span className="mt-2 block text-sm leading-6 text-muted-foreground">
+                    {item.description}
+                  </span>
                 </Link>
               );
             })}
@@ -543,42 +735,6 @@ function RoboDataHubTopMenu({
         </div>
       </div>
     </section>
-  );
-}
-
-function DashboardHero({ onPrivateClick, showAdmin, onAdminClick }: { onPrivateClick: () => void; showAdmin: boolean; onAdminClick: () => void }) {
-  return (
-    <div className="rounded-sm border border-border bg-gradient-to-br from-card/30 via-background/80 to-primary/5 p-6 shadow-2xl shadow-black/10 md:p-8">
-      <div className="mb-4 inline-flex items-center gap-2 rounded-sm border border-primary/30 bg-primary/10 px-3 py-1 font-sans-tech text-xs uppercase tracking-[0.24em] text-primary">
-        Signed-In Workspace
-      </div>
-      <h1 className="font-sans-tech text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-        Browse shared and private robotics data
-      </h1>
-      <p className="mt-4 max-w-3xl font-sans-tech text-sm leading-relaxed text-muted-foreground md:text-base">
-        Public datasets stay available to any signed-in account, while uploads and derived assets can remain private to the owner. Use the shared verticals below, or jump straight into your private workspace.
-      </p>
-      <div className="mt-6 flex flex-wrap gap-3">
-        <button
-          type="button"
-          onClick={onPrivateClick}
-          className="inline-flex h-11 items-center gap-2 rounded-sm border border-primary/30 bg-primary px-5 font-sans-tech text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-glow"
-        >
-          My private data
-          <ArrowRight className="h-4 w-4" />
-        </button>
-        {showAdmin && (
-          <button
-            type="button"
-            onClick={onAdminClick}
-            className="inline-flex h-11 items-center gap-2 rounded-sm border border-border bg-background/80 px-5 font-sans-tech text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:text-primary"
-          >
-            Admin access
-            <Shield className="h-4 w-4" />
-          </button>
-        )}
-      </div>
-    </div>
   );
 }
 
@@ -603,7 +759,9 @@ function LoggedOutHub() {
               <Database className="h-5 w-5 text-primary" />
             </div>
             <div className="font-sans-tech text-xl font-bold text-foreground">{category.label}</div>
-            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{category.description}</p>
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+              {category.description}
+            </p>
           </div>
         ))}
       </div>
@@ -622,7 +780,6 @@ export default function DataViewer() {
   const [selectedImage, setSelectedImage] = useState<ImageItem | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [filterText, setFilterText] = useState("");
-  const [landingSearchText, setLandingSearchText] = useState("");
   const [folderDropdownOpen, setFolderDropdownOpen] = useState<string | null>(null);
   const [deleteModalFolder, setDeleteModalFolder] = useState<FolderItem | null>(null);
   const [deleteInProgress, setDeleteInProgress] = useState(false);
@@ -634,6 +791,11 @@ export default function DataViewer() {
     min: null,
     max: null,
   });
+  const [pathSearchText, setPathSearchText] = useState("");
+  const [allFolderPaths, setAllFolderPaths] = useState<FolderItem[]>([]);
+  const [pathSearchLoading, setPathSearchLoading] = useState(false);
+  const [pathSearchLoaded, setPathSearchLoaded] = useState(false);
+  const [pathSearchTouched, setPathSearchTouched] = useState(false);
   const [reloadTick, setReloadTick] = useState(0);
 
   const pathSegments = useMemo(
@@ -648,17 +810,17 @@ export default function DataViewer() {
   const activeCategory = useMemo(
     () =>
       pathSegments[0] && pathSegments[0] !== "my" && pathSegments[0] !== "admin"
-        ? CATEGORIES.find((category) => category.routeKey === pathSegments[0]) ?? null
+        ? getCategoryByRouteKey(pathSegments[0])
         : null,
     [pathSegments],
   );
+  const pathSearchScopeKey = activeCategory?.routeKey ?? "global";
 
   const isRootLanding = pathSegments.length === 0;
   const isCategoryLanding = Boolean(activeCategory) && pathSegments.length === 1;
 
   useEffect(() => {
     if (!isAuthenticated || !isApproved || isRootLanding) {
-      setLoading(false);
       setFolders([]);
       setImages([]);
       setAvailableTags([]);
@@ -667,9 +829,11 @@ export default function DataViewer() {
     }
 
     let cancelled = false;
+
     async function loadCurrentPath() {
       setLoading(true);
       setFolderDropdownOpen(null);
+
       try {
         const folderResponse = await axios.get<unknown[]>("/api/datasets", {
           params: { path: currentDisplayPath },
@@ -693,12 +857,16 @@ export default function DataViewer() {
           .filter(Boolean)
           .map((segment) => encodeURIComponent(segment))
           .join("/");
+
         const imageResponse = await axios.get<ImageItem[]>(`/api/dataset/${encodedPath}`);
         if (cancelled) return;
 
         const nextImages = Array.isArray(imageResponse.data) ? imageResponse.data : [];
         setImages(nextImages);
-        const allTags = Array.from(new Set(nextImages.flatMap((image) => image.tags ?? []).filter(Boolean)));
+
+        const allTags = Array.from(
+          new Set(nextImages.flatMap((image) => image.tags ?? []).filter(Boolean)),
+        );
         const grouped = groupVlmPromptTags(allTags);
         setAvailableTags(grouped.regularTags);
         setVlmPromptGroups(grouped.promptGroups);
@@ -711,7 +879,9 @@ export default function DataViewer() {
           setVlmPromptGroups([]);
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
 
@@ -722,52 +892,127 @@ export default function DataViewer() {
   }, [currentDisplayPath, isAuthenticated, isApproved, isRootLanding, isCategoryLanding, reloadTick]);
 
   useEffect(() => {
-    setLandingSearchText("");
-  }, [currentDisplayPath]);
+    if (!isAuthenticated || !isApproved) {
+      setAllFolderPaths([]);
+      setPathSearchLoaded(false);
+      return;
+    }
+
+    const shouldLoadPaths = isRootLanding || isCategoryLanding || pathSearchTouched;
+    if (!shouldLoadPaths || pathSearchLoaded) return;
+
+    let cancelled = false;
+
+    async function loadAllPaths() {
+      setPathSearchLoading(true);
+      try {
+        const response = await axios.get<unknown[]>("/api/dataset-paths", {
+          params: activeCategory ? { category: activeCategory.routeKey } : undefined,
+        });
+        if (cancelled) return;
+
+        const nextPaths = uniqueFolderItems(
+          normalizeFolderResults(response.data).sort((a, b) => a.full_path.localeCompare(b.full_path)),
+        );
+
+        setAllFolderPaths(nextPaths);
+        setPathSearchLoaded(true);
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Failed to load dataset paths", error);
+          setAllFolderPaths([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setPathSearchLoading(false);
+        }
+      }
+    }
+
+    void loadAllPaths();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isAuthenticated,
+    isApproved,
+    isRootLanding,
+    isCategoryLanding,
+    activeCategory,
+    pathSearchTouched,
+    pathSearchLoaded,
+  ]);
+
+  useEffect(() => {
+    setAllFolderPaths([]);
+    setPathSearchLoaded(false);
+  }, [reloadTick, pathSearchScopeKey]);
 
   useEffect(() => {
     if (!imageQueryParam || images.length === 0) return;
+
     const decoded = decodeURIComponent(imageQueryParam);
     const match = images.find((image) => image.name === decoded || image.id.endsWith(decoded));
-    if (match) setSelectedImage(match);
+    if (match) {
+      setSelectedImage(match);
+    }
   }, [imageQueryParam, images]);
 
   const isLeaf = useMemo(
     () => isAuthenticated && isApproved && !isRootLanding && !isCategoryLanding && folders.length === 0,
     [folders.length, isAuthenticated, isApproved, isRootLanding, isCategoryLanding],
   );
-
-  const normalizedLandingSearch = useMemo(() => landingSearchText.trim().toLowerCase(), [landingSearchText]);
-
-  const filteredRootCategories = useMemo(() => {
-    if (!normalizedLandingSearch) return CATEGORIES;
-    return CATEGORIES.filter((category) =>
-      [category.label, category.description, category.helperText]
-        .join(" ")
-        .toLowerCase()
-        .includes(normalizedLandingSearch),
-    );
-  }, [normalizedLandingSearch]);
-
-  const filteredFolders = useMemo(() => {
-    if (!normalizedLandingSearch) return folders;
-    return folders.filter((folder) =>
-      [folder.name, folder.full_path, folder.owner_slug, folder.visibility]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase()
-        .includes(normalizedLandingSearch),
-    );
-  }, [folders, normalizedLandingSearch]);
+  const datasetRootDepth = useMemo(() => {
+    if (pathSegments[0] === "my") return 4;
+    if (pathSegments[0] === "admin") return 5;
+    return 3;
+  }, [pathSegments]);
+  const isMaskPath = useMemo(
+    () => pathSegments.slice(datasetRootDepth).some((segment) => segment.toLowerCase() === "masks"),
+    [datasetRootDepth, pathSegments],
+  );
+  const sourceImages = useMemo(
+    () => images.filter((image) => image.type === "image"),
+    [images],
+  );
+  const maskSourceImageCount = sourceImages.length;
+  const isEgoPath = useMemo(
+    () => pathSegments.slice(datasetRootDepth).some((segment) => segment.toLowerCase() === "egos"),
+    [datasetRootDepth, pathSegments],
+  );
+  const isOrigPath = useMemo(
+    () => pathSegments.slice(datasetRootDepth).some((segment) => segment.toLowerCase() === "orig"),
+    [datasetRootDepth, pathSegments],
+  );
+  const showEgocentricGeneration = useMemo(() => {
+    if (!isLeaf || !isOrigPath || sourceImages.length === 0) return false;
+    return sourceImages.every((image) => {
+      const view = String(image.metadata?.view ?? "").trim().toLowerCase();
+      return view === "exo";
+    });
+  }, [isLeaf, isOrigPath, sourceImages]);
+  const showHandMotionGeneration = useMemo(() => {
+    if (!isLeaf || !isEgoPath || sourceImages.length === 0) return false;
+    return sourceImages.every((image) => {
+      const view = String(image.metadata?.view ?? "").trim().toLowerCase();
+      return view === "ego" || view === "egos";
+    });
+  }, [isEgoPath, isLeaf, sourceImages]);
+  const showMaskPanel = isLeaf && !isMaskPath && maskSourceImageCount > 0;
 
   const allSelectableTags = useMemo(
-    () => [...availableTags, ...vlmPromptGroups.flatMap((group) => group.tags)].sort((a, b) => a.localeCompare(b)),
+    () =>
+      [...availableTags, ...vlmPromptGroups.flatMap((group) => group.tags)].sort((a, b) =>
+        a.localeCompare(b),
+      ),
     [availableTags, vlmPromptGroups],
   );
 
   const matchingTagSuggestions = useMemo(() => {
     const searchValue = filterText.trim().toLowerCase();
     if (!searchValue) return [];
+
     return allSelectableTags
       .filter((tag) => !visibleTags.has(tag))
       .filter((tag) => tag.toLowerCase().includes(searchValue))
@@ -776,20 +1021,49 @@ export default function DataViewer() {
 
   const filteredImages = useMemo(() => {
     const searchValue = filterText.trim().toLowerCase();
+
     return images.filter((image) => {
       const imageTags = image.tags ?? [];
       const frameId = parseFrameIdValue(image.metadata?.frame_id);
+
       const matchesSearch =
         !searchValue ||
         image.name.toLowerCase().includes(searchValue) ||
         imageTags.some((tag) => tag.toLowerCase().includes(searchValue));
+
       const matchesTags =
         visibleTags.size === 0 || Array.from(visibleTags).every((tag) => imageTags.includes(tag));
-      const matchesMinFrame = frameRange.min == null || frameId == null || frameId >= frameRange.min;
-      const matchesMaxFrame = frameRange.max == null || frameId == null || frameId <= frameRange.max;
+
+      const matchesMinFrame =
+        frameRange.min == null || frameId == null || frameId >= frameRange.min;
+      const matchesMaxFrame =
+        frameRange.max == null || frameId == null || frameId <= frameRange.max;
+
       return matchesSearch && matchesTags && matchesMinFrame && matchesMaxFrame;
     });
   }, [filterText, frameRange.max, frameRange.min, images, visibleTags]);
+
+  const filteredFolders = useMemo(() => folders, [folders]);
+
+  const pathSuggestions = useMemo(() => {
+    if (!isAuthenticated || !isApproved || !pathSearchText.trim()) return [];
+
+    const scopedPrefix = activeCategory ? activeCategory.routeKey : null;
+
+    return allFolderPaths
+      .filter((item) => {
+        if (!scopedPrefix || isRootLanding) return true;
+        return pathBelongsToCategory(item.full_path, scopedPrefix);
+      })
+      .map((item) => ({
+        item,
+        score: getSuggestionScore(item.full_path, pathSearchText),
+      }))
+      .filter((entry): entry is { item: FolderItem; score: number } => entry.score !== null)
+      .sort((a, b) => a.score - b.score || a.item.full_path.localeCompare(b.item.full_path))
+      .slice(0, 8)
+      .map((entry) => entry.item);
+  }, [activeCategory, allFolderPaths, isAuthenticated, isApproved, isRootLanding, pathSearchText]);
 
   const itemCount = isLeaf ? filteredImages.length : filteredFolders.length;
 
@@ -815,12 +1089,28 @@ export default function DataViewer() {
     setVisibleTags((previous) => new Set(previous).add(tag));
   }
 
+  function handlePathSuggestionClick(fullPath: string) {
+    setPathSearchText("");
+    navigate(buildViewerPath(fullPath));
+  }
+
+  function handlePathSearchSubmit() {
+    if (pathSuggestions.length === 0) return;
+    handlePathSuggestionClick(pathSuggestions[0].full_path);
+  }
+
   function handleShowcaseImageClick(item: ShowcaseImageConfig) {
     navigate(buildViewerPath(item.targetFolderPath, item.targetImageName));
   }
 
+  function scrollToSubdirectories() {
+    const section = document.getElementById("category-subdirectories");
+    section?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   async function handleDeleteFolder() {
     if (!deleteModalFolder) return;
+
     setDeleteInProgress(true);
     try {
       await axios.post("/api/delete_dataset", { path: deleteModalFolder.full_path });
@@ -835,40 +1125,42 @@ export default function DataViewer() {
   }
 
   function renderHighlightedPath(fullPath: string): ReactNode {
-    if (!normalizedLandingSearch) {
-      return fullPath;
-    }
-
+    const terms = getPathSearchTerms(pathSearchText);
     const segments = fullPath.split("/").filter(Boolean);
+    const bestIndex = getBestMatchingSegmentIndex(fullPath, pathSearchText);
+
     return (
-      <>
+      <div className="font-sans-tech text-sm text-foreground">
         {segments.map((segment, index) => {
-          const lower = segment.toLowerCase();
-          const matchIndex = lower.indexOf(normalizedLandingSearch);
-          const prefix = matchIndex >= 0 ? segment.slice(0, matchIndex) : segment;
-          const matched =
-            matchIndex >= 0 ? segment.slice(matchIndex, matchIndex + normalizedLandingSearch.length) : "";
-          const suffix =
-            matchIndex >= 0 ? segment.slice(matchIndex + normalizedLandingSearch.length) : "";
+          const normalizedSegment = segment.toLowerCase();
+          const isMatched = terms.some((term) => normalizedSegment.includes(term));
+          const isClosest = bestIndex === index;
+
+          const className = isClosest
+            ? "rounded-sm bg-primary/15 px-1 text-primary underline decoration-primary underline-offset-4"
+            : isMatched
+              ? "text-primary/90"
+              : "";
 
           return (
             <span key={`${segment}-${index}`}>
-              {index > 0 && <span className="px-1 text-muted-foreground/60">/</span>}
-              {prefix}
-              {matched && <span className="rounded-sm bg-primary/15 px-0.5 text-primary">{matched}</span>}
-              {suffix}
+              <span className={className}>{segment}</span>
+              {index < segments.length - 1 && <span className="px-1 text-muted-foreground">/</span>}
             </span>
           );
         })}
-      </>
+      </div>
     );
   }
 
   function renderFolderGrid(items: FolderItem[], maxWidthClassName: string) {
     return (
-      <div className={`mx-auto grid w-full grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3 ${maxWidthClassName}`}>
+      <div
+        className={`mx-auto grid w-full grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3 ${maxWidthClassName}`}
+      >
         {items.map((folder) => {
           const isDataset = isDatasetRoutePath(folder.full_path);
+
           return (
             <div
               key={folder.full_path}
@@ -935,9 +1227,8 @@ export default function DataViewer() {
                 </div>
                 <div className="w-full text-center">
                   <span className="block break-words font-sans-tech text-lg font-bold uppercase tracking-wider text-foreground transition-colors group-hover:text-primary">
-                    {renderHighlightedPath(folder.name)}
+                    {folder.name}
                   </span>
-                  <p className="mt-2 break-all text-[11px] text-muted-foreground">{renderHighlightedPath(folder.full_path)}</p>
                   {folder.visibility && (
                     <span
                       className={`mt-2 inline-flex rounded-full px-2 py-1 text-[10px] uppercase tracking-wide ${
@@ -975,24 +1266,61 @@ export default function DataViewer() {
     <div className="mx-auto w-full max-w-[1440px] px-4 py-12 sm:px-6 md:py-16">
       <RoboDataHubTopMenu activeItem="home" />
 
-      <div className="mt-8 min-w-0 space-y-8">
-        <DashboardHero
-          onPrivateClick={() => navigate("/viewer/my")}
-          showAdmin={user?.role === "admin"}
-          onAdminClick={() => navigate(`/viewer/admin/${user?.storageSlug || ""}`)}
-        />
+      <div className="mt-8 min-w-0">
+        <div className="mb-8 max-w-3xl">
+          <div className="mb-5 inline-flex items-center gap-2 rounded-sm border border-primary/30 bg-primary/10 px-3 py-1 font-sans-tech text-xs uppercase tracking-[0.24em] text-primary">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
+            RoboDataHub
+          </div>
+          <h1 className="mb-4 font-sans-tech text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-5xl">
+            RoboDataHub
+          </h1>
+          <p className="max-w-3xl font-sans-tech text-sm leading-relaxed text-muted-foreground md:text-base">
+            Search across the full data library for a quick shortcut, or browse featured
+            categories below through presentation-ready examples that open directly in the viewer.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => navigate("/viewer/my")}
+              className="inline-flex h-11 items-center gap-2 rounded-sm border border-primary/30 bg-primary px-5 font-sans-tech text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-glow"
+            >
+              My private data
+              <ArrowRight className="h-4 w-4" />
+            </button>
+            {user?.role === "admin" && (
+              <button
+                type="button"
+                onClick={() => navigate(`/viewer/admin/${user.storageSlug}`)}
+                className="inline-flex h-11 items-center gap-2 rounded-sm border border-border bg-background/80 px-5 font-sans-tech text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:text-primary"
+              >
+                Admin access
+                <Shield className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        </div>
 
         <PathSearchPanel
-          title="Browse faster"
-          description="Filter the featured RoboDataHub verticals on this page while keeping the richer design_ideas presentation."
-          value={landingSearchText}
-          loading={loading}
-          onChange={setLandingSearchText}
-          onClear={() => setLandingSearchText("")}
+          title="Global search"
+          description="Use search to jump straight to a folder path when you already know what you want. It is the fastest way to navigate the full RoboDataHub without clicking through multiple pages."
+          value={pathSearchText}
+          loading={pathSearchLoading}
+          suggestions={pathSuggestions}
+          placeholder="Search any folder or path, e.g. BMW or carAutomation/BMW/frontGrille"
+          submitDisabled={pathSuggestions.length === 0}
+          onFocus={() => setPathSearchTouched(true)}
+          onChange={(value) => {
+            setPathSearchTouched(true);
+            setPathSearchText(value);
+          }}
+          onSubmit={handlePathSearchSubmit}
+          onSuggestionClick={handlePathSuggestionClick}
+          renderHighlightedPath={renderHighlightedPath}
         />
 
-        <div className="flex flex-col gap-8">
-          {filteredRootCategories.map((category) => (
+        <div className="mt-10 flex flex-col gap-8">
+          {CATEGORIES.map((category) => (
             <section
               key={category.routeKey}
               className="rounded-sm border border-border bg-gradient-to-br from-card/25 via-background/80 to-primary/5 p-6 shadow-2xl shadow-black/10 md:p-8"
@@ -1026,7 +1354,7 @@ export default function DataViewer() {
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
                   {CATEGORY_SHOWCASES[category.routeKey].map((item) => (
                     <ShowcasePreviewImage
-                      key={`${category.routeKey}-${item.previewBlobPath}`}
+                      key={item.previewBlobPath}
                       blobPath={item.previewBlobPath}
                       alt={item.alt}
                       onClick={() => handleShowcaseImageClick(item)}
@@ -1036,13 +1364,6 @@ export default function DataViewer() {
               </div>
             </section>
           ))}
-
-          {filteredRootCategories.length === 0 && (
-            <div className="rounded-sm border border-dashed border-border bg-card/10 py-20 text-center text-muted-foreground">
-              <AlertCircle className="mx-auto mb-4 h-12 w-12 text-muted-foreground/50" />
-              <p className="font-sans-tech text-lg">No verticals matched this filter</p>
-            </div>
-          )}
         </div>
       </div>
     </div>
@@ -1067,6 +1388,16 @@ export default function DataViewer() {
             <p className="max-w-2xl font-sans-tech text-sm leading-relaxed text-muted-foreground">
               {category.helperText}
             </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={scrollToSubdirectories}
+                className="inline-flex h-11 items-center gap-2 rounded-sm bg-primary px-5 font-sans-tech text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-glow"
+              >
+                View data
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -1082,24 +1413,33 @@ export default function DataViewer() {
 
         <div className="mt-10">
           <PathSearchPanel
-            title={`Filter ${category.label}`}
-            description="Filter the visible folder cards in this vertical without leaving the landing page."
-            value={landingSearchText}
-            loading={loading}
-            onChange={setLandingSearchText}
-            onClear={() => setLandingSearchText("")}
+            title={category.searchTitle}
+            description={category.searchDescription}
+            value={pathSearchText}
+            loading={pathSearchLoading}
+            suggestions={pathSuggestions}
+            placeholder={`Search ${category.routeKey} paths, e.g. ${category.routeKey}/bmw`}
+            submitDisabled={pathSuggestions.length === 0}
+            onFocus={() => setPathSearchTouched(true)}
+            onChange={(value) => {
+              setPathSearchTouched(true);
+              setPathSearchText(value);
+            }}
+            onSubmit={handlePathSearchSubmit}
+            onSuggestionClick={handlePathSuggestionClick}
+            renderHighlightedPath={renderHighlightedPath}
           />
         </div>
-      </div>
 
-      <div className="pt-12" id="category-subdirectories">
-        <div className="mx-auto mb-6 flex max-w-6xl items-center gap-2">
-          <div className="h-4 w-1 bg-primary" />
-          <h2 className="font-sans-tech text-lg font-bold uppercase tracking-widest text-muted-foreground">
-            {category.label} Subdirectories
-          </h2>
+        <div className="pt-12" id="category-subdirectories">
+          <div className="mx-auto mb-6 flex max-w-6xl items-center gap-2">
+            <div className="h-4 w-1 bg-primary" />
+            <h2 className="font-sans-tech text-lg font-bold uppercase tracking-widest text-muted-foreground">
+              {category.label} Subdirectories
+            </h2>
+          </div>
+          {renderFolderGrid(filteredFolders, "max-w-6xl")}
         </div>
-        {renderFolderGrid(filteredFolders, "max-w-6xl")}
       </div>
     </div>
   );
@@ -1145,12 +1485,12 @@ export default function DataViewer() {
           isRootLanding ? (
             <LoggedOutHub />
           ) : (
-            <div className="mx-auto w-full max-w-[1440px] flex-1 px-4 py-10 sm:px-6">
+            <div className="mx-auto flex-1 w-full max-w-[1440px] px-4 py-10 sm:px-6">
               <AuthRequiredState description="Sign in before viewing dataset contents. Public datasets stay available to signed-in users only." />
             </div>
           )
         ) : !isApproved ? (
-          <div className="mx-auto w-full max-w-[1440px] flex-1 px-4 py-10 sm:px-6">
+          <div className="mx-auto flex-1 w-full max-w-[1440px] px-4 py-10 sm:px-6">
             <AuthRequiredState />
           </div>
         ) : (
@@ -1213,7 +1553,6 @@ export default function DataViewer() {
                 )}
 
                 {isRootLanding && renderRootLanding()}
-
                 {isCategoryLanding && activeCategory && renderCategoryLanding(activeCategory)}
 
                 {!isRootLanding && !isCategoryLanding && !isLeaf && (
@@ -1242,6 +1581,17 @@ export default function DataViewer() {
                 )}
               </div>
             </div>
+
+            {showMaskPanel && (
+              <MaskGenerationPanel
+                routePath={currentDisplayPath}
+                imageCount={maskSourceImageCount}
+                showEgocentricGeneration={showEgocentricGeneration}
+                showHandMotionGeneration={showHandMotionGeneration}
+                onGenerationSuccess={() => setReloadTick((value) => value + 1)}
+                onOpenViewerPath={(viewerPath) => navigate(viewerPath)}
+              />
+            )}
           </div>
         )}
 
@@ -1251,11 +1601,15 @@ export default function DataViewer() {
             onClose={() => setSelectedImage(null)}
             onNext={() => {
               const index = filteredImages.indexOf(selectedImage);
-              if (index < filteredImages.length - 1) setSelectedImage(filteredImages[index + 1]);
+              if (index < filteredImages.length - 1) {
+                setSelectedImage(filteredImages[index + 1]);
+              }
             }}
             onPrev={() => {
               const index = filteredImages.indexOf(selectedImage);
-              if (index > 0) setSelectedImage(filteredImages[index - 1]);
+              if (index > 0) {
+                setSelectedImage(filteredImages[index - 1]);
+              }
             }}
             onEgoGenSuccess={() => setReloadTick((value) => value + 1)}
             onCornerCaseSuccess={() => setReloadTick((value) => value + 1)}
@@ -1276,12 +1630,12 @@ export default function DataViewer() {
               onClick={(event) => event.stopPropagation()}
             >
               <h3 className="mb-2 font-sans-tech text-lg font-bold text-foreground">
-                Delete dataset?
+                Delete path and subdirectories?
               </h3>
               <p className="mb-1 font-sans-tech text-sm text-muted-foreground">
                 You are about to delete{" "}
-                <span className="font-medium text-foreground">{deleteModalFolder.full_path}</span> and
-                all of its contents.
+                <span className="font-medium text-foreground">{deleteModalFolder.full_path}</span>{" "}
+                and all of its contents.
               </p>
               <p className="mb-6 font-sans-tech text-xs text-destructive/90">
                 This action cannot be undone.

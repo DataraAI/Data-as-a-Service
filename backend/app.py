@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 from datetime import datetime, timedelta, timezone
 
@@ -73,21 +74,21 @@ def register_routes(app: Flask) -> None:
             }
         )
 
-    @app.route("/api/auth/login", methods=["GET"])
-    def auth_login_redirect():
-        return auth_service.login_redirect()
-
-    @app.route("/api/auth/login", methods=["POST"])
+    @app.route("/api/auth/login", methods=["GET", "POST"])
     def auth_login():
+        if request.method == "GET":
+            return auth_service.login_redirect()
         return auth_service.login()
 
-    @app.route("/api/auth/register", methods=["GET"])
-    def auth_register_redirect():
-        return auth_service.register_redirect()
-
-    @app.route("/api/auth/register", methods=["POST"])
+    @app.route("/api/auth/register", methods=["GET", "POST"])
     def auth_register():
+        if request.method == "GET":
+            return auth_service.register_redirect()
         return auth_service.register()
+
+    @app.route("/api/auth/callback", methods=["GET"])
+    def auth_callback():
+        return auth_service.login_redirect()
 
     @app.route("/api/auth/logout", methods=["POST"])
     def auth_logout():
@@ -148,12 +149,14 @@ def register_routes(app: Flask) -> None:
         target_user = sql_store.get_user_by_id(user_id)
         if not target_user:
             return jsonify({"error": "User not found"}), 404
-        if current_user["id"] == user_id:
-            return jsonify({"error": "You cannot delete your own account from this page"}), 400
+        if user_id == current_user["id"]:
+            return jsonify({"error": "You cannot delete your own account from this page."}), 400
         if current_user["role"] == "analyst" and target_user["role"] == "admin":
             return jsonify({"error": "Analysts cannot delete admin accounts"}), 403
 
-        sql_store.delete_user(user_id)
+        deleted = sql_store.delete_user(user_id)
+        if not deleted:
+            return jsonify({"error": "User not found"}), 404
         return jsonify({"ok": True, "deletedUserId": user_id})
 
     @app.route("/api/datasets", methods=["GET"])
@@ -167,7 +170,8 @@ def register_routes(app: Flask) -> None:
     @auth_service.require_approved_user
     def get_dataset_paths():
         current_user = auth_service.get_current_user_or_raise()
-        return jsonify(dataset_service.list_all_dataset_paths(current_user))
+        category = str(request.args.get("category") or "").strip() or None
+        return jsonify(dataset_service.list_all_dataset_paths(current_user, category=category))
 
     @app.route("/api/dataset/<path:route_path>", methods=["GET"])
     @auth_service.require_approved_user
@@ -175,19 +179,54 @@ def register_routes(app: Flask) -> None:
         current_user = auth_service.get_current_user_or_raise()
         return jsonify(dataset_service.get_dataset_images(route_path, current_user))
 
-    @app.route("/api/proxy/<asset_id>", methods=["GET"])
+    @app.route("/api/proxy/<asset_id>", methods=["GET", "HEAD"])
     @auth_service.require_approved_user
     def proxy_blob(asset_id: str):
         current_user = auth_service.get_current_user_or_raise()
         asset = dataset_service.resolve_asset(asset_id, current_user)
-        stream = azure_service.download_blob(asset["dataset"]["storage_container"], asset["blob_name"])
+        container_name = asset["dataset"]["storage_container"]
+        blob_name = asset["blob_name"]
+        blob_client = azure_service.get_container_client(container_name).get_blob_client(blob_name)
+        blob_properties = blob_client.get_blob_properties()
+        blob_size = int(blob_properties.size or 0)
+        mime_type = blob_properties.content_settings.content_type or "application/octet-stream"
+
+        def apply_common_headers(response: Response, *, content_length: int | None = None) -> Response:
+            response.headers["Accept-Ranges"] = "bytes"
+            if content_length is not None and content_length >= 0:
+                response.headers["Content-Length"] = str(content_length)
+            response.headers["Cache-Control"] = "no-store, no-cache, max-age=0"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Content-Disposition"] = "inline"
+            return response
 
         def generate():
+            stream = blob_client.download_blob()
             for chunk in stream.chunks():
                 yield chunk
 
-        mime_type = stream.properties.content_settings.content_type or "application/octet-stream"
-        return Response(stream_with_context(generate()), mimetype=mime_type)
+        range_header = request.headers.get("Range", "").strip()
+        if range_header:
+            match = re.match(r"bytes=(\d+)-(\d*)", range_header)
+            if match:
+                start = int(match.group(1))
+                end = int(match.group(2)) if match.group(2) else blob_size - 1
+                if start >= blob_size:
+                    return Response(status=416, headers={"Content-Range": f"bytes */{blob_size}"})
+                end = min(end, blob_size - 1)
+                length = max(0, end - start + 1)
+                if request.method == "HEAD":
+                    response = Response(status=206, mimetype=mime_type)
+                else:
+                    partial_stream = blob_client.download_blob(offset=start, length=length)
+                    response = Response(partial_stream.readall(), 206, mimetype=mime_type, direct_passthrough=True)
+                response.headers["Content-Range"] = f"bytes {start}-{end}/{blob_size}"
+                return apply_common_headers(response, content_length=length)
+
+        if request.method == "HEAD":
+            return apply_common_headers(Response(status=200, mimetype=mime_type), content_length=blob_size)
+        response = Response(stream_with_context(generate()), mimetype=mime_type)
+        return apply_common_headers(response, content_length=blob_size if blob_size > 0 else None)
 
     @app.route("/api/process_video", methods=["POST"])
     @auth_service.require_approved_user
@@ -296,6 +335,36 @@ def register_routes(app: Flask) -> None:
         payload, status_code = processing_service.create_vlm_tags(current_user, data)
         return jsonify(payload), status_code
 
+    @app.route("/api/generate_masks", methods=["POST"])
+    @auth_service.require_approved_user
+    def generate_masks():
+        current_user = auth_service.get_current_user_or_raise()
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "Invalid JSON body"}), 400
+        payload, status_code = processing_service.generate_masks(current_user, data)
+        return jsonify(payload), status_code
+
+    @app.route("/api/occlusion-mask-options", methods=["GET"])
+    @auth_service.require_approved_user
+    def get_occlusion_mask_options():
+        current_user = auth_service.get_current_user_or_raise()
+        route_path = str(request.args.get("route_path") or "").strip()
+        if not route_path:
+            return jsonify({"error": "Missing route_path"}), 400
+        payload, status_code = processing_service.get_occlusion_mask_options(current_user, route_path)
+        return jsonify(payload), status_code
+
+    @app.route("/api/remove_occlusion", methods=["POST"])
+    @auth_service.require_approved_user
+    def remove_occlusion():
+        current_user = auth_service.get_current_user_or_raise()
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "Invalid JSON body"}), 400
+        payload, status_code = processing_service.remove_occlusion(current_user, data)
+        return jsonify(payload), status_code
+
     @app.route("/api/delete_dataset", methods=["POST"])
     @auth_service.require_approved_user
     def delete_dataset():
@@ -308,12 +377,13 @@ def register_routes(app: Flask) -> None:
 
     @app.route("/api/stats", methods=["GET"])
     def get_stats():
+        all_rows = sql_store._fetchone("SELECT COUNT(*) AS count FROM datasets WHERE deleted_at IS NULL AND visibility = 'public'")
         return jsonify(
             {
                 "app": settings.app_name,
                 "environment": settings.environment,
                 "public_container": settings.azure_public_container,
-                "datasets_count": sql_store.count_datasets(visibility="public"),
+                "datasets_count": int(all_rows["count"]) if all_rows else 0,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         )

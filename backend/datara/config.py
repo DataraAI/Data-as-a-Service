@@ -133,6 +133,9 @@ class Settings:
     session_cookie_secure: bool = field(default_factory=lambda: _env_bool("SESSION_COOKIE_SECURE", False))
     session_cookie_samesite: str = field(default_factory=lambda: os.getenv("SESSION_COOKIE_SAMESITE", "Lax"))
     session_cookie_name: str = field(default_factory=lambda: os.getenv("SESSION_COOKIE_NAME", "datara_session"))
+    dataset_path_cache_ttl_seconds: int = field(
+        default_factory=lambda: _env_int("DATASET_PATH_CACHE_TTL_SECONDS", 180)
+    )
 
     frontend_url: str = field(default_factory=lambda: os.getenv("FRONTEND_URL", "http://localhost:5173"))
     auth_post_login_path: str = field(default_factory=lambda: os.getenv("AUTH_POST_LOGIN_PATH", "/viewer"))

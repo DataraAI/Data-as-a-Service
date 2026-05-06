@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Maximize2, Box } from "lucide-react";
+import { Maximize2, Box, Film } from "lucide-react";
 
 interface ImageGridProps {
   images: any[];
@@ -63,6 +63,22 @@ export function ImageGrid({
               <div className="flex h-48 w-full flex-col items-center justify-center bg-card/50 text-muted-foreground transition-colors group-hover:text-primary md:h-64">
                 <Box className="mb-2 h-12 w-12" />
                 <span className="font-sans-tech text-xs uppercase tracking-wider">3D Model</span>
+              </div>
+            ) : img.type === "video" ? (
+              <div className="relative">
+                <video
+                  src={img.proxy_url || img.url}
+                  preload="metadata"
+                  muted
+                  playsInline
+                  className="h-auto w-full bg-black/20 object-contain"
+                />
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/20">
+                  <div className="rounded-sm border border-primary/30 bg-background/80 px-3 py-2 text-primary shadow-lg">
+                    <Film className="mx-auto mb-1 h-5 w-5" />
+                    <span className="font-sans-tech text-[10px] uppercase tracking-wider">Video</span>
+                  </div>
+                </div>
               </div>
             ) : (
               <img
@@ -131,7 +147,7 @@ export function ImageGrid({
 
       {displayedImages.length === 0 && (
         <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
-          <p className="font-sans-tech text-sm">No images found</p>
+          <p className="font-sans-tech text-sm">No assets found</p>
         </div>
       )}
     </div>
