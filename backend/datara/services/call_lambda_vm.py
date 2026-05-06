@@ -63,10 +63,10 @@ SAAS_VLM_PYTHON_BIN = (
     or _legacy_saas_attr("VLM_PYTHON_BIN")
     or SAAS_IMAGE_PYTHON_BIN
 )
+DEFAULT_ADDIT_SAM2_PYTHON_BIN = f"/home/{SAAS_USER}/miniconda3/envs/addit-sam2/bin/python"
 SAAS_CORNER_PYTHON_BIN = (
     os.getenv("SAAS_CORNER_PYTHON_BIN")
-    or _legacy_saas_attr("CORNER_PYTHON_BIN")
-    or SAAS_IMAGE_PYTHON_BIN
+    or DEFAULT_ADDIT_SAM2_PYTHON_BIN
 )
 SAAS_ROSE_ROOT = os.getenv("SAAS_ROSE_ROOT") or _legacy_saas_attr("ROSE_ROOT")
 SAAS_ROSE_PYTHON_BIN = (
@@ -79,6 +79,8 @@ REMOTE_USER_HOME = f"/home/{SAAS_USER}"
 REMOTE_SAAS_ROOT = os.getenv("SAAS_REMOTE_ROOT") or f"{REMOTE_USER_HOME}/Software-as-a-Service"
 REMOTE_IMAGE_PROMPT_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "image_prompt_tool.py")
 REMOTE_CORNER_CASE_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "Corner_case_tool.py")
+REMOTE_CORNER_CASE_OUTPUT_ROOT = "corner_images_controlnet"
+REMOTE_CORNER_CASE_LOCALIZATION_MODEL = "attention_points_sam"
 REMOTE_VLM_IMAGE_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "Post Annotation", "qwen_vlm_image.py")
 REMOTE_SEGMENTATION_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "DataraAI_segmentation.py")
 REMOTE_ROSE_RUNNER_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "DataraAI_rose_occlusion.py")
@@ -310,9 +312,12 @@ def invoke_corner_case(text, image_url, container_name, output_name):
     safe_container = _shell_escape(container_name)
     command = (
         f'"{_shell_escape(SAAS_CORNER_PYTHON_BIN)}" -s "{_shell_escape(REMOTE_CORNER_CASE_SCRIPT)}" '
-        f'--prompt "{safe_text}" --imageURL "{safe_url}" --container_name "{safe_container}"'
+        f'--prompt "{safe_text}" --imageURL "{safe_url}" --container_name "{safe_container}" '
+        f'--localization_model "{_shell_escape(REMOTE_CORNER_CASE_LOCALIZATION_MODEL)}" '
+        f'--out_root "{_shell_escape(REMOTE_CORNER_CASE_OUTPUT_ROOT)}"'
     )
-    prefix = f"/corner_images_controlnet/{container_name}"
+    prefix = f"/{REMOTE_CORNER_CASE_OUTPUT_ROOT}/{container_name}"
+    remote_corner_dir = posixpath.join(REMOTE_SAAS_ROOT, REMOTE_CORNER_CASE_OUTPUT_ROOT, container_name)
 
     try:
         with _ssh_session() as ssh_client:
@@ -335,7 +340,7 @@ def invoke_corner_case(text, image_url, container_name, output_name):
                 if not os.path.exists(local_path):
                     return None, 404
                 print(f"Successfully saved corner case image to '{local_path}'")
-                _run_command(ssh_client, f"rm -rf corner_images_controlnet/{container_name}")
+                _run_command(ssh_client, f'rm -rf "{_shell_escape(remote_corner_dir)}"')
             finally:
                 sftp.close()
 

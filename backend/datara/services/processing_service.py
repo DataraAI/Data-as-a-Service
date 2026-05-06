@@ -1337,11 +1337,18 @@ class ProcessingService:
             if status_code != 200:
                 return {"error": "Corner case generation failed"}, status_code
 
+            requested_tags = list(data.get("tags", [])) if isinstance(data.get("tags"), list) else []
+            misc_tags = []
+            for tag in requested_tags + ["corner_case", "addit", "sam2", "attention_points_sam"]:
+                tag_text = str(tag or "").strip()
+                if tag_text and tag_text not in misc_tags:
+                    misc_tags.append(tag_text)
+
             self._upload_to_azure(
                 dataset=target_dataset,
                 local_process_dir=local_root,
                 date_val=str(data.get("date") or ""),
-                misc_tags=list(data.get("tags", [])) if isinstance(data.get("tags"), list) else [],
+                misc_tags=misc_tags,
                 task=str(source["metadata"].get("task") or ""),
                 create_video_annotation=False,
                 upload_view="corner_images_controlnet",
