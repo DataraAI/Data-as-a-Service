@@ -6,10 +6,12 @@ import base64
 import json
 import os
 import re
+import time
 from typing import Any
 
 from azure.core.exceptions import ResourceNotFoundError
 
+from datara.config import settings
 from datara.logging import logger
 from datara.services.sql_store import SQLStore
 
@@ -27,6 +29,8 @@ class DatasetService:
     def __init__(self, azure_service, sql_store: SQLStore):
         self.azure_service = azure_service
         self.sql_store = sql_store
+        self._dataset_path_cache: dict[tuple[str, str | None], tuple[float, list[dict[str, Any]]]] = {}
+        self._dataset_path_cache_ttl_seconds = max(settings.dataset_path_cache_ttl_seconds, 0)
 
     def list_datasets(self, path: str, current_user: dict[str, Any]) -> list[dict[str, Any]]:
         path = path.strip("/ ")
@@ -90,8 +94,25 @@ class DatasetService:
             )
         return sorted(roots.values(), key=lambda item: item["full_path"].lower())
 
-    def list_all_dataset_paths(self, current_user: dict[str, Any]) -> list[dict[str, Any]]:
+    def list_all_dataset_paths(
+        self,
+        current_user: dict[str, Any],
+        *,
+        category: str | None = None,
+    ) -> list[dict[str, Any]]:
+        normalized_category = str(category or "").strip() or None
+        cache_key = self._dataset_path_cache_key(current_user, normalized_category)
+        cached = self._get_cached_dataset_paths(cache_key)
+        if cached is not None:
+            return cached
+
         datasets = self.sql_store.list_accessible_datasets(current_user)
+        if normalized_category is not None:
+            datasets = [
+                dataset
+                for dataset in datasets
+                if str(dataset.get("category") or "").strip() == normalized_category
+            ]
         all_paths: dict[str, dict[str, Any]] = {}
 
         for dataset in sorted(
@@ -104,12 +125,10 @@ class DatasetService:
             ),
         ):
             summary = self.sql_store.build_dataset_summary(dataset, current_user)
-            has_storage_content, nested_paths = self._list_searchable_storage_paths(
+            nested_paths = self._list_searchable_storage_paths(
                 dataset,
                 current_user,
             )
-            if not has_storage_content:
-                continue
 
             route_segments = [segment for segment in summary["full_path"].split("/") if segment]
 
@@ -127,7 +146,9 @@ class DatasetService:
             for nested_path in nested_paths:
                 all_paths.setdefault(nested_path["full_path"], nested_path)
 
-        return sorted(all_paths.values(), key=lambda item: item["full_path"].lower())
+        records = sorted(all_paths.values(), key=lambda item: item["full_path"].lower())
+        self._set_cached_dataset_paths(cache_key, records)
+        return records
 
     def get_dataset_images(self, route_path: str, current_user: dict[str, Any]) -> list[dict[str, Any]]:
         dataset, extra_segments = self.sql_store.resolve_dataset_route(route_path, current_user)
@@ -245,6 +266,7 @@ class DatasetService:
             dataset["storage_prefix"],
         )
         self.sql_store.mark_dataset_deleted(dataset["id"])
+        self._dataset_path_cache.clear()
         logger.info("Deleted dataset %s (%s blobs, %s docs)", route_path, len(deleted_blobs), deleted_docs)
         return {
             "message": "Dataset deleted successfully",
@@ -269,6 +291,46 @@ class DatasetService:
             "viewer_path": f"/viewer/{full_path}",
             "type": "folder",
         }
+
+    def _dataset_path_cache_key(
+        self,
+        current_user: dict[str, Any],
+        category: str | None,
+    ) -> tuple[str, str | None]:
+        role = str(current_user.get("role") or "").strip()
+        user_id = str(current_user.get("id") or "").strip()
+        return (f"{role}:{user_id}", category)
+
+    def _get_cached_dataset_paths(
+        self,
+        cache_key: tuple[str, str | None],
+    ) -> list[dict[str, Any]] | None:
+        if self._dataset_path_cache_ttl_seconds <= 0:
+            return None
+
+        cached = self._dataset_path_cache.get(cache_key)
+        if cached is None:
+            return None
+
+        expires_at, records = cached
+        if expires_at <= time.time():
+            self._dataset_path_cache.pop(cache_key, None)
+            return None
+
+        return records
+
+    def _set_cached_dataset_paths(
+        self,
+        cache_key: tuple[str, str | None],
+        records: list[dict[str, Any]],
+    ) -> None:
+        if self._dataset_path_cache_ttl_seconds <= 0:
+            return
+
+        self._dataset_path_cache[cache_key] = (
+            time.time() + self._dataset_path_cache_ttl_seconds,
+            records,
+        )
 
     def _list_storage_children(self, route_path: str, current_user: dict[str, Any]) -> list[dict[str, Any]]:
         try:
@@ -310,56 +372,41 @@ class DatasetService:
         self,
         dataset: dict[str, Any],
         current_user: dict[str, Any],
-    ) -> tuple[bool, list[dict[str, Any]]]:
+    ) -> list[dict[str, Any]]:
         summary = self.sql_store.build_dataset_summary(dataset, current_user)
         route_root = summary["full_path"].rstrip("/")
         storage_root = dataset["storage_prefix"].rstrip("/")
         nested_paths: dict[str, dict[str, Any]] = {}
-        has_storage_content = False
 
         try:
-            blobs = self.azure_service.list_blobs(dataset["storage_container"], storage_root)
+            child_prefixes = self.azure_service.list_immediate_child_folders(
+                dataset["storage_container"],
+                storage_root,
+            )
         except ResourceNotFoundError:
             logger.warning(
-                "Skipping recursive storage listing for dataset %s because container %s was not found",
+                "Skipping immediate child-folder listing for dataset %s because container %s was not found",
                 summary["full_path"],
                 dataset["storage_container"],
             )
-            return False, []
+            return []
 
-        for blob in blobs:
-            blob_name = str(getattr(blob, "name", "") or "").rstrip("/")
-            if not blob_name:
+        for child_prefix in child_prefixes:
+            child_name = child_prefix.rstrip("/").split("/")[-1]
+            if not child_name:
                 continue
 
-            prefix_with_slash = f"{storage_root}/"
-            if not blob_name.startswith(prefix_with_slash):
-                continue
+            nested_full_path = f"{route_root}/{child_name}"
+            nested_paths.setdefault(
+                nested_full_path,
+                self._build_folder_record(
+                    summary=summary,
+                    full_path=nested_full_path,
+                    source_path=child_prefix,
+                ),
+            )
 
-            has_storage_content = True
-            remainder = blob_name[len(prefix_with_slash) :]
-            if "/" not in remainder:
-                continue
-
-            folder_segments = [segment for segment in remainder.split("/")[:-1] if segment]
-            if not folder_segments:
-                continue
-
-            current_route_segments: list[str] = []
-            for segment in folder_segments:
-                current_route_segments.append(segment)
-                nested_full_path = f"{route_root}/{'/'.join(current_route_segments)}"
-                nested_source_path = f"{storage_root}/{'/'.join(current_route_segments)}"
-                nested_paths.setdefault(
-                    nested_full_path,
-                    self._build_folder_record(
-                        summary=summary,
-                        full_path=nested_full_path,
-                        source_path=nested_source_path,
-                    ),
-                )
-
-        return has_storage_content, sorted(
+        return sorted(
             nested_paths.values(),
             key=lambda item: item["full_path"].lower(),
         )
