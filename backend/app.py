@@ -170,7 +170,8 @@ def register_routes(app: Flask) -> None:
     @auth_service.require_approved_user
     def get_dataset_paths():
         current_user = auth_service.get_current_user_or_raise()
-        return jsonify(dataset_service.list_all_dataset_paths(current_user))
+        category = str(request.args.get("category") or "").strip() or None
+        return jsonify(dataset_service.list_all_dataset_paths(current_user, category=category))
 
     @app.route("/api/dataset/<path:route_path>", methods=["GET"])
     @auth_service.require_approved_user
