@@ -814,6 +814,7 @@ export default function DataViewer() {
         : null,
     [pathSegments],
   );
+  const pathSearchScopeKey = activeCategory?.routeKey ?? "global";
 
   const isRootLanding = pathSegments.length === 0;
   const isCategoryLanding = Boolean(activeCategory) && pathSegments.length === 1;
@@ -905,7 +906,9 @@ export default function DataViewer() {
     async function loadAllPaths() {
       setPathSearchLoading(true);
       try {
-        const response = await axios.get<unknown[]>("/api/dataset-paths");
+        const response = await axios.get<unknown[]>("/api/dataset-paths", {
+          params: activeCategory ? { category: activeCategory.routeKey } : undefined,
+        });
         if (cancelled) return;
 
         const nextPaths = uniqueFolderItems(
@@ -936,6 +939,7 @@ export default function DataViewer() {
     isApproved,
     isRootLanding,
     isCategoryLanding,
+    activeCategory,
     pathSearchTouched,
     pathSearchLoaded,
   ]);
@@ -943,7 +947,7 @@ export default function DataViewer() {
   useEffect(() => {
     setAllFolderPaths([]);
     setPathSearchLoaded(false);
-  }, [reloadTick]);
+  }, [reloadTick, pathSearchScopeKey]);
 
   useEffect(() => {
     if (!imageQueryParam || images.length === 0) return;
