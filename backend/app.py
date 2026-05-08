@@ -8,7 +8,6 @@ import re
 import shutil
 from datetime import datetime, timedelta, timezone
 
-from dotenv import load_dotenv
 from flask import Flask, Response, jsonify, request, stream_with_context
 from flask_cors import CORS
 
@@ -19,9 +18,6 @@ from datara.services.azure_service import AzureService
 from datara.services.dataset_service import DatasetService
 from datara.services.processing_service import ProcessingService
 from datara.services.sql_store import SQLStore
-
-
-load_dotenv()
 
 sql_store = SQLStore()
 azure_service = AzureService()
