@@ -7,16 +7,52 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import quote_plus
 
-from dotenv import load_dotenv
-
+from dotenv import dotenv_values
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 PROJECT_ROOT = BACKEND_DIR.parent
 
-load_dotenv(PROJECT_ROOT / "config" / ".env")
-load_dotenv(BACKEND_DIR / ".env")
-load_dotenv(PROJECT_ROOT / ".env")
+def _load_config_environment() -> None:
+    base_files = [
+        PROJECT_ROOT / "config" / ".env",
+        BACKEND_DIR / ".env",
+        PROJECT_ROOT / ".env",
+    ]
 
+    base_values: dict[str, str] = {}
+    for env_file in base_files:
+        if not env_file.exists():
+            continue
+        base_values.update(
+            {key: value for key, value in dotenv_values(env_file).items() if value is not None}
+        )
+
+    active_environment = (
+        os.getenv("ENVIRONMENT")
+        or os.getenv("FLASK_ENV")
+        or base_values.get("ENVIRONMENT")
+        or base_values.get("FLASK_ENV")
+        or "development"
+    )
+
+    env_specific_files = [
+        PROJECT_ROOT / "config" / f".env.{active_environment}",
+        BACKEND_DIR / f".env.{active_environment}",
+        PROJECT_ROOT / f".env.{active_environment}",
+    ]
+
+    merged_values: dict[str, str] = {}
+    for env_file in [*base_files, *env_specific_files]:
+        if not env_file.exists():
+            continue
+        merged_values.update(
+            {key: value for key, value in dotenv_values(env_file).items() if value is not None}
+        )
+
+    for key, value in merged_values.items():
+        os.environ.setdefault(key, value)
+
+_load_config_environment()
 
 def _env_bool(name: str, default: bool = False) -> bool:
     value = os.getenv(name)
