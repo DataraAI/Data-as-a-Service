@@ -10,7 +10,7 @@ services:
     expose:
       - "5151"
     environment:
-      - FLASK_ENV=production
+      - FLASK_ENV=staging
       - PYTHONUNBUFFERED=1
       - SAAS_KEY_PATH=/run/secrets/azure_to_lambda
     volumes:
