@@ -10,6 +10,7 @@ import tempfile
 
 import cv2
 import numpy as np
+from azure.core.exceptions import ResourceNotFoundError
 from azure.storage.blob import ContentSettings
 
 _BACKEND = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -106,6 +107,7 @@ def main() -> None:
     processed = 0
     skipped_existing = 0
     skipped_missing_frames = 0
+    skipped_missing_container = 0
 
     for dataset in datasets:
         summary = sql_store.build_dataset_summary(dataset, current_user)
@@ -124,11 +126,20 @@ def main() -> None:
             logger.info("Skipping %s because %s already exists", route_path, existing_video_blob)
             continue
 
-        frame_blobs = [
-            getattr(blob, "name", "")
-            for blob in azure_service.list_blobs(container_name, f"{storage_prefix}/orig")
-            if _is_frame_blob(getattr(blob, "name", ""))
-        ]
+        try:
+            frame_blobs = [
+                getattr(blob, "name", "")
+                for blob in azure_service.list_blobs(container_name, f"{storage_prefix}/orig")
+                if _is_frame_blob(getattr(blob, "name", ""))
+            ]
+        except ResourceNotFoundError:
+            skipped_missing_container += 1
+            logger.warning(
+                "Skipping %s because container %s does not exist",
+                route_path,
+                container_name,
+            )
+            continue
         frame_blobs.sort(key=_frame_sort_key)
 
         if not frame_blobs:
@@ -231,7 +242,8 @@ def main() -> None:
 
     print(
         f"Backfill complete. processed={processed} skipped_existing={skipped_existing} "
-        f"skipped_missing_frames={skipped_missing_frames}"
+        f"skipped_missing_frames={skipped_missing_frames} "
+        f"skipped_missing_container={skipped_missing_container}"
     )
 
 
