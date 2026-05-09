@@ -153,7 +153,7 @@ def _upload_video_assets(
 ) -> int:
     video_dir = os.path.join(base_input_dir, "video")
     if not os.path.isdir(video_dir):
-        return 0
+        raise FileNotFoundError(f"Expected staged video directory at {video_dir}")
 
     valid_extensions = (".mp4", ".mov", ".m4v", ".webm")
     uploaded_count = 0
@@ -173,7 +173,6 @@ def _upload_video_assets(
             )
 
         existing_doc = _query_existing_doc(cosmos_container, args.container_name, blob_name)
-
         video_metadata = _collect_video_metadata(local_path)
         cosmos_container.upsert_item(
             {
@@ -208,6 +207,9 @@ def _upload_video_assets(
         )
         uploaded_count += 1
         print(f"Uploaded video ({uploaded_count}): {blob_name}")
+
+    if uploaded_count == 0:
+        raise FileNotFoundError(f"No staged video files were found in {video_dir}")
 
     return uploaded_count
 
@@ -298,9 +300,8 @@ def main() -> None:
         uploaded_count += 1
         print(f"Uploaded ({uploaded_count}): {blob_name}")
 
-    uploaded_video_count = 0
     if args.create_video_annotation:
-        uploaded_video_count = _upload_video_assets(
+        _upload_video_assets(
             args=args,
             base_input_dir=base_input_dir,
             dataset_prefix=dataset_prefix,
@@ -309,10 +310,6 @@ def main() -> None:
             misc_tags=misc_tags,
             resolved_task=resolved_task,
         )
-        if uploaded_video_count == 0:
-            raise FileNotFoundError(
-                f"Expected a browser-playable source video under {os.path.join(base_input_dir, 'video')}"
-            )
 
     print(
         f"Upload complete - {uploaded_count} images uploaded "
