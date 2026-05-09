@@ -210,6 +210,8 @@ class DatasetService:
             elif "/video/" in blob.name:
                 tags.append("source_video")
                 inferred_view = inferred_view or "video"
+            elif "/occl_del/" in blob.name:
+                inferred_view = inferred_view or "occl_del"
             if is_video:
                 tags.append("video")
 

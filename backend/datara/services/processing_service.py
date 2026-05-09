@@ -214,20 +214,13 @@ class ProcessingService:
                     target_view_dir=target_view_dir,
                 )
 
-            self._ensure_staged_dataset_video(
-                local_process_dir=local_process_dir,
-                dataset_basename=dataset_name,
-                source_view_dir=target_view_dir,
-                fps=30.0,
-            )
-
             self._upload_to_azure(
                 dataset=dataset,
                 local_process_dir=local_process_dir,
                 date_val=date_val,
                 misc_tags=misc_tags if isinstance(misc_tags, list) else [],
                 task=task,
-                create_video_annotation=True,
+                create_video_annotation=(upload_type == "video"),
                 upload_view=view,
                 source_dataset_id=None,
             )
@@ -341,66 +334,6 @@ class ProcessingService:
             height=height,
             fps=fps,
         )
-
-    def _ensure_staged_dataset_video(
-        self,
-        *,
-        local_process_dir: str,
-        dataset_basename: str,
-        source_view_dir: str,
-        fps: float = 30.0,
-    ) -> None:
-        video_dir = os.path.join(local_process_dir, "video")
-        valid_video_exts = (".mp4", ".mov", ".m4v", ".webm")
-        if os.path.isdir(video_dir):
-            for filename in os.listdir(video_dir):
-                if filename.lower().endswith(valid_video_exts):
-                    return
-
-        frame_dir = os.path.join(local_process_dir, source_view_dir)
-        valid_frame_exts = (".png", ".jpg", ".jpeg", ".webp")
-        frame_names = sorted(
-            filename
-            for filename in os.listdir(frame_dir)
-            if filename.lower().endswith(valid_frame_exts)
-        )
-        if not frame_names:
-            raise ValueError(f"No frames were found in {frame_dir} to build a playable dataset video")
-
-        first_frame_path = os.path.join(frame_dir, frame_names[0])
-        first_frame = cv2.imread(first_frame_path, cv2.IMREAD_COLOR)
-        if first_frame is None:
-            raise ValueError(f"Failed to read source frame for dataset video generation: {first_frame_path}")
-
-        height, width = first_frame.shape[:2]
-        temp_fd, temp_video_path = tempfile.mkstemp(suffix=".mp4", dir=local_process_dir)
-        os.close(temp_fd)
-        writer = self._open_mp4_writer(temp_video_path, fps, width, height)
-        try:
-            for frame_name in frame_names:
-                frame_path = os.path.join(frame_dir, frame_name)
-                frame = cv2.imread(frame_path, cv2.IMREAD_COLOR)
-                if frame is None:
-                    raise ValueError(f"Failed to read source frame for dataset video generation: {frame_path}")
-                if frame.shape[1] != width or frame.shape[0] != height:
-                    frame = cv2.resize(frame, (width, height), interpolation=cv2.INTER_AREA)
-                writer.write(frame)
-        finally:
-            writer.release()
-
-        try:
-            os.makedirs(video_dir, exist_ok=True)
-            output_path = os.path.join(video_dir, f"{dataset_basename}.mp4")
-            self._resize_video_to_dimensions(
-                input_path=temp_video_path,
-                output_path=output_path,
-                width=width,
-                height=height,
-                fps=fps,
-            )
-        finally:
-            if os.path.exists(temp_video_path):
-                os.remove(temp_video_path)
 
     def _ingest_video_path(
         self,
