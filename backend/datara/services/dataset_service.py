@@ -184,24 +184,32 @@ class DatasetService:
             cosmos_doc = metadata_map.get(blob.name, {}) or {}
             vlm = self._normalise_vlm(cosmos_doc.get("vlm"), fallback_doc=cosmos_doc)
             tags = list(cosmos_doc.get("miscTags", []))
+            inferred_view = cosmos_doc.get("view")
             for prompt_label, run in vlm["runs"].items():
                 for prompt_tag in self._clean_tag_list(run.get("tags")):
                     tags.append(f"{prompt_label}: {prompt_tag}")
 
             if "/orig/" in blob.name:
                 tags.append("exocentric")
+                inferred_view = inferred_view or "exo"
             elif "/egos/" in blob.name:
                 tags.append("ego_view")
+                inferred_view = inferred_view or "egos"
             elif "/corner_images_controlnet/" in blob.name:
                 tags.append("corner_case")
+                inferred_view = inferred_view or "corner_images_controlnet"
             elif "/masks/" in blob.name:
                 tags.append("mask")
                 tags.append("instance_mask")
+                inferred_view = inferred_view or "masks"
                 mask_object_id = str(cosmos_doc.get("maskObjectId") or "").strip()
                 if mask_object_id:
                     tags.append(
                         mask_object_id if mask_object_id.startswith("object_") else f"object_{mask_object_id}"
                     )
+            elif "/video/" in blob.name:
+                tags.append("source_video")
+                inferred_view = inferred_view or "video"
             if is_video:
                 tags.append("video")
 
@@ -240,7 +248,7 @@ class DatasetService:
                         "width": cosmos_doc.get("width"),
                         "height": cosmos_doc.get("height"),
                         "sharpness": cosmos_doc.get("sharpnessScore"),
-                        "view": cosmos_doc.get("view"),
+                        "view": inferred_view,
                         "task": cosmos_doc.get("task"),
                         "visibility": cosmos_doc.get("visibility", dataset["visibility"]),
                         "frame_count": cosmos_doc.get("frameCount"),
