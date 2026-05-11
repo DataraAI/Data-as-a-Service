@@ -120,7 +120,7 @@ class Settings:
     debug: bool = field(default_factory=lambda: _env_bool("DEBUG", _env_bool("ENABLE_DEBUG_LOGGING", False)))
 
     flask_host: str = field(default_factory=lambda: os.getenv("FLASK_HOST", "127.0.0.1"))
-    flask_port: int = field(default_factory=lambda: _env_int("FLASK_PORT", 5151))
+    flask_port: int = field(default_factory=lambda: _env_int("FLASK_PORT", 5152))
     flask_env: str = field(default_factory=lambda: os.getenv("FLASK_ENV", "development"))
     secret_key: str = field(default_factory=lambda: os.getenv("FLASK_SECRET_KEY", "change-me"))
 
@@ -161,7 +161,7 @@ class Settings:
     cors_origins: list[str] = field(
         default_factory=lambda: _env_list(
             "CORS_ORIGINS",
-            ["http://localhost:5173", "http://localhost:8080", "http://localhost"],
+            ["http://localhost:5174", "http://localhost:5173", "http://localhost"],
         )
     )
     rate_limit: int = field(default_factory=lambda: _env_int("RATE_LIMIT", 100))
@@ -173,7 +173,7 @@ class Settings:
         default_factory=lambda: _env_int("DATASET_PATH_CACHE_TTL_SECONDS", 180)
     )
 
-    frontend_url: str = field(default_factory=lambda: os.getenv("FRONTEND_URL", "http://localhost:5173"))
+    frontend_url: str = field(default_factory=lambda: os.getenv("FRONTEND_URL", "http://localhost:5174"))
     auth_post_login_path: str = field(default_factory=lambda: os.getenv("AUTH_POST_LOGIN_PATH", "/viewer"))
     auth_bootstrap_admin_emails: list[str] = field(default_factory=lambda: _env_list("AUTH_BOOTSTRAP_ADMIN_EMAILS"))
     auth_registration_enabled: bool = field(default_factory=lambda: _env_bool("AUTH_REGISTRATION_ENABLED", True))
