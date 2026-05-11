@@ -10,8 +10,8 @@ const __dirname = path.dirname(__filename);
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, path.resolve(__dirname, "../config"), "");
-  const frontendPort = Number(env.VITE_PORT || 5174);
-  const backendUrl = env.VITE_BACKEND_URL || "http://127.0.0.1:5152";
+  const frontendPort = Number(process.env.VITE_PORT || env.VITE_PORT || 5174);
+  const backendUrl = process.env.VITE_BACKEND_URL || env.VITE_BACKEND_URL || "http://127.0.0.1:5152";
 
   return {
     plugins: [react()],
