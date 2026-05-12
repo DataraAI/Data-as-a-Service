@@ -285,17 +285,44 @@ function uniqueFolderItems(items: FolderItem[]) {
   });
 }
 
+function normalizeCategoryValue(value?: string | null) {
+  const normalized = String(value ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+
+  switch (normalized) {
+    case "automotive":
+    case "carautomation":
+      return "carautomation";
+    case "datacenter":
+    case "datacentre":
+    case "serverrack":
+    case "serverracks":
+      return "serverrack";
+    case "humanoid":
+    case "dexterity":
+      return "dexterity";
+    case "warehouse":
+      return "warehouse";
+    default:
+      return normalized;
+  }
+}
+
 function getCategoryByRouteKey(value?: string | null) {
-  return CATEGORIES.find((category) => category.routeKey === value) ?? null;
+  const normalizedValue = normalizeCategoryValue(value);
+  return (
+    CATEGORIES.find((category) => normalizeCategoryValue(category.routeKey) === normalizedValue) ??
+    null
+  );
 }
 
 function pathBelongsToCategory(fullPath: string, routeKey: CategoryKey) {
   const segments = fullPath.split("/").filter(Boolean);
   if (segments.length === 0) return false;
-  if (segments[0] === routeKey) return true;
-  if (segments[0] === "my") return segments[1] === routeKey;
-  if (segments[0] === "admin") return segments[2] === routeKey;
-  return false;
+  const categorySegment =
+    segments[0] === "my" ? segments[1] : segments[0] === "admin" ? segments[2] : segments[0];
+  return normalizeCategoryValue(categorySegment) === normalizeCategoryValue(routeKey);
 }
 
 function buildCategoryHeroImagePaths(category: CategoryConfig) {
@@ -786,101 +813,10 @@ function PathSearchPanel({
   );
 }
 
-function RoboDataHubTopMenu({
-  activeItem,
-}: {
-  activeItem: CategoryKey | "home";
-}) {
-  const menuItems = [
-    {
-      key: "home" as const,
-      label: "RoboDataHub Home",
-      description: "Overview of all data categories",
-      href: "/viewer",
-    },
-    ...CATEGORIES.map((category) => ({
-      key: category.routeKey,
-      label: category.label,
-      description: category.description,
-      href: `/viewer/${category.routeKey}`,
-    })),
-  ];
-
-  return (
-    <section className="overflow-hidden rounded-[28px] border border-white/6 bg-[#040608]/92 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.28)] backdrop-blur-xl md:p-5">
-      <div className="flex flex-col gap-5">
-        <div className="px-2 pt-2">
-          <div className="font-mono-tech text-[11px] uppercase tracking-[0.24em] text-primary">
-            RoboDataHub
-          </div>
-          <h2 className="mt-3 font-sans-tech text-2xl font-bold tracking-tight text-foreground">
-            Browse by category
-          </h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-            Move between the live RoboDataHub category surfaces, then step into the exact dataset
-            folder you need.
-          </p>
-        </div>
-
-        <div className="overflow-x-auto pb-2">
-          <div className="flex min-w-max gap-3">
-            {menuItems.map((item, index) => {
-              const isActive = activeItem === item.key;
-              const badge = item.key === "home" ? "Hub" : String(index).padStart(2, "0");
-
-              return (
-                <Link
-                  key={item.key}
-                  to={item.href}
-                  className={`group w-[220px] rounded-[24px] border p-5 transition-all duration-200 ${
-                    isActive
-                      ? "border-primary/30 bg-primary/10 shadow-[0_14px_40px_rgba(0,0,0,0.24)]"
-                      : "border-white/6 bg-[#0b0f13] hover:-translate-y-0.5 hover:border-primary/20 hover:bg-[#0d1116] hover:shadow-[0_14px_40px_rgba(0,0,0,0.2)]"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <span
-                      className={`inline-flex h-10 min-w-10 items-center justify-center rounded-2xl border px-3 font-mono-tech text-[11px] font-bold uppercase tracking-[0.18em] ${
-                        isActive
-                          ? "border-primary/50 bg-primary text-primary-foreground"
-                          : "border-white/8 bg-black/20 text-foreground"
-                      }`}
-                    >
-                      {badge}
-                    </span>
-                    <span
-                      className={`rounded-full border px-2.5 py-1 font-mono-tech text-[10px] uppercase tracking-[0.16em] ${
-                        isActive
-                          ? "border-primary-glow/25 bg-primary-glow/10 text-primary-glow"
-                          : "border-white/8 bg-black/20 text-muted-foreground"
-                      }`}
-                    >
-                      {isActive ? "Open" : "Browse"}
-                    </span>
-                  </div>
-
-                  <span className="mt-5 block font-sans-tech text-base font-semibold text-foreground">
-                    {item.label}
-                  </span>
-                  <span className="mt-2 block text-sm leading-6 text-muted-foreground">
-                    {item.description}
-                  </span>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function LoggedOutHub() {
   return (
     <div className="mx-auto w-full max-w-[1440px] px-4 py-12 sm:px-6 md:py-16">
-      <RoboDataHubTopMenu activeItem="home" />
-
-      <div className="mt-8 overflow-hidden rounded-[30px] border border-white/6 bg-[#0d1014]/88 p-6 shadow-[0_24px_60px_rgba(0,0,0,0.24)] md:p-8">
+      <div className="overflow-hidden rounded-[30px] border border-white/6 bg-[#0d1014]/88 p-6 shadow-[0_24px_60px_rgba(0,0,0,0.24)] md:p-8">
         <div className="max-w-3xl">
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-[11px] uppercase tracking-[0.22em] text-primary">
             RoboDataHub
@@ -1066,7 +1002,7 @@ export default function DataViewer() {
       setCategoryPreviewsLoading(true);
       try {
         const response = await axios.get<CategoryDatasetPreview[]>("/api/dataset-category-previews", {
-          params: { category: activeCategory.routeKey },
+          params: { category: activeCategory.routeKey, public_only: "true" },
         });
         if (cancelled) return;
         setCategoryPreviews(Array.isArray(response.data) ? response.data : []);
@@ -1104,8 +1040,14 @@ export default function DataViewer() {
     async function loadAllPaths() {
       setPathSearchLoading(true);
       try {
+        const params = activeCategory
+          ? {
+              category: activeCategory.routeKey,
+              public_only: "true",
+            }
+          : undefined;
         const response = await axios.get<unknown[]>("/api/dataset-paths", {
-          params: activeCategory ? { category: activeCategory.routeKey } : undefined,
+          params,
         });
         if (cancelled) return;
 
@@ -1456,9 +1398,7 @@ export default function DataViewer() {
 
   const renderRootLanding = () => (
     <div className="mx-auto w-full max-w-[1440px] px-4 py-12 sm:px-6 md:py-16">
-      <RoboDataHubTopMenu activeItem="home" />
-
-      <div className="mt-8 min-w-0">
+      <div className="min-w-0">
         <div className="mb-8 overflow-hidden rounded-[30px] border border-white/6 bg-[#0d1014]/88 p-6 shadow-[0_24px_60px_rgba(0,0,0,0.24)] md:p-8">
           <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 font-sans-tech text-[11px] uppercase tracking-[0.22em] text-primary">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
@@ -1468,8 +1408,8 @@ export default function DataViewer() {
             RoboDataHub
           </h1>
           <p className="max-w-3xl font-sans-tech text-base leading-8 text-muted-foreground">
-            Browse DataraAI&apos;s physical-AI datasets by category, or search any known path when
-            you already know the folder you want.
+            Browse DataraAI&apos;s public physical-AI datasets by category, or search a known path
+            when you already know the folder you want.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <button
@@ -1576,9 +1516,7 @@ export default function DataViewer() {
 
   const renderCategoryLanding = (category: CategoryConfig) => (
     <div className="mx-auto w-full max-w-[1440px] px-4 py-12 sm:px-6 md:py-16">
-      <RoboDataHubTopMenu activeItem={category.routeKey} />
-
-      <div className="mt-8 min-w-0">
+      <div className="min-w-0">
         <div className="overflow-hidden rounded-[30px] border border-white/6 bg-[#0d1014]/88 p-6 shadow-[0_24px_60px_rgba(0,0,0,0.22)] md:p-8">
           <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
             <div className="max-w-3xl">
@@ -1625,7 +1563,8 @@ export default function DataViewer() {
               <div className={`h-px flex-1 ${getCategoryAccent(category.routeKey).line}`} />
             </div>
             <p className="mb-6 max-w-3xl text-sm leading-7 text-muted-foreground">
-              Each card represents one dataset folder at the level above orig, EGO, masks, and corner-case outputs.
+              Each card represents one public dataset folder at the level above orig, EGO, masks,
+              and corner-case outputs.
             </p>
 
             {categoryPreviewsLoading ? (
@@ -1648,7 +1587,7 @@ export default function DataViewer() {
               </div>
             ) : (
               <div className="rounded-[24px] border border-dashed border-white/10 bg-black/20 p-6 text-sm leading-7 text-muted-foreground">
-                No endpoint folders are available in this category yet.
+                No public endpoint folders are available in this category yet.
               </div>
             )}
           </div>

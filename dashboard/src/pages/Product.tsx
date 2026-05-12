@@ -62,25 +62,25 @@ const PRODUCT_GALLERY = {
 } satisfies Record<string, GalleryItem>;
 
 const ROBO_EYE_GALLERY = {
-  automotive: {
+  automotivePrimary: {
     imagePath: "carAutomation/ego_carautomation.png",
-    alt: "Automotive robot-eye-view example",
-    label: "Automotive",
+    alt: "Automotive robot-eye-view example from RoboEyeView",
+    label: "Automotive A",
   },
-  datacenter: {
+  automotiveSecondary: {
+    imagePath: "carAutomation/2ego_carautomation.png",
+    alt: "Automotive alternate robot-eye-view example from RoboEyeView",
+    label: "Automotive B",
+  },
+  datacenterPrimary: {
     imagePath: "serverrack/ego_serverrack.png",
-    alt: "Data center robot-eye-view example",
-    label: "Data Center",
+    alt: "Data-center robot-eye-view example from RoboEyeView",
+    label: "Data Center A",
   },
-  warehouse: {
-    imagePath: "warehouse/ego_warehouse1.png",
-    alt: "Warehouse robot-eye-view example",
-    label: "Warehouse",
-  },
-  dexterity: {
-    imagePath: "humanoid/humanoid.png",
-    alt: "Dexterity robot-eye-view example",
-    label: "Humanoid",
+  datacenterSecondary: {
+    imagePath: "serverrack/2ego_serverrack1.png",
+    alt: "Data-center alternate robot-eye-view example from RoboEyeView",
+    label: "Data Center B",
   },
 } satisfies Record<string, GalleryItem>;
 
@@ -149,10 +149,10 @@ const PRODUCT_SECTIONS: ProductSection[] = [
       },
     ],
     gallery: [
-      ROBO_EYE_GALLERY.automotive,
-      ROBO_EYE_GALLERY.datacenter,
-      ROBO_EYE_GALLERY.warehouse,
-      ROBO_EYE_GALLERY.dexterity,
+      ROBO_EYE_GALLERY.automotivePrimary,
+      ROBO_EYE_GALLERY.automotiveSecondary,
+      ROBO_EYE_GALLERY.datacenterPrimary,
+      ROBO_EYE_GALLERY.datacenterSecondary,
     ],
   },
   {
