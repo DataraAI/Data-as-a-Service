@@ -8,7 +8,6 @@ import re
 import shutil
 from datetime import datetime, timedelta, timezone
 
-from dotenv import load_dotenv
 from flask import Flask, Response, jsonify, request, stream_with_context
 from flask_cors import CORS
 
@@ -19,9 +18,6 @@ from datara.services.azure_service import AzureService
 from datara.services.dataset_service import DatasetService
 from datara.services.processing_service import ProcessingService
 from datara.services.sql_store import SQLStore
-
-
-load_dotenv()
 
 sql_store = SQLStore()
 azure_service = AzureService()
@@ -171,7 +167,30 @@ def register_routes(app: Flask) -> None:
     def get_dataset_paths():
         current_user = auth_service.get_current_user_or_raise()
         category = str(request.args.get("category") or "").strip() or None
-        return jsonify(dataset_service.list_all_dataset_paths(current_user, category=category))
+        public_only = str(request.args.get("public_only") or "").strip().lower() in {"1", "true", "yes"}
+        return jsonify(
+            dataset_service.list_all_dataset_paths(
+                current_user,
+                category=category,
+                public_only=public_only,
+            )
+        )
+
+    @app.route("/api/dataset-category-previews", methods=["GET"])
+    @auth_service.require_approved_user
+    def get_dataset_category_previews():
+        current_user = auth_service.get_current_user_or_raise()
+        category = str(request.args.get("category") or "").strip()
+        public_only = str(request.args.get("public_only") or "").strip().lower() in {"1", "true", "yes"}
+        if not category:
+            return jsonify({"error": "Missing category"}), 400
+        return jsonify(
+            dataset_service.list_category_dataset_previews(
+                current_user,
+                category=category,
+                public_only=public_only,
+            )
+        )
 
     @app.route("/api/dataset/<path:route_path>", methods=["GET"])
     @auth_service.require_approved_user

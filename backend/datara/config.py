@@ -7,16 +7,52 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import quote_plus
 
-from dotenv import load_dotenv
-
+from dotenv import dotenv_values
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 PROJECT_ROOT = BACKEND_DIR.parent
 
-load_dotenv(PROJECT_ROOT / "config" / ".env")
-load_dotenv(BACKEND_DIR / ".env")
-load_dotenv(PROJECT_ROOT / ".env")
+def _load_config_environment() -> None:
+    base_files = [
+        PROJECT_ROOT / "config" / ".env",
+        BACKEND_DIR / ".env",
+        PROJECT_ROOT / ".env",
+    ]
 
+    base_values: dict[str, str] = {}
+    for env_file in base_files:
+        if not env_file.exists():
+            continue
+        base_values.update(
+            {key: value for key, value in dotenv_values(env_file).items() if value is not None}
+        )
+
+    active_environment = (
+        os.getenv("ENVIRONMENT")
+        or os.getenv("FLASK_ENV")
+        or base_values.get("ENVIRONMENT")
+        or base_values.get("FLASK_ENV")
+        or "development"
+    )
+
+    env_specific_files = [
+        PROJECT_ROOT / "config" / f".env.{active_environment}",
+        BACKEND_DIR / f".env.{active_environment}",
+        PROJECT_ROOT / f".env.{active_environment}",
+    ]
+
+    merged_values: dict[str, str] = {}
+    for env_file in [*base_files, *env_specific_files]:
+        if not env_file.exists():
+            continue
+        merged_values.update(
+            {key: value for key, value in dotenv_values(env_file).items() if value is not None}
+        )
+
+    for key, value in merged_values.items():
+        os.environ.setdefault(key, value)
+
+_load_config_environment()
 
 def _env_bool(name: str, default: bool = False) -> bool:
     value = os.getenv(name)
@@ -84,7 +120,7 @@ class Settings:
     debug: bool = field(default_factory=lambda: _env_bool("DEBUG", _env_bool("ENABLE_DEBUG_LOGGING", False)))
 
     flask_host: str = field(default_factory=lambda: os.getenv("FLASK_HOST", "127.0.0.1"))
-    flask_port: int = field(default_factory=lambda: _env_int("FLASK_PORT", 5151))
+    flask_port: int = field(default_factory=lambda: _env_int("FLASK_PORT", 5152))
     flask_env: str = field(default_factory=lambda: os.getenv("FLASK_ENV", "development"))
     secret_key: str = field(default_factory=lambda: os.getenv("FLASK_SECRET_KEY", "change-me"))
 
@@ -125,7 +161,7 @@ class Settings:
     cors_origins: list[str] = field(
         default_factory=lambda: _env_list(
             "CORS_ORIGINS",
-            ["http://localhost:5173", "http://localhost:8080", "http://localhost"],
+            ["http://localhost:5174", "http://localhost:5173", "http://localhost"],
         )
     )
     rate_limit: int = field(default_factory=lambda: _env_int("RATE_LIMIT", 100))
@@ -137,7 +173,7 @@ class Settings:
         default_factory=lambda: _env_int("DATASET_PATH_CACHE_TTL_SECONDS", 180)
     )
 
-    frontend_url: str = field(default_factory=lambda: os.getenv("FRONTEND_URL", "http://localhost:5173"))
+    frontend_url: str = field(default_factory=lambda: os.getenv("FRONTEND_URL", "http://localhost:5174"))
     auth_post_login_path: str = field(default_factory=lambda: os.getenv("AUTH_POST_LOGIN_PATH", "/viewer"))
     auth_bootstrap_admin_emails: list[str] = field(default_factory=lambda: _env_list("AUTH_BOOTSTRAP_ADMIN_EMAILS"))
     auth_registration_enabled: bool = field(default_factory=lambda: _env_bool("AUTH_REGISTRATION_ENABLED", True))

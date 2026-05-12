@@ -98,6 +98,25 @@ class AzureService:
         client = self.get_container_client(container_name)
         return list(client.list_blobs(name_starts_with=prefix))
 
+    def find_first_matching_blob(
+        self,
+        container_name: str,
+        prefix: str,
+        *,
+        extensions: tuple[str, ...] = (".png", ".jpg", ".jpeg", ".webp"),
+    ) -> str | None:
+        prefix = prefix.strip("/")
+        if prefix:
+            prefix = f"{prefix}/"
+
+        client = self.get_container_client(container_name)
+        for blob in client.list_blobs(name_starts_with=prefix):
+            blob_name = getattr(blob, "name", "")
+            if blob_name.lower().endswith(extensions):
+                return blob_name
+
+        return None
+
     def download_blob(self, container_name: str, blob_name: str) -> Any:
         client = self.get_container_client(container_name)
         return client.get_blob_client(blob_name).download_blob()

@@ -1,16 +1,17 @@
-import FooterSection from "@/components/FooterSection";
-import Navigation from "@/components/Navigation";
-import { frontPageImageUrl } from "@/lib/datasetFolderCover";
+import { useEffect, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import {
+  ArrowRight,
   Database,
   Eye,
   Hand,
-  Layers3,
   Workflow,
   type LucideIcon,
 } from "lucide-react";
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import FooterSection from "@/components/FooterSection";
+import Navigation from "@/components/Navigation";
+import { frontPageImageUrl } from "@/lib/datasetFolderCover";
+import { buildAuthPath } from "@/lib/authLinks";
 
 type GalleryItem = {
   imagePath: string;
@@ -29,18 +30,15 @@ type ProductSection = {
   title: string;
   subtitle: string;
   summary: string;
+  cta: string;
+  ctaHref: string;
   icon: LucideIcon;
+  badge: string;
   highlights: HighlightItem[];
   gallery: GalleryItem[];
 };
 
-type ProductMenuItem = {
-  label: string;
-  description: string;
-  href?: string;
-};
-
-const productGallery = {
+const PRODUCT_GALLERY = {
   automotive: {
     imagePath: "carAutomation/automotive.png",
     alt: "Automotive production line dataset",
@@ -54,137 +52,125 @@ const productGallery = {
   manipulation: {
     imagePath: "humanoid/manipulation.png",
     alt: "Hand motion and dexterous manipulation dataset",
-    label: "Manipulation",
+    label: "Humanoid",
   },
   warehouse: {
-    imagePath: "warehouse/warehouse.png",
+    imagePath: "warehouse/warehouseproduct.png",
     alt: "Warehouse logistics dataset",
     label: "Warehouse",
   },
 } satisfies Record<string, GalleryItem>;
 
-const roboEyeViewGallery = {
-  automotive: {
+const ROBO_EYE_GALLERY = {
+  automotivePrimary: {
     imagePath: "carAutomation/ego_carautomation.png",
-    alt: "Automotive robot-eye-view example",
-    label: "Automotive",
+    alt: "Automotive robot-eye-view example from RoboEyeView",
+    label: "Automotive A",
   },
-  datacenter: {
+  automotiveSecondary: {
+    imagePath: "carAutomation/2ego_carautomation.png",
+    alt: "Automotive alternate robot-eye-view example from RoboEyeView",
+    label: "Automotive B",
+  },
+  datacenterPrimary: {
     imagePath: "serverrack/ego_serverrack.png",
-    alt: "Data center robot-eye-view example",
-    label: "Data Center",
+    alt: "Data-center robot-eye-view example from RoboEyeView",
+    label: "Data Center A",
   },
-  warehouse: {
-    imagePath: "warehouse/ego_warehouse.png",
-    alt: "Warehouse robot-eye-view example",
-    label: "Warehouse",
-  },
-  dexterity: {
-    imagePath: "humanoid/humanoid.png",
-    alt: "Dexterity robot-eye-view example",
-    label: "Dexterity",
+  datacenterSecondary: {
+    imagePath: "serverrack/2ego_serverrack1.png",
+    alt: "Data-center alternate robot-eye-view example from RoboEyeView",
+    label: "Data Center B",
   },
 } satisfies Record<string, GalleryItem>;
 
-const productMenuItems: ProductMenuItem[] = [
-  {
-    label: "RoboDataHub",
-    description: "Industrial data foundation",
-    href: "/viewer",
-  },
-  {
-    label: "RoboEyeView",
-    description: "Exo to ego transformation",
-    href: "/roboeyeview",
-  },
-  {
-    label: "RoboHandMotion",
-    description: "Coming soon",
-  },
-  {
-    label: "RoboTaskManipulator",
-    description: "Coming soon",
-  },
-];
-
-const productSections: ProductSection[] = [
+const PRODUCT_SECTIONS: ProductSection[] = [
   {
     id: "robodatahub",
-    step: "1",
+    step: "01",
     title: "RoboDataHub",
-    subtitle: "Large-scale industrial datasets for Physical AI.",
+    subtitle: "EGO + EXO datasets across physical AI domains.",
     summary:
-      "A structured data foundation spanning automotive, warehouse, server-rack, and dexterous manipulation workflows.",
+      "A production-ready dataset library for physical AI teams working across automotive, warehouse, data-center, and humanoid workflows.",
+    cta: "Open RoboDataHub",
+    ctaHref: "/viewer",
     icon: Database,
+    badge: "Core Platform",
     highlights: [
       {
         title: "Real environments",
         description:
-          "Capture production-floor conditions, edge cases, and operational variance without rebuilding collection from scratch.",
+          "Start from real operating environments instead of trying to recreate production complexity from scratch.",
       },
       {
-        title: "Faster readiness",
+        title: "Structured access",
         description:
-          "Shorten the path from raw footage to training-ready assets for perception and control teams.",
+          "Move cleanly from category to endpoint folder to orig, EGO, mask, and corner-case assets.",
       },
       {
         title: "Cross-industry coverage",
         description:
-          "Unify high-value scenarios across logistics, data infrastructure, factory tasks, and fine manipulation.",
+          "Cover high-value robot tasks across logistics, data infrastructure, factory workflows, and dexterous manipulation.",
       },
     ],
     gallery: [
-      productGallery.datacenter,
-      productGallery.warehouse,
-      productGallery.automotive,
-      productGallery.manipulation,
+      PRODUCT_GALLERY.datacenter,
+      PRODUCT_GALLERY.warehouse,
+      PRODUCT_GALLERY.automotive,
+      PRODUCT_GALLERY.manipulation,
     ],
   },
   {
     id: "roboeyeview",
-    step: "2",
+    step: "02",
     title: "RoboEyeView",
-    subtitle: "Transforms standard video into robot-eye-view training data.",
+    subtitle: "Patented EXO to EGO synthesis for robot training data.",
     summary:
-      "Turn external viewpoints into action-relevant ego perspectives without changing the surrounding industrial workflow.",
+      "Convert existing EXO footage into robot-eye training data without rebuilding your capture stack around every robot form factor.",
+    cta: "See RoboEyeView",
+    ctaHref: "/roboeyeview",
     icon: Eye,
+    badge: "Patented IP",
     highlights: [
       {
         title: "Robot-centric view",
         description:
-          "Translate existing camera feeds into the viewpoints models need for planning and low-level action understanding.",
+          "Turn external footage into the viewpoints robot models actually need for action-level learning.",
       },
       {
         title: "Physics-aware context",
         description:
-          "Preserve occlusion, geometry, contact, and motion cues that are easy to lose in generic video pipelines.",
+          "Preserve occlusion, contact, geometry, and motion cues that generic media pipelines often miss.",
       },
       {
         title: "Deployment fit",
         description:
-          "Improve perception quality for real industrial tasks without rebuilding the entire sensing stack.",
+          "Support real industrial deployment without forcing new sensing hardware into every workflow.",
       },
     ],
     gallery: [
-      roboEyeViewGallery.automotive,
-      roboEyeViewGallery.datacenter,
-      roboEyeViewGallery.warehouse,
-      roboEyeViewGallery.dexterity,
+      ROBO_EYE_GALLERY.automotivePrimary,
+      ROBO_EYE_GALLERY.automotiveSecondary,
+      ROBO_EYE_GALLERY.datacenterPrimary,
+      ROBO_EYE_GALLERY.datacenterSecondary,
     ],
   },
   {
     id: "robohandmotion",
-    step: "3",
+    step: "03",
     title: "RoboHandMotion",
     subtitle: "Fine-grained interaction data for hands, tools, and objects.",
     summary:
-      "Detailed dexterity signals built for manipulation-heavy tasks where precision matters more than generic movement labels.",
+      "High-detail interaction data for manipulation-heavy workflows where grasp quality and hand-object coordination matter.",
+    cta: "Request access",
+    ctaHref: buildAuthPath("register", "/product#robohandmotion"),
     icon: Hand,
+    badge: "Patented IP",
     highlights: [
       {
         title: "Dexterity signals",
         description:
-          "Track subtle grasp changes, finger intent, and object interaction details that are often missing from broad datasets.",
+          "Capture subtle grasp changes, contact points, and object interaction details that broad datasets usually miss.",
       },
       {
         title: "Interaction quality",
@@ -194,19 +180,22 @@ const productSections: ProductSection[] = [
       {
         title: "Task precision",
         description:
-          "Support manipulation learning for operations that demand steadiness, control, and consistent repeatability.",
+          "Support manipulation learning for operations that demand steadiness, control, and repeatability.",
       },
     ],
     gallery: [],
   },
   {
     id: "robotaskmanipulator",
-    step: "4",
+    step: "04",
     title: "RoboTaskManipulator",
     subtitle: "Task-level intelligence for structured, multi-step execution.",
     summary:
-      "Move from isolated clips to workflow-aware task representations that mirror how real operations are carried out.",
+      "Move from isolated scenes to workflow-aware task structure that mirrors how real operations are executed on the floor.",
+    cta: "Request access",
+    ctaHref: buildAuthPath("register", "/product#robotaskmanipulator"),
     icon: Workflow,
+    badge: "Task Intelligence",
     highlights: [
       {
         title: "Workflow structure",
@@ -216,7 +205,7 @@ const productSections: ProductSection[] = [
       {
         title: "Execution readiness",
         description:
-          "Create task representations that are closer to how production automation must behave on the floor.",
+          "Create task representations that are closer to how production automation actually needs to behave.",
       },
       {
         title: "Operational consistency",
@@ -228,20 +217,18 @@ const productSections: ProductSection[] = [
   },
 ];
 
-const platformSignals = ["Manufacturing", "Warehousing", "Data Centers", "Dexterity"];
-
 function ProductImageCard({ item }: { item: GalleryItem }) {
   const [failed, setFailed] = useState(false);
   const src = frontPageImageUrl(item.imagePath);
 
   if (!src || failed) {
     return (
-      <div className="group relative overflow-hidden rounded-[22px] border border-border bg-background">
-        <div className="flex aspect-[5/4] items-center justify-center bg-background/70">
+      <div className="relative overflow-hidden rounded-[22px] border border-white/6 bg-[#0b0f13]">
+        <div className="flex aspect-[5/4] items-center justify-center bg-black/30">
           <Database className="h-9 w-9 text-primary/60" />
         </div>
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-background via-background/78 to-transparent px-4 pb-4 pt-12">
-          <span className="inline-flex rounded-full border border-border bg-background/80 px-3 py-1 font-mono-tech text-[11px] uppercase tracking-[0.16em] text-foreground">
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent px-4 pb-4 pt-12">
+          <span className="inline-flex rounded-full border border-white/10 bg-black/30 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-foreground">
             {item.label}
           </span>
         </div>
@@ -250,7 +237,7 @@ function ProductImageCard({ item }: { item: GalleryItem }) {
   }
 
   return (
-    <div className="group relative overflow-hidden rounded-[22px] border border-border bg-background">
+    <div className="group relative overflow-hidden rounded-[22px] border border-white/6 bg-[#0b0f13]">
       <div className="aspect-[5/4] overflow-hidden">
         <img
           src={src}
@@ -261,8 +248,8 @@ function ProductImageCard({ item }: { item: GalleryItem }) {
           onError={() => setFailed(true)}
         />
       </div>
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-background via-background/78 to-transparent px-4 pb-4 pt-12">
-        <span className="inline-flex rounded-full border border-border bg-background/80 px-3 py-1 font-mono-tech text-[11px] uppercase tracking-[0.16em] text-foreground">
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent px-4 pb-4 pt-12">
+        <span className="inline-flex rounded-full border border-white/10 bg-black/25 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-foreground">
           {item.label}
         </span>
       </div>
@@ -270,199 +257,136 @@ function ProductImageCard({ item }: { item: GalleryItem }) {
   );
 }
 
-function SolutionsTopMenu() {
-  return (
-    <section className="overflow-hidden rounded-[28px] border border-border bg-card/70 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.28)] backdrop-blur-sm md:p-5">
-      <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-        <div className="max-w-xl px-2 pt-2">
-          <div className="font-mono-tech text-[11px] uppercase tracking-[0.24em] text-primary">
-            Solutions Map
-          </div>
-          <h1 className="mt-3 font-sans-tech text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            Solutions
-          </h1>
-          <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            A horizontal control rail for moving between DataraAI solution surfaces. The first
-            two are live today, and the remaining entries stay visible so the platform story
-            still feels complete.
-          </p>
-        </div>
-
-        <div className="overflow-x-auto pb-2">
-          <div className="flex min-w-max snap-x snap-mandatory gap-3">
-            {productMenuItems.map((item, index) => {
-              const content = (
-                <>
-                  <div className="flex items-start justify-between gap-4">
-                    <span
-                      className={`inline-flex h-10 min-w-10 items-center justify-center rounded-2xl border px-3 font-mono-tech text-[11px] font-bold uppercase tracking-[0.18em] ${
-                        item.href
-                          ? "border-primary/35 bg-primary/10 text-primary"
-                          : "border-border bg-background text-muted-foreground"
-                      }`}
-                    >
-                      {String(index + 1).padStart(2, "0")}
-                    </span>
-                    <span
-                      className={`rounded-full border px-2.5 py-1 font-mono-tech text-[10px] uppercase tracking-[0.16em] ${
-                        item.href
-                          ? "border-primary-glow/25 bg-primary-glow/10 text-primary-glow"
-                          : "border-border bg-background/70 text-muted-foreground"
-                      }`}
-                    >
-                      {item.href ? "Live" : "Soon"}
-                    </span>
-                  </div>
-
-                  <span className="mt-5 block font-sans-tech text-base font-semibold text-foreground">
-                    {item.label}
-                  </span>
-                  <span className="mt-2 block text-sm leading-6 text-muted-foreground">
-                    {item.description}
-                  </span>
-                </>
-              );
-
-              if (item.href) {
-                return (
-                  <Link
-                    key={item.label}
-                    to={item.href}
-                    className="group w-[220px] snap-start rounded-[24px] border border-border/80 bg-background/60 p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-background/80 hover:shadow-[0_14px_40px_rgba(0,0,0,0.24)] sm:w-[244px]"
-                  >
-                    {content}
-                  </Link>
-                );
-              }
-
-              return (
-                <button
-                  key={item.label}
-                  type="button"
-                  disabled
-                  className="w-[220px] cursor-not-allowed snap-start rounded-[24px] border border-border/80 bg-background/40 p-5 text-left opacity-85 sm:w-[244px]"
-                >
-                  {content}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
 export default function Product() {
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!location.hash) return;
+    const target = document.getElementById(location.hash.replace("#", ""));
+    if (target) {
+      window.setTimeout(() => {
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 50);
+    }
+  }, [location.hash]);
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Navigation />
 
-      <div className="relative overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 bg-grid-pattern opacity-[0.08]" />
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-[520px] bg-[radial-gradient(circle_at_top_right,rgba(31,209,107,0.2),transparent_30%),radial-gradient(circle_at_10%_25%,rgba(143,224,179,0.14),transparent_24%)]" />
+      <main className="relative overflow-hidden pt-[88px]">
+        <div className="pointer-events-none absolute inset-0 bg-grid-pattern opacity-[0.06]" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-[520px] bg-[radial-gradient(circle_at_top_right,rgba(29,233,182,0.18),transparent_28%),radial-gradient(circle_at_10%_25%,rgba(30,136,229,0.12),transparent_24%)]" />
 
-        <main className="relative z-10 mx-auto max-w-[1440px] px-4 pb-16 pt-24 sm:px-6">
-          <div className="mx-auto max-w-7xl">
-            <SolutionsTopMenu />
-
-            <div className="mt-6 min-w-0">
-              <section className="relative overflow-hidden rounded-[32px] border border-border bg-card/70 px-5 py-8 shadow-[0_24px_80px_rgba(0,0,0,0.32)] sm:px-6 md:px-10 md:py-12">
-                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(31,209,107,0.16),transparent_24%),radial-gradient(circle_at_bottom_left,rgba(143,224,179,0.1),transparent_28%)]" />
-
-                <div className="relative">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 font-mono-tech text-[11px] uppercase tracking-[0.22em] text-primary">
-                    <Layers3 className="h-3.5 w-3.5" />
-                    Physical AI Solutions Platform
-                  </div>
-
-                  <h2 className="mt-6 max-w-4xl font-sans-tech text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-6xl md:leading-[1.02]">
-                    Robot-ready data and execution intelligence for real industrial deployment.
-                  </h2>
-
-                  <p className="mt-5 max-w-3xl border-l-2 border-primary/40 pl-4 text-sm leading-7 text-muted-foreground sm:pl-5 sm:text-base md:text-lg md:leading-8">
-                    DataraAI turns raw operational footage into structured training signals for
-                    perception, dexterity, task execution, and robot-eye-view learning, all
-                    within a layout that mirrors your uploaded reference page.
-                  </p>
-
-                  <div className="mt-8 flex flex-wrap gap-3">
-                    {platformSignals.map((signal) => (
-                      <span
-                        key={signal}
-                        className="rounded-full border border-border bg-background/70 px-3 py-1.5 font-mono-tech text-[11px] uppercase tracking-[0.18em] text-muted-foreground"
-                      >
-                        {signal}
-                      </span>
-                    ))}
-                  </div>
+        <div className="relative z-10 mx-auto max-w-[1440px] px-4 py-10 sm:px-6 md:py-14">
+          <div className="grid gap-4 xl:grid-cols-4">
+            {PRODUCT_SECTIONS.map((section) => (
+              <Link
+                key={section.id}
+                to={`/product#${section.id}`}
+                className="rounded-[24px] border border-white/6 bg-[#0d1014]/85 p-5 shadow-[0_18px_40px_rgba(0,0,0,0.22)] transition-all hover:-translate-y-1 hover:border-primary/20"
+              >
+                <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">
+                  {section.badge}
                 </div>
-              </section>
-
-              <div className="mt-6 space-y-6">
-                {productSections.map((section) => {
-                  const SectionIcon = section.icon;
-
-                  return (
-                    <section key={section.id} id={section.id} className="scroll-mt-24">
-                      <div className="relative overflow-hidden rounded-[28px] border border-border bg-card/75 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.28)] md:p-8">
-                        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(31,209,107,0.08),transparent_35%,rgba(143,224,179,0.06))]" />
-
-                        <div className="relative">
-                          <div className="max-w-3xl">
-                            <div className="font-mono-tech text-[11px] uppercase tracking-[0.22em] text-primary">
-                              Solution {section.step}
-                            </div>
-                            <div className="mt-4 flex items-center gap-4">
-                              <div className="grid h-12 w-12 place-items-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
-                                <SectionIcon className="h-5 w-5" />
-                              </div>
-                              <h3 className="font-sans-tech text-3xl font-bold tracking-tight text-foreground md:text-[2rem]">
-                                {section.title}
-                              </h3>
-                            </div>
-                            <p className="mt-4 text-lg leading-8 text-foreground/90">
-                              {section.subtitle}
-                            </p>
-                            <p className="mt-3 max-w-3xl text-sm leading-7 text-muted-foreground md:text-base">
-                              {section.summary}
-                            </p>
-                          </div>
-
-                          <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                            {section.highlights.map((highlight) => (
-                              <div
-                                key={highlight.title}
-                                className="rounded-[22px] border border-border bg-background/55 p-5 backdrop-blur-sm"
-                              >
-                                <div className="h-1.5 w-12 rounded-full bg-gradient-to-r from-primary to-primary-glow" />
-                                <div className="mt-4 font-sans-tech text-base font-semibold text-foreground">
-                                  {highlight.title}
-                                </div>
-                                <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                                  {highlight.description}
-                                </p>
-                              </div>
-                            ))}
-                          </div>
-
-                          {section.gallery.length > 0 && (
-                            <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                              {section.gallery.map((item) => (
-                                <ProductImageCard key={`${section.id}-${item.label}`} item={item} />
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </section>
-                  );
-                })}
-              </div>
-            </div>
+                <div className="mt-4 text-lg font-extrabold text-white">{section.title}</div>
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">{section.subtitle}</p>
+              </Link>
+            ))}
           </div>
-        </main>
-      </div>
+
+          <div className="mt-8 space-y-6">
+            {PRODUCT_SECTIONS.map((section) => {
+              const SectionIcon = section.icon;
+
+              return (
+                <section key={section.id} id={section.id} className="scroll-mt-[120px]">
+                  <div className="overflow-hidden rounded-[28px] border border-white/6 bg-[#0d1014]/88 p-6 shadow-[0_24px_60px_rgba(0,0,0,0.24)] md:p-8">
+                    <div className="max-w-3xl">
+                      <div className="text-[11px] uppercase tracking-[0.22em] text-primary">
+                        Solution {section.step}
+                      </div>
+                      <div className="mt-4 flex items-center gap-4">
+                        <div className="grid h-12 w-12 place-items-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
+                          <SectionIcon className="h-5 w-5" />
+                        </div>
+                        <h2 className="text-3xl font-black tracking-[-0.04em] text-white md:text-[2rem]">
+                          {section.title}
+                        </h2>
+                      </div>
+                      <p className="mt-4 text-lg leading-8 text-white/90">{section.subtitle}</p>
+                      <p className="mt-3 text-sm leading-7 text-muted-foreground md:text-base">
+                        {section.summary}
+                      </p>
+                      <div className="mt-6">
+                        <Link
+                          to={section.ctaHref}
+                          className="inline-flex items-center gap-2 text-sm font-bold text-primary"
+                        >
+                          {section.cta}
+                          <ArrowRight className="h-4 w-4" />
+                        </Link>
+                      </div>
+                    </div>
+
+                    <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                      {section.highlights.map((highlight) => (
+                        <div
+                          key={highlight.title}
+                          className="rounded-[22px] border border-white/6 bg-black/20 p-5"
+                        >
+                          <div className="h-1.5 w-12 rounded-full bg-gradient-to-r from-primary to-primary-glow" />
+                          <div className="mt-4 text-base font-semibold text-white">
+                            {highlight.title}
+                          </div>
+                          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                            {highlight.description}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {section.gallery.length > 0 && (
+                      <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                        {section.gallery.map((item) => (
+                          <ProductImageCard
+                            key={`${section.id}-${item.label}-${item.imagePath}`}
+                            item={item}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+
+          <section className="mt-8 overflow-hidden rounded-[28px] border border-white/6 bg-[linear-gradient(135deg,#050e0a_0%,#060c14_50%,#04080f_100%)] p-8 text-center shadow-[0_24px_60px_rgba(0,0,0,0.26)]">
+            <h2 className="text-[clamp(1.75rem,2.5vw,2.25rem)] font-extrabold tracking-tight text-white">
+              Ready to build with DataraAI?
+            </h2>
+            <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-muted-foreground">
+              Start with live datasets and EXO-to-EGO generation today, then expand into the next
+              product layers as your physical AI pipeline matures.
+            </p>
+            <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
+              <Link
+                to="/viewer"
+                className="inline-flex h-12 items-center justify-center rounded-xl bg-primary px-6 text-sm font-bold text-primary-foreground"
+              >
+                Browse RoboDataHub
+              </Link>
+              <Link
+                to="/roboeyeview"
+                className="inline-flex h-12 items-center justify-center rounded-xl border border-white/12 px-6 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground"
+              >
+                View RoboEyeView
+              </Link>
+            </div>
+          </section>
+        </div>
+      </main>
 
       <FooterSection />
     </div>

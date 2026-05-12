@@ -25,7 +25,11 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Upload dataset images to Azure Blob Storage")
     parser.add_argument("--container_name", required=True)
     parser.add_argument("--output_name", required=True, help="Storage prefix (category/brand/dataset)")
-    parser.add_argument("--input_dir", required=True, help="Local directory containing orig/egos/corner_images_controlnet")
+    parser.add_argument(
+        "--input_dir",
+        required=True,
+        help="Local directory containing orig/egos/corner_images_controlnet and optional video/",
+    )
     parser.add_argument("--view", choices=["orig", "egos", "corner_images_controlnet"], default="orig")
     parser.add_argument("--connection_string", required=False)
     parser.add_argument("--date", default="")
@@ -100,6 +104,114 @@ def _query_existing_video_doc(cosmos_container, container_name: str, dataset_nam
         )
     )
     return items[0] if items else {}
+
+
+def _video_content_type(filename: str) -> str:
+    lower_name = filename.lower()
+    if lower_name.endswith(".webm"):
+        return "video/webm"
+    if lower_name.endswith(".mov"):
+        return "video/quicktime"
+    return "video/mp4"
+
+
+def _collect_video_metadata(local_path: str) -> dict[str, Any]:
+    capture = cv2.VideoCapture(local_path)
+    if not capture.isOpened():
+        return {
+            "width": None,
+            "height": None,
+            "fps": None,
+            "frame_count": None,
+        }
+
+    try:
+        width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH) or 0) or None
+        height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT) or 0) or None
+        fps = float(capture.get(cv2.CAP_PROP_FPS) or 0.0) or None
+        frame_count = int(capture.get(cv2.CAP_PROP_FRAME_COUNT) or 0) or None
+    finally:
+        capture.release()
+
+    return {
+        "width": width,
+        "height": height,
+        "fps": fps,
+        "frame_count": frame_count,
+    }
+
+
+def _upload_video_assets(
+    *,
+    args: argparse.Namespace,
+    base_input_dir: str,
+    dataset_prefix: str,
+    container_client,
+    cosmos_container,
+    misc_tags: list[str],
+    resolved_task: str,
+) -> int:
+    video_dir = os.path.join(base_input_dir, "video")
+    if not os.path.isdir(video_dir):
+        raise FileNotFoundError(f"Expected staged video directory at {video_dir}")
+
+    valid_extensions = (".mp4", ".mov", ".m4v", ".webm")
+    uploaded_count = 0
+
+    for filename in sorted(os.listdir(video_dir)):
+        if not filename.lower().endswith(valid_extensions):
+            continue
+
+        local_path = os.path.join(video_dir, filename)
+        blob_name = f"{dataset_prefix}/video/{filename}"
+        with open(local_path, "rb") as handle:
+            container_client.upload_blob(
+                name=blob_name,
+                data=handle,
+                overwrite=True,
+                content_settings=ContentSettings(content_type=_video_content_type(filename)),
+            )
+
+        existing_doc = _query_existing_doc(cosmos_container, args.container_name, blob_name)
+        video_metadata = _collect_video_metadata(local_path)
+        cosmos_container.upsert_item(
+            {
+                "id": existing_doc.get("id", uuid.uuid4().hex),
+                "docType": "video_annotation",
+                "containerName": args.container_name,
+                "datasetName": dataset_prefix,
+                "datasetId": args.dataset_id,
+                "ownerUserId": args.owner_user_id,
+                "visibility": args.visibility,
+                "sourceDatasetId": args.source_dataset_id or None,
+                "view": "video",
+                "frameName": filename,
+                "blobPath": blob_name,
+                "date": args.date,
+                "frameId": None,
+                "width": video_metadata["width"],
+                "height": video_metadata["height"],
+                "miscTags": list(dict.fromkeys([*misc_tags, "video"])),
+                "task": resolved_task,
+                "VLM_tags": existing_doc.get("VLM_tags", []),
+                "VLM_tags_by_prompt": existing_doc.get("VLM_tags_by_prompt", {}),
+                "VLM_effective_prompts": existing_doc.get("VLM_effective_prompts", {}),
+                "VLM_last_prompt_label": existing_doc.get("VLM_last_prompt_label"),
+                "vlm": existing_doc.get("vlm"),
+                "sharpnessScore": None,
+                "clear": None,
+                "fps": video_metadata["fps"],
+                "frameCount": video_metadata["frame_count"],
+                "sourceType": "video",
+            }
+        )
+        uploaded_count += 1
+        print(f"Uploaded video ({uploaded_count}): {blob_name}")
+
+    if uploaded_count == 0:
+        raise FileNotFoundError(f"No staged video files were found in {video_dir}")
+
+    return uploaded_count
 
 
 def main() -> None:
@@ -189,34 +301,14 @@ def main() -> None:
         print(f"Uploaded ({uploaded_count}): {blob_name}")
 
     if args.create_video_annotation:
-        existing_video_doc = _query_existing_video_doc(cosmos_container, args.container_name, dataset_prefix)
-        cosmos_container.upsert_item(
-            {
-                "id": existing_video_doc.get("id", uuid.uuid4().hex),
-                "docType": "video_annotation",
-                "containerName": args.container_name,
-                "datasetName": dataset_prefix,
-                "datasetId": args.dataset_id,
-                "ownerUserId": args.owner_user_id,
-                "visibility": args.visibility,
-                "sourceDatasetId": args.source_dataset_id or None,
-                "view": "video",
-                "frameName": None,
-                "blobPath": None,
-                "date": args.date,
-                "frameId": None,
-                "width": None,
-                "height": None,
-                "miscTags": misc_tags,
-                "task": resolved_task,
-                "VLM_tags": existing_video_doc.get("VLM_tags", []),
-                "VLM_tags_by_prompt": existing_video_doc.get("VLM_tags_by_prompt", {}),
-                "VLM_effective_prompts": existing_video_doc.get("VLM_effective_prompts", {}),
-                "VLM_last_prompt_label": existing_video_doc.get("VLM_last_prompt_label"),
-                "vlm": existing_video_doc.get("vlm"),
-                "frameCount": uploaded_count,
-                "sourceType": "video",
-            }
+        _upload_video_assets(
+            args=args,
+            base_input_dir=base_input_dir,
+            dataset_prefix=dataset_prefix,
+            container_client=container_client,
+            cosmos_container=cosmos_container,
+            misc_tags=misc_tags,
+            resolved_task=resolved_task,
         )
 
     print(

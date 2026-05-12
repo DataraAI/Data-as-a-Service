@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # DataraAI Development Setup Script
-# Initializes the project for development with all dependencies
+# Initializes the project for backend + dashboard development
 
 set -e
 
@@ -54,30 +54,36 @@ pip install --upgrade pip
 pip install -r requirements.txt
 echo -e "${GREEN}✓ Backend dependencies installed${NC}"
 
-# Install backend as editable package
-echo "Installing backend package..."
-pip install -e .
-echo -e "${GREEN}✓ Backend package installed${NC}"
-
-# Setup Frontend
-echo -e "${BLUE}\nSetting up Frontend...${NC}"
-cd "$PROJECT_ROOT/frontend"
+# Setup Dashboard
+echo -e "${BLUE}\nSetting up Dashboard...${NC}"
+cd "$PROJECT_ROOT/dashboard"
 
 echo "Installing Node dependencies..."
 npm install
-echo -e "${GREEN}✓ Frontend dependencies installed${NC}"
+echo -e "${GREEN}✓ Dashboard dependencies installed${NC}"
 
 # Setup Environment Variables
 echo -e "${BLUE}\nSetting up Environment Variables...${NC}"
-if [ ! -f "$PROJECT_ROOT/.env" ]; then
+if [ ! -f "$PROJECT_ROOT/config/.env" ]; then
     if [ -f "$PROJECT_ROOT/config/.env.example" ]; then
-        cp "$PROJECT_ROOT/config/.env.example" "$PROJECT_ROOT/.env"
-        echo -e "${YELLOW}⚠ Created .env file from template. Please edit with your values.${NC}"
+        cp "$PROJECT_ROOT/config/.env.example" "$PROJECT_ROOT/config/.env"
+        echo -e "${YELLOW}⚠ Created config/.env from template. Please fill in shared secrets.${NC}"
     else
-        echo -e "${YELLOW}⚠ No .env template found. Please create .env manually.${NC}"
+        echo -e "${YELLOW}⚠ No shared env template found. Please create config/.env manually.${NC}"
     fi
 else
-    echo -e "${GREEN}✓ .env file already exists${NC}"
+    echo -e "${GREEN}✓ config/.env already exists${NC}"
+fi
+
+if [ ! -f "$PROJECT_ROOT/config/.env.development" ]; then
+    if [ -f "$PROJECT_ROOT/config/.env.development.example" ]; then
+        cp "$PROJECT_ROOT/config/.env.development.example" "$PROJECT_ROOT/config/.env.development"
+        echo -e "${YELLOW}⚠ Created config/.env.development from template.${NC}"
+    else
+        echo -e "${YELLOW}⚠ No development env template found. Please create config/.env.development manually.${NC}"
+    fi
+else
+    echo -e "${GREEN}✓ config/.env.development already exists${NC}"
 fi
 
 # Summary
@@ -85,21 +91,22 @@ echo -e "${BLUE}\n=============================="
 echo "Setup Complete! 🎉"
 echo "==============================${NC}"
 echo -e "\n${GREEN}Next Steps:${NC}"
-echo "1. Edit .env with your configuration:"
-echo "   vim $PROJECT_ROOT/.env"
+echo "1. Edit your shared and development config files:"
+echo "   vim $PROJECT_ROOT/config/.env"
+echo "   vim $PROJECT_ROOT/config/.env.development"
 echo ""
 echo "2. Start the backend (Terminal 1):"
 echo "   cd $PROJECT_ROOT/backend"
 echo "   source .venv/bin/activate"
-echo "   python src/app.py"
+echo "   python app.py"
 echo ""
-echo "3. Start the frontend (Terminal 2):"
-echo "   cd $PROJECT_ROOT/frontend"
+echo "3. Start the dashboard (Terminal 2):"
+echo "   cd $PROJECT_ROOT/dashboard"
 echo "   npm run dev"
 echo ""
 echo "4. Access the application:"
-echo "   Frontend: http://localhost:5173"
-echo "   Backend:  http://localhost:5000"
+echo "   Frontend: http://localhost:5174"
+echo "   Backend:  http://localhost:5152"
 echo ""
 echo -e "${BLUE}For more information, see docs/SETUP.md${NC}"
 

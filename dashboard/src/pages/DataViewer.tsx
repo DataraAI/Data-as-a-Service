@@ -25,6 +25,7 @@ import { Breadcrumbs } from "../components/Breadcrumbs";
 import { DatasetFolderCover } from "../components/DatasetFolderCover";
 import AuthRequiredState from "@/components/AuthRequiredState";
 import { useAuth } from "@/auth/useAuth";
+import { buildAuthPath } from "@/lib/authLinks";
 import { frontPageImageUrl } from "@/lib/datasetFolderCover";
 
 interface FolderItem {
@@ -91,42 +92,41 @@ interface CategoryConfig {
   previewKey: StoragePreviewKey;
   label: string;
   description: string;
-  helperText: string;
-  searchTitle: string;
-  searchDescription: string;
 }
 
-interface ShowcaseImageConfig {
-  previewBlobPath: string;
-  targetFolderPath: string;
-  targetImageName?: string;
-  alt: string;
+interface CategoryPreviewAsset {
+  asset_id: string;
+  blob_path: string;
+  name: string;
+  label: string;
+  proxy_url: string;
+}
+
+interface CategoryDatasetPreview {
+  title: string;
+  brand: string;
+  full_path: string;
+  viewer_path?: string;
+  visibility?: "private" | "public";
+  owner_slug?: string;
+  main_image: CategoryPreviewAsset | null;
+  thumbnails: CategoryPreviewAsset[];
 }
 
 const CATEGORIES: CategoryConfig[] = [
   {
     routeKey: "carAutomation",
     previewKey: "carAutomation",
-    label: "Car Automation",
+    label: "Automotive",
     description:
       "Assembly, inspection, and vehicle-production data for robotics workflows across automotive environments.",
-    helperText:
-      "Browse this category to explore automotive data collections, or search directly below to jump to a specific folder path.",
-    searchTitle: "Search within Car Automation",
-    searchDescription:
-      "Find folders, scenes, or specific path matches inside the Car Automation category.",
   },
   {
     routeKey: "serverrack",
     previewKey: "serverrack",
-    label: "Serverrack",
+    label: "Data Center",
     description:
       "Data-center interaction, port-level operation, and maintenance-focused datasets for rack and cabling tasks.",
-    helperText:
-      "Start here for server-rack workflows, then browse further or search to move directly into a relevant dataset branch.",
-    searchTitle: "Search within Serverrack",
-    searchDescription:
-      "Search inside the Serverrack category for folders related to rack operations, cabling, and maintenance.",
   },
   {
     routeKey: "dexterity",
@@ -134,11 +134,6 @@ const CATEGORIES: CategoryConfig[] = [
     label: "Dexterity",
     description:
       "Fine-motor manipulation and embodied task data for dexterous robotic systems operating across practical, object-centric scenarios.",
-    helperText:
-      "Use this category for dexterity-focused tasks and embodied interaction data, including peeling, washing, and practical manipulation workflows.",
-    searchTitle: "Search within Dexterity",
-    searchDescription:
-      "Search only across dexterity-related folders to narrow down the most relevant dataset path quickly.",
   },
   {
     routeKey: "warehouse",
@@ -146,116 +141,8 @@ const CATEGORIES: CategoryConfig[] = [
     label: "Warehouse",
     description:
       "Logistics, handling, and storage-operation data for robotic movement, picking, and material flow.",
-    helperText:
-      "Explore warehouse-oriented robotics data collections, or search within this category to find a path faster.",
-    searchTitle: "Search within Warehouse",
-    searchDescription:
-      "Search only within warehouse data paths to keep results focused and easier to navigate.",
   },
 ];
-
-const CATEGORY_SHOWCASES: Record<CategoryKey, ShowcaseImageConfig[]> = {
-  carAutomation: [
-    {
-      previewBlobPath: "carAutomation/carAutomation4.png",
-      targetFolderPath: "carAutomation/BMW/frontGrille",
-      targetImageName: "frontGrille_016_Rotate_right_90_degrees.png",
-      alt: "BMW front grille rotation example",
-    },
-    {
-      previewBlobPath: "carAutomation/carAutomation5.png",
-      targetFolderPath: "carAutomation/BMW/frontGrille",
-      targetImageName: "frontGrille_000_Rotate_right_45_degrees.png",
-      alt: "BMW front grille angled example",
-    },
-    {
-      previewBlobPath: "carAutomation/carAutomation6.png",
-      targetFolderPath: "carAutomation/Porsche/frontSeat",
-      targetImageName: "frontSeat_037_Rotate_left_45_degrees.png",
-      alt: "Porsche front seat example",
-    },
-    {
-      previewBlobPath: "carAutomation/carAutomation7.png",
-      targetFolderPath: "carAutomation/bmw/rearBumper",
-      targetImageName: "rearBumper_000_Rotate_left_90_degrees.png",
-      alt: "BMW rear bumper example",
-    },
-  ],
-  serverrack: [
-    {
-      previewBlobPath: "serverrack/serverrack4.png",
-      targetFolderPath: "serverrack/Dell/dataRackInstall",
-      targetImageName: "dataRackInstall_0000.png",
-      alt: "Serverrack installation example",
-    },
-    {
-      previewBlobPath: "serverrack/serverrack5.png",
-      targetFolderPath: "serverrack/Gigabyte/datacenterRack2",
-      targetImageName: "datacenterRack2_84.png",
-      alt: "Datacenter rack example",
-    },
-    {
-      previewBlobPath: "serverrack/serverrack6.png",
-      targetFolderPath: "serverrack/AnalogDevices/ethernetCable",
-      targetImageName: "ethernetCable_000.png",
-      alt: "Ethernet cable example",
-    },
-    {
-      previewBlobPath: "serverrack/serverrack7.png",
-      targetFolderPath: "serverrack/NVIDIA/switchTray",
-      targetImageName: "switchTray_000.png",
-      alt: "Switch tray example",
-    },
-  ],
-  dexterity: [
-    {
-      previewBlobPath: "humanoid/humanoid4.png",
-      targetFolderPath: "dexterity/Awign/dishWasher",
-      alt: "Dexterity dish washer example one",
-    },
-    {
-      previewBlobPath: "humanoid/humanoid5.png",
-      targetFolderPath: "dexterity/Awign/dishWasherUnloading",
-      alt: "Dexterity dish washer unloading example",
-    },
-    {
-      previewBlobPath: "humanoid/humanoid6.png",
-      targetFolderPath: "dexterity/Awign/peelingPeas",
-      alt: "Dexterity peeling example",
-    },
-    {
-      previewBlobPath: "humanoid/humanoid7.png",
-      targetFolderPath: "dexterity/Awign/washingMachine",
-      alt: "Dexterity washing machine example",
-    },
-  ],
-  warehouse: [
-    {
-      previewBlobPath: "warehouse/warehouse4.png",
-      targetFolderPath: "warehouse/Symbotic/AVnavigation",
-      targetImageName: "AVnavigation_000.png",
-      alt: "Warehouse navigation example one",
-    },
-    {
-      previewBlobPath: "warehouse/warehouse5.png",
-      targetFolderPath: "warehouse/Symbotic/AVnavigation",
-      targetImageName: "AVnavigation_044.png",
-      alt: "Warehouse navigation example two",
-    },
-    {
-      previewBlobPath: "warehouse/warehouse6.png",
-      targetFolderPath: "warehouse/Symbotic/AVnavigation",
-      targetImageName: "AVnavigation_071.png",
-      alt: "Warehouse navigation example three",
-    },
-    {
-      previewBlobPath: "warehouse/warehouse7.png",
-      targetFolderPath: "warehouse/Symbotic/AVnavigation",
-      targetImageName: "AVnavigation_095.png",
-      alt: "Warehouse navigation example four",
-    },
-  ],
-};
 
 function normalizePathSearchValue(value: string) {
   return value
@@ -375,17 +262,44 @@ function uniqueFolderItems(items: FolderItem[]) {
   });
 }
 
+function normalizeCategoryValue(value?: string | null) {
+  const normalized = String(value ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+
+  switch (normalized) {
+    case "automotive":
+    case "carautomation":
+      return "carautomation";
+    case "datacenter":
+    case "datacentre":
+    case "serverrack":
+    case "serverracks":
+      return "serverrack";
+    case "humanoid":
+    case "dexterity":
+      return "dexterity";
+    case "warehouse":
+      return "warehouse";
+    default:
+      return normalized;
+  }
+}
+
 function getCategoryByRouteKey(value?: string | null) {
-  return CATEGORIES.find((category) => category.routeKey === value) ?? null;
+  const normalizedValue = normalizeCategoryValue(value);
+  return (
+    CATEGORIES.find((category) => normalizeCategoryValue(category.routeKey) === normalizedValue) ??
+    null
+  );
 }
 
 function pathBelongsToCategory(fullPath: string, routeKey: CategoryKey) {
   const segments = fullPath.split("/").filter(Boolean);
   if (segments.length === 0) return false;
-  if (segments[0] === routeKey) return true;
-  if (segments[0] === "my") return segments[1] === routeKey;
-  if (segments[0] === "admin") return segments[2] === routeKey;
-  return false;
+  const categorySegment =
+    segments[0] === "my" ? segments[1] : segments[0] === "admin" ? segments[2] : segments[0];
+  return normalizeCategoryValue(categorySegment) === normalizeCategoryValue(routeKey);
 }
 
 function buildCategoryHeroImagePaths(category: CategoryConfig) {
@@ -488,10 +402,10 @@ function ShowcasePreviewImage({
       <button
         type="button"
         onClick={onClick}
-        className="group relative flex aspect-[5/4] w-full items-center justify-center overflow-hidden rounded-sm border border-border bg-background/70 transition-all duration-300 hover:border-primary hover:shadow-[0_0_0_2px_rgba(31,209,107,0.38)]"
+        className="group relative flex aspect-[5/4] w-full items-center justify-center overflow-hidden rounded-[18px] border border-white/6 bg-[#0b0f13] transition-all duration-300 hover:border-primary/30 hover:shadow-[0_0_0_2px_rgba(29,233,182,0.18)]"
       >
         <Database className="h-9 w-9 text-primary/60" />
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-background/95 to-transparent px-3 py-2 text-left">
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 to-transparent px-4 py-3 text-left">
           <span className="font-sans-tech text-[11px] uppercase tracking-[0.18em] text-primary">
             Open in viewer
           </span>
@@ -504,7 +418,7 @@ function ShowcasePreviewImage({
     <button
       type="button"
       onClick={onClick}
-      className="group relative w-full overflow-hidden rounded-sm border border-border bg-background/70 shadow-xl shadow-black/20 transition-all duration-300 hover:border-primary hover:shadow-[0_0_0_2px_rgba(31,209,107,0.42)] focus:border-primary focus:outline-none focus:shadow-[0_0_0_2px_rgba(31,209,107,0.42)]"
+      className="group relative w-full overflow-hidden rounded-[18px] border border-white/6 bg-[#0b0f13] shadow-xl shadow-black/20 transition-all duration-300 hover:border-primary/30 hover:shadow-[0_0_0_2px_rgba(29,233,182,0.2)] focus:border-primary focus:outline-none focus:shadow-[0_0_0_2px_rgba(29,233,182,0.2)]"
     >
       <div className="aspect-[5/4] overflow-hidden">
         <img
@@ -517,7 +431,7 @@ function ShowcasePreviewImage({
         />
       </div>
       <div className="absolute inset-0 bg-gradient-to-t from-background/75 via-background/10 to-transparent opacity-80 transition-opacity group-hover:opacity-100" />
-      <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-3 px-3 py-3">
+      <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-3 px-4 py-3">
         <span className="font-sans-tech text-[11px] uppercase tracking-[0.18em] text-primary">
           Open in viewer
         </span>
@@ -533,14 +447,14 @@ function CategoryHeroImage({ blobPath, alt }: { blobPath: string; alt: string })
 
   if (!src || failed) {
     return (
-      <div className="flex aspect-[4/3] w-full items-center justify-center rounded-sm border border-border bg-background/60">
+      <div className="flex aspect-[4/3] w-full items-center justify-center rounded-[18px] border border-white/6 bg-[#0b0f13]">
         <Database className="h-8 w-8 text-primary/60" />
       </div>
     );
   }
 
   return (
-    <div className="w-full overflow-hidden rounded-sm border border-border bg-background/60 shadow-lg shadow-black/20">
+    <div className="w-full overflow-hidden rounded-[18px] border border-white/6 bg-[#0b0f13] shadow-lg shadow-black/20">
       <div className="aspect-[4/3] overflow-hidden">
         <img
           src={src}
@@ -552,6 +466,213 @@ function CategoryHeroImage({ blobPath, alt }: { blobPath: string; alt: string })
         />
       </div>
     </div>
+  );
+}
+
+function getCategoryAccent(routeKey: CategoryKey) {
+  switch (routeKey) {
+    case "serverrack":
+      return {
+        dot: "bg-blue-400 shadow-[0_0_12px_rgba(96,165,250,0.45)]",
+        chip: "border-blue-400/25 bg-blue-400/10 text-blue-300",
+        line: "bg-blue-400/20",
+      };
+    case "warehouse":
+      return {
+        dot: "bg-orange-400 shadow-[0_0_12px_rgba(251,146,60,0.45)]",
+        chip: "border-orange-400/25 bg-orange-400/10 text-orange-300",
+        line: "bg-orange-400/20",
+      };
+    case "dexterity":
+      return {
+        dot: "bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.45)]",
+        chip: "border-emerald-400/25 bg-emerald-400/10 text-emerald-300",
+        line: "bg-emerald-400/20",
+      };
+    default:
+      return {
+        dot: "bg-violet-400 shadow-[0_0_12px_rgba(167,139,250,0.45)]",
+        chip: "border-violet-400/25 bg-violet-400/10 text-violet-300",
+        line: "bg-violet-400/20",
+      };
+  }
+}
+
+function CompactPathSearch({
+  value,
+  loading,
+  suggestions,
+  placeholder,
+  submitDisabled,
+  onFocus,
+  onChange,
+  onSubmit,
+  onSuggestionClick,
+  renderHighlightedPath,
+}: {
+  value: string;
+  loading: boolean;
+  suggestions: FolderItem[];
+  placeholder: string;
+  submitDisabled: boolean;
+  onFocus: () => void;
+  onChange: (value: string) => void;
+  onSubmit: () => void;
+  onSuggestionClick: (fullPath: string) => void;
+  renderHighlightedPath: (fullPath: string) => ReactNode;
+}) {
+  return (
+    <div className="relative w-full max-w-xl">
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSubmit();
+        }}
+        className="flex flex-col gap-3 sm:flex-row"
+      >
+        <div className="relative flex-1">
+          <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="text"
+            value={value}
+            onFocus={onFocus}
+            onChange={(event) => onChange(event.target.value)}
+            placeholder={placeholder}
+            className="h-11 w-full rounded-xl border border-white/8 bg-[#0d1014] pl-11 pr-10 font-sans-tech text-sm text-foreground shadow-black/20 placeholder:text-muted-foreground focus:border-primary/30 focus:outline-none"
+          />
+          {loading && (
+            <Loader2 className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-primary" />
+          )}
+        </div>
+        <button
+          type="submit"
+          disabled={submitDisabled}
+          className="inline-flex h-11 shrink-0 items-center justify-center rounded-xl bg-primary px-5 font-sans-tech text-sm font-bold text-primary-foreground transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Search
+        </button>
+      </form>
+
+      {value.trim() !== "" && (
+        <div className="absolute left-0 right-0 top-[calc(100%+0.75rem)] z-30 overflow-hidden rounded-[18px] border border-white/8 bg-[#0b0f13]/96 text-left shadow-xl shadow-black/30 backdrop-blur-sm">
+          {suggestions.length > 0 ? (
+            <div className="divide-y divide-white/6">
+              {suggestions.map((suggestion) => (
+                <button
+                  key={suggestion.full_path}
+                  type="button"
+                  onClick={() => onSuggestionClick(suggestion.full_path)}
+                  className="w-full px-4 py-3 text-left transition-colors hover:bg-primary/10"
+                >
+                  {renderHighlightedPath(suggestion.full_path)}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="px-4 py-3 font-sans-tech text-sm text-muted-foreground">
+              {loading ? "Loading paths..." : "No matching paths found"}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DatasetPreviewImage({
+  asset,
+  alt,
+  className,
+}: {
+  asset: CategoryPreviewAsset | null | undefined;
+  alt: string;
+  className?: string;
+}) {
+  const [failed, setFailed] = useState(false);
+
+  return (
+    <div
+      className={`relative overflow-hidden rounded-[18px] border border-white/8 bg-[#0b0f13] ${className ?? ""}`}
+    >
+      {asset?.proxy_url && !failed ? (
+        <img
+          src={asset.proxy_url}
+          alt={alt}
+          loading="lazy"
+          decoding="async"
+          className="h-full w-full object-cover"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <div className="flex h-full min-h-[120px] items-center justify-center bg-black/30">
+          <Database className="h-8 w-8 text-primary/55" />
+        </div>
+      )}
+
+    </div>
+  );
+}
+
+function CategoryDatasetPreviewCard({
+  item,
+  onClick,
+}: {
+  item: CategoryDatasetPreview;
+  onClick: () => void;
+}) {
+  const thumbnailItems = Array.from({ length: 4 }, (_, index) => item.thumbnails[index] ?? item.main_image);
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group flex h-full flex-col overflow-hidden rounded-[24px] border border-white/6 bg-[#0d1014]/88 p-5 text-left shadow-[0_20px_46px_rgba(0,0,0,0.22)] transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/20 hover:bg-[#11161b]"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">
+            {item.brand || "DataraAI"}
+          </div>
+          <h3 className="mt-2 text-xl font-extrabold text-white">{item.title}</h3>
+        </div>
+        <span
+          className={`rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
+            item.visibility === "public"
+              ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-300"
+              : "border-white/10 bg-black/20 text-muted-foreground"
+          }`}
+        >
+          {item.visibility === "public" ? "Public" : "Private"}
+        </span>
+      </div>
+
+      <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1.08fr)_220px]">
+        <DatasetPreviewImage
+          asset={item.main_image}
+          alt={`${item.title} primary preview`}
+          className="aspect-[1.08/1]"
+        />
+
+        <div className="grid grid-cols-2 gap-3">
+          {thumbnailItems.map((thumbnail, index) => (
+            <DatasetPreviewImage
+              key={`${item.full_path}-${thumbnail?.asset_id ?? "empty"}-${index}`}
+              asset={thumbnail}
+              alt={`${item.title} preview ${index + 1}`}
+              className="aspect-square"
+            />
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-5 flex items-center justify-between gap-3 border-t border-white/6 pt-4">
+        <span className="truncate text-xs text-muted-foreground">{item.full_path}</span>
+        <span className="inline-flex shrink-0 items-center gap-2 text-xs font-bold text-primary">
+          Open folder
+          <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+        </span>
+      </div>
+    </button>
   );
 }
 
@@ -583,10 +704,11 @@ function PathSearchPanel({
   renderHighlightedPath: (fullPath: string) => ReactNode;
 }) {
   return (
-    <div className="rounded-sm border border-border bg-card/20 p-6 shadow-xl shadow-black/10 md:p-8">
+    <div className="rounded-[24px] border border-white/6 bg-[#0d1014]/88 p-6 shadow-[0_20px_46px_rgba(0,0,0,0.22)] md:p-8">
       <div className="max-w-3xl">
-        <h3 className="mb-2 font-sans-tech text-2xl font-bold text-foreground">{title}</h3>
-        <p className="font-sans-tech text-sm leading-relaxed text-muted-foreground">
+        <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Path Search</div>
+        <h3 className="mt-3 mb-2 font-sans-tech text-2xl font-bold text-white">{title}</h3>
+        <p className="font-sans-tech text-sm leading-7 text-muted-foreground">
           {description}
         </p>
       </div>
@@ -606,7 +728,7 @@ function PathSearchPanel({
               onFocus={onFocus}
               onChange={(event) => onChange(event.target.value)}
               placeholder={placeholder}
-              className="h-12 w-full rounded-sm border border-primary/40 bg-background/90 pl-11 pr-10 font-sans-tech text-sm text-foreground shadow-lg shadow-primary/10 placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+              className="h-12 w-full rounded-xl border border-primary/20 bg-black/20 pl-11 pr-10 font-sans-tech text-sm text-foreground shadow-lg shadow-black/20 placeholder:text-muted-foreground focus:border-primary focus:outline-none"
             />
             {loading && (
               <Loader2 className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-primary" />
@@ -615,16 +737,16 @@ function PathSearchPanel({
           <button
             type="submit"
             disabled={submitDisabled}
-            className="inline-flex h-12 shrink-0 items-center justify-center rounded-sm border border-primary/30 bg-primary px-5 font-sans-tech text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-glow disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex h-12 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary px-5 font-sans-tech text-sm font-bold text-primary-foreground transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Open path
           </button>
         </form>
 
         {value.trim() !== "" && (
-          <div className="mt-2 overflow-hidden rounded-sm border border-primary/20 bg-card/95 text-left shadow-xl shadow-black/20 backdrop-blur-sm">
+          <div className="mt-3 overflow-hidden rounded-[18px] border border-primary/15 bg-[#0b0f13]/96 text-left shadow-xl shadow-black/20 backdrop-blur-sm">
             {suggestions.length > 0 ? (
-              <div className="divide-y divide-border">
+              <div className="divide-y divide-white/6">
                 {suggestions.map((suggestion) => (
                   <button
                     key={suggestion.full_path}
@@ -648,114 +770,45 @@ function PathSearchPanel({
   );
 }
 
-function RoboDataHubTopMenu({
-  activeItem,
-}: {
-  activeItem: CategoryKey | "home";
-}) {
-  const menuItems = [
-    {
-      key: "home" as const,
-      label: "RoboDataHub Home",
-      description: "Overview of all data verticals",
-      href: "/viewer",
-    },
-    ...CATEGORIES.map((category) => ({
-      key: category.routeKey,
-      label: category.label,
-      description: category.description,
-      href: `/viewer/${category.routeKey}`,
-    })),
-  ];
-
-  return (
-    <section className="overflow-hidden rounded-[28px] border border-border bg-card/70 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.28)] backdrop-blur-sm md:p-5">
-      <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-        <div className="max-w-xl px-2 pt-2">
-          <div className="font-mono-tech text-[11px] uppercase tracking-[0.24em] text-primary">
-            RoboDataHub Menu
-          </div>
-          <h2 className="mt-3 font-sans-tech text-3xl font-bold tracking-tight text-foreground">
-            Explore by vertical
-          </h2>
-          <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            A top-level navigation rail for moving across RoboDataHub without relying on a sticky
-            left sidebar. It keeps the industrial feel while making the landing pages lighter and
-            more flexible.
-          </p>
-        </div>
-
-        <div className="overflow-x-auto pb-2">
-          <div className="flex min-w-max gap-3">
-            {menuItems.map((item, index) => {
-              const isActive = activeItem === item.key;
-              const badge = item.key === "home" ? "Hub" : String(index).padStart(2, "0");
-
-              return (
-                <Link
-                  key={item.key}
-                  to={item.href}
-                  className={`group w-[244px] rounded-[24px] border p-5 transition-all duration-200 ${
-                    isActive
-                      ? "border-primary/35 bg-primary/10 shadow-[0_14px_40px_rgba(0,0,0,0.24)]"
-                      : "border-border/80 bg-background/60 hover:-translate-y-0.5 hover:border-primary/25 hover:bg-background/80 hover:shadow-[0_14px_40px_rgba(0,0,0,0.2)]"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <span
-                      className={`inline-flex h-10 min-w-10 items-center justify-center rounded-2xl border px-3 font-mono-tech text-[11px] font-bold uppercase tracking-[0.18em] ${
-                        isActive
-                          ? "border-primary/50 bg-primary text-primary-foreground"
-                          : "border-border bg-background text-foreground"
-                      }`}
-                    >
-                      {badge}
-                    </span>
-                    <span
-                      className={`rounded-full border px-2.5 py-1 font-mono-tech text-[10px] uppercase tracking-[0.16em] ${
-                        isActive
-                          ? "border-primary-glow/25 bg-primary-glow/10 text-primary-glow"
-                          : "border-border bg-background/70 text-muted-foreground"
-                      }`}
-                    >
-                      {isActive ? "Open" : "Browse"}
-                    </span>
-                  </div>
-
-                  <span className="mt-5 block font-sans-tech text-base font-semibold text-foreground">
-                    {item.label}
-                  </span>
-                  <span className="mt-2 block text-sm leading-6 text-muted-foreground">
-                    {item.description}
-                  </span>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function LoggedOutHub() {
   return (
     <div className="mx-auto w-full max-w-[1440px] px-4 py-12 sm:px-6 md:py-16">
-      <div className="mb-8">
-        <div className="mb-4 inline-flex items-center gap-2 rounded-sm border border-primary/30 bg-primary/10 px-3 py-1 font-sans-tech text-xs uppercase tracking-[0.24em] text-primary">
-          RoboDataHub
+      <div className="overflow-hidden rounded-[30px] border border-white/6 bg-[#0d1014]/88 p-6 shadow-[0_24px_60px_rgba(0,0,0,0.24)] md:p-8">
+        <div className="max-w-3xl">
+          <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-[11px] uppercase tracking-[0.22em] text-primary">
+            RoboDataHub
+          </div>
+          <h1 className="mt-6 text-[clamp(2.3rem,4.8vw,4rem)] font-black tracking-[-0.05em] text-white">
+            Sign in to browse the full data library.
+          </h1>
+          <p className="mt-5 max-w-2xl text-base leading-8 text-muted-foreground">
+            Keep the public-facing design visible, but preserve the current access model:
+            dataset contents stay behind account approval.
+          </p>
+          <div className="mt-8 flex flex-col gap-4 sm:flex-row">
+            <Link
+              to={buildAuthPath("login", "/viewer")}
+              className="inline-flex h-12 items-center justify-center rounded-xl border border-white/12 px-6 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Sign In
+            </Link>
+            <Link
+              to={buildAuthPath("register", "/viewer")}
+              className="inline-flex h-12 items-center justify-center rounded-xl bg-primary px-6 text-sm font-bold text-primary-foreground"
+            >
+              Get Access
+            </Link>
+          </div>
         </div>
-        <h1 className="font-sans-tech text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-          Data verticals
-        </h1>
       </div>
-      <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+
+      <div className="mt-8 grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
         {CATEGORIES.map((category) => (
           <div
             key={category.routeKey}
-            className="rounded-sm border border-border bg-card/20 p-6 shadow-xl shadow-black/10"
+            className="rounded-[24px] border border-white/6 bg-[#0d1014]/88 p-6 shadow-[0_20px_46px_rgba(0,0,0,0.2)]"
           >
-            <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-sm border border-primary/20 bg-primary/10">
+            <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
               <Database className="h-5 w-5 text-primary" />
             </div>
             <div className="font-sans-tech text-xl font-bold text-foreground">{category.label}</div>
@@ -775,6 +828,8 @@ export default function DataViewer() {
   const { isLoading: authLoading, isAuthenticated, isApproved, user } = useAuth();
 
   const [folders, setFolders] = useState<FolderItem[]>([]);
+  const [categoryPreviews, setCategoryPreviews] = useState<CategoryDatasetPreview[]>([]);
+  const [categoryPreviewsLoading, setCategoryPreviewsLoading] = useState(false);
   const [images, setImages] = useState<ImageItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedImage, setSelectedImage] = useState<ImageItem | null>(null);
@@ -820,7 +875,7 @@ export default function DataViewer() {
   const isCategoryLanding = Boolean(activeCategory) && pathSegments.length === 1;
 
   useEffect(() => {
-    if (!isAuthenticated || !isApproved || isRootLanding) {
+    if (!isAuthenticated || !isApproved || isRootLanding || isCategoryLanding) {
       setFolders([]);
       setImages([]);
       setAvailableTags([]);
@@ -845,7 +900,7 @@ export default function DataViewer() {
         if (cancelled) return;
         setFolders(nextFolders);
 
-        if (nextFolders.length > 0 || isCategoryLanding) {
+        if (nextFolders.length > 0) {
           setImages([]);
           setAvailableTags([]);
           setVlmPromptGroups([]);
@@ -892,6 +947,42 @@ export default function DataViewer() {
   }, [currentDisplayPath, isAuthenticated, isApproved, isRootLanding, isCategoryLanding, reloadTick]);
 
   useEffect(() => {
+    if (!isAuthenticated || !isApproved || !isCategoryLanding || !activeCategory) {
+      setCategoryPreviews([]);
+      setCategoryPreviewsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadCategoryPreviews() {
+      setCategoryPreviewsLoading(true);
+      try {
+        const response = await axios.get<CategoryDatasetPreview[]>("/api/dataset-category-previews", {
+          params: { category: activeCategory.routeKey, public_only: "true" },
+        });
+        if (cancelled) return;
+        setCategoryPreviews(Array.isArray(response.data) ? response.data : []);
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Failed to load category dataset previews", error);
+          setCategoryPreviews([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setCategoryPreviewsLoading(false);
+        }
+      }
+    }
+
+    void loadCategoryPreviews();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeCategory, isAuthenticated, isApproved, isCategoryLanding, reloadTick]);
+
+  useEffect(() => {
     if (!isAuthenticated || !isApproved) {
       setAllFolderPaths([]);
       setPathSearchLoaded(false);
@@ -906,8 +997,14 @@ export default function DataViewer() {
     async function loadAllPaths() {
       setPathSearchLoading(true);
       try {
+        const params = activeCategory
+          ? {
+              category: activeCategory.routeKey,
+              public_only: "true",
+            }
+          : undefined;
         const response = await axios.get<unknown[]>("/api/dataset-paths", {
-          params: activeCategory ? { category: activeCategory.routeKey } : undefined,
+          params,
         });
         if (cancelled) return;
 
@@ -1065,7 +1162,11 @@ export default function DataViewer() {
       .map((entry) => entry.item);
   }, [activeCategory, allFolderPaths, isAuthenticated, isApproved, isRootLanding, pathSearchText]);
 
-  const itemCount = isLeaf ? filteredImages.length : filteredFolders.length;
+  const itemCount = isCategoryLanding
+    ? categoryPreviews.length
+    : isLeaf
+      ? filteredImages.length
+      : filteredFolders.length;
 
   function toggleTag(tag: string) {
     setVisibleTags((previous) => {
@@ -1099,13 +1200,8 @@ export default function DataViewer() {
     handlePathSuggestionClick(pathSuggestions[0].full_path);
   }
 
-  function handleShowcaseImageClick(item: ShowcaseImageConfig) {
-    navigate(buildViewerPath(item.targetFolderPath, item.targetImageName));
-  }
-
-  function scrollToSubdirectories() {
-    const section = document.getElementById("category-subdirectories");
-    section?.scrollIntoView({ behavior: "smooth", block: "start" });
+  function handleCategoryPreviewClick(item: CategoryDatasetPreview) {
+    navigate(item.viewer_path || buildViewerPath(item.full_path));
   }
 
   async function handleDeleteFolder() {
@@ -1164,7 +1260,7 @@ export default function DataViewer() {
           return (
             <div
               key={folder.full_path}
-              className="group relative cursor-pointer overflow-hidden rounded-sm border border-border bg-card/15 p-6 transition-all duration-300 hover:border-primary hover:bg-card/25 hover:shadow-2xl hover:shadow-black/10"
+              className="group relative cursor-pointer overflow-hidden rounded-[24px] border border-white/6 bg-[#0d1014]/88 p-6 transition-all duration-300 hover:-translate-y-1 hover:border-primary/20 hover:bg-[#10151a] hover:shadow-2xl hover:shadow-black/10"
               onClick={() => navigate(folder.viewer_path || buildViewerPath(folder.full_path))}
             >
               {isDataset && (
@@ -1190,7 +1286,7 @@ export default function DataViewer() {
                         onClick={() => setFolderDropdownOpen(null)}
                         aria-hidden
                       />
-                      <div className="absolute right-0 z-20 mt-1 w-40 rounded-sm border border-border bg-card py-1 shadow-lg">
+                      <div className="absolute right-0 z-20 mt-1 w-40 rounded-2xl border border-white/8 bg-[#0d1014] py-1 shadow-lg">
                         <button
                           type="button"
                           onClick={(event) => {
@@ -1209,13 +1305,8 @@ export default function DataViewer() {
                 </div>
               )}
 
-              <div className="absolute left-0 top-0 h-3 w-3 border-l border-t border-border transition-colors group-hover:border-primary" />
-              <div className="absolute right-0 top-0 h-3 w-3 border-r border-t border-border transition-colors group-hover:border-primary" />
-              <div className="absolute bottom-0 left-0 h-3 w-3 border-b border-l border-border transition-colors group-hover:border-primary" />
-              <div className="absolute bottom-0 right-0 h-3 w-3 border-b border-r border-border transition-colors group-hover:border-primary" />
-
               <div className="relative z-10 flex flex-col items-center gap-6">
-                <div className="h-44 w-full overflow-hidden rounded-sm border border-border bg-background/50 transition-all group-hover:border-primary/30 group-hover:shadow-[0_0_18px_rgba(31,209,107,0.12)]">
+                <div className="h-44 w-full overflow-hidden rounded-[18px] border border-white/6 bg-black/20 transition-all group-hover:border-primary/25 group-hover:shadow-[0_0_18px_rgba(29,233,182,0.1)]">
                   <DatasetFolderCover
                     key={folder.full_path}
                     fullPath={folder.source_path ?? folder.full_path}
@@ -1226,7 +1317,7 @@ export default function DataViewer() {
                   />
                 </div>
                 <div className="w-full text-center">
-                  <span className="block break-words font-sans-tech text-lg font-bold uppercase tracking-wider text-foreground transition-colors group-hover:text-primary">
+                  <span className="block break-words font-sans-tech text-lg font-bold uppercase tracking-[0.12em] text-foreground transition-colors group-hover:text-primary">
                     {folder.name}
                   </span>
                   {folder.visibility && (
@@ -1247,7 +1338,7 @@ export default function DataViewer() {
         })}
 
         {items.length === 0 && !loading && (
-          <div className="col-span-full flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/10 py-20 text-muted-foreground">
+          <div className="col-span-full flex flex-col items-center justify-center rounded-[24px] border border-dashed border-white/8 bg-black/20 py-20 text-muted-foreground">
             <AlertCircle className="mb-4 h-12 w-12 text-muted-foreground/50" />
             <p className="font-sans-tech text-lg">No data found</p>
             <button
@@ -1264,26 +1355,24 @@ export default function DataViewer() {
 
   const renderRootLanding = () => (
     <div className="mx-auto w-full max-w-[1440px] px-4 py-12 sm:px-6 md:py-16">
-      <RoboDataHubTopMenu activeItem="home" />
-
-      <div className="mt-8 min-w-0">
-        <div className="mb-8 max-w-3xl">
-          <div className="mb-5 inline-flex items-center gap-2 rounded-sm border border-primary/30 bg-primary/10 px-3 py-1 font-sans-tech text-xs uppercase tracking-[0.24em] text-primary">
+      <div className="min-w-0">
+        <div className="mb-8 overflow-hidden rounded-[30px] border border-white/6 bg-[#0d1014]/88 p-6 shadow-[0_24px_60px_rgba(0,0,0,0.24)] md:p-8">
+          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 font-sans-tech text-[11px] uppercase tracking-[0.22em] text-primary">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
             RoboDataHub
           </div>
-          <h1 className="mb-4 font-sans-tech text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-5xl">
+          <h1 className="mb-4 max-w-3xl font-sans-tech text-[clamp(2.3rem,4.8vw,4rem)] font-black tracking-[-0.05em] text-white">
             RoboDataHub
           </h1>
-          <p className="max-w-3xl font-sans-tech text-sm leading-relaxed text-muted-foreground md:text-base">
-            Search across the full data library for a quick shortcut, or browse featured
-            categories below through presentation-ready examples that open directly in the viewer.
+          <p className="max-w-3xl font-sans-tech text-base leading-8 text-muted-foreground">
+            Browse DataraAI&apos;s public physical-AI datasets by category, or search a known path
+            when you already know the folder you want.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <button
               type="button"
               onClick={() => navigate("/viewer/my")}
-              className="inline-flex h-11 items-center gap-2 rounded-sm border border-primary/30 bg-primary px-5 font-sans-tech text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-glow"
+              className="inline-flex h-12 items-center gap-2 rounded-xl border border-primary/20 bg-primary px-5 font-sans-tech text-sm font-bold text-primary-foreground transition-colors hover:opacity-90"
             >
               My private data
               <ArrowRight className="h-4 w-4" />
@@ -1292,7 +1381,7 @@ export default function DataViewer() {
               <button
                 type="button"
                 onClick={() => navigate(`/viewer/admin/${user.storageSlug}`)}
-                className="inline-flex h-11 items-center gap-2 rounded-sm border border-border bg-background/80 px-5 font-sans-tech text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:text-primary"
+                className="inline-flex h-12 items-center gap-2 rounded-xl border border-white/10 bg-black/20 px-5 font-sans-tech text-sm font-semibold text-foreground transition-colors hover:border-primary/20 hover:text-primary"
               >
                 Admin access
                 <Shield className="h-4 w-4" />
@@ -1302,8 +1391,8 @@ export default function DataViewer() {
         </div>
 
         <PathSearchPanel
-          title="Global search"
-          description="Use search to jump straight to a folder path when you already know what you want. It is the fastest way to navigate the full RoboDataHub without clicking through multiple pages."
+          title="Search the full library"
+          description="Use search to jump straight to a brand, endpoint folder, or deeper asset path anywhere in RoboDataHub."
           value={pathSearchText}
           loading={pathSearchLoading}
           suggestions={pathSuggestions}
@@ -1319,51 +1408,61 @@ export default function DataViewer() {
           renderHighlightedPath={renderHighlightedPath}
         />
 
-        <div className="mt-10 flex flex-col gap-8">
-          {CATEGORIES.map((category) => (
+        <div className="mt-10">
+          <div className="mb-6 flex items-center gap-3">
+            <div className="h-3 w-3 rounded-[4px] bg-primary shadow-[0_0_12px_rgba(29,233,182,0.5)]" />
+            <div className="text-2xl font-extrabold text-white">Categories</div>
+          </div>
+          <p className="mb-8 max-w-3xl text-sm leading-7 text-muted-foreground">
+            Start with the four active DataraAI categories, then step into the endpoint folders
+            inside each one.
+          </p>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            {CATEGORIES.map((category) => (
             <section
               key={category.routeKey}
-              className="rounded-sm border border-border bg-gradient-to-br from-card/25 via-background/80 to-primary/5 p-6 shadow-2xl shadow-black/10 md:p-8"
+              className="grid gap-6 overflow-hidden rounded-[28px] border border-white/6 bg-[#0d1014]/88 p-5 shadow-[0_24px_60px_rgba(0,0,0,0.22)] lg:grid-cols-[minmax(0,1fr)_320px]"
             >
-              <div className="grid grid-cols-1 items-center gap-8 xl:grid-cols-[0.92fr_1.5fr] xl:gap-10">
-                <div>
-                  <div className="mb-5 inline-flex items-center gap-2 rounded-sm border border-primary/20 bg-primary/10 px-3 py-1 font-sans-tech text-[11px] uppercase tracking-[0.22em] text-primary">
-                    Featured category
-                  </div>
-                  <h2 className="mb-4 font-sans-tech text-3xl font-bold tracking-tight text-foreground md:text-4xl">
-                    {category.label}
-                  </h2>
-                  <p className="mb-4 max-w-xl font-sans-tech text-sm leading-relaxed text-foreground/90 md:text-base">
-                    {category.description}
-                  </p>
-                  <p className="max-w-xl font-sans-tech text-sm leading-relaxed text-muted-foreground">
-                    {category.helperText}
-                  </p>
-                  <div className="mt-7">
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/viewer/${category.routeKey}`)}
-                      className="inline-flex h-11 items-center gap-2 rounded-sm bg-primary px-5 font-sans-tech text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-glow"
-                    >
-                      View data
-                      <ArrowRight className="h-4 w-4" />
-                    </button>
-                  </div>
+              <div className="flex flex-col justify-between">
+                <div className="mb-4 flex items-center gap-3">
+                  <div className={`h-3 w-3 rounded-[4px] ${getCategoryAccent(category.routeKey).dot}`} />
+                  <div className="text-lg font-extrabold text-white">{category.label}</div>
                 </div>
-
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
-                  {CATEGORY_SHOWCASES[category.routeKey].map((item) => (
-                    <ShowcasePreviewImage
-                      key={item.previewBlobPath}
-                      blobPath={item.previewBlobPath}
-                      alt={item.alt}
-                      onClick={() => handleShowcaseImageClick(item)}
-                    />
-                  ))}
+                <p className="max-w-xl text-sm leading-6 text-muted-foreground">
+                  {category.description}
+                </p>
+                <div className="mt-6">
+                  <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                    Browse endpoint folders
+                  </span>
+                </div>
+                <div className="mt-6">
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/viewer/${category.routeKey}`)}
+                    className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 font-sans-tech text-sm font-bold text-primary-foreground transition-colors hover:opacity-90"
+                  >
+                    Enter Category
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                {buildCategoryHeroImagePaths(category)
+                  .slice(0, 4)
+                  .map((blobPath, index) => (
+                    <CategoryHeroImage
+                      key={`${category.routeKey}-${blobPath}`}
+                      blobPath={blobPath}
+                      alt={`${category.label} preview ${index + 1}`}
+                    />
+                  ))}
+              </div>
             </section>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     </div>
@@ -1371,74 +1470,44 @@ export default function DataViewer() {
 
   const renderCategoryLanding = (category: CategoryConfig) => (
     <div className="mx-auto w-full max-w-[1440px] px-4 py-12 sm:px-6 md:py-16">
-      <RoboDataHubTopMenu activeItem={category.routeKey} />
-
-      <div className="mt-8 min-w-0">
-        <div className="grid grid-cols-1 items-center gap-8 rounded-sm border border-border bg-gradient-to-br from-card/30 via-background/70 to-primary/5 p-6 shadow-2xl shadow-black/10 md:p-8 xl:grid-cols-[1.05fr_1fr] xl:gap-12">
-          <div>
-            <div className="mb-5 inline-flex items-center gap-2 rounded-sm border border-primary/30 bg-primary/10 px-3 py-1 font-sans-tech text-xs uppercase tracking-[0.24em] text-primary">
-              Category
-            </div>
-            <h1 className="mb-5 font-sans-tech text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-5xl">
+      <div className="min-w-0">
+        <div className="overflow-hidden rounded-[30px] border border-white/6 bg-[#0d1014]/88 p-6 shadow-[0_24px_60px_rgba(0,0,0,0.22)] md:p-8">
+          <div className="max-w-3xl">
+            <div className={`mb-5 inline-flex items-center gap-2 rounded-full border px-4 py-2 font-sans-tech text-[11px] uppercase tracking-[0.22em] ${getCategoryAccent(category.routeKey).chip}`}>
               {category.label}
+            </div>
+            <h1 className="text-[clamp(2.3rem,4.8vw,4rem)] font-black tracking-[-0.05em] text-white">
+              RoboDataHub - {category.label}
             </h1>
-            <p className="mb-4 max-w-2xl font-sans-tech text-base leading-relaxed text-foreground/90 md:text-lg">
+            <p className="mt-5 max-w-2xl text-base leading-8 text-foreground/90 md:text-lg">
               {category.description}
             </p>
-            <p className="max-w-2xl font-sans-tech text-sm leading-relaxed text-muted-foreground">
-              {category.helperText}
-            </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={scrollToSubdirectories}
-                className="inline-flex h-11 items-center gap-2 rounded-sm bg-primary px-5 font-sans-tech text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-glow"
-              >
-                View data
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            {buildCategoryHeroImagePaths(category).map((blobPath, index) => (
-              <CategoryHeroImage
-                key={blobPath}
-                blobPath={blobPath}
-                alt={`${category.label} preview ${index + 1}`}
-              />
-            ))}
+          <div className="mt-8">
+            {categoryPreviewsLoading ? (
+              <div className="flex min-h-[220px] items-center justify-center rounded-[24px] border border-white/6 bg-black/20">
+                <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                  Loading folder previews...
+                </div>
+              </div>
+            ) : categoryPreviews.length > 0 ? (
+              <div className="grid gap-5 lg:grid-cols-2">
+                {categoryPreviews.map((item) => (
+                  <CategoryDatasetPreviewCard
+                    key={item.full_path}
+                    item={item}
+                    onClick={() => handleCategoryPreviewClick(item)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-[24px] border border-dashed border-white/10 bg-black/20 p-6 text-sm leading-7 text-muted-foreground">
+                No public endpoint folders are available in this category yet.
+              </div>
+            )}
           </div>
-        </div>
-
-        <div className="mt-10">
-          <PathSearchPanel
-            title={category.searchTitle}
-            description={category.searchDescription}
-            value={pathSearchText}
-            loading={pathSearchLoading}
-            suggestions={pathSuggestions}
-            placeholder={`Search ${category.routeKey} paths, e.g. ${category.routeKey}/bmw`}
-            submitDisabled={pathSuggestions.length === 0}
-            onFocus={() => setPathSearchTouched(true)}
-            onChange={(value) => {
-              setPathSearchTouched(true);
-              setPathSearchText(value);
-            }}
-            onSubmit={handlePathSearchSubmit}
-            onSuggestionClick={handlePathSuggestionClick}
-            renderHighlightedPath={renderHighlightedPath}
-          />
-        </div>
-
-        <div className="pt-12" id="category-subdirectories">
-          <div className="mx-auto mb-6 flex max-w-6xl items-center gap-2">
-            <div className="h-4 w-1 bg-primary" />
-            <h2 className="font-sans-tech text-lg font-bold uppercase tracking-widest text-muted-foreground">
-              {category.label} Subdirectories
-            </h2>
-          </div>
-          {renderFolderGrid(filteredFolders, "max-w-6xl")}
         </div>
       </div>
     </div>
@@ -1449,7 +1518,7 @@ export default function DataViewer() {
       <div className="pointer-events-none absolute inset-0 bg-grid-pattern opacity-[0.05]" />
       <Navigation />
 
-      <div className="relative z-10 flex flex-1 flex-col pt-16 md:overflow-hidden">
+      <div className="relative z-10 flex flex-1 flex-col pt-[88px] md:overflow-hidden">
         <div className="z-20 flex min-h-12 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-background/80 px-4 py-2 backdrop-blur-md sm:flex-nowrap sm:py-0">
           <div className="flex min-w-0 items-center gap-4">
             <div className="flex items-center gap-2 text-sm">
@@ -1457,7 +1526,7 @@ export default function DataViewer() {
                 to="/viewer"
                 className="hidden font-sans-tech font-bold text-primary transition-colors hover:text-primary-glow md:block"
               >
-                ROBODATAHUB
+                RoboDataHub
               </Link>
               <Breadcrumbs />
             </div>
@@ -1524,7 +1593,9 @@ export default function DataViewer() {
                     onClick={() => setReloadTick((value) => value + 1)}
                     className="flex items-center gap-1 font-sans-tech text-xs text-muted-foreground transition-colors hover:text-foreground"
                   >
-                    <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+                    <RefreshCw
+                      className={`h-3.5 w-3.5 ${loading || categoryPreviewsLoading ? "animate-spin" : ""}`}
+                    />
                     <span>Refresh</span>
                   </button>
                 </div>

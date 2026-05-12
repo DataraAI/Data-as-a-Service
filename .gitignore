@@ -33,4 +33,5 @@ backend/saas_config.py
 /dashboard/pnpm-lock.yaml
 
 config/.env
-
+config/.env.development
+config/.env.staging

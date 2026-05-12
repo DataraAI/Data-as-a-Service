@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, Sparkles, X } from "lucide-react";
 import Navigation from "@/components/Navigation";
+import FooterSection from "@/components/FooterSection";
 import { frontPageImageUrl } from "@/lib/datasetFolderCover";
 
 interface ShowcaseImage {
@@ -28,7 +29,7 @@ const SHOWCASE_VERTICALS: ShowcaseVertical[] = [
     eyebrow: "Car Automation",
     title: "Vehicle assembly and service viewpoints",
     summary:
-      "Two distinct production captures are transformed into robot-eye outputs that show both consistency and range across the same automotive workflow.",
+      "Two automotive production captures are transformed into robot-eye outputs that show both consistency and range across the same workflow.",
     examples: [
       {
         id: "primary",
@@ -75,7 +76,7 @@ const SHOWCASE_VERTICALS: ShowcaseVertical[] = [
     eyebrow: "Serverrack",
     title: "Data-center scene to robot-eye perspective",
     summary:
-      "The page now shows two separate rack-side inputs, each converted into its own set of focused egocentric outputs for a broader, more convincing demo story.",
+      "Two rack-side scenes are converted into focused robot-eye outputs so teams can see the transformation across more than one real operating setup.",
     examples: [
       {
         id: "primary",
@@ -122,7 +123,7 @@ const SHOWCASE_VERTICALS: ShowcaseVertical[] = [
     eyebrow: "Warehouse",
     title: "Warehouse floor capture to useful robot-eye outputs",
     summary:
-      "Two warehouse scenes branch into clean robot-eye outputs that make the transformation feel broader and more deployment-ready without overcomplicating the page.",
+      "Two warehouse scenes branch into clean robot-eye outputs that feel broad enough for real deployment storytelling without making the page harder to browse.",
     examples: [
       {
         id: "primary",
@@ -318,10 +319,7 @@ function ShowcaseExampleRow({
           <div className="h-px flex-1 bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
         </div>
 
-        <ShowcaseOutputGallery
-          outputs={example.outputs}
-          onSelect={onSelect}
-        />
+        <ShowcaseOutputGallery outputs={example.outputs} onSelect={onSelect} />
       </div>
     </div>
   );
@@ -399,7 +397,7 @@ export default function RoboEyeView() {
       <div className="pointer-events-none absolute inset-0 bg-grid-pattern opacity-[0.06]" aria-hidden />
       <Navigation />
 
-      <main className="relative z-10 pt-16">
+      <main className="relative z-10 pt-[88px]">
         <section className="border-b border-border bg-background/80 backdrop-blur-sm">
           <div className="mx-auto max-w-[1440px] px-4 py-14 sm:px-6 md:py-20">
             <div className="max-w-4xl">
@@ -415,9 +413,9 @@ export default function RoboEyeView() {
               </h1>
 
               <p className="mt-5 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base md:text-lg">
-                Each vertical now pairs multiple exocentric scenes with their corresponding
-                robot-eye outputs, giving the page a broader, more persuasive demo narrative
-                without turning the layout into a maze of extra panels.
+                See how DataraAI turns real exocentric scenes into the robot-perspective outputs
+                teams actually use for training and evaluation across automotive, server-rack, and
+                warehouse work.
               </p>
             </div>
 
@@ -467,6 +465,8 @@ export default function RoboEyeView() {
           ))}
         </div>
       </main>
+
+      <FooterSection />
 
       {selectedImage && (
         <ImageLightbox selected={selectedImage} onClose={() => setSelectedImage(null)} />

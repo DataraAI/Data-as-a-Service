@@ -314,6 +314,27 @@ class ProcessingService:
             if os.path.exists(video_path):
                 os.remove(video_path)
 
+    def _stage_browser_playable_video(
+        self,
+        *,
+        source_video_path: str,
+        local_process_dir: str,
+        dataset_basename: str,
+        width: int,
+        height: int,
+        fps: float,
+    ) -> None:
+        video_dir = os.path.join(local_process_dir, "video")
+        os.makedirs(video_dir, exist_ok=True)
+        output_path = os.path.join(video_dir, f"{dataset_basename}.mp4")
+        self._resize_video_to_dimensions(
+            input_path=source_video_path,
+            output_path=output_path,
+            width=width,
+            height=height,
+            fps=fps,
+        )
+
     def _ingest_video_path(
         self,
         video_path: str,
@@ -326,8 +347,24 @@ class ProcessingService:
         try:
             video_fps = cap.get(cv2.CAP_PROP_FPS)
             target_fps = float(video_fps) if video_fps and video_fps > 0 else 30.0
+            width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH) or 0)
+            height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT) or 0)
+            if width <= 0 or height <= 0:
+                success, frame = cap.read()
+                if not success or frame is None:
+                    raise ValueError(f"Failed to inspect uploaded video: {video_path}")
+                height, width = frame.shape[:2]
         finally:
             cap.release()
+
+        self._stage_browser_playable_video(
+            source_video_path=video_path,
+            local_process_dir=local_process_dir,
+            dataset_basename=dataset_basename,
+            width=width,
+            height=height,
+            fps=target_fps,
+        )
 
         cmd = [
             sys.executable,
