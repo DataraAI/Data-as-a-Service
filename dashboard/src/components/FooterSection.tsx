@@ -20,8 +20,8 @@ export default function FooterSection() {
           <div>
             <div className="text-lg font-extrabold tracking-[0.04em] text-primary">DataraAI</div>
             <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
-              The complete data stack for Physical AI across humanoid, automotive, warehouse,
-              and data-center workflows.
+              Dataset infrastructure and synthesis tooling for humanoid, automotive, warehouse,
+              and data-center robotics workflows.
             </p>
           </div>
 
