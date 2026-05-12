@@ -169,6 +169,15 @@ def register_routes(app: Flask) -> None:
         category = str(request.args.get("category") or "").strip() or None
         return jsonify(dataset_service.list_all_dataset_paths(current_user, category=category))
 
+    @app.route("/api/dataset-category-previews", methods=["GET"])
+    @auth_service.require_approved_user
+    def get_dataset_category_previews():
+        current_user = auth_service.get_current_user_or_raise()
+        category = str(request.args.get("category") or "").strip()
+        if not category:
+            return jsonify({"error": "Missing category"}), 400
+        return jsonify(dataset_service.list_category_dataset_previews(current_user, category=category))
+
     @app.route("/api/dataset/<path:route_path>", methods=["GET"])
     @auth_service.require_approved_user
     def get_dataset_images(route_path: str):
