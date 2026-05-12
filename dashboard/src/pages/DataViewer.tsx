@@ -92,9 +92,6 @@ interface CategoryConfig {
   previewKey: StoragePreviewKey;
   label: string;
   description: string;
-  helperText: string;
-  searchTitle: string;
-  searchDescription: string;
 }
 
 interface CategoryPreviewAsset {
@@ -122,48 +119,28 @@ const CATEGORIES: CategoryConfig[] = [
     previewKey: "carAutomation",
     label: "Automotive",
     description:
-      "Production-floor datasets for assembly, inspection, fastening, fitment, and other automotive robot workflows.",
-    helperText:
-      "Open a dataset folder to choose between orig, EGO, masks, corner-case outputs, and other task-specific assets.",
-    searchTitle: "Search within Automotive",
-    searchDescription:
-      "Jump directly to a brand, endpoint folder, or deeper path inside the automotive library.",
+      "Assembly, inspection, and vehicle-production data for robotics workflows across automotive environments.",
   },
   {
     routeKey: "serverrack",
     previewKey: "serverrack",
     label: "Data Center",
     description:
-      "Rack-side datasets for cabling, inspection, maintenance, swap, and port-level data-center operations.",
-    helperText:
-      "Browse endpoint folders first, then step into the exact orig, EGO, or mask assets you want to inspect.",
-    searchTitle: "Search within Data Center",
-    searchDescription:
-      "Search the data-center library by brand, endpoint folder, or exact path.",
+      "Data-center interaction, port-level operation, and maintenance-focused datasets for rack and cabling tasks.",
   },
   {
     routeKey: "dexterity",
     previewKey: "humanoid",
-    label: "Humanoid",
+    label: "Dexterity",
     description:
-      "Embodied manipulation datasets for hand-level tasks, object interaction, cleaning, kitchen workflows, and dexterous control.",
-    helperText:
-      "Enter a dataset folder to review the source captures and generated views behind each manipulation workflow.",
-    searchTitle: "Search within Humanoid",
-    searchDescription:
-      "Search the humanoid library to reach a specific task folder faster.",
+      "Fine-motor manipulation and embodied task data for dexterous robotic systems operating across practical, object-centric scenarios.",
   },
   {
     routeKey: "warehouse",
     previewKey: "warehouse",
     label: "Warehouse",
     description:
-      "Logistics and fulfillment datasets for picking, movement, transport, sortation, scanning, and storage workflows.",
-    helperText:
-      "Use the folder grid to move from a workflow-level preview into the exact asset type you need.",
-    searchTitle: "Search within Warehouse",
-    searchDescription:
-      "Search warehouse data by task, endpoint folder, brand, or exact path.",
+      "Logistics, handling, and storage-operation data for robotic movement, picking, and material flow.",
   },
 ];
 
@@ -604,12 +581,10 @@ function CompactPathSearch({
 
 function DatasetPreviewImage({
   asset,
-  accentClass,
   alt,
   className,
 }: {
   asset: CategoryPreviewAsset | null | undefined;
-  accentClass: string;
   alt: string;
   className?: string;
 }) {
@@ -634,29 +609,17 @@ function DatasetPreviewImage({
         </div>
       )}
 
-      {asset?.label && (
-        <div className="absolute left-3 top-3">
-          <span
-            className={`inline-flex rounded-md border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${accentClass}`}
-          >
-            {asset.label}
-          </span>
-        </div>
-      )}
     </div>
   );
 }
 
 function CategoryDatasetPreviewCard({
   item,
-  routeKey,
   onClick,
 }: {
   item: CategoryDatasetPreview;
-  routeKey: CategoryKey;
   onClick: () => void;
 }) {
-  const accent = getCategoryAccent(routeKey);
   const thumbnailItems = Array.from({ length: 4 }, (_, index) => item.thumbnails[index] ?? item.main_image);
 
   return (
@@ -683,14 +646,9 @@ function CategoryDatasetPreviewCard({
         </span>
       </div>
 
-      <p className="mt-3 text-sm leading-6 text-muted-foreground">
-        Open this endpoint folder to choose between orig captures, EGO outputs, masks, corner cases, and related assets.
-      </p>
-
       <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1.08fr)_220px]">
         <DatasetPreviewImage
           asset={item.main_image}
-          accentClass={accent.chip}
           alt={`${item.title} primary preview`}
           className="aspect-[1.08/1]"
         />
@@ -700,7 +658,6 @@ function CategoryDatasetPreviewCard({
             <DatasetPreviewImage
               key={`${item.full_path}-${thumbnail?.asset_id ?? "empty"}-${index}`}
               asset={thumbnail}
-              accentClass={accent.chip}
               alt={`${item.title} preview ${index + 1}`}
               className="aspect-square"
             />
@@ -1475,9 +1432,6 @@ export default function DataViewer() {
                 <p className="max-w-xl text-sm leading-6 text-muted-foreground">
                   {category.description}
                 </p>
-                <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground/90">
-                  {category.helperText}
-                </p>
                 <div className="mt-6">
                   <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
                     Browse endpoint folders
@@ -1518,55 +1472,19 @@ export default function DataViewer() {
     <div className="mx-auto w-full max-w-[1440px] px-4 py-12 sm:px-6 md:py-16">
       <div className="min-w-0">
         <div className="overflow-hidden rounded-[30px] border border-white/6 bg-[#0d1014]/88 p-6 shadow-[0_24px_60px_rgba(0,0,0,0.22)] md:p-8">
-          <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
-            <div className="max-w-3xl">
-              <div className={`mb-5 inline-flex items-center gap-2 rounded-full border px-4 py-2 font-sans-tech text-[11px] uppercase tracking-[0.22em] ${getCategoryAccent(category.routeKey).chip}`}>
-                {category.label}
-              </div>
-              <h1 className="text-[clamp(2.3rem,4.8vw,4rem)] font-black tracking-[-0.05em] text-white">
-                RoboDataHub - {category.label}
-              </h1>
-              <p className="mt-5 max-w-2xl text-base leading-8 text-foreground/90 md:text-lg">
-                {category.description}
-              </p>
-              <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
-                {category.helperText}
-              </p>
+          <div className="max-w-3xl">
+            <div className={`mb-5 inline-flex items-center gap-2 rounded-full border px-4 py-2 font-sans-tech text-[11px] uppercase tracking-[0.22em] ${getCategoryAccent(category.routeKey).chip}`}>
+              {category.label}
             </div>
-
-            <div className="w-full xl:max-w-xl">
-              <div className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-                Search endpoint folders
-              </div>
-              <CompactPathSearch
-                value={pathSearchText}
-                loading={pathSearchLoading}
-                suggestions={pathSuggestions}
-                placeholder={`Search ${category.label} paths, e.g. ${category.routeKey}/bmw`}
-                submitDisabled={pathSuggestions.length === 0}
-                onFocus={() => setPathSearchTouched(true)}
-                onChange={(value) => {
-                  setPathSearchTouched(true);
-                  setPathSearchText(value);
-                }}
-                onSubmit={handlePathSearchSubmit}
-                onSuggestionClick={handlePathSuggestionClick}
-                renderHighlightedPath={renderHighlightedPath}
-              />
-            </div>
+            <h1 className="text-[clamp(2.3rem,4.8vw,4rem)] font-black tracking-[-0.05em] text-white">
+              RoboDataHub - {category.label}
+            </h1>
+            <p className="mt-5 max-w-2xl text-base leading-8 text-foreground/90 md:text-lg">
+              {category.description}
+            </p>
           </div>
 
           <div className="mt-8">
-            <div className="mb-5 flex items-center gap-3">
-              <div className={`h-3 w-3 rounded-[4px] ${getCategoryAccent(category.routeKey).dot}`} />
-              <div className="text-lg font-extrabold text-white">Endpoint folders</div>
-              <div className={`h-px flex-1 ${getCategoryAccent(category.routeKey).line}`} />
-            </div>
-            <p className="mb-6 max-w-3xl text-sm leading-7 text-muted-foreground">
-              Each card represents one public dataset folder at the level above orig, EGO, masks,
-              and corner-case outputs.
-            </p>
-
             {categoryPreviewsLoading ? (
               <div className="flex min-h-[220px] items-center justify-center rounded-[24px] border border-white/6 bg-black/20">
                 <div className="flex items-center gap-3 text-sm text-muted-foreground">
@@ -1580,7 +1498,6 @@ export default function DataViewer() {
                   <CategoryDatasetPreviewCard
                     key={item.full_path}
                     item={item}
-                    routeKey={category.routeKey}
                     onClick={() => handleCategoryPreviewClick(item)}
                   />
                 ))}
