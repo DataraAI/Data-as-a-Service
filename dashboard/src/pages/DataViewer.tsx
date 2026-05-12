@@ -25,6 +25,7 @@ import { Breadcrumbs } from "../components/Breadcrumbs";
 import { DatasetFolderCover } from "../components/DatasetFolderCover";
 import AuthRequiredState from "@/components/AuthRequiredState";
 import { useAuth } from "@/auth/useAuth";
+import { buildAuthPath } from "@/lib/authLinks";
 import { frontPageImageUrl } from "@/lib/datasetFolderCover";
 
 interface FolderItem {
@@ -488,10 +489,10 @@ function ShowcasePreviewImage({
       <button
         type="button"
         onClick={onClick}
-        className="group relative flex aspect-[5/4] w-full items-center justify-center overflow-hidden rounded-sm border border-border bg-background/70 transition-all duration-300 hover:border-primary hover:shadow-[0_0_0_2px_rgba(31,209,107,0.38)]"
+        className="group relative flex aspect-[5/4] w-full items-center justify-center overflow-hidden rounded-[18px] border border-white/6 bg-[#0b0f13] transition-all duration-300 hover:border-primary/30 hover:shadow-[0_0_0_2px_rgba(29,233,182,0.18)]"
       >
         <Database className="h-9 w-9 text-primary/60" />
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-background/95 to-transparent px-3 py-2 text-left">
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 to-transparent px-4 py-3 text-left">
           <span className="font-sans-tech text-[11px] uppercase tracking-[0.18em] text-primary">
             Open in viewer
           </span>
@@ -504,7 +505,7 @@ function ShowcasePreviewImage({
     <button
       type="button"
       onClick={onClick}
-      className="group relative w-full overflow-hidden rounded-sm border border-border bg-background/70 shadow-xl shadow-black/20 transition-all duration-300 hover:border-primary hover:shadow-[0_0_0_2px_rgba(31,209,107,0.42)] focus:border-primary focus:outline-none focus:shadow-[0_0_0_2px_rgba(31,209,107,0.42)]"
+      className="group relative w-full overflow-hidden rounded-[18px] border border-white/6 bg-[#0b0f13] shadow-xl shadow-black/20 transition-all duration-300 hover:border-primary/30 hover:shadow-[0_0_0_2px_rgba(29,233,182,0.2)] focus:border-primary focus:outline-none focus:shadow-[0_0_0_2px_rgba(29,233,182,0.2)]"
     >
       <div className="aspect-[5/4] overflow-hidden">
         <img
@@ -517,7 +518,7 @@ function ShowcasePreviewImage({
         />
       </div>
       <div className="absolute inset-0 bg-gradient-to-t from-background/75 via-background/10 to-transparent opacity-80 transition-opacity group-hover:opacity-100" />
-      <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-3 px-3 py-3">
+      <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-3 px-4 py-3">
         <span className="font-sans-tech text-[11px] uppercase tracking-[0.18em] text-primary">
           Open in viewer
         </span>
@@ -533,14 +534,14 @@ function CategoryHeroImage({ blobPath, alt }: { blobPath: string; alt: string })
 
   if (!src || failed) {
     return (
-      <div className="flex aspect-[4/3] w-full items-center justify-center rounded-sm border border-border bg-background/60">
+      <div className="flex aspect-[4/3] w-full items-center justify-center rounded-[18px] border border-white/6 bg-[#0b0f13]">
         <Database className="h-8 w-8 text-primary/60" />
       </div>
     );
   }
 
   return (
-    <div className="w-full overflow-hidden rounded-sm border border-border bg-background/60 shadow-lg shadow-black/20">
+    <div className="w-full overflow-hidden rounded-[18px] border border-white/6 bg-[#0b0f13] shadow-lg shadow-black/20">
       <div className="aspect-[4/3] overflow-hidden">
         <img
           src={src}
@@ -583,10 +584,11 @@ function PathSearchPanel({
   renderHighlightedPath: (fullPath: string) => ReactNode;
 }) {
   return (
-    <div className="rounded-sm border border-border bg-card/20 p-6 shadow-xl shadow-black/10 md:p-8">
+    <div className="rounded-[24px] border border-white/6 bg-[#0d1014]/88 p-6 shadow-[0_20px_46px_rgba(0,0,0,0.22)] md:p-8">
       <div className="max-w-3xl">
-        <h3 className="mb-2 font-sans-tech text-2xl font-bold text-foreground">{title}</h3>
-        <p className="font-sans-tech text-sm leading-relaxed text-muted-foreground">
+        <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Path Search</div>
+        <h3 className="mt-3 mb-2 font-sans-tech text-2xl font-bold text-white">{title}</h3>
+        <p className="font-sans-tech text-sm leading-7 text-muted-foreground">
           {description}
         </p>
       </div>
@@ -606,7 +608,7 @@ function PathSearchPanel({
               onFocus={onFocus}
               onChange={(event) => onChange(event.target.value)}
               placeholder={placeholder}
-              className="h-12 w-full rounded-sm border border-primary/40 bg-background/90 pl-11 pr-10 font-sans-tech text-sm text-foreground shadow-lg shadow-primary/10 placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+              className="h-12 w-full rounded-xl border border-primary/20 bg-black/20 pl-11 pr-10 font-sans-tech text-sm text-foreground shadow-lg shadow-black/20 placeholder:text-muted-foreground focus:border-primary focus:outline-none"
             />
             {loading && (
               <Loader2 className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-primary" />
@@ -615,16 +617,16 @@ function PathSearchPanel({
           <button
             type="submit"
             disabled={submitDisabled}
-            className="inline-flex h-12 shrink-0 items-center justify-center rounded-sm border border-primary/30 bg-primary px-5 font-sans-tech text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-glow disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex h-12 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary px-5 font-sans-tech text-sm font-bold text-primary-foreground transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Open path
           </button>
         </form>
 
         {value.trim() !== "" && (
-          <div className="mt-2 overflow-hidden rounded-sm border border-primary/20 bg-card/95 text-left shadow-xl shadow-black/20 backdrop-blur-sm">
+          <div className="mt-3 overflow-hidden rounded-[18px] border border-primary/15 bg-[#0b0f13]/96 text-left shadow-xl shadow-black/20 backdrop-blur-sm">
             {suggestions.length > 0 ? (
-              <div className="divide-y divide-border">
+              <div className="divide-y divide-white/6">
                 {suggestions.map((suggestion) => (
                   <button
                     key={suggestion.full_path}
@@ -669,19 +671,18 @@ function RoboDataHubTopMenu({
   ];
 
   return (
-    <section className="overflow-hidden rounded-[28px] border border-border bg-card/70 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.28)] backdrop-blur-sm md:p-5">
-      <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-        <div className="max-w-xl px-2 pt-2">
+    <section className="overflow-hidden rounded-[28px] border border-white/6 bg-[#040608]/92 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.28)] backdrop-blur-xl md:p-5">
+      <div className="flex flex-col gap-5">
+        <div className="px-2 pt-2">
           <div className="font-mono-tech text-[11px] uppercase tracking-[0.24em] text-primary">
-            RoboDataHub Menu
+            RoboDataHub
           </div>
-          <h2 className="mt-3 font-sans-tech text-3xl font-bold tracking-tight text-foreground">
-            Explore by vertical
+          <h2 className="mt-3 font-sans-tech text-2xl font-bold tracking-tight text-foreground">
+            Browse by vertical
           </h2>
-          <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            A top-level navigation rail for moving across RoboDataHub without relying on a sticky
-            left sidebar. It keeps the industrial feel while making the landing pages lighter and
-            more flexible.
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+            Move between the live RoboDataHub landing surfaces while keeping deeper dataset
+            browsing untouched.
           </p>
         </div>
 
@@ -695,10 +696,10 @@ function RoboDataHubTopMenu({
                 <Link
                   key={item.key}
                   to={item.href}
-                  className={`group w-[244px] rounded-[24px] border p-5 transition-all duration-200 ${
+                  className={`group w-[220px] rounded-[24px] border p-5 transition-all duration-200 ${
                     isActive
-                      ? "border-primary/35 bg-primary/10 shadow-[0_14px_40px_rgba(0,0,0,0.24)]"
-                      : "border-border/80 bg-background/60 hover:-translate-y-0.5 hover:border-primary/25 hover:bg-background/80 hover:shadow-[0_14px_40px_rgba(0,0,0,0.2)]"
+                      ? "border-primary/30 bg-primary/10 shadow-[0_14px_40px_rgba(0,0,0,0.24)]"
+                      : "border-white/6 bg-[#0b0f13] hover:-translate-y-0.5 hover:border-primary/20 hover:bg-[#0d1116] hover:shadow-[0_14px_40px_rgba(0,0,0,0.2)]"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-4">
@@ -706,7 +707,7 @@ function RoboDataHubTopMenu({
                       className={`inline-flex h-10 min-w-10 items-center justify-center rounded-2xl border px-3 font-mono-tech text-[11px] font-bold uppercase tracking-[0.18em] ${
                         isActive
                           ? "border-primary/50 bg-primary text-primary-foreground"
-                          : "border-border bg-background text-foreground"
+                          : "border-white/8 bg-black/20 text-foreground"
                       }`}
                     >
                       {badge}
@@ -715,7 +716,7 @@ function RoboDataHubTopMenu({
                       className={`rounded-full border px-2.5 py-1 font-mono-tech text-[10px] uppercase tracking-[0.16em] ${
                         isActive
                           ? "border-primary-glow/25 bg-primary-glow/10 text-primary-glow"
-                          : "border-border bg-background/70 text-muted-foreground"
+                          : "border-white/8 bg-black/20 text-muted-foreground"
                       }`}
                     >
                       {isActive ? "Open" : "Browse"}
@@ -741,21 +742,44 @@ function RoboDataHubTopMenu({
 function LoggedOutHub() {
   return (
     <div className="mx-auto w-full max-w-[1440px] px-4 py-12 sm:px-6 md:py-16">
-      <div className="mb-8">
-        <div className="mb-4 inline-flex items-center gap-2 rounded-sm border border-primary/30 bg-primary/10 px-3 py-1 font-sans-tech text-xs uppercase tracking-[0.24em] text-primary">
-          RoboDataHub
+      <RoboDataHubTopMenu activeItem="home" />
+
+      <div className="mt-8 overflow-hidden rounded-[30px] border border-white/6 bg-[#0d1014]/88 p-6 shadow-[0_24px_60px_rgba(0,0,0,0.24)] md:p-8">
+        <div className="max-w-3xl">
+          <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-[11px] uppercase tracking-[0.22em] text-primary">
+            RoboDataHub
+          </div>
+          <h1 className="mt-6 text-[clamp(2.3rem,4.8vw,4rem)] font-black tracking-[-0.05em] text-white">
+            Sign in to browse the full data library.
+          </h1>
+          <p className="mt-5 max-w-2xl text-base leading-8 text-muted-foreground">
+            Keep the public-facing design visible, but preserve the current access model:
+            dataset contents stay behind account approval.
+          </p>
+          <div className="mt-8 flex flex-col gap-4 sm:flex-row">
+            <Link
+              to={buildAuthPath("login", "/viewer")}
+              className="inline-flex h-12 items-center justify-center rounded-xl border border-white/12 px-6 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Sign In
+            </Link>
+            <Link
+              to={buildAuthPath("register", "/viewer")}
+              className="inline-flex h-12 items-center justify-center rounded-xl bg-primary px-6 text-sm font-bold text-primary-foreground"
+            >
+              Get Access
+            </Link>
+          </div>
         </div>
-        <h1 className="font-sans-tech text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-          Data verticals
-        </h1>
       </div>
-      <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+
+      <div className="mt-8 grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
         {CATEGORIES.map((category) => (
           <div
             key={category.routeKey}
-            className="rounded-sm border border-border bg-card/20 p-6 shadow-xl shadow-black/10"
+            className="rounded-[24px] border border-white/6 bg-[#0d1014]/88 p-6 shadow-[0_20px_46px_rgba(0,0,0,0.2)]"
           >
-            <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-sm border border-primary/20 bg-primary/10">
+            <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
               <Database className="h-5 w-5 text-primary" />
             </div>
             <div className="font-sans-tech text-xl font-bold text-foreground">{category.label}</div>
@@ -1164,7 +1188,7 @@ export default function DataViewer() {
           return (
             <div
               key={folder.full_path}
-              className="group relative cursor-pointer overflow-hidden rounded-sm border border-border bg-card/15 p-6 transition-all duration-300 hover:border-primary hover:bg-card/25 hover:shadow-2xl hover:shadow-black/10"
+              className="group relative cursor-pointer overflow-hidden rounded-[24px] border border-white/6 bg-[#0d1014]/88 p-6 transition-all duration-300 hover:-translate-y-1 hover:border-primary/20 hover:bg-[#10151a] hover:shadow-2xl hover:shadow-black/10"
               onClick={() => navigate(folder.viewer_path || buildViewerPath(folder.full_path))}
             >
               {isDataset && (
@@ -1190,7 +1214,7 @@ export default function DataViewer() {
                         onClick={() => setFolderDropdownOpen(null)}
                         aria-hidden
                       />
-                      <div className="absolute right-0 z-20 mt-1 w-40 rounded-sm border border-border bg-card py-1 shadow-lg">
+                      <div className="absolute right-0 z-20 mt-1 w-40 rounded-2xl border border-white/8 bg-[#0d1014] py-1 shadow-lg">
                         <button
                           type="button"
                           onClick={(event) => {
@@ -1209,13 +1233,8 @@ export default function DataViewer() {
                 </div>
               )}
 
-              <div className="absolute left-0 top-0 h-3 w-3 border-l border-t border-border transition-colors group-hover:border-primary" />
-              <div className="absolute right-0 top-0 h-3 w-3 border-r border-t border-border transition-colors group-hover:border-primary" />
-              <div className="absolute bottom-0 left-0 h-3 w-3 border-b border-l border-border transition-colors group-hover:border-primary" />
-              <div className="absolute bottom-0 right-0 h-3 w-3 border-b border-r border-border transition-colors group-hover:border-primary" />
-
               <div className="relative z-10 flex flex-col items-center gap-6">
-                <div className="h-44 w-full overflow-hidden rounded-sm border border-border bg-background/50 transition-all group-hover:border-primary/30 group-hover:shadow-[0_0_18px_rgba(31,209,107,0.12)]">
+                <div className="h-44 w-full overflow-hidden rounded-[18px] border border-white/6 bg-black/20 transition-all group-hover:border-primary/25 group-hover:shadow-[0_0_18px_rgba(29,233,182,0.1)]">
                   <DatasetFolderCover
                     key={folder.full_path}
                     fullPath={folder.source_path ?? folder.full_path}
@@ -1226,7 +1245,7 @@ export default function DataViewer() {
                   />
                 </div>
                 <div className="w-full text-center">
-                  <span className="block break-words font-sans-tech text-lg font-bold uppercase tracking-wider text-foreground transition-colors group-hover:text-primary">
+                  <span className="block break-words font-sans-tech text-lg font-bold uppercase tracking-[0.12em] text-foreground transition-colors group-hover:text-primary">
                     {folder.name}
                   </span>
                   {folder.visibility && (
@@ -1247,7 +1266,7 @@ export default function DataViewer() {
         })}
 
         {items.length === 0 && !loading && (
-          <div className="col-span-full flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/10 py-20 text-muted-foreground">
+          <div className="col-span-full flex flex-col items-center justify-center rounded-[24px] border border-dashed border-white/8 bg-black/20 py-20 text-muted-foreground">
             <AlertCircle className="mb-4 h-12 w-12 text-muted-foreground/50" />
             <p className="font-sans-tech text-lg">No data found</p>
             <button
@@ -1267,15 +1286,15 @@ export default function DataViewer() {
       <RoboDataHubTopMenu activeItem="home" />
 
       <div className="mt-8 min-w-0">
-        <div className="mb-8 max-w-3xl">
-          <div className="mb-5 inline-flex items-center gap-2 rounded-sm border border-primary/30 bg-primary/10 px-3 py-1 font-sans-tech text-xs uppercase tracking-[0.24em] text-primary">
+        <div className="mb-8 overflow-hidden rounded-[30px] border border-white/6 bg-[#0d1014]/88 p-6 shadow-[0_24px_60px_rgba(0,0,0,0.24)] md:p-8">
+          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 font-sans-tech text-[11px] uppercase tracking-[0.22em] text-primary">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
             RoboDataHub
           </div>
-          <h1 className="mb-4 font-sans-tech text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-5xl">
+          <h1 className="mb-4 max-w-3xl font-sans-tech text-[clamp(2.3rem,4.8vw,4rem)] font-black tracking-[-0.05em] text-white">
             RoboDataHub
           </h1>
-          <p className="max-w-3xl font-sans-tech text-sm leading-relaxed text-muted-foreground md:text-base">
+          <p className="max-w-3xl font-sans-tech text-base leading-8 text-muted-foreground">
             Search across the full data library for a quick shortcut, or browse featured
             categories below through presentation-ready examples that open directly in the viewer.
           </p>
@@ -1283,7 +1302,7 @@ export default function DataViewer() {
             <button
               type="button"
               onClick={() => navigate("/viewer/my")}
-              className="inline-flex h-11 items-center gap-2 rounded-sm border border-primary/30 bg-primary px-5 font-sans-tech text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-glow"
+              className="inline-flex h-12 items-center gap-2 rounded-xl border border-primary/20 bg-primary px-5 font-sans-tech text-sm font-bold text-primary-foreground transition-colors hover:opacity-90"
             >
               My private data
               <ArrowRight className="h-4 w-4" />
@@ -1292,7 +1311,7 @@ export default function DataViewer() {
               <button
                 type="button"
                 onClick={() => navigate(`/viewer/admin/${user.storageSlug}`)}
-                className="inline-flex h-11 items-center gap-2 rounded-sm border border-border bg-background/80 px-5 font-sans-tech text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:text-primary"
+                className="inline-flex h-12 items-center gap-2 rounded-xl border border-white/10 bg-black/20 px-5 font-sans-tech text-sm font-semibold text-foreground transition-colors hover:border-primary/20 hover:text-primary"
               >
                 Admin access
                 <Shield className="h-4 w-4" />
@@ -1323,11 +1342,11 @@ export default function DataViewer() {
           {CATEGORIES.map((category) => (
             <section
               key={category.routeKey}
-              className="rounded-sm border border-border bg-gradient-to-br from-card/25 via-background/80 to-primary/5 p-6 shadow-2xl shadow-black/10 md:p-8"
+              className="rounded-[28px] border border-white/6 bg-[#0d1014]/88 p-6 shadow-[0_24px_60px_rgba(0,0,0,0.22)] md:p-8"
             >
               <div className="grid grid-cols-1 items-center gap-8 xl:grid-cols-[0.92fr_1.5fr] xl:gap-10">
                 <div>
-                  <div className="mb-5 inline-flex items-center gap-2 rounded-sm border border-primary/20 bg-primary/10 px-3 py-1 font-sans-tech text-[11px] uppercase tracking-[0.22em] text-primary">
+                  <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 font-sans-tech text-[11px] uppercase tracking-[0.22em] text-primary">
                     Featured category
                   </div>
                   <h2 className="mb-4 font-sans-tech text-3xl font-bold tracking-tight text-foreground md:text-4xl">
@@ -1343,7 +1362,7 @@ export default function DataViewer() {
                     <button
                       type="button"
                       onClick={() => navigate(`/viewer/${category.routeKey}`)}
-                      className="inline-flex h-11 items-center gap-2 rounded-sm bg-primary px-5 font-sans-tech text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-glow"
+                      className="inline-flex h-12 items-center gap-2 rounded-xl bg-primary px-5 font-sans-tech text-sm font-bold text-primary-foreground transition-colors hover:opacity-90"
                     >
                       View data
                       <ArrowRight className="h-4 w-4" />
@@ -1374,25 +1393,25 @@ export default function DataViewer() {
       <RoboDataHubTopMenu activeItem={category.routeKey} />
 
       <div className="mt-8 min-w-0">
-        <div className="grid grid-cols-1 items-center gap-8 rounded-sm border border-border bg-gradient-to-br from-card/30 via-background/70 to-primary/5 p-6 shadow-2xl shadow-black/10 md:p-8 xl:grid-cols-[1.05fr_1fr] xl:gap-12">
+        <div className="grid grid-cols-1 items-center gap-8 rounded-[30px] border border-white/6 bg-[#0d1014]/88 p-6 shadow-[0_24px_60px_rgba(0,0,0,0.22)] md:p-8 xl:grid-cols-[1.05fr_1fr] xl:gap-12">
           <div>
-            <div className="mb-5 inline-flex items-center gap-2 rounded-sm border border-primary/30 bg-primary/10 px-3 py-1 font-sans-tech text-xs uppercase tracking-[0.24em] text-primary">
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 font-sans-tech text-[11px] uppercase tracking-[0.22em] text-primary">
               Category
             </div>
-            <h1 className="mb-5 font-sans-tech text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-5xl">
+            <h1 className="mb-5 font-sans-tech text-[clamp(2.3rem,4.8vw,4rem)] font-black tracking-[-0.05em] text-white">
               {category.label}
             </h1>
-            <p className="mb-4 max-w-2xl font-sans-tech text-base leading-relaxed text-foreground/90 md:text-lg">
+            <p className="mb-4 max-w-2xl font-sans-tech text-base leading-8 text-foreground/90 md:text-lg">
               {category.description}
             </p>
-            <p className="max-w-2xl font-sans-tech text-sm leading-relaxed text-muted-foreground">
+            <p className="max-w-2xl font-sans-tech text-sm leading-7 text-muted-foreground">
               {category.helperText}
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <button
                 type="button"
                 onClick={scrollToSubdirectories}
-                className="inline-flex h-11 items-center gap-2 rounded-sm bg-primary px-5 font-sans-tech text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-glow"
+                className="inline-flex h-12 items-center gap-2 rounded-xl bg-primary px-5 font-sans-tech text-sm font-bold text-primary-foreground transition-colors hover:opacity-90"
               >
                 View data
                 <ArrowRight className="h-4 w-4" />
@@ -1449,7 +1468,7 @@ export default function DataViewer() {
       <div className="pointer-events-none absolute inset-0 bg-grid-pattern opacity-[0.05]" />
       <Navigation />
 
-      <div className="relative z-10 flex flex-1 flex-col pt-16 md:overflow-hidden">
+      <div className="relative z-10 flex flex-1 flex-col pt-[88px] md:overflow-hidden">
         <div className="z-20 flex min-h-12 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-background/80 px-4 py-2 backdrop-blur-md sm:flex-nowrap sm:py-0">
           <div className="flex min-w-0 items-center gap-4">
             <div className="flex items-center gap-2 text-sm">
@@ -1457,7 +1476,7 @@ export default function DataViewer() {
                 to="/viewer"
                 className="hidden font-sans-tech font-bold text-primary transition-colors hover:text-primary-glow md:block"
               >
-                ROBODATAHUB
+                RoboDataHub
               </Link>
               <Breadcrumbs />
             </div>

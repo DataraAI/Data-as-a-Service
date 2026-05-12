@@ -1,17 +1,28 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowRight, Sparkles, X } from "lucide-react";
+import { Link } from "react-router-dom";
 import Navigation from "@/components/Navigation";
+import FooterSection from "@/components/FooterSection";
+import ProductSurfaceTabs from "@/components/ProductSurfaceTabs";
 import { frontPageImageUrl } from "@/lib/datasetFolderCover";
+import { buildAuthPath } from "@/lib/authLinks";
 
 interface ShowcaseImage {
   path: string;
   alt: string;
+  label: string;
 }
 
 interface ShowcaseExample {
   id: string;
-  input: ShowcaseImage;
+  title: string;
+  summary: string;
+  availability: "In Library" | "On-demand";
+  source: ShowcaseImage;
   outputs: ShowcaseImage[];
+  engineNote: string;
+  hours: string;
+  tags: string[];
 }
 
 interface ShowcaseVertical {
@@ -19,148 +30,249 @@ interface ShowcaseVertical {
   eyebrow: string;
   title: string;
   summary: string;
+  accentClass: string;
+  accentLine: string;
   examples: ShowcaseExample[];
 }
 
 const SHOWCASE_VERTICALS: ShowcaseVertical[] = [
   {
-    id: "carAutomation",
-    eyebrow: "Car Automation",
-    title: "Vehicle assembly and service viewpoints",
+    id: "datacenter",
+    eyebrow: "Data Center",
+    title: "RoboEyeView across rack-side workflows",
     summary:
-      "Two distinct production captures are transformed into robot-eye outputs that show both consistency and range across the same automotive workflow.",
+      "Patented pipeline that converts EXO footage into EGO datasets - labeled and ready for robot model training.",
+    accentClass: "bg-blue-400 text-blue-300 border-blue-400/25",
+    accentLine: "bg-blue-400/30",
     examples: [
       {
-        id: "primary",
-        input: {
-          path: "carAutomation/exo_carautomation.png",
-          alt: "Car automation exocentric input one",
-        },
-        outputs: [
-          {
-            path: "carAutomation/ego_carautomation.png",
-            alt: "Car automation generated ego view one",
-          },
-          {
-            path: "carAutomation/ego_carautomation1.png",
-            alt: "Car automation generated ego view two",
-          },
-        ],
-      },
-      {
-        id: "secondary",
-        input: {
-          path: "carAutomation/2exo_carautomation.png",
-          alt: "Car automation exocentric input two",
-        },
-        outputs: [
-          {
-            path: "carAutomation/2ego_carautomation.png",
-            alt: "Car automation second-scene ego view one",
-          },
-          {
-            path: "carAutomation/2ego_carautomation1.png",
-            alt: "Car automation second-scene ego view two",
-          },
-          {
-            path: "carAutomation/2ego_carautomation2.png",
-            alt: "Car automation second-scene ego view three",
-          },
-        ],
-      },
-    ],
-  },
-  {
-    id: "serverrack",
-    eyebrow: "Serverrack",
-    title: "Data-center scene to robot-eye perspective",
-    summary:
-      "The page now shows two separate rack-side inputs, each converted into its own set of focused egocentric outputs for a broader, more convincing demo story.",
-    examples: [
-      {
-        id: "primary",
-        input: {
+        id: "data-one",
+        title: "Server Rack Hardware Swap",
+        summary:
+          "Two-technician swap - external surveillance capture to synthesized EGO viewpoints for training.",
+        availability: "In Library",
+        source: {
           path: "serverrack/exo_serverrack.png",
-          alt: "Serverrack exocentric input one",
+          alt: "Data center exocentric hardware swap input",
+          label: "EXO",
         },
         outputs: [
           {
             path: "serverrack/ego_serverrack.png",
-            alt: "Serverrack generated ego view one",
+            alt: "Front robot-eye hardware swap output",
+            label: "Front",
           },
           {
             path: "serverrack/ego_serverrack1.png",
-            alt: "Serverrack generated ego view two",
+            alt: "Overhead robot-eye hardware swap output",
+            label: "Overhead",
+          },
+          {
+            path: "serverrack/2ego_serverrack.png",
+            alt: "Side robot-eye hardware swap output",
+            label: "Side",
+          },
+          {
+            path: "serverrack/2ego_serverrack1.png",
+            alt: "Low-angle hardware swap output",
+            label: "Low Angle",
           },
         ],
+        engineNote: "Scene reconstruction and multi-angle view synthesis.",
+        hours: "1,200 hrs EGO output",
+        tags: ["Scene Reconstruction", "Depth Estimation", "Multi-angle Synthesis"],
       },
       {
-        id: "secondary",
-        input: {
+        id: "data-two",
+        title: "Server Rack Inspection",
+        summary:
+          "Single technician inspection - EXO data to focused robot viewpoints for rack-side operation modeling.",
+        availability: "In Library",
+        source: {
           path: "serverrack/2exo_serverrack.png",
-          alt: "Serverrack exocentric input two",
+          alt: "Data center exocentric inspection input",
+          label: "EXO",
         },
         outputs: [
           {
             path: "serverrack/2ego_serverrack.png",
-            alt: "Serverrack second-scene ego view one",
+            alt: "Mid-range inspection output",
+            label: "Front",
           },
           {
             path: "serverrack/2ego_serverrack1.png",
-            alt: "Serverrack second-scene ego view two",
+            alt: "Close inspection output",
+            label: "Close",
           },
           {
             path: "serverrack/2ego_serverrack2.png",
-            alt: "Serverrack second-scene ego view three",
+            alt: "Overhead inspection output",
+            label: "Overhead",
           },
         ],
+        engineNote: "Inspection-focused robot-perspective synthesis.",
+        hours: "840 hrs EGO output",
+        tags: ["Inspection Views", "Rack Navigation", "View Synthesis"],
       },
     ],
   },
   {
-    id: "warehouse",
-    eyebrow: "Warehouse",
-    title: "Warehouse floor capture to useful robot-eye outputs",
+    id: "humanoid",
+    eyebrow: "Humanoid",
+    title: "Embodied hand-level perspectives for dexterous tasks",
     summary:
-      "Two warehouse scenes branch into clean robot-eye outputs that make the transformation feel broader and more deployment-ready without overcomplicating the page.",
+      "External household and dexterity scenes re-framed into robot-useful perspectives for grasping, surface interaction, and hand-level control.",
+    accentClass: "bg-emerald-400 text-emerald-300 border-emerald-400/25",
+    accentLine: "bg-emerald-400/30",
     examples: [
       {
-        id: "primary",
-        input: {
-          path: "warehouse/exo_warehouse.png",
-          alt: "Warehouse exocentric input one",
+        id: "human-one",
+        title: "Kitchen Drawer Manipulation",
+        summary:
+          "Full-body EXO of trash bag handling to synthesized robot hand-level viewpoints for manipulation training.",
+        availability: "On-demand",
+        source: {
+          path: "humanoid/humanoid4.png",
+          alt: "Humanoid drawer manipulation exocentric input",
+          label: "EXO",
         },
         outputs: [
           {
-            path: "warehouse/ego_warehouse1.png",
-            alt: "Warehouse generated ego view one",
+            path: "humanoid/manipulation.png",
+            alt: "Humanoid hand-level output one",
+            label: "Hand-level",
           },
           {
-            path: "warehouse/ego_warehouse2.png",
-            alt: "Warehouse generated ego view two",
+            path: "humanoid/humanoid.png",
+            alt: "Humanoid side output one",
+            label: "Side",
+          },
+          {
+            path: "humanoid/humanoid5.png",
+            alt: "Humanoid overhead output one",
+            label: "Overhead",
+          },
+          {
+            path: "humanoid/humanoid6.png",
+            alt: "Humanoid low-angle output one",
+            label: "Low Angle",
           },
         ],
+        engineNote: "Hand tracking and manipulation-aware synthesis.",
+        hours: "380 hrs EGO output",
+        tags: ["Hand Pose Tracking", "Wrist-level Synthesis", "Grasp Points"],
       },
       {
-        id: "secondary",
-        input: {
-          path: "warehouse/2exo_warehouse.png",
-          alt: "Warehouse exocentric input two",
+        id: "human-two",
+        title: "Surface Cleaning - Stovetop",
+        summary:
+          "Full-body cleaning task EXO to robot-perspective EGO views at different proximities for task learning.",
+        availability: "In Library",
+        source: {
+          path: "humanoid/humanoid7.png",
+          alt: "Humanoid cleaning exocentric input",
+          label: "EXO",
         },
         outputs: [
           {
-            path: "warehouse/2ego_warehouse.png",
-            alt: "Warehouse second-scene ego view one",
+            path: "humanoid/humanoid1.png",
+            alt: "Humanoid mid-range cleaning output",
+            label: "Mid-range",
           },
           {
-            path: "warehouse/2ego_warehouse1.png",
-            alt: "Warehouse second-scene ego view two",
+            path: "humanoid/humanoid2.png",
+            alt: "Humanoid close-up cleaning output",
+            label: "Close-up",
           },
           {
-            path: "warehouse/2ego_warehouse2.png",
-            alt: "Warehouse second-scene ego view three",
+            path: "humanoid/humanoid3.png",
+            alt: "Humanoid overhead cleaning output",
+            label: "Overhead",
           },
         ],
+        engineNote: "Motion synthesis tuned for repeated household actions.",
+        hours: "450 hrs EGO output",
+        tags: ["Surface Segmentation", "Multi-distance Views", "Task Framing"],
+      },
+      {
+        id: "human-three",
+        title: "Dishwashing - Sink Manipulation",
+        summary:
+          "Wide kitchen scene EXO to synthesized close-up EGO framing at hand manipulation level.",
+        availability: "On-demand",
+        source: {
+          path: "humanoid/humanoid6.png",
+          alt: "Humanoid dishwashing exocentric input",
+          label: "EXO",
+        },
+        outputs: [
+          {
+            path: "humanoid/humanoid.png",
+            alt: "Humanoid grasp synthesis output",
+            label: "Hand-level Grasp",
+          },
+          {
+            path: "humanoid/manipulation.png",
+            alt: "Humanoid side grasp output",
+            label: "Side",
+          },
+          {
+            path: "humanoid/humanoid2.png",
+            alt: "Humanoid overhead grasp output",
+            label: "Overhead",
+          },
+        ],
+        engineNote: "Grasp synthesis for wet-object and close-range manipulation.",
+        hours: "600 hrs EGO output",
+        tags: ["Grasp Keypoints", "Wet Object Handling", "Edge Conditions"],
+      },
+    ],
+  },
+  {
+    id: "automotive",
+    eyebrow: "Automotive",
+    title: "Assembly-line capture transformed into robot-eye training views",
+    summary:
+      "Production-line external footage becomes multi-view robot-perspective data for assembly and inspection tasks.",
+    accentClass: "bg-violet-400 text-violet-300 border-violet-400/25",
+    accentLine: "bg-violet-400/30",
+    examples: [
+      {
+        id: "auto-one",
+        title: "BMW Grille Assembly - Production Line",
+        summary:
+          "Side-view EXO of assembly worker to synthesized robot viewpoints including rotation and low-angle views.",
+        availability: "In Library",
+        source: {
+          path: "carAutomation/exo_carautomation.png",
+          alt: "Automotive exocentric grille assembly input",
+          label: "EXO",
+        },
+        outputs: [
+          {
+            path: "carAutomation/ego_carautomation.png",
+            alt: "Automotive front robot-eye output",
+            label: "Front",
+          },
+          {
+            path: "carAutomation/ego_carautomation1.png",
+            alt: "Automotive angled robot-eye output",
+            label: "Rotate Left",
+          },
+          {
+            path: "carAutomation/2ego_carautomation.png",
+            alt: "Automotive low-angle robot-eye output",
+            label: "Low Angle",
+          },
+          {
+            path: "carAutomation/2ego_carautomation1.png",
+            alt: "Automotive studio robot-eye output",
+            label: "Studio",
+          },
+        ],
+        engineNote: "Rotation-aware view synthesis for production-line precision.",
+        hours: "2,100 hrs EGO output",
+        tags: ["Scene Reconstruction", "Rotation Synthesis", "Low-angle Views", "4 Viewpoints"],
       },
     ],
   },
@@ -169,161 +281,125 @@ const SHOWCASE_VERTICALS: ShowcaseVertical[] = [
 function ShowcaseImageCard({
   image,
   onClick,
-  aspectClassName,
   emphasize = false,
-  containerClassName = "",
 }: {
   image: ShowcaseImage;
   onClick: () => void;
-  aspectClassName: string;
   emphasize?: boolean;
-  containerClassName?: string;
 }) {
   const [failed, setFailed] = useState(false);
   const src = frontPageImageUrl(image.path);
-  const canPreview = Boolean(src) && !failed;
 
   return (
     <button
       type="button"
-      onClick={canPreview ? onClick : undefined}
-      aria-label={`Expand ${image.alt}`}
-      disabled={!canPreview}
-      className={`group block w-full overflow-hidden rounded-sm border transition-all duration-300 focus:outline-none focus-visible:border-primary focus-visible:shadow-[0_0_0_2px_rgba(31,209,107,0.4)] ${containerClassName} ${
-        canPreview ? "cursor-zoom-in" : "cursor-default"
-      } ${
+      onClick={src && !failed ? onClick : undefined}
+      disabled={!src || failed}
+      className={`group relative block overflow-hidden rounded-[18px] border transition-all duration-300 ${
         emphasize
-          ? "border-primary/30 bg-card/30 shadow-2xl shadow-black/15 hover:border-primary"
-          : "border-border bg-card/20 hover:border-primary/60"
-      }`}
+          ? "border-blue-400/35 bg-[#0b1119] shadow-[0_16px_40px_rgba(0,0,0,0.24)]"
+          : "border-orange-300/25 bg-[#0d1014] hover:border-primary/25"
+      } ${src && !failed ? "cursor-zoom-in" : "cursor-default"}`}
     >
-      <div className={`${aspectClassName} overflow-hidden bg-black/45`}>
-        {canPreview ? (
+      <div className="aspect-[4/3] overflow-hidden bg-black/30">
+        {src && !failed ? (
           <img
-            src={src ?? undefined}
+            src={src}
             alt={image.alt}
             loading="lazy"
             decoding="async"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
             onError={() => setFailed(true)}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
           />
         ) : (
-          <div className="flex h-full items-center justify-center px-6 text-center text-sm font-sans-tech text-muted-foreground">
+          <div className="flex h-full items-center justify-center px-4 text-center text-sm text-muted-foreground">
             Image unavailable
           </div>
         )}
+      </div>
+      <div className="absolute left-3 top-3 rounded-md px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white/90 backdrop-blur-sm">
+        <span className={emphasize ? "text-blue-300" : "text-primary"}>{image.label}</span>
       </div>
     </button>
   );
 }
 
-function ShowcaseOutputGallery({
-  outputs,
-  onSelect,
-}: {
-  outputs: ShowcaseImage[];
-  onSelect: (image: ShowcaseImage) => void;
-}) {
-  if (outputs.length <= 1) {
-    return (
-      <div className="grid gap-4">
-        <ShowcaseImageCard
-          image={outputs[0]}
-          aspectClassName="aspect-[4/3] lg:h-full"
-          onClick={() => onSelect(outputs[0])}
-        />
-      </div>
-    );
-  }
-
-  if (outputs.length === 2) {
-    return (
-      <div className="grid gap-4 sm:grid-cols-2">
-        {outputs.map((output) => (
-          <ShowcaseImageCard
-            key={output.path}
-            image={output}
-            aspectClassName="aspect-[4/3]"
-            onClick={() => onSelect(output)}
-          />
-        ))}
-      </div>
-    );
-  }
-
-  return (
-    <div className="grid gap-4 md:grid-cols-2">
-      <div className="md:col-span-2">
-        <ShowcaseImageCard
-          image={outputs[0]}
-          aspectClassName="aspect-[16/9]"
-          onClick={() => onSelect(outputs[0])}
-        />
-      </div>
-      <div>
-        <ShowcaseImageCard
-          image={outputs[1]}
-          aspectClassName="aspect-[4/3]"
-          onClick={() => onSelect(outputs[1])}
-        />
-      </div>
-      <div>
-        <ShowcaseImageCard
-          image={outputs[2]}
-          aspectClassName="aspect-[4/3]"
-          onClick={() => onSelect(outputs[2])}
-        />
-      </div>
-    </div>
-  );
-}
-
-function ShowcaseArrow() {
-  return (
-    <div className="flex h-full items-center justify-center">
-      <div className="inline-flex flex-col items-center gap-3 rounded-full border border-primary/25 bg-background/85 px-4 py-4">
-        <span className="text-[10px] font-mono-tech uppercase tracking-[0.24em] text-primary">
-          RoboEyeView
-        </span>
-        <ArrowRight className="h-5 w-5 text-primary" />
-      </div>
-    </div>
-  );
-}
-
-function ShowcaseExampleRow({
+function ExampleCard({
   example,
+  accentClass,
   onSelect,
 }: {
   example: ShowcaseExample;
+  accentClass: string;
   onSelect: (image: ShowcaseImage) => void;
 }) {
   return (
-    <div className="grid gap-4 xl:grid-cols-[minmax(250px,0.7fr)_68px_minmax(0,1.3fr)] xl:items-start xl:gap-6">
-      <ShowcaseImageCard
-        image={example.input}
-        emphasize
-        aspectClassName="aspect-[4/3] sm:aspect-[16/11]"
-        onClick={() => onSelect(example.input)}
-      />
-
-      <div className="hidden xl:block">
-        <ShowcaseArrow />
+    <article className="rounded-[24px] border border-white/6 bg-[#0d1014]/88 p-5 shadow-[0_20px_46px_rgba(0,0,0,0.22)] md:p-6">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <h3 className="text-lg font-bold text-white">{example.title}</h3>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{example.summary}</p>
+        </div>
+        <span
+          className={`inline-flex rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
+            example.availability === "In Library"
+              ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-300"
+              : "border-amber-400/20 bg-amber-400/10 text-amber-300"
+          }`}
+        >
+          {example.availability}
+        </span>
       </div>
 
-      <div className="space-y-3">
-        <div className="flex items-center gap-3 xl:hidden">
-          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
-          <ArrowRight className="h-4 w-4 text-primary" />
-          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
+      <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(220px,0.76fr)_minmax(0,1.24fr)]">
+        <div>
+          <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-blue-300">
+            EXO Source
+          </div>
+          <ShowcaseImageCard
+            image={example.source}
+            emphasize
+            onClick={() => onSelect(example.source)}
+          />
         </div>
 
-        <ShowcaseOutputGallery
-          outputs={example.outputs}
-          onSelect={onSelect}
-        />
+        <div>
+          <div className="mb-2 flex items-center gap-3 text-[10px] font-bold uppercase tracking-[0.14em] text-orange-300">
+            <span>Generated EGO Views</span>
+            <span className={`h-px flex-1 ${accentClass}`} />
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {example.outputs.map((output) => (
+              <ShowcaseImageCard
+                key={`${example.id}-${output.path}`}
+                image={output}
+                onClick={() => onSelect(output)}
+              />
+            ))}
+          </div>
+        </div>
       </div>
-    </div>
+
+      <div className="mt-5 rounded-[20px] border border-primary/14 bg-primary/7 p-4">
+        <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
+          RoboEyeView Engine
+        </div>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">{example.engineNote}</p>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-white/6 pt-4">
+        {example.tags.map((tag) => (
+          <span
+            key={tag}
+            className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+          >
+            {tag}
+          </span>
+        ))}
+        <span className="ml-auto text-xs font-bold text-primary">{example.hours}</span>
+      </div>
+    </article>
   );
 }
 
@@ -359,7 +435,7 @@ function ImageLightbox({
       <button
         type="button"
         onClick={onClose}
-        className="absolute right-4 top-4 inline-flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card/70 text-foreground transition-colors hover:border-primary hover:text-primary md:right-6 md:top-6"
+        className="absolute right-4 top-4 inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/8 bg-[#0d1014] text-foreground transition-colors hover:border-primary/20 hover:text-primary md:right-6 md:top-6"
         aria-label="Close image preview"
       >
         <X className="h-5 w-5" />
@@ -367,18 +443,14 @@ function ImageLightbox({
 
       <div className="mx-auto flex h-full max-w-7xl items-center justify-center">
         <div
-          className="w-full overflow-hidden rounded-sm border border-border bg-black/50 shadow-2xl shadow-black/35"
+          className="w-full overflow-hidden rounded-[24px] border border-white/8 bg-black/50 shadow-2xl shadow-black/35"
           onClick={(event) => event.stopPropagation()}
         >
           <div className="max-h-[84vh] w-full">
             {src ? (
-              <img
-                src={src}
-                alt={selected.alt}
-                className="max-h-[84vh] w-full object-contain"
-              />
+              <img src={src} alt={selected.alt} className="max-h-[84vh] w-full object-contain" />
             ) : (
-              <div className="flex min-h-[50vh] items-center justify-center px-6 text-center text-sm font-sans-tech text-muted-foreground">
+              <div className="flex min-h-[50vh] items-center justify-center px-6 text-center text-sm text-muted-foreground">
                 Image unavailable
               </div>
             )}
@@ -392,85 +464,149 @@ function ImageLightbox({
 export default function RoboEyeView() {
   const [selectedImage, setSelectedImage] = useState<ShowcaseImage | null>(null);
 
-  const resolvedVerticals = useMemo(() => SHOWCASE_VERTICALS, []);
-
   return (
-    <div className="relative min-h-screen bg-background font-sans-tech text-foreground">
-      <div className="pointer-events-none absolute inset-0 bg-grid-pattern opacity-[0.06]" aria-hidden />
+    <div className="min-h-screen bg-background text-foreground">
       <Navigation />
 
-      <main className="relative z-10 pt-16">
-        <section className="border-b border-border bg-background/80 backdrop-blur-sm">
-          <div className="mx-auto max-w-[1440px] px-4 py-14 sm:px-6 md:py-20">
-            <div className="max-w-4xl">
-              <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5">
-                <Sparkles className="h-4 w-4 text-primary" />
-                <span className="text-[11px] font-mono-tech uppercase tracking-[0.24em] text-primary">
-                  RoboEyeView
-                </span>
+      <main className="relative overflow-hidden pt-[88px]">
+        <div className="pointer-events-none absolute inset-0 bg-grid-pattern opacity-[0.05]" />
+
+        <div className="relative z-10 mx-auto max-w-[1440px] px-4 py-10 sm:px-6 md:py-14">
+          <ProductSurfaceTabs active="roboeyeview" />
+
+          <section className="mt-6 overflow-hidden rounded-[32px] border border-white/6 bg-[#0d1014]/88 p-6 shadow-[0_24px_60px_rgba(0,0,0,0.28)] md:p-8">
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-[11px] uppercase tracking-[0.22em] text-primary">
+              <Sparkles className="h-3.5 w-3.5" />
+              RoboEyeView
+            </div>
+
+            <h1 className="mt-6 max-w-4xl text-[clamp(2.4rem,5vw,4rem)] font-black leading-[1.02] tracking-[-0.05em] text-white">
+              Patented pipeline that converts EXO footage into EGO datasets.
+            </h1>
+
+            <p className="mt-5 max-w-3xl text-base leading-8 text-muted-foreground">
+              EXO - Exocentric: external fixed-camera view of the workspace. EGO - Egocentric:
+              synthesized robot&apos;s-eye perspective for training.
+            </p>
+
+            <div className="mt-6 flex flex-wrap gap-3">
+              <span className="rounded-lg border border-blue-400/20 bg-blue-400/8 px-4 py-2 text-sm font-semibold text-blue-300">
+                <strong>EXO</strong> - Exocentric: external fixed-camera view of the workspace
+              </span>
+              <span className="rounded-lg border border-primary/20 bg-primary/8 px-4 py-2 text-sm font-semibold text-primary">
+                <strong>EGO</strong> - Egocentric: synthesized robot&apos;s-eye perspective for
+                training
+              </span>
+            </div>
+          </section>
+
+          <section className="mt-6 rounded-[28px] border border-white/6 bg-[#0d1014]/88 p-6 shadow-[0_20px_46px_rgba(0,0,0,0.22)] md:p-8">
+            <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+              How It Works
+            </div>
+            <div className="mt-6 grid gap-4 xl:grid-cols-3">
+              <div className="rounded-[22px] border border-blue-400/20 bg-blue-400/6 p-5">
+                <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-blue-300">
+                  Step 01 - Capture
+                </div>
+                <div className="mt-3 text-xl font-bold text-white">Exocentric Footage</div>
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                  External, third-person footage from any fixed camera - overhead, wall-mounted,
+                  or stationary.
+                </p>
               </div>
-
-              <h1 className="mt-6 text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-6xl">
-                Exocentric in. <span className="text-primary">Robot-eye outputs</span> out.
-              </h1>
-
-              <p className="mt-5 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base md:text-lg">
-                Each vertical now pairs multiple exocentric scenes with their corresponding
-                robot-eye outputs, giving the page a broader, more persuasive demo narrative
-                without turning the layout into a maze of extra panels.
-              </p>
+              <div className="rounded-[22px] border-2 border-primary/35 bg-primary/10 p-5 shadow-[0_0_28px_rgba(29,233,182,0.08)]">
+                <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
+                  Step 02
+                </div>
+                <div className="mt-3 text-xl font-bold text-white">RoboEyeView Engine</div>
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                  Scene reconstruction, motion understanding, and viewpoint synthesis tailored to
+                  robot-training requirements.
+                </p>
+              </div>
+              <div className="rounded-[22px] border border-orange-300/20 bg-orange-300/6 p-5">
+                <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-orange-300">
+                  Step 03 - Training Data
+                </div>
+                <div className="mt-3 text-xl font-bold text-white">Egocentric Datasets</div>
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                  Robot&apos;s-eye perspective - labeled, multi-angle, ready for model training.
+                </p>
+              </div>
             </div>
+          </section>
 
-            <div className="mt-10 flex flex-wrap gap-3">
-              {resolvedVerticals.map((vertical) => (
-                <a
-                  key={vertical.id}
-                  href={`#${vertical.id}`}
-                  className="inline-flex items-center gap-2 rounded-full border border-border bg-card/30 px-4 py-2 text-sm font-mono-tech uppercase tracking-wide text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
-                >
-                  {vertical.eyebrow}
-                </a>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <div className="space-y-8 pb-16 md:space-y-10">
-          {resolvedVerticals.map((vertical) => (
-            <section key={vertical.id} id={vertical.id} className="scroll-mt-24 px-4 sm:px-6">
-              <div className="mx-auto max-w-7xl overflow-hidden rounded-sm border border-border bg-card/15 shadow-2xl shadow-black/10">
-                <div className="border-b border-border bg-background/65 px-6 py-5 md:px-8 md:py-6">
-                  <div className="max-w-4xl">
-                    <div className="text-[11px] font-mono-tech uppercase tracking-[0.24em] text-primary">
-                      {vertical.eyebrow}
-                    </div>
-                    <h2 className="mt-3 text-2xl font-bold tracking-tight text-foreground md:text-4xl">
-                      {vertical.title}
-                    </h2>
-                    <p className="mt-3 max-w-3xl font-sans-tech text-sm leading-relaxed text-muted-foreground md:text-base">
-                      {vertical.summary}
-                    </p>
-                  </div>
+          <div className="mt-8 space-y-8">
+            {SHOWCASE_VERTICALS.map((vertical) => (
+              <section key={vertical.id} id={vertical.id} className="scroll-mt-[120px]">
+                <div className="mb-5 flex items-center gap-3">
+                  <span className={`h-3 w-3 rounded-[4px] ${vertical.accentClass}`} />
+                  <span className="text-lg font-extrabold text-white">{vertical.eyebrow}</span>
+                  <span className={`h-px flex-1 ${vertical.accentLine}`} />
                 </div>
 
-                <div className="space-y-5 p-5 sm:p-6 md:p-8">
-                  {vertical.examples.map((example) => (
-                    <ShowcaseExampleRow
-                      key={`${vertical.id}-${example.id}`}
-                      example={example}
-                      onSelect={setSelectedImage}
-                    />
+                <div className="rounded-[28px] border border-white/6 bg-[#0d1014]/88 p-6 shadow-[0_24px_60px_rgba(0,0,0,0.24)] md:p-8">
+                  <h2 className="text-3xl font-black tracking-[-0.04em] text-white md:text-4xl">
+                    {vertical.title}
+                  </h2>
+                  <p className="mt-4 max-w-3xl text-sm leading-7 text-muted-foreground md:text-base">
+                    {vertical.summary}
+                  </p>
+
+                  <div className="mt-6 space-y-5">
+                    {vertical.examples.map((example) => (
+                      <ExampleCard
+                        key={example.id}
+                        example={example}
+                        accentClass={vertical.accentLine}
+                        onSelect={setSelectedImage}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </section>
+            ))}
+          </div>
+
+          <section className="mt-8 rounded-[28px] border border-white/6 bg-[linear-gradient(135deg,rgba(29,233,182,0.04)_0%,rgba(255,255,255,0.02)_100%)] p-6 shadow-[0_24px_60px_rgba(0,0,0,0.22)] md:p-8">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <h2 className="text-2xl font-extrabold tracking-tight text-white">
+                  Run RoboEyeView on Your EXO Footage
+                </h2>
+                <p className="mt-3 max-w-3xl text-sm leading-7 text-muted-foreground">
+                  Already have EXO footage? We&apos;ll synthesize robot-ready EGO datasets across
+                  any task, environment, or robot form factor.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {["Data Center", "Humanoid", "Automotive"].map((tag) => (
+                    <span
+                      key={tag}
+                      className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground"
+                    >
+                      {tag}
+                    </span>
                   ))}
                 </div>
               </div>
-            </section>
-          ))}
+
+              <Link
+                to={buildAuthPath("register", "/roboeyeview")}
+                className="inline-flex h-12 shrink-0 items-center justify-center rounded-xl bg-primary px-6 text-sm font-bold text-primary-foreground"
+              >
+                Submit Your Footage
+              </Link>
+            </div>
+          </section>
         </div>
       </main>
 
       {selectedImage && (
         <ImageLightbox selected={selectedImage} onClose={() => setSelectedImage(null)} />
       )}
+
+      <FooterSection />
     </div>
   );
 }

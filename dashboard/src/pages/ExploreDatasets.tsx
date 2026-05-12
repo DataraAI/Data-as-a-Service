@@ -147,7 +147,7 @@ export default function ExploreDatasets() {
       <div className="pointer-events-none absolute inset-0 bg-grid-pattern opacity-[0.05]" aria-hidden />
       <Navigation />
 
-      <main className="relative z-10 flex min-h-0 flex-1 flex-col pt-16">
+      <main className="relative z-10 flex min-h-0 flex-1 flex-col pt-[88px]">
         <header className="border-b border-border bg-card/30 px-4 py-6 backdrop-blur-sm sm:px-6">
           <div className="mx-auto max-w-[1440px]">
             <p className="mb-2 font-mono-tech text-xs uppercase tracking-widest text-muted-foreground">
@@ -307,7 +307,7 @@ export default function ExploreDatasets() {
             </aside>
 
             <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-background/40">
-              <div className="sticky top-16 z-20 shrink-0 border-b border-border bg-background/95 px-4 py-3 backdrop-blur-md md:px-6">
+              <div className="sticky top-[88px] z-20 shrink-0 border-b border-border bg-background/95 px-4 py-3 backdrop-blur-md md:px-6">
                 <p className="font-mono-tech text-xs text-muted-foreground">
                   {loading
                     ? "Loading..."
