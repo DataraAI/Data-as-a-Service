@@ -7,6 +7,7 @@ const FOOTER_LINKS = [
   { label: "Solutions", to: "/product" },
   { label: "RoboDataHub", to: "/viewer" },
   { label: "RoboEyeView", to: "/roboeyeview" },
+  { label: "Explore Datasets", to: "/explore" },
   { label: "Company", to: "/company" },
   { label: "Sign In", to: buildAuthPath("login", "/viewer") },
 ];

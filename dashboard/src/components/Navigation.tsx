@@ -6,8 +6,12 @@ import { useAuth } from "@/auth/useAuth";
 import { buildAuthPath } from "@/lib/authLinks";
 
 const NAV_ITEMS = [
-  { label: "Home", href: "/" },
-  { label: "Company", href: "/company" },
+  { label: "Home", subtitle: "Overview", href: "/" },
+  { label: "Solutions", subtitle: "Full Stack", href: "/product" },
+  { label: "RoboDataHub", subtitle: "Dataset Catalog", href: "/viewer" },
+  { label: "RoboEyeView", subtitle: "Visual Intelligence", href: "/roboeyeview" },
+  { label: "Explore", subtitle: "Datasets", href: "/explore" },
+  { label: "Company", subtitle: "Team / Mission", href: "/company" },
 ];
 
 export default function Navigation() {
@@ -54,15 +58,15 @@ export default function Navigation() {
                 <Link
                   key={item.href}
                   to={item.href}
-                  className={`relative flex min-w-[148px] flex-col items-center justify-center border-x border-white/4 px-8 text-center transition-colors ${
+                  className={`relative flex min-w-[124px] flex-col items-center justify-center border-x border-white/4 px-5 text-center transition-colors ${
                     isActive
                       ? "bg-primary/4 text-primary"
                       : "text-muted-foreground hover:bg-white/[0.02] hover:text-foreground"
                   }`}
                 >
-                  <span className="text-[15px] font-bold">{item.label}</span>
+                  <span className="text-[14px] font-bold leading-none">{item.label}</span>
                   <span className="mt-1 text-[10px] uppercase tracking-[0.18em] opacity-60">
-                    {item.href === "/" ? "Overview" : "Team / Mission"}
+                    {item.subtitle}
                   </span>
                   <span
                     className={`absolute inset-x-[20%] bottom-0 h-0.5 rounded-t-full ${
@@ -155,7 +159,7 @@ export default function Navigation() {
                   >
                     <div className="text-sm font-semibold">{item.label}</div>
                     <div className="mt-1 text-[10px] uppercase tracking-[0.18em] opacity-60">
-                      {item.href === "/" ? "Overview" : "Team / Mission"}
+                      {item.subtitle}
                     </div>
                   </Link>
                 );
