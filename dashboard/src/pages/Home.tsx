@@ -143,8 +143,8 @@ export default function Home() {
               </p>
 
               <p className="mx-auto mt-7 max-w-2xl text-base leading-8 text-muted-foreground sm:text-lg">
-                The complete data stack for Physical AI. Humanoid. Automotive. Warehouse. Data
-                Center.
+                Real-world data infrastructure for physical AI across humanoid, automotive,
+                warehouse, and data-center workflows.
               </p>
 
               <div className="mt-11 flex flex-col items-center justify-center gap-4 sm:flex-row">

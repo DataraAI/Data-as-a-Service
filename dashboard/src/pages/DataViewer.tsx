@@ -97,17 +97,23 @@ interface CategoryConfig {
   searchDescription: string;
 }
 
-interface ShowcaseImageConfig {
-  previewBlobPath: string;
-  targetFolderPath: string;
-  targetImageName?: string;
-  alt: string;
+interface CategoryPreviewAsset {
+  asset_id: string;
+  blob_path: string;
+  name: string;
+  label: string;
+  proxy_url: string;
+}
+
+interface CategoryDatasetPreview {
   title: string;
-  summary: string;
-  tags: string[];
-  hours: string;
-  availability: "In Library" | "On-demand";
-  perspective: "EXO" | "EGO";
+  brand: string;
+  full_path: string;
+  viewer_path?: string;
+  visibility?: "private" | "public";
+  owner_slug?: string;
+  main_image: CategoryPreviewAsset | null;
+  thumbnails: CategoryPreviewAsset[];
 }
 
 const CATEGORIES: CategoryConfig[] = [
@@ -116,249 +122,50 @@ const CATEGORIES: CategoryConfig[] = [
     previewKey: "carAutomation",
     label: "Automotive",
     description:
-      "Assembly, inspection, and vehicle-production data for robotics workflows across automotive environments.",
+      "Production-floor datasets for assembly, inspection, fastening, fitment, and other automotive robot workflows.",
     helperText:
-      "Browse this category to explore automotive data collections, or search directly below to jump to a specific folder path.",
+      "Open a dataset folder to choose between orig, EGO, masks, corner-case outputs, and other task-specific assets.",
     searchTitle: "Search within Automotive",
     searchDescription:
-      "Find folders, scenes, or specific path matches inside the automotive library.",
+      "Jump directly to a brand, endpoint folder, or deeper path inside the automotive library.",
   },
   {
     routeKey: "serverrack",
     previewKey: "serverrack",
     label: "Data Center",
     description:
-      "Data-center interaction, port-level operation, and maintenance-focused datasets for rack and cabling tasks.",
+      "Rack-side datasets for cabling, inspection, maintenance, swap, and port-level data-center operations.",
     helperText:
-      "Start here for server-rack workflows, then browse further or search to move directly into a relevant dataset branch.",
+      "Browse endpoint folders first, then step into the exact orig, EGO, or mask assets you want to inspect.",
     searchTitle: "Search within Data Center",
     searchDescription:
-      "Search inside the data-center library for folders related to rack operations, cabling, and maintenance.",
+      "Search the data-center library by brand, endpoint folder, or exact path.",
   },
   {
     routeKey: "dexterity",
     previewKey: "humanoid",
     label: "Humanoid",
     description:
-      "Fine-motor manipulation and embodied task data for dexterous robotic systems operating across practical, object-centric scenarios.",
+      "Embodied manipulation datasets for hand-level tasks, object interaction, cleaning, kitchen workflows, and dexterous control.",
     helperText:
-      "Use this category for dexterity-focused tasks and embodied interaction data, including peeling, washing, and practical manipulation workflows.",
+      "Enter a dataset folder to review the source captures and generated views behind each manipulation workflow.",
     searchTitle: "Search within Humanoid",
     searchDescription:
-      "Search only across humanoid and dexterity-related folders to narrow down the most relevant dataset path quickly.",
+      "Search the humanoid library to reach a specific task folder faster.",
   },
   {
     routeKey: "warehouse",
     previewKey: "warehouse",
     label: "Warehouse",
     description:
-      "Logistics, handling, and storage-operation data for robotic movement, picking, and material flow.",
+      "Logistics and fulfillment datasets for picking, movement, transport, sortation, scanning, and storage workflows.",
     helperText:
-      "Explore warehouse-oriented robotics data collections, or search within this category to find a path faster.",
+      "Use the folder grid to move from a workflow-level preview into the exact asset type you need.",
     searchTitle: "Search within Warehouse",
     searchDescription:
-      "Search only within warehouse data paths to keep results focused and easier to navigate.",
+      "Search warehouse data by task, endpoint folder, brand, or exact path.",
   },
 ];
-
-const CATEGORY_SHOWCASES: Record<CategoryKey, ShowcaseImageConfig[]> = {
-  carAutomation: [
-    {
-      previewBlobPath: "carAutomation/carAutomation4.png",
-      targetFolderPath: "carAutomation/BMW/frontGrille",
-      targetImageName: "frontGrille_016_Rotate_right_90_degrees.png",
-      alt: "BMW front grille rotation example",
-      title: "BMW Front Grille Assembly",
-      summary: "Production-line grille fitting, fastening, and QC sequences for automotive manipulation workflows.",
-      tags: ["EXO-Centric", "Task Labels", "Seg"],
-      hours: "2,100 hrs",
-      availability: "In Library",
-      perspective: "EXO",
-    },
-    {
-      previewBlobPath: "carAutomation/carAutomation5.png",
-      targetFolderPath: "carAutomation/BMW/frontGrille",
-      targetImageName: "frontGrille_000_Rotate_right_45_degrees.png",
-      alt: "BMW front grille angled example",
-      title: "Front Seat Installation",
-      summary: "Seat alignment, bolt-down, and connector sequences across multiple vehicle platforms.",
-      tags: ["EXO-Centric", "Task Labels", "Bbox"],
-      hours: "1,400 hrs",
-      availability: "In Library",
-      perspective: "EXO",
-    },
-    {
-      previewBlobPath: "carAutomation/carAutomation6.png",
-      targetFolderPath: "carAutomation/Porsche/frontSeat",
-      targetImageName: "frontSeat_037_Rotate_left_45_degrees.png",
-      alt: "Porsche front seat example",
-      title: "Passenger Seat QC Inspection",
-      summary: "Robot-eye quality inspection for seat fitment, trim alignment, and anchor verification.",
-      tags: ["EGO-Centric", "Task Labels", "Seg"],
-      hours: "900 hrs",
-      availability: "On-demand",
-      perspective: "EGO",
-    },
-    {
-      previewBlobPath: "carAutomation/carAutomation7.png",
-      targetFolderPath: "carAutomation/bmw/rearBumper",
-      targetImageName: "rearBumper_000_Rotate_left_90_degrees.png",
-      alt: "BMW rear bumper example",
-      title: "Rear Bumper Assembly",
-      summary: "Bumper alignment, clip insertion, and sensor harness routing across trim levels.",
-      tags: ["EXO-Centric", "Task Labels", "Edge Cases"],
-      hours: "1,100 hrs",
-      availability: "In Library",
-      perspective: "EXO",
-    },
-  ],
-  serverrack: [
-    {
-      previewBlobPath: "serverrack/serverrack4.png",
-      targetFolderPath: "serverrack/Dell/dataRackInstall",
-      targetImageName: "dataRackInstall_0000.png",
-      alt: "Serverrack installation example",
-      title: "Rack Cabling & Patch Panel",
-      summary: "Full patch-panel workflows covering cable insertion, loop management, and live rack labeling.",
-      tags: ["EXO-Centric", "Task Labels", "Bbox"],
-      hours: "1,200 hrs",
-      availability: "In Library",
-      perspective: "EXO",
-    },
-    {
-      previewBlobPath: "serverrack/serverrack5.png",
-      targetFolderPath: "serverrack/Gigabyte/datacenterRack2",
-      targetImageName: "datacenterRack2_84.png",
-      alt: "Datacenter rack example",
-      title: "Loop Cable Installation",
-      summary: "Hands-on cable routing, fastening, and dress-out inside production data-center racks.",
-      tags: ["EXO-Centric", "Task Labels"],
-      hours: "600 hrs",
-      availability: "On-demand",
-      perspective: "EXO",
-    },
-    {
-      previewBlobPath: "serverrack/serverrack6.png",
-      targetFolderPath: "serverrack/AnalogDevices/ethernetCable",
-      targetImageName: "ethernetCable_000.png",
-      alt: "Ethernet cable example",
-      title: "Server Rack Inspection",
-      summary: "Robot-perspective inspection for slot identification, LED status reading, and hardware swap prep.",
-      tags: ["EGO-Centric", "Task Labels", "Bbox"],
-      hours: "840 hrs",
-      availability: "In Library",
-      perspective: "EGO",
-    },
-    {
-      previewBlobPath: "serverrack/serverrack7.png",
-      targetFolderPath: "serverrack/NVIDIA/switchTray",
-      targetImageName: "switchTray_000.png",
-      alt: "Switch tray example",
-      title: "Hardware Swap & Replacement",
-      summary: "Drive, NIC, PSU, and tray replacement workflows across multiple server generations.",
-      tags: ["EXO-Centric", "Task Labels", "Seg"],
-      hours: "720 hrs",
-      availability: "On-demand",
-      perspective: "EXO",
-    },
-  ],
-  dexterity: [
-    {
-      previewBlobPath: "humanoid/humanoid4.png",
-      targetFolderPath: "dexterity/Awign/dishWasher",
-      alt: "Dexterity dish washer example one",
-      title: "Dishwashing - Hand Manipulation",
-      summary: "Fine-grained hand and object manipulation in wet, soapy conditions for humanoid dexterity training.",
-      tags: ["EXO-Centric", "Hand Pose", "Wet Conditions"],
-      hours: "600 hrs",
-      availability: "On-demand",
-      perspective: "EXO",
-    },
-    {
-      previewBlobPath: "humanoid/humanoid5.png",
-      targetFolderPath: "dexterity/Awign/dishWasherUnloading",
-      alt: "Dexterity dish washer unloading example",
-      title: "Surface Cleaning & Wiping",
-      summary: "Arm trajectories for table, counter, and floor cleaning with repeatable wipe patterns.",
-      tags: ["EXO-Centric", "Hand Pose", "Task Labels"],
-      hours: "450 hrs",
-      availability: "In Library",
-      perspective: "EXO",
-    },
-    {
-      previewBlobPath: "humanoid/humanoid6.png",
-      targetFolderPath: "dexterity/Awign/peelingPeas",
-      alt: "Dexterity peeling example",
-      title: "Trash Collection & Sorting",
-      summary: "Grasp-and-bin sequences for mixed waste streams, lid manipulation, and bag handling.",
-      tags: ["EGO-Centric", "Hand Pose", "Edge Cases"],
-      hours: "380 hrs",
-      availability: "On-demand",
-      perspective: "EGO",
-    },
-    {
-      previewBlobPath: "humanoid/humanoid7.png",
-      targetFolderPath: "dexterity/Awign/washingMachine",
-      alt: "Dexterity washing machine example",
-      title: "Laundry - Load & Fold",
-      summary: "Cloth manipulation for sorting, washer loading, unloading, and garment folding tasks.",
-      tags: ["EXO-Centric", "Hand Pose", "Seg"],
-      hours: "520 hrs",
-      availability: "In Library",
-      perspective: "EXO",
-    },
-  ],
-  warehouse: [
-    {
-      previewBlobPath: "warehouse/warehouse4.png",
-      targetFolderPath: "warehouse/Symbotic/AVnavigation",
-      targetImageName: "AVnavigation_000.png",
-      alt: "Warehouse navigation example one",
-      title: "Pick & Place - Shelf Interaction",
-      summary: "Robot-eye shelf pick operations with mixed SKUs, glare conditions, and moving obstacles.",
-      tags: ["EGO-Centric", "Task Labels", "Edge Cases"],
-      hours: "1,200 hrs",
-      availability: "In Library",
-      perspective: "EGO",
-    },
-    {
-      previewBlobPath: "warehouse/warehouse5.png",
-      targetFolderPath: "warehouse/Symbotic/AVnavigation",
-      targetImageName: "AVnavigation_044.png",
-      alt: "Warehouse navigation example two",
-      title: "Pallet Stacking & Transport",
-      summary: "Overhead EXO capture of pallet build, wrap, and forklift handoff in logistics aisles.",
-      tags: ["EXO-Centric", "Task Labels", "Bbox"],
-      hours: "980 hrs",
-      availability: "In Library",
-      perspective: "EXO",
-    },
-    {
-      previewBlobPath: "warehouse/warehouse6.png",
-      targetFolderPath: "warehouse/Symbotic/AVnavigation",
-      targetImageName: "AVnavigation_071.png",
-      alt: "Warehouse navigation example three",
-      title: "Inventory Scanning & Audit",
-      summary: "Mobile robot scanning of barcodes and QR codes in low-light and motion-blur conditions.",
-      tags: ["EGO-Centric", "Task Labels", "Edge Cases"],
-      hours: "650 hrs",
-      availability: "In Library",
-      perspective: "EGO",
-    },
-    {
-      previewBlobPath: "warehouse/warehouse7.png",
-      targetFolderPath: "warehouse/Symbotic/AVnavigation",
-      targetImageName: "AVnavigation_095.png",
-      alt: "Warehouse navigation example four",
-      title: "Conveyor Loading & Sortation",
-      summary: "Package induction, divert, and sortation across high-speed conveyor lines.",
-      tags: ["EXO-Centric", "Task Labels", "Seg"],
-      hours: "780 hrs",
-      availability: "On-demand",
-      perspective: "EXO",
-    },
-  ],
-};
 
 function normalizePathSearchValue(value: string) {
   return value
@@ -768,80 +575,118 @@ function CompactPathSearch({
   );
 }
 
-function VerticalDatasetCard({
+function DatasetPreviewImage({
+  asset,
+  accentClass,
+  alt,
+  className,
+}: {
+  asset: CategoryPreviewAsset | null | undefined;
+  accentClass: string;
+  alt: string;
+  className?: string;
+}) {
+  const [failed, setFailed] = useState(false);
+
+  return (
+    <div
+      className={`relative overflow-hidden rounded-[18px] border border-white/8 bg-[#0b0f13] ${className ?? ""}`}
+    >
+      {asset?.proxy_url && !failed ? (
+        <img
+          src={asset.proxy_url}
+          alt={alt}
+          loading="lazy"
+          decoding="async"
+          className="h-full w-full object-cover"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <div className="flex h-full min-h-[120px] items-center justify-center bg-black/30">
+          <Database className="h-8 w-8 text-primary/55" />
+        </div>
+      )}
+
+      {asset?.label && (
+        <div className="absolute left-3 top-3">
+          <span
+            className={`inline-flex rounded-md border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${accentClass}`}
+          >
+            {asset.label}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CategoryDatasetPreviewCard({
   item,
   routeKey,
   onClick,
 }: {
-  item: ShowcaseImageConfig;
+  item: CategoryDatasetPreview;
   routeKey: CategoryKey;
   onClick: () => void;
 }) {
   const accent = getCategoryAccent(routeKey);
-  const [failed, setFailed] = useState(false);
-  const src = frontPageImageUrl(item.previewBlobPath);
+  const thumbnailItems = Array.from({ length: 4 }, (_, index) => item.thumbnails[index] ?? item.main_image);
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className="group flex h-full flex-col overflow-hidden rounded-[20px] border border-white/6 bg-[#0d1014] text-left shadow-[0_20px_46px_rgba(0,0,0,0.22)] transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/20"
+      className="group flex h-full flex-col overflow-hidden rounded-[24px] border border-white/6 bg-[#0d1014]/88 p-5 text-left shadow-[0_20px_46px_rgba(0,0,0,0.22)] transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/20 hover:bg-[#11161b]"
     >
-      <div className="relative overflow-hidden">
-        {src && !failed ? (
-          <img
-            src={src}
-            alt={item.alt}
-            loading="lazy"
-            decoding="async"
-            className="h-36 w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-            onError={() => setFailed(true)}
-          />
-        ) : (
-          <div className="flex h-36 items-center justify-center bg-black/30">
-            <Database className="h-8 w-8 text-primary/60" />
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">
+            {item.brand || "DataraAI"}
           </div>
-        )}
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent px-4 pb-3 pt-10">
-          <span
-            className={`inline-flex rounded-md border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${accent.chip}`}
-          >
-            {item.perspective}
-          </span>
+          <h3 className="mt-2 text-xl font-extrabold text-white">{item.title}</h3>
+        </div>
+        <span
+          className={`rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
+            item.visibility === "public"
+              ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-300"
+              : "border-white/10 bg-black/20 text-muted-foreground"
+          }`}
+        >
+          {item.visibility === "public" ? "Public" : "Private"}
+        </span>
+      </div>
+
+      <p className="mt-3 text-sm leading-6 text-muted-foreground">
+        Open this endpoint folder to choose between orig captures, EGO outputs, masks, corner cases, and related assets.
+      </p>
+
+      <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1.08fr)_220px]">
+        <DatasetPreviewImage
+          asset={item.main_image}
+          accentClass={accent.chip}
+          alt={`${item.title} primary preview`}
+          className="aspect-[1.08/1]"
+        />
+
+        <div className="grid grid-cols-2 gap-3">
+          {thumbnailItems.map((thumbnail, index) => (
+            <DatasetPreviewImage
+              key={`${item.full_path}-${thumbnail?.asset_id ?? "empty"}-${index}`}
+              asset={thumbnail}
+              accentClass={accent.chip}
+              alt={`${item.title} preview ${index + 1}`}
+              className="aspect-square"
+            />
+          ))}
         </div>
       </div>
 
-      <div className="flex flex-1 flex-col p-4">
-        <div className="flex items-start justify-between gap-3">
-          <h3 className="text-sm font-bold text-white">{item.title}</h3>
-          <span
-            className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
-              item.availability === "In Library"
-                ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-300"
-                : "border-amber-400/20 bg-amber-400/10 text-amber-300"
-            }`}
-          >
-            {item.availability}
-          </span>
-        </div>
-        <p className="mt-3 text-sm leading-6 text-muted-foreground">{item.summary}</p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          {item.tags.map((tag) => (
-            <span
-              key={`${item.title}-${tag}`}
-              className="rounded-md border border-white/8 bg-black/20 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
-        <div className="mt-4 flex items-center justify-between border-t border-white/6 pt-4">
-          <span className="text-xs font-bold text-primary">{item.hours}</span>
-          <span className="inline-flex items-center gap-2 text-xs font-bold text-primary">
-            Open in viewer
-            <ArrowRight className="h-3.5 w-3.5" />
-          </span>
-        </div>
+      <div className="mt-5 flex items-center justify-between gap-3 border-t border-white/6 pt-4">
+        <span className="truncate text-xs text-muted-foreground">{item.full_path}</span>
+        <span className="inline-flex shrink-0 items-center gap-2 text-xs font-bold text-primary">
+          Open folder
+          <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+        </span>
       </div>
     </button>
   );
@@ -950,7 +795,7 @@ function RoboDataHubTopMenu({
     {
       key: "home" as const,
       label: "RoboDataHub Home",
-      description: "Overview of all data verticals",
+      description: "Overview of all data categories",
       href: "/viewer",
     },
     ...CATEGORIES.map((category) => ({
@@ -969,11 +814,11 @@ function RoboDataHubTopMenu({
             RoboDataHub
           </div>
           <h2 className="mt-3 font-sans-tech text-2xl font-bold tracking-tight text-foreground">
-            Browse by vertical
+            Browse by category
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-            Move between the live RoboDataHub landing surfaces while keeping deeper dataset
-            browsing untouched.
+            Move between the live RoboDataHub category surfaces, then step into the exact dataset
+            folder you need.
           </p>
         </div>
 
@@ -1090,6 +935,8 @@ export default function DataViewer() {
   const { isLoading: authLoading, isAuthenticated, isApproved, user } = useAuth();
 
   const [folders, setFolders] = useState<FolderItem[]>([]);
+  const [categoryPreviews, setCategoryPreviews] = useState<CategoryDatasetPreview[]>([]);
+  const [categoryPreviewsLoading, setCategoryPreviewsLoading] = useState(false);
   const [images, setImages] = useState<ImageItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedImage, setSelectedImage] = useState<ImageItem | null>(null);
@@ -1135,7 +982,7 @@ export default function DataViewer() {
   const isCategoryLanding = Boolean(activeCategory) && pathSegments.length === 1;
 
   useEffect(() => {
-    if (!isAuthenticated || !isApproved || isRootLanding) {
+    if (!isAuthenticated || !isApproved || isRootLanding || isCategoryLanding) {
       setFolders([]);
       setImages([]);
       setAvailableTags([]);
@@ -1160,7 +1007,7 @@ export default function DataViewer() {
         if (cancelled) return;
         setFolders(nextFolders);
 
-        if (nextFolders.length > 0 || isCategoryLanding) {
+        if (nextFolders.length > 0) {
           setImages([]);
           setAvailableTags([]);
           setVlmPromptGroups([]);
@@ -1205,6 +1052,42 @@ export default function DataViewer() {
       cancelled = true;
     };
   }, [currentDisplayPath, isAuthenticated, isApproved, isRootLanding, isCategoryLanding, reloadTick]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !isApproved || !isCategoryLanding || !activeCategory) {
+      setCategoryPreviews([]);
+      setCategoryPreviewsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadCategoryPreviews() {
+      setCategoryPreviewsLoading(true);
+      try {
+        const response = await axios.get<CategoryDatasetPreview[]>("/api/dataset-category-previews", {
+          params: { category: activeCategory.routeKey },
+        });
+        if (cancelled) return;
+        setCategoryPreviews(Array.isArray(response.data) ? response.data : []);
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Failed to load category dataset previews", error);
+          setCategoryPreviews([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setCategoryPreviewsLoading(false);
+        }
+      }
+    }
+
+    void loadCategoryPreviews();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeCategory, isAuthenticated, isApproved, isCategoryLanding, reloadTick]);
 
   useEffect(() => {
     if (!isAuthenticated || !isApproved) {
@@ -1380,7 +1263,11 @@ export default function DataViewer() {
       .map((entry) => entry.item);
   }, [activeCategory, allFolderPaths, isAuthenticated, isApproved, isRootLanding, pathSearchText]);
 
-  const itemCount = isLeaf ? filteredImages.length : filteredFolders.length;
+  const itemCount = isCategoryLanding
+    ? categoryPreviews.length
+    : isLeaf
+      ? filteredImages.length
+      : filteredFolders.length;
 
   function toggleTag(tag: string) {
     setVisibleTags((previous) => {
@@ -1414,13 +1301,8 @@ export default function DataViewer() {
     handlePathSuggestionClick(pathSuggestions[0].full_path);
   }
 
-  function handleShowcaseImageClick(item: ShowcaseImageConfig) {
-    navigate(buildViewerPath(item.targetFolderPath, item.targetImageName));
-  }
-
-  function scrollToSubdirectories() {
-    const section = document.getElementById("category-subdirectories");
-    section?.scrollIntoView({ behavior: "smooth", block: "start" });
+  function handleCategoryPreviewClick(item: CategoryDatasetPreview) {
+    navigate(item.viewer_path || buildViewerPath(item.full_path));
   }
 
   async function handleDeleteFolder() {
@@ -1586,8 +1468,8 @@ export default function DataViewer() {
             RoboDataHub
           </h1>
           <p className="max-w-3xl font-sans-tech text-base leading-8 text-muted-foreground">
-            Search across the full data library for a quick shortcut, or browse featured
-            categories below through presentation-ready examples that open directly in the viewer.
+            Browse DataraAI&apos;s physical-AI datasets by category, or search any known path when
+            you already know the folder you want.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <button
@@ -1612,8 +1494,8 @@ export default function DataViewer() {
         </div>
 
         <PathSearchPanel
-          title="Global search"
-          description="Use search to jump straight to a folder path when you already know what you want. It is the fastest way to navigate the full RoboDataHub without clicking through multiple pages."
+          title="Search the full library"
+          description="Use search to jump straight to a brand, endpoint folder, or deeper asset path anywhere in RoboDataHub."
           value={pathSearchText}
           loading={pathSearchLoading}
           suggestions={pathSuggestions}
@@ -1632,48 +1514,60 @@ export default function DataViewer() {
         <div className="mt-10">
           <div className="mb-6 flex items-center gap-3">
             <div className="h-3 w-3 rounded-[4px] bg-primary shadow-[0_0_12px_rgba(29,233,182,0.5)]" />
-            <div className="text-2xl font-extrabold text-white">Verticals</div>
+            <div className="text-2xl font-extrabold text-white">Categories</div>
           </div>
           <p className="mb-8 max-w-3xl text-sm leading-7 text-muted-foreground">
-            Keep the main RoboDataHub page centered on the four active data verticals, then open
-            each one into a richer category view with search and featured datasets.
+            Start with the four active DataraAI categories, then step into the endpoint folders
+            inside each one.
           </p>
 
-          <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
-          {CATEGORIES.map((category) => (
+          <div className="grid gap-6 lg:grid-cols-2">
+            {CATEGORIES.map((category) => (
             <section
               key={category.routeKey}
-              className="overflow-hidden rounded-[24px] border border-white/6 bg-[#0d1014]/88 shadow-[0_24px_60px_rgba(0,0,0,0.22)]"
+              className="grid gap-6 overflow-hidden rounded-[28px] border border-white/6 bg-[#0d1014]/88 p-5 shadow-[0_24px_60px_rgba(0,0,0,0.22)] lg:grid-cols-[minmax(0,1fr)_320px]"
             >
-              <div className="p-4">
-                <CategoryHeroImage
-                  blobPath={buildCategoryHeroImagePaths(category)[0]}
-                  alt={`${category.label} preview`}
-                />
-              </div>
-
-              <div className="border-t border-white/6 p-5">
+              <div className="flex flex-col justify-between">
                 <div className="mb-4 flex items-center gap-3">
                   <div className={`h-3 w-3 rounded-[4px] ${getCategoryAccent(category.routeKey).dot}`} />
                   <div className="text-lg font-extrabold text-white">{category.label}</div>
                 </div>
-                <p className="text-sm leading-6 text-muted-foreground">{category.description}</p>
-                <div className="mt-4 text-[11px] uppercase tracking-[0.16em] text-primary">
-                  {CATEGORY_SHOWCASES[category.routeKey].length} featured datasets
+                <p className="max-w-xl text-sm leading-6 text-muted-foreground">
+                  {category.description}
+                </p>
+                <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground/90">
+                  {category.helperText}
+                </p>
+                <div className="mt-6">
+                  <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                    Browse endpoint folders
+                  </span>
                 </div>
-                <div className="mt-5">
+                <div className="mt-6">
                   <button
                     type="button"
                     onClick={() => navigate(`/viewer/${category.routeKey}`)}
                     className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 font-sans-tech text-sm font-bold text-primary-foreground transition-colors hover:opacity-90"
                   >
-                    Open vertical
+                    Enter Category
                     <ArrowRight className="h-4 w-4" />
                   </button>
                 </div>
               </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                {buildCategoryHeroImagePaths(category)
+                  .slice(0, 4)
+                  .map((blobPath, index) => (
+                    <CategoryHeroImage
+                      key={`${category.routeKey}-${blobPath}`}
+                      blobPath={blobPath}
+                      alt={`${category.label} preview ${index + 1}`}
+                    />
+                  ))}
+              </div>
             </section>
-          ))}
+            ))}
           </div>
         </div>
       </div>
@@ -1692,7 +1586,7 @@ export default function DataViewer() {
                 {category.label}
               </div>
               <h1 className="text-[clamp(2.3rem,4.8vw,4rem)] font-black tracking-[-0.05em] text-white">
-                {category.label}
+                RoboDataHub - {category.label}
               </h1>
               <p className="mt-5 max-w-2xl text-base leading-8 text-foreground/90 md:text-lg">
                 {category.description}
@@ -1700,21 +1594,11 @@ export default function DataViewer() {
               <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
                 {category.helperText}
               </p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={scrollToSubdirectories}
-                  className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 font-sans-tech text-sm font-bold text-primary-foreground transition-colors hover:opacity-90"
-                >
-                  View subdirectories
-                  <ArrowRight className="h-4 w-4" />
-                </button>
-              </div>
             </div>
 
             <div className="w-full xl:max-w-xl">
               <div className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-                Search datasets
+                Search endpoint folders
               </div>
               <CompactPathSearch
                 value={pathSearchText}
@@ -1737,31 +1621,37 @@ export default function DataViewer() {
           <div className="mt-8">
             <div className="mb-5 flex items-center gap-3">
               <div className={`h-3 w-3 rounded-[4px] ${getCategoryAccent(category.routeKey).dot}`} />
-              <div className="text-lg font-extrabold text-white">Featured datasets</div>
+              <div className="text-lg font-extrabold text-white">Endpoint folders</div>
               <div className={`h-px flex-1 ${getCategoryAccent(category.routeKey).line}`} />
             </div>
+            <p className="mb-6 max-w-3xl text-sm leading-7 text-muted-foreground">
+              Each card represents one dataset folder at the level above orig, EGO, masks, and corner-case outputs.
+            </p>
 
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              {CATEGORY_SHOWCASES[category.routeKey].map((item) => (
-                <VerticalDatasetCard
-                  key={item.previewBlobPath}
-                  item={item}
-                  routeKey={category.routeKey}
-                  onClick={() => handleShowcaseImageClick(item)}
-                />
-              ))}
-            </div>
+            {categoryPreviewsLoading ? (
+              <div className="flex min-h-[220px] items-center justify-center rounded-[24px] border border-white/6 bg-black/20">
+                <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                  Loading folder previews...
+                </div>
+              </div>
+            ) : categoryPreviews.length > 0 ? (
+              <div className="grid gap-5 lg:grid-cols-2">
+                {categoryPreviews.map((item) => (
+                  <CategoryDatasetPreviewCard
+                    key={item.full_path}
+                    item={item}
+                    routeKey={category.routeKey}
+                    onClick={() => handleCategoryPreviewClick(item)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-[24px] border border-dashed border-white/10 bg-black/20 p-6 text-sm leading-7 text-muted-foreground">
+                No endpoint folders are available in this category yet.
+              </div>
+            )}
           </div>
-        </div>
-
-        <div className="pt-12" id="category-subdirectories">
-          <div className="mx-auto mb-6 flex max-w-6xl items-center gap-2">
-            <div className="h-4 w-1 bg-primary" />
-            <h2 className="font-sans-tech text-lg font-bold uppercase tracking-widest text-muted-foreground">
-              {category.label} Subdirectories
-            </h2>
-          </div>
-          {renderFolderGrid(filteredFolders, "max-w-6xl")}
         </div>
       </div>
     </div>
@@ -1847,7 +1737,9 @@ export default function DataViewer() {
                     onClick={() => setReloadTick((value) => value + 1)}
                     className="flex items-center gap-1 font-sans-tech text-xs text-muted-foreground transition-colors hover:text-foreground"
                   >
-                    <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+                    <RefreshCw
+                      className={`h-3.5 w-3.5 ${loading || categoryPreviewsLoading ? "animate-spin" : ""}`}
+                    />
                     <span>Refresh</span>
                   </button>
                 </div>

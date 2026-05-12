@@ -108,6 +108,11 @@ const SHOWCASE_VERTICALS: ShowcaseVertical[] = [
             alt: "Overhead inspection output",
             label: "Overhead",
           },
+          {
+            path: "serverrack/ego_serverrack1.png",
+            alt: "Wide rack inspection output",
+            label: "Wide",
+          },
         ],
         engineNote: "Inspection-focused robot-perspective synthesis.",
         hours: "840 hrs EGO output",
@@ -188,6 +193,11 @@ const SHOWCASE_VERTICALS: ShowcaseVertical[] = [
             alt: "Humanoid overhead cleaning output",
             label: "Overhead",
           },
+          {
+            path: "humanoid/humanoid.png",
+            alt: "Humanoid side cleaning output",
+            label: "Side",
+          },
         ],
         engineNote: "Motion synthesis tuned for repeated household actions.",
         hours: "450 hrs EGO output",
@@ -219,6 +229,11 @@ const SHOWCASE_VERTICALS: ShowcaseVertical[] = [
             path: "humanoid/humanoid2.png",
             alt: "Humanoid overhead grasp output",
             label: "Overhead",
+          },
+          {
+            path: "humanoid/humanoid3.png",
+            alt: "Humanoid close-range sink output",
+            label: "Close",
           },
         ],
         engineNote: "Grasp synthesis for wet-object and close-range manipulation.",
@@ -276,6 +291,8 @@ const SHOWCASE_VERTICALS: ShowcaseVertical[] = [
     ],
   },
 ];
+
+const HOW_IT_WORKS_PREVIEW = SHOWCASE_VERTICALS[0].examples[0];
 
 function ShowcaseImageCard({
   image,
@@ -345,15 +362,15 @@ function ExampleCard({
               ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-300"
               : "border-amber-400/20 bg-amber-400/10 text-amber-300"
           }`}
-        >
+      >
           {example.availability}
         </span>
       </div>
 
-      <div className="mt-5 grid gap-4 xl:grid-cols-[220px_120px_minmax(0,1fr)]">
+      <div className="mt-5 grid gap-4 xl:grid-cols-[220px_180px_minmax(0,1fr)]">
         <div>
           <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-blue-300">
-            EXO Source
+            EXO Input
           </div>
           <ShowcaseImageCard
             image={example.source}
@@ -362,22 +379,25 @@ function ExampleCard({
           />
         </div>
 
-        <div className="hidden xl:flex xl:flex-col xl:items-center xl:justify-center">
-          <div className="mb-3 h-12 w-px bg-gradient-to-b from-blue-400/20 via-primary/50 to-primary/20" />
-          <div className="rounded-[20px] border border-primary/30 bg-primary/10 px-4 py-5 text-center shadow-[0_0_28px_rgba(29,233,182,0.08)]">
-            <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-2xl border border-primary/40 bg-primary/15">
-              <Sparkles className="h-4 w-4 text-primary" />
-            </div>
-            <div className="mt-3 text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
-              RoboEyeView
-            </div>
-            <div className="mt-1 text-sm font-extrabold text-white">Engine</div>
-            <div className="mt-2 text-[11px] leading-5 text-muted-foreground">
-              {example.engineNote}
-            </div>
+        <div className="rounded-[20px] border border-primary/30 bg-primary/10 px-4 py-5 text-center shadow-[0_0_28px_rgba(29,233,182,0.08)] xl:flex xl:flex-col xl:justify-center">
+          <div className="hidden items-center justify-center gap-3 pb-4 xl:flex">
+            <div className="h-px w-10 bg-gradient-to-r from-blue-400/15 via-primary/45 to-primary/20" />
+            <ArrowRight className="h-4 w-4 text-primary" />
           </div>
-          <div className={`mt-3 h-12 w-px bg-gradient-to-b from-primary/20 via-primary/50 to-transparent`} />
-          <ArrowRight className="mt-1 h-4 w-4 rotate-90 text-primary" />
+          <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-2xl border border-primary/40 bg-primary/15">
+            <Sparkles className="h-4 w-4 text-primary" />
+          </div>
+          <div className="mt-3 text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
+            RoboEyeView
+          </div>
+          <div className="mt-1 text-sm font-extrabold text-white">Engine</div>
+          <div className="mt-2 text-[11px] leading-5 text-muted-foreground">
+            {example.engineNote}
+          </div>
+          <div className="hidden items-center justify-center gap-3 pt-4 xl:flex">
+            <div className="h-px w-10 bg-gradient-to-r from-primary/20 via-primary/45 to-orange-300/20" />
+            <ArrowRight className="h-4 w-4 text-primary" />
+          </div>
         </div>
 
         <div>
@@ -386,7 +406,7 @@ function ExampleCard({
             <span className={`h-px flex-1 ${accentClass}`} />
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             {example.outputs.map((output) => (
               <ShowcaseImageCard
                 key={`${example.id}-${output.path}`}
@@ -396,13 +416,6 @@ function ExampleCard({
             ))}
           </div>
         </div>
-      </div>
-
-      <div className="mt-5 rounded-[20px] border border-primary/14 bg-primary/7 p-4">
-        <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
-          RoboEyeView Engine
-        </div>
-        <p className="mt-2 text-sm leading-6 text-muted-foreground">{example.engineNote}</p>
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-white/6 pt-4">
@@ -496,7 +509,7 @@ export default function RoboEyeView() {
             </div>
             <div className="flex-1 px-3 py-4">
               <div className="px-2 text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
-                Verticals
+                Categories
               </div>
               <div className="mt-4 space-y-2">
                 {SHOWCASE_VERTICALS.map((vertical) => (
@@ -523,130 +536,146 @@ export default function RoboEyeView() {
 
           <div className="min-w-0 flex-1">
             <section className="overflow-hidden rounded-[32px] border border-white/6 bg-[#0d1014]/88 p-6 shadow-[0_24px_60px_rgba(0,0,0,0.28)] md:p-8">
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-[11px] uppercase tracking-[0.22em] text-primary">
-              <Sparkles className="h-3.5 w-3.5" />
-              RoboEyeView
-            </div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-[11px] uppercase tracking-[0.22em] text-primary">
+                <Sparkles className="h-3.5 w-3.5" />
+                RoboEyeView
+              </div>
 
-            <h1 className="mt-6 max-w-4xl text-[clamp(2.4rem,5vw,4rem)] font-black leading-[1.02] tracking-[-0.05em] text-white">
-              Patented pipeline that converts EXO footage into EGO datasets.
-            </h1>
+              <h1 className="mt-6 max-w-4xl text-[clamp(2.4rem,5vw,4rem)] font-black leading-[1.02] tracking-[-0.05em] text-white">
+                Patented EXO-to-EGO synthesis for robot training data.
+              </h1>
 
-            <p className="mt-5 max-w-3xl text-base leading-8 text-muted-foreground">
-              EXO - Exocentric: external fixed-camera view of the workspace. EGO - Egocentric:
-              synthesized robot&apos;s-eye perspective for training.
-            </p>
+              <p className="mt-5 max-w-3xl text-base leading-8 text-muted-foreground">
+                Start with fixed-camera EXO footage, then generate robot-eye EGO datasets that are
+                far more useful for perception, planning, and action-level training.
+              </p>
 
-            <div className="mt-6 flex flex-wrap gap-3">
-              <span className="rounded-lg border border-blue-400/20 bg-blue-400/8 px-4 py-2 text-sm font-semibold text-blue-300">
-                <strong>EXO</strong> - Exocentric: external fixed-camera view of the workspace
-              </span>
-              <span className="rounded-lg border border-primary/20 bg-primary/8 px-4 py-2 text-sm font-semibold text-primary">
-                <strong>EGO</strong> - Egocentric: synthesized robot&apos;s-eye perspective for
-                training
-              </span>
-            </div>
-          </section>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <span className="rounded-lg border border-blue-400/20 bg-blue-400/8 px-4 py-2 text-sm font-semibold text-blue-300">
+                  <strong>EXO</strong> - external workspace capture
+                </span>
+                <span className="rounded-lg border border-primary/20 bg-primary/8 px-4 py-2 text-sm font-semibold text-primary">
+                  <strong>EGO</strong> - synthesized robot&apos;s-eye training data
+                </span>
+              </div>
+            </section>
 
             <section className="mt-6 rounded-[28px] border border-white/6 bg-[#0d1014]/88 p-6 shadow-[0_20px_46px_rgba(0,0,0,0.22)] md:p-8">
-            <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-              How It Works
-            </div>
-            <div className="mt-6 grid gap-4 xl:grid-cols-3">
-              <div className="rounded-[22px] border border-blue-400/20 bg-blue-400/6 p-5">
-                <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-blue-300">
-                  Step 01 - Capture
-                </div>
-                <div className="mt-3 text-xl font-bold text-white">Exocentric Footage</div>
-                <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                  External, third-person footage from any fixed camera - overhead, wall-mounted,
-                  or stationary.
-                </p>
+              <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                How It Works
               </div>
-              <div className="rounded-[22px] border-2 border-primary/35 bg-primary/10 p-5 shadow-[0_0_28px_rgba(29,233,182,0.08)]">
-                <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
-                  Step 02
-                </div>
-                <div className="mt-3 text-xl font-bold text-white">RoboEyeView Engine</div>
-                <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                  Scene reconstruction, motion understanding, and viewpoint synthesis tailored to
-                  robot-training requirements.
-                </p>
-              </div>
-              <div className="rounded-[22px] border border-orange-300/20 bg-orange-300/6 p-5">
-                <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-orange-300">
-                  Step 03 - Training Data
-                </div>
-                <div className="mt-3 text-xl font-bold text-white">Egocentric Datasets</div>
-                <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                  Robot&apos;s-eye perspective - labeled, multi-angle, ready for model training.
-                </p>
-              </div>
-            </div>
-          </section>
-
-            <div className="mt-8 space-y-8">
-            {SHOWCASE_VERTICALS.map((vertical) => (
-              <section key={vertical.id} id={vertical.id} className="scroll-mt-[120px]">
-                <div className="mb-5 flex items-center gap-3">
-                  <span className={`h-3 w-3 rounded-[4px] ${vertical.accentClass}`} />
-                  <span className="text-lg font-extrabold text-white">{vertical.eyebrow}</span>
-                  <span className={`h-px flex-1 ${vertical.accentLine}`} />
+              <div className="mt-6 flex flex-col gap-5 xl:flex-row xl:items-center">
+                <div className="xl:w-[220px]">
+                  <div className="mb-3 text-[10px] font-bold uppercase tracking-[0.16em] text-blue-300">
+                    EXO Input
+                  </div>
+                  <ShowcaseImageCard
+                    image={HOW_IT_WORKS_PREVIEW.source}
+                    emphasize
+                    onClick={() => setSelectedImage(HOW_IT_WORKS_PREVIEW.source)}
+                  />
                 </div>
 
-                <div className="rounded-[28px] border border-white/6 bg-[#0d1014]/88 p-6 shadow-[0_24px_60px_rgba(0,0,0,0.24)] md:p-8">
-                  <h2 className="text-3xl font-black tracking-[-0.04em] text-white md:text-4xl">
-                    {vertical.title}
-                  </h2>
-                  <p className="mt-4 max-w-3xl text-sm leading-7 text-muted-foreground md:text-base">
-                    {vertical.summary}
+                <div className="rounded-[22px] border-2 border-primary/35 bg-primary/10 p-5 shadow-[0_0_28px_rgba(29,233,182,0.08)] xl:w-[230px]">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-primary/40 bg-primary/15">
+                      <Sparkles className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
+                        RoboEyeView
+                      </div>
+                      <div className="text-lg font-extrabold text-white">Engine</div>
+                    </div>
+                  </div>
+                  <p className="mt-4 text-sm leading-6 text-muted-foreground">
+                    Scene reconstruction, motion understanding, and viewpoint synthesis tailored to robot-training requirements.
                   </p>
+                  <div className="mt-4 hidden items-center justify-end gap-3 xl:flex">
+                    <div className="h-px w-10 bg-gradient-to-r from-primary/20 via-primary/45 to-orange-300/25" />
+                    <ArrowRight className="h-4 w-4 text-primary" />
+                  </div>
+                </div>
 
-                  <div className="mt-6 space-y-5">
-                    {vertical.examples.map((example) => (
-                      <ExampleCard
-                        key={example.id}
-                        example={example}
-                        accentClass={vertical.accentLine}
-                        onSelect={setSelectedImage}
+                <div className="min-w-0 flex-1">
+                  <div className="mb-3 flex items-center gap-3 text-[10px] font-bold uppercase tracking-[0.16em] text-orange-300">
+                    <span>EGO Outputs</span>
+                    <span className="h-px flex-1 bg-orange-300/30" />
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {HOW_IT_WORKS_PREVIEW.outputs.map((output) => (
+                      <ShowcaseImageCard
+                        key={`how-it-works-${output.path}`}
+                        image={output}
+                        onClick={() => setSelectedImage(output)}
                       />
                     ))}
                   </div>
                 </div>
-              </section>
-            ))}
-          </div>
+              </div>
+            </section>
+
+            <div className="mt-8 space-y-8">
+              {SHOWCASE_VERTICALS.map((vertical) => (
+                <section key={vertical.id} id={vertical.id} className="scroll-mt-[120px]">
+                  <div className="mb-5 flex items-center gap-3">
+                    <span className={`h-3 w-3 rounded-[4px] ${vertical.accentClass}`} />
+                    <span className="text-lg font-extrabold text-white">{vertical.eyebrow}</span>
+                    <span className={`h-px flex-1 ${vertical.accentLine}`} />
+                  </div>
+
+                  <div className="rounded-[28px] border border-white/6 bg-[#0d1014]/88 p-6 shadow-[0_24px_60px_rgba(0,0,0,0.24)] md:p-8">
+                    <h2 className="text-3xl font-black tracking-[-0.04em] text-white md:text-4xl">
+                      {vertical.title}
+                    </h2>
+                    <p className="mt-4 max-w-3xl text-sm leading-7 text-muted-foreground md:text-base">
+                      {vertical.summary}
+                    </p>
+
+                    <div className="mt-6 space-y-5">
+                      {vertical.examples.map((example) => (
+                        <ExampleCard
+                          key={example.id}
+                          example={example}
+                          accentClass={vertical.accentLine}
+                          onSelect={setSelectedImage}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </section>
+              ))}
+            </div>
 
             <section className="mt-8 rounded-[28px] border border-white/6 bg-[linear-gradient(135deg,rgba(29,233,182,0.04)_0%,rgba(255,255,255,0.02)_100%)] p-6 shadow-[0_24px_60px_rgba(0,0,0,0.22)] md:p-8">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <h2 className="text-2xl font-extrabold tracking-tight text-white">
-                  Run RoboEyeView on Your EXO Footage
-                </h2>
-                <p className="mt-3 max-w-3xl text-sm leading-7 text-muted-foreground">
-                  Already have EXO footage? We&apos;ll synthesize robot-ready EGO datasets across
-                  any task, environment, or robot form factor.
-                </p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {["Data Center", "Humanoid", "Automotive"].map((tag) => (
-                    <span
-                      key={tag}
-                      className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground"
-                    >
-                      {tag}
-                    </span>
-                  ))}
+              <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <h2 className="text-2xl font-extrabold tracking-tight text-white">
+                    Run RoboEyeView on Your EXO Footage
+                  </h2>
+                  <p className="mt-3 max-w-3xl text-sm leading-7 text-muted-foreground">
+                    Already have EXO footage? We&apos;ll turn it into robot-ready EGO datasets for the task, environment, and robot setup you&apos;re training against.
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {["Data Center", "Humanoid", "Automotive"].map((tag) => (
+                      <span
+                        key={tag}
+                        className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-              </div>
 
-              <Link
-                to={buildAuthPath("register", "/roboeyeview")}
-                className="inline-flex h-12 shrink-0 items-center justify-center rounded-xl bg-primary px-6 text-sm font-bold text-primary-foreground"
-              >
-                Submit Your Footage
-              </Link>
-            </div>
-          </section>
+                <Link
+                  to={buildAuthPath("register", "/roboeyeview")}
+                  className="inline-flex h-12 shrink-0 items-center justify-center rounded-xl bg-primary px-6 text-sm font-bold text-primary-foreground"
+                >
+                  Submit Your Footage
+                </Link>
+              </div>
+            </section>
           </div>
         </div>
       </main>

@@ -5,13 +5,11 @@ import {
   Database,
   Eye,
   Hand,
-  Layers3,
   Workflow,
   type LucideIcon,
 } from "lucide-react";
 import FooterSection from "@/components/FooterSection";
 import Navigation from "@/components/Navigation";
-import ProductSurfaceTabs from "@/components/ProductSurfaceTabs";
 import { frontPageImageUrl } from "@/lib/datasetFolderCover";
 import { buildAuthPath } from "@/lib/authLinks";
 
@@ -93,7 +91,7 @@ const PRODUCT_SECTIONS: ProductSection[] = [
     title: "RoboDataHub",
     subtitle: "EGO + EXO datasets across physical AI domains.",
     summary:
-      "A structured data foundation spanning automotive, warehouse, server-rack, and dexterous manipulation workflows.",
+      "A production-ready dataset library for physical AI teams working across automotive, warehouse, data-center, and humanoid workflows.",
     cta: "Open RoboDataHub",
     ctaHref: "/viewer",
     icon: Database,
@@ -102,17 +100,17 @@ const PRODUCT_SECTIONS: ProductSection[] = [
       {
         title: "Real environments",
         description:
-          "Capture production-floor conditions, edge cases, and operational variance without rebuilding collection from scratch.",
+          "Start from real operating environments instead of trying to recreate production complexity from scratch.",
       },
       {
-        title: "Faster readiness",
+        title: "Structured access",
         description:
-          "Shorten the path from raw footage to training-ready assets for perception and control teams.",
+          "Move cleanly from category to endpoint folder to orig, EGO, mask, and corner-case assets.",
       },
       {
         title: "Cross-industry coverage",
         description:
-          "Unify high-value scenarios across logistics, data infrastructure, factory tasks, and fine manipulation.",
+          "Cover high-value robot tasks across logistics, data infrastructure, factory workflows, and dexterous manipulation.",
       },
     ],
     gallery: [
@@ -128,7 +126,7 @@ const PRODUCT_SECTIONS: ProductSection[] = [
     title: "RoboEyeView",
     subtitle: "Patented EXO to EGO synthesis for robot training data.",
     summary:
-      "Translate external viewpoints into the robot-eye perspectives models need for planning, perception, and action understanding.",
+      "Convert existing EXO footage into robot-eye training data without rebuilding your capture stack around every robot form factor.",
     cta: "See RoboEyeView",
     ctaHref: "/roboeyeview",
     icon: Eye,
@@ -137,17 +135,17 @@ const PRODUCT_SECTIONS: ProductSection[] = [
       {
         title: "Robot-centric view",
         description:
-          "Transform standard external camera feeds into the viewpoints models need for action-level learning.",
+          "Turn external footage into the viewpoints robot models actually need for action-level learning.",
       },
       {
         title: "Physics-aware context",
         description:
-          "Preserve occlusion, contact, geometry, and motion cues that generic video pipelines lose.",
+          "Preserve occlusion, contact, geometry, and motion cues that generic media pipelines often miss.",
       },
       {
         title: "Deployment fit",
         description:
-          "Improve perception quality for real industrial tasks without rebuilding the sensing stack.",
+          "Support real industrial deployment without forcing new sensing hardware into every workflow.",
       },
     ],
     gallery: [
@@ -163,7 +161,7 @@ const PRODUCT_SECTIONS: ProductSection[] = [
     title: "RoboHandMotion",
     subtitle: "Fine-grained interaction data for hands, tools, and objects.",
     summary:
-      "Detailed dexterity signals built for manipulation-heavy tasks where precision matters more than generic movement labels.",
+      "High-detail interaction data for manipulation-heavy workflows where grasp quality and hand-object coordination matter.",
     cta: "Request access",
     ctaHref: buildAuthPath("register", "/product#robohandmotion"),
     icon: Hand,
@@ -172,7 +170,7 @@ const PRODUCT_SECTIONS: ProductSection[] = [
       {
         title: "Dexterity signals",
         description:
-          "Track subtle grasp changes, finger intent, and object interaction details that are often missing from broad datasets.",
+          "Capture subtle grasp changes, contact points, and object interaction details that broad datasets usually miss.",
       },
       {
         title: "Interaction quality",
@@ -182,23 +180,10 @@ const PRODUCT_SECTIONS: ProductSection[] = [
       {
         title: "Task precision",
         description:
-          "Support manipulation learning for operations that demand steadiness, control, and consistent repeatability.",
+          "Support manipulation learning for operations that demand steadiness, control, and repeatability.",
       },
     ],
-    gallery: [
-      PRODUCT_GALLERY.manipulation,
-      ROBO_EYE_GALLERY.dexterity,
-      {
-        imagePath: "humanoid/humanoid4.png",
-        alt: "Humanoid manipulation dataset",
-        label: "Dexterity",
-      },
-      {
-        imagePath: "humanoid/humanoid6.png",
-        alt: "Practical household robotics workflow",
-        label: "Household",
-      },
-    ],
+    gallery: [],
   },
   {
     id: "robotaskmanipulator",
@@ -206,7 +191,7 @@ const PRODUCT_SECTIONS: ProductSection[] = [
     title: "RoboTaskManipulator",
     subtitle: "Task-level intelligence for structured, multi-step execution.",
     summary:
-      "Move from isolated clips to workflow-aware task representations that mirror how real operations are carried out.",
+      "Move from isolated scenes to workflow-aware task structure that mirrors how real operations are executed on the floor.",
     cta: "Request access",
     ctaHref: buildAuthPath("register", "/product#robotaskmanipulator"),
     icon: Workflow,
@@ -220,7 +205,7 @@ const PRODUCT_SECTIONS: ProductSection[] = [
       {
         title: "Execution readiness",
         description:
-          "Create task representations that are closer to how production automation must behave on the floor.",
+          "Create task representations that are closer to how production automation actually needs to behave.",
       },
       {
         title: "Operational consistency",
@@ -228,16 +213,9 @@ const PRODUCT_SECTIONS: ProductSection[] = [
           "Improve repeatability for multi-step routines that combine perception, manipulation, and environment state.",
       },
     ],
-    gallery: [
-      PRODUCT_GALLERY.automotive,
-      PRODUCT_GALLERY.datacenter,
-      PRODUCT_GALLERY.warehouse,
-      PRODUCT_GALLERY.manipulation,
-    ],
+    gallery: [],
   },
 ];
-
-const PLATFORM_SIGNALS = ["Humanoid", "Automotive", "Warehouse", "Data Center"];
 
 function ProductImageCard({ item }: { item: GalleryItem }) {
   const [failed, setFailed] = useState(false);
@@ -301,52 +279,7 @@ export default function Product() {
         <div className="pointer-events-none absolute inset-x-0 top-0 h-[520px] bg-[radial-gradient(circle_at_top_right,rgba(29,233,182,0.18),transparent_28%),radial-gradient(circle_at_10%_25%,rgba(30,136,229,0.12),transparent_24%)]" />
 
         <div className="relative z-10 mx-auto max-w-[1440px] px-4 py-10 sm:px-6 md:py-14">
-          <section className="overflow-hidden rounded-[32px] border border-white/6 bg-[#0d1014]/88 px-6 py-10 shadow-[0_24px_60px_rgba(0,0,0,0.28)] backdrop-blur-sm md:px-10 md:py-12">
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-[11px] uppercase tracking-[0.22em] text-primary">
-              <Layers3 className="h-3.5 w-3.5" />
-              Solutions
-            </div>
-
-            <h1 className="mt-6 max-w-5xl text-[clamp(2.5rem,5vw,4.5rem)] font-black leading-[1.02] tracking-[-0.05em] text-white">
-              The complete data stack for Physical AI.
-            </h1>
-
-            <p className="mt-6 max-w-3xl border-l-2 border-primary/40 pl-5 text-base leading-8 text-muted-foreground">
-              Keep the homepage concise, but make the dedicated solutions surface do the deeper
-              work: datasets, EXO to EGO synthesis, dexterity data, and structured task execution
-              wrapped in one connected product story.
-            </p>
-
-            <div className="mt-8 flex flex-wrap gap-3">
-              {PLATFORM_SIGNALS.map((signal) => (
-                <span
-                  key={signal}
-                  className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] text-muted-foreground"
-                >
-                  {signal}
-                </span>
-              ))}
-            </div>
-
-            <div className="mt-8 flex flex-col gap-4 sm:flex-row">
-              <Link
-                to="/viewer"
-                className="inline-flex h-12 items-center justify-center rounded-xl bg-primary px-6 text-sm font-bold text-primary-foreground"
-              >
-                Explore RoboDataHub
-              </Link>
-              <Link
-                to={buildAuthPath("register", "/product")}
-                className="inline-flex h-12 items-center justify-center rounded-xl border border-white/12 px-6 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground"
-              >
-                Request access
-              </Link>
-            </div>
-          </section>
-
-          <ProductSurfaceTabs active="solutions" className="mt-6" />
-
-          <div className="mt-8 grid gap-4 xl:grid-cols-4">
+          <div className="grid gap-4 xl:grid-cols-4">
             {PRODUCT_SECTIONS.map((section) => (
               <Link
                 key={section.id}
@@ -413,14 +346,16 @@ export default function Product() {
                       ))}
                     </div>
 
-                    <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                      {section.gallery.map((item) => (
-                        <ProductImageCard
-                          key={`${section.id}-${item.label}-${item.imagePath}`}
-                          item={item}
-                        />
-                      ))}
-                    </div>
+                    {section.gallery.length > 0 && (
+                      <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                        {section.gallery.map((item) => (
+                          <ProductImageCard
+                            key={`${section.id}-${item.label}-${item.imagePath}`}
+                            item={item}
+                          />
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </section>
               );
@@ -429,11 +364,11 @@ export default function Product() {
 
           <section className="mt-8 overflow-hidden rounded-[28px] border border-white/6 bg-[linear-gradient(135deg,#050e0a_0%,#060c14_50%,#04080f_100%)] p-8 text-center shadow-[0_24px_60px_rgba(0,0,0,0.26)]">
             <h2 className="text-[clamp(1.75rem,2.5vw,2.25rem)] font-extrabold tracking-tight text-white">
-              Ready to operationalize the full stack?
+              Ready to build with DataraAI?
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-muted-foreground">
-              Start with the live surfaces today, then expand into the next product layers as
-              your physical AI pipeline matures.
+              Start with live datasets and EXO-to-EGO generation today, then expand into the next
+              product layers as your physical AI pipeline matures.
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <Link
