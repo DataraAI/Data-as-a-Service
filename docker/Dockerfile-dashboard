@@ -5,31 +5,27 @@ FROM node:22-alpine AS builder
 
 WORKDIR /build/dashboard
 
-# Install pnpm
-RUN npm install -g pnpm
-
 # Install dependencies
 COPY dashboard/package.json ./
-RUN pnpm install --no-frozen-lockfile
+COPY dashboard/package-lock.json ./
+RUN npm ci
 
 # Copy source code
 COPY dashboard/ .
 
 # Build for production
-RUN pnpm run build
+RUN npm run build
 
 # Production stage
 FROM node:22-alpine AS production
 
 WORKDIR /app/dashboard
 
-# Install pnpm and serve
-RUN npm install -g pnpm serve
+# Install serve
+RUN npm install -g serve
 
 # Copy built application from builder
 COPY --from=builder /build/dashboard/dist ./dist
-COPY --from=builder /build/dashboard/package.json ./
-COPY --from=builder /build/dashboard/pnpm-lock.yaml ./
 
 EXPOSE 8080
 
@@ -45,15 +41,13 @@ FROM node:22-alpine AS development
 
 WORKDIR /app/dashboard
 
-# Install pnpm
-RUN npm install -g pnpm
-
 COPY dashboard/package.json ./
-RUN pnpm install --no-frozen-lockfile
+COPY dashboard/package-lock.json ./
+RUN npm install
 
 COPY dashboard/ .
 
 EXPOSE 5173
 
-CMD ["pnpm", "run", "dev", "--", "--host"]
+CMD ["npm", "run", "dev", "--", "--host"]
 
