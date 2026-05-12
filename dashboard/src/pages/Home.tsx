@@ -31,8 +31,8 @@ const PRODUCT_CARDS: ProductCard[] = [
     badgeTone: "border-emerald-400/25 bg-emerald-400/10 text-emerald-300",
     description:
       "EGO + EXO datasets across automotive, warehouse, data center, and dexterity.",
-    cta: "Browse datasets",
-    to: "/viewer",
+    cta: "See solution",
+    to: "/product#robodatahub",
     Icon: Database,
     iconTone: "border-primary/20 bg-primary/10 text-primary",
   },
@@ -41,8 +41,8 @@ const PRODUCT_CARDS: ProductCard[] = [
     badge: "Patented IP",
     badgeTone: "border-amber-400/25 bg-amber-400/10 text-amber-300",
     description: "EXO to EGO view synthesis. 85% to 95%+ accuracy.",
-    cta: "Learn more",
-    to: "/roboeyeview",
+    cta: "See solution",
+    to: "/product#roboeyeview",
     Icon: Eye,
     iconTone: "border-blue-400/20 bg-blue-400/10 text-blue-300",
   },
@@ -159,7 +159,7 @@ export default function Home() {
                   to={buildAuthPath("register", "/viewer")}
                   className="inline-flex h-14 items-center justify-center rounded-full border border-white/18 bg-white/5 px-8 text-sm font-bold text-foreground transition-colors hover:border-white/35 hover:bg-white/8"
                 >
-                  Request a Demo
+                  Get Access
                 </Link>
               </div>
             </div>
@@ -276,7 +276,7 @@ export default function Home() {
                 to={buildAuthPath("register", "/viewer")}
                 className="inline-flex h-12 items-center justify-center rounded-xl bg-primary px-6 text-sm font-bold text-primary-foreground"
               >
-                Request a Demo
+                Get Access
               </Link>
               <Link
                 to="/viewer"

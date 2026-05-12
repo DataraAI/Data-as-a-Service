@@ -3,7 +3,6 @@ import { ArrowRight, Sparkles, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import Navigation from "@/components/Navigation";
 import FooterSection from "@/components/FooterSection";
-import ProductSurfaceTabs from "@/components/ProductSurfaceTabs";
 import { frontPageImageUrl } from "@/lib/datasetFolderCover";
 import { buildAuthPath } from "@/lib/authLinks";
 
@@ -351,7 +350,7 @@ function ExampleCard({
         </span>
       </div>
 
-      <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(220px,0.76fr)_minmax(0,1.24fr)]">
+      <div className="mt-5 grid gap-4 xl:grid-cols-[220px_120px_minmax(0,1fr)]">
         <div>
           <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-blue-300">
             EXO Source
@@ -361,6 +360,24 @@ function ExampleCard({
             emphasize
             onClick={() => onSelect(example.source)}
           />
+        </div>
+
+        <div className="hidden xl:flex xl:flex-col xl:items-center xl:justify-center">
+          <div className="mb-3 h-12 w-px bg-gradient-to-b from-blue-400/20 via-primary/50 to-primary/20" />
+          <div className="rounded-[20px] border border-primary/30 bg-primary/10 px-4 py-5 text-center shadow-[0_0_28px_rgba(29,233,182,0.08)]">
+            <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-2xl border border-primary/40 bg-primary/15">
+              <Sparkles className="h-4 w-4 text-primary" />
+            </div>
+            <div className="mt-3 text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
+              RoboEyeView
+            </div>
+            <div className="mt-1 text-sm font-extrabold text-white">Engine</div>
+            <div className="mt-2 text-[11px] leading-5 text-muted-foreground">
+              {example.engineNote}
+            </div>
+          </div>
+          <div className={`mt-3 h-12 w-px bg-gradient-to-b from-primary/20 via-primary/50 to-transparent`} />
+          <ArrowRight className="mt-1 h-4 w-4 rotate-90 text-primary" />
         </div>
 
         <div>
@@ -471,10 +488,41 @@ export default function RoboEyeView() {
       <main className="relative overflow-hidden pt-[88px]">
         <div className="pointer-events-none absolute inset-0 bg-grid-pattern opacity-[0.05]" />
 
-        <div className="relative z-10 mx-auto max-w-[1440px] px-4 py-10 sm:px-6 md:py-14">
-          <ProductSurfaceTabs active="roboeyeview" />
+        <div className="relative z-10 mx-auto flex max-w-[1440px] gap-8 px-4 py-10 sm:px-6 md:py-14">
+          <aside className="hidden xl:flex xl:w-[220px] xl:shrink-0 xl:flex-col xl:overflow-hidden xl:rounded-[28px] xl:border xl:border-white/6 xl:bg-[#040608]/95 xl:shadow-[0_20px_60px_rgba(0,0,0,0.3)] xl:backdrop-blur-xl">
+            <div className="border-b border-white/6 px-5 py-6">
+              <div className="text-lg font-extrabold tracking-[0.04em] text-primary">DataraAI</div>
+              <div className="mt-1 text-base font-bold text-white">Visual Intelligence</div>
+            </div>
+            <div className="flex-1 px-3 py-4">
+              <div className="px-2 text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+                Verticals
+              </div>
+              <div className="mt-4 space-y-2">
+                {SHOWCASE_VERTICALS.map((vertical) => (
+                  <a
+                    key={vertical.id}
+                    href={`#${vertical.id}`}
+                    className="flex items-center gap-3 rounded-2xl border border-white/6 bg-white/[0.02] px-4 py-3 text-sm font-semibold text-muted-foreground transition-colors hover:border-primary/20 hover:bg-primary/8 hover:text-foreground"
+                  >
+                    <span className={`h-3 w-3 rounded-[4px] ${vertical.accentClass}`} />
+                    <span>{vertical.eyebrow}</span>
+                  </a>
+                ))}
+              </div>
+            </div>
+            <div className="border-t border-white/6 p-4">
+              <Link
+                to={buildAuthPath("register", "/roboeyeview")}
+                className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-primary px-5 text-sm font-bold text-primary-foreground"
+              >
+                Get Access
+              </Link>
+            </div>
+          </aside>
 
-          <section className="mt-6 overflow-hidden rounded-[32px] border border-white/6 bg-[#0d1014]/88 p-6 shadow-[0_24px_60px_rgba(0,0,0,0.28)] md:p-8">
+          <div className="min-w-0 flex-1">
+            <section className="overflow-hidden rounded-[32px] border border-white/6 bg-[#0d1014]/88 p-6 shadow-[0_24px_60px_rgba(0,0,0,0.28)] md:p-8">
             <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-[11px] uppercase tracking-[0.22em] text-primary">
               <Sparkles className="h-3.5 w-3.5" />
               RoboEyeView
@@ -500,7 +548,7 @@ export default function RoboEyeView() {
             </div>
           </section>
 
-          <section className="mt-6 rounded-[28px] border border-white/6 bg-[#0d1014]/88 p-6 shadow-[0_20px_46px_rgba(0,0,0,0.22)] md:p-8">
+            <section className="mt-6 rounded-[28px] border border-white/6 bg-[#0d1014]/88 p-6 shadow-[0_20px_46px_rgba(0,0,0,0.22)] md:p-8">
             <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
               How It Works
             </div>
@@ -537,7 +585,7 @@ export default function RoboEyeView() {
             </div>
           </section>
 
-          <div className="mt-8 space-y-8">
+            <div className="mt-8 space-y-8">
             {SHOWCASE_VERTICALS.map((vertical) => (
               <section key={vertical.id} id={vertical.id} className="scroll-mt-[120px]">
                 <div className="mb-5 flex items-center gap-3">
@@ -569,7 +617,7 @@ export default function RoboEyeView() {
             ))}
           </div>
 
-          <section className="mt-8 rounded-[28px] border border-white/6 bg-[linear-gradient(135deg,rgba(29,233,182,0.04)_0%,rgba(255,255,255,0.02)_100%)] p-6 shadow-[0_24px_60px_rgba(0,0,0,0.22)] md:p-8">
+            <section className="mt-8 rounded-[28px] border border-white/6 bg-[linear-gradient(135deg,rgba(29,233,182,0.04)_0%,rgba(255,255,255,0.02)_100%)] p-6 shadow-[0_24px_60px_rgba(0,0,0,0.22)] md:p-8">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <h2 className="text-2xl font-extrabold tracking-tight text-white">
@@ -599,6 +647,7 @@ export default function RoboEyeView() {
               </Link>
             </div>
           </section>
+          </div>
         </div>
       </main>
 

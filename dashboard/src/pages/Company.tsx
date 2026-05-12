@@ -155,7 +155,7 @@ export default function Company() {
                 to={buildAuthPath("register", "/viewer")}
                 className="inline-flex h-12 items-center justify-center rounded-xl bg-primary px-6 text-sm font-bold text-primary-foreground"
               >
-                Request a Demo
+                Get Access
               </Link>
               <Link
                 to="/viewer"
