@@ -22,6 +22,15 @@ PRESET_VLM_LABELS = [
     "What are the sensor modalities detected?",
 ]
 
+IMAGE_PREVIEW_EXTENSIONS = (".png", ".jpg", ".jpeg", ".webp")
+MASK_PERSON_PRIORITY_SEGMENTS = {"person", "persons", "human", "aperson", "ahuman"}
+MASK_DEPRIORITIZED_SEGMENTS = {"hand", "hands"}
+HIDDEN_CATEGORY_PREVIEW_PATHS = {
+    "dexterityawigndishwasher",
+    "dexteritywashingmachinewashingclothes",
+    "dexteritypeelingpeas",
+}
+
 
 class DatasetService:
     """Route-aware dataset service backed by SQL catalog + Azure storage."""
@@ -166,20 +175,27 @@ class DatasetService:
             public_only=public_only,
         )
 
-        previews = [
-            self._build_category_dataset_preview(
+        previews: list[dict[str, Any]] = []
+        for dataset in sorted(
+            datasets,
+            key=lambda item: (
+                item["brand"].lower(),
+                item["dataset_name"].lower(),
+                item["visibility"],
+            ),
+        ):
+            summary = self.sql_store.build_dataset_summary(dataset, current_user)
+            if self._should_hide_category_preview(summary["full_path"]):
+                continue
+
+            preview = self._build_category_dataset_preview(
                 dataset=dataset,
-                summary=self.sql_store.build_dataset_summary(dataset, current_user),
+                summary=summary,
             )
-            for dataset in sorted(
-                datasets,
-                key=lambda item: (
-                    item["brand"].lower(),
-                    item["dataset_name"].lower(),
-                    item["visibility"],
-                ),
-            )
-        ]
+            if preview["main_image"] is None and not preview["thumbnails"]:
+                continue
+            previews.append(preview)
+
         return sorted(
             previews,
             key=lambda item: (
@@ -331,44 +347,90 @@ class DatasetService:
         storage_container = dataset["storage_container"]
         storage_prefix = dataset["storage_prefix"].rstrip("/")
 
-        orig_blob = self._find_preview_blob(storage_container, f"{storage_prefix}/orig")
-        ego_blob = self._find_preview_blob(storage_container, f"{storage_prefix}/egos")
-        mask_blob = self._find_preview_blob(storage_container, f"{storage_prefix}/masks")
-        corner_blob = self._find_preview_blob(
+        orig_samples = self._select_diverse_preview_blobs(
+            self._list_preview_blob_names(storage_container, f"{storage_prefix}/orig"),
+            count=4,
+        )
+        ego_samples = self._select_diverse_preview_blobs(
+            self._list_preview_blob_names(storage_container, f"{storage_prefix}/egos"),
+            count=4,
+        )
+        mask_samples = self._select_diverse_preview_blobs(
+            self._list_mask_preview_blob_names(storage_container, f"{storage_prefix}/masks"),
+            count=4,
+        )
+
+        corner_candidates = self._list_preview_blob_names(
             storage_container,
             f"{storage_prefix}/corner_images_controlnet",
-        ) or self._find_preview_blob(storage_container, f"{storage_prefix}/occl_del")
-        main_blob = (
-            orig_blob
-            or ego_blob
-            or self._find_preview_blob(storage_container, storage_prefix)
-            or mask_blob
-            or corner_blob
+        )
+        if not corner_candidates:
+            corner_candidates = self._list_preview_blob_names(
+                storage_container,
+                f"{storage_prefix}/occl_del",
+            )
+        corner_samples = self._select_diverse_preview_blobs(corner_candidates, count=4)
+        root_samples = self._select_diverse_preview_blobs(
+            self._list_preview_blob_names(storage_container, storage_prefix),
+            count=4,
         )
 
-        fallback_cycle = list(
-            dict.fromkeys(blob for blob in [orig_blob, ego_blob, main_blob, mask_blob, corner_blob] if blob)
+        source_samples = {
+            "orig": orig_samples,
+            "ego": ego_samples,
+            "mask": mask_samples,
+            "corner": corner_samples,
+            "root": root_samples,
+        }
+        source_positions = {source_key: 0 for source_key in source_samples}
+        used_blobs: set[str] = set()
+
+        def take_from_source(source_key: str) -> str | None:
+            samples = source_samples[source_key]
+            position = source_positions[source_key]
+
+            while position < len(samples):
+                candidate = samples[position]
+                position += 1
+                source_positions[source_key] = position
+                if candidate in used_blobs:
+                    continue
+                used_blobs.add(candidate)
+                return candidate
+
+            source_positions[source_key] = position
+            return None
+
+        def take_fallback_blob() -> str | None:
+            for source_key in ("orig", "ego", "mask", "corner", "root"):
+                candidate = take_from_source(source_key)
+                if candidate:
+                    return candidate
+            return None
+
+        main_source = next(
+            (source_key for source_key in ("orig", "ego", "root", "mask", "corner") if source_samples[source_key]),
+            None,
         )
-        fallback_index = 0
+        main_blob = take_from_source(main_source) if main_source else None
 
-        def take_preview(blob_name: str | None, label: str) -> dict[str, Any] | None:
-            nonlocal fallback_index
-
-            resolved_blob = blob_name
-            if resolved_blob is None and fallback_cycle:
-                resolved_blob = fallback_cycle[fallback_index % len(fallback_cycle)]
-                fallback_index += 1
-            if not resolved_blob:
-                return None
-            return self._build_preview_asset(dataset_id=dataset["id"], blob_name=resolved_blob, label=label)
-
-        thumbnail_specs = [
-            (mask_blob, "Mask"),
-            (ego_blob, "EGO"),
-            (orig_blob, "ORIG"),
-            (corner_blob, "Corner Case"),
-        ]
-        thumbnails = [preview for preview in (take_preview(blob_name, label) for blob_name, label in thumbnail_specs) if preview]
+        thumbnails: list[dict[str, Any]] = []
+        for source_key, label in (
+            ("mask", "Mask"),
+            ("ego", "EGO"),
+            ("orig", "ORIG"),
+            ("corner", "Corner Case"),
+        ):
+            blob_name = take_from_source(source_key) or take_fallback_blob()
+            if not blob_name:
+                continue
+            thumbnails.append(
+                self._build_preview_asset(
+                    dataset_id=dataset["id"],
+                    blob_name=blob_name,
+                    label=label,
+                )
+            )
 
         return {
             "title": self._humanize_dataset_title(dataset["dataset_name"]),
@@ -550,6 +612,111 @@ class DatasetService:
             )
             return None
 
+    def _list_preview_blob_names(self, container_name: str, prefix: str) -> list[str]:
+        try:
+            blobs = self.azure_service.list_blobs(container_name, prefix)
+        except ResourceNotFoundError:
+            logger.warning(
+                "Skipping preview blob listing for prefix %s because container %s was not found",
+                prefix,
+                container_name,
+            )
+            return []
+
+        names = [
+            blob.name
+            for blob in blobs
+            if str(getattr(blob, "name", "")).lower().endswith(IMAGE_PREVIEW_EXTENSIONS)
+        ]
+        unique_names = list(dict.fromkeys(names))
+        return sorted(unique_names, key=self._preview_blob_sort_key)
+
+    def _list_mask_preview_blob_names(self, container_name: str, prefix: str) -> list[str]:
+        blob_names = self._list_preview_blob_names(container_name, prefix)
+        if not blob_names:
+            return []
+
+        def normalized_segments(blob_name: str) -> list[str]:
+            relative_path = blob_name.lower().split("/masks/", 1)[-1]
+            return [
+                self._normalize_preview_token(segment)
+                for segment in relative_path.split("/")[:-1]
+                if segment
+            ]
+
+        prioritized = [
+            blob_name
+            for blob_name in blob_names
+            if any(segment in MASK_PERSON_PRIORITY_SEGMENTS for segment in normalized_segments(blob_name))
+        ]
+        if prioritized:
+            return prioritized
+
+        without_hands = [
+            blob_name
+            for blob_name in blob_names
+            if not any(segment in MASK_DEPRIORITIZED_SEGMENTS for segment in normalized_segments(blob_name))
+        ]
+        return without_hands or blob_names
+
+    def _select_diverse_preview_blobs(
+        self,
+        blob_names: list[str],
+        *,
+        count: int,
+        minimum_frame_gap: int = 100,
+    ) -> list[str]:
+        unique_names = list(dict.fromkeys(blob_names))
+        if count <= 0 or not unique_names:
+            return []
+
+        desired_total = min(count, len(unique_names))
+        target_fractions = [0.0, 1.0, 0.5, 0.25, 0.75]
+        selected_indices: list[int] = []
+        selected_frames: list[int | None] = []
+        frames = [self._extract_numeric_frame_id(blob_name) for blob_name in unique_names]
+
+        for fraction in target_fractions:
+            if len(selected_indices) >= desired_total:
+                break
+
+            target_index = round((len(unique_names) - 1) * fraction)
+            remaining = [index for index in range(len(unique_names)) if index not in selected_indices]
+            if not remaining:
+                break
+
+            ordered_candidates = sorted(
+                remaining,
+                key=lambda index: (abs(index - target_index), index),
+            )
+            candidate_index = next(
+                (
+                    index
+                    for index in ordered_candidates
+                    if self._has_minimum_frame_gap(
+                        frames[index],
+                        selected_frames,
+                        minimum_frame_gap=minimum_frame_gap,
+                    )
+                ),
+                None,
+            )
+            if candidate_index is None:
+                candidate_index = ordered_candidates[0]
+
+            selected_indices.append(candidate_index)
+            selected_frames.append(frames[candidate_index])
+
+        if len(selected_indices) < desired_total:
+            for index in range(len(unique_names)):
+                if index in selected_indices:
+                    continue
+                selected_indices.append(index)
+                if len(selected_indices) >= desired_total:
+                    break
+
+        return [unique_names[index] for index in selected_indices]
+
     def _build_preview_asset(
         self,
         *,
@@ -624,6 +791,10 @@ class DatasetService:
         return text[:1].upper() + text[1:] if text else "Dataset"
 
     @staticmethod
+    def _normalize_preview_token(value: Any) -> str:
+        return re.sub(r"[^a-z0-9]+", "", str(value or "").strip().lower())
+
+    @staticmethod
     def _normalize_category_key(value: Any) -> str:
         normalized = re.sub(r"[^a-z0-9]+", "", str(value or "").strip().lower())
 
@@ -645,6 +816,43 @@ class DatasetService:
         if not requested:
             return False
         return cls._normalize_category_key(dataset_category) == requested
+
+    @classmethod
+    def _should_hide_category_preview(cls, full_path: str) -> bool:
+        return cls._normalize_preview_token(full_path) in HIDDEN_CATEGORY_PREVIEW_PATHS
+
+    @staticmethod
+    def _preview_blob_sort_key(blob_name: str) -> tuple[int, int | str, str]:
+        frame_id = DatasetService._extract_numeric_frame_id(blob_name)
+        if frame_id is not None:
+            return (0, frame_id, blob_name.lower())
+        return (1, blob_name.lower(), blob_name.lower())
+
+    @staticmethod
+    def _extract_numeric_frame_id(blob_name: str) -> int | None:
+        frame_id = DatasetService._extract_frame_id_value(blob_name)
+        if frame_id is None:
+            return None
+        try:
+            return int(frame_id)
+        except ValueError:
+            return None
+
+    @staticmethod
+    def _has_minimum_frame_gap(
+        candidate_frame: int | None,
+        selected_frames: list[int | None],
+        *,
+        minimum_frame_gap: int,
+    ) -> bool:
+        if candidate_frame is None:
+            return False
+
+        comparable_frames = [frame for frame in selected_frames if frame is not None]
+        if not comparable_frames:
+            return True
+
+        return all(abs(candidate_frame - frame) >= minimum_frame_gap for frame in comparable_frames)
 
     @staticmethod
     def _clean_tag_list(value: Any) -> list[str]:
