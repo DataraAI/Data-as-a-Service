@@ -29,7 +29,7 @@ class DatasetService:
     def __init__(self, azure_service, sql_store: SQLStore):
         self.azure_service = azure_service
         self.sql_store = sql_store
-        self._dataset_path_cache: dict[tuple[str, str | None], tuple[float, list[dict[str, Any]]]] = {}
+        self._dataset_path_cache: dict[tuple[str, str | None, bool], tuple[float, list[dict[str, Any]]]] = {}
         self._dataset_path_cache_ttl_seconds = max(settings.dataset_path_cache_ttl_seconds, 0)
 
     def list_datasets(self, path: str, current_user: dict[str, Any]) -> list[dict[str, Any]]:
@@ -99,20 +99,19 @@ class DatasetService:
         current_user: dict[str, Any],
         *,
         category: str | None = None,
+        public_only: bool = False,
     ) -> list[dict[str, Any]]:
-        normalized_category = str(category or "").strip() or None
-        cache_key = self._dataset_path_cache_key(current_user, normalized_category)
+        normalized_category = self._normalize_category_key(category) or None
+        cache_key = self._dataset_path_cache_key(current_user, normalized_category, public_only)
         cached = self._get_cached_dataset_paths(cache_key)
         if cached is not None:
             return cached
 
-        datasets = self.sql_store.list_accessible_datasets(current_user)
-        if normalized_category is not None:
-            datasets = [
-                dataset
-                for dataset in datasets
-                if str(dataset.get("category") or "").strip() == normalized_category
-            ]
+        datasets = self._filter_datasets_for_category(
+            self.sql_store.list_accessible_datasets(current_user),
+            category=normalized_category,
+            public_only=public_only,
+        )
         all_paths: dict[str, dict[str, Any]] = {}
 
         for dataset in sorted(
@@ -149,6 +148,45 @@ class DatasetService:
         records = sorted(all_paths.values(), key=lambda item: item["full_path"].lower())
         self._set_cached_dataset_paths(cache_key, records)
         return records
+
+    def list_category_dataset_previews(
+        self,
+        current_user: dict[str, Any],
+        *,
+        category: str,
+        public_only: bool = False,
+    ) -> list[dict[str, Any]]:
+        normalized_category = self._normalize_category_key(category)
+        if not normalized_category:
+            return []
+
+        datasets = self._filter_datasets_for_category(
+            self.sql_store.list_accessible_datasets(current_user),
+            category=normalized_category,
+            public_only=public_only,
+        )
+
+        previews = [
+            self._build_category_dataset_preview(
+                dataset=dataset,
+                summary=self.sql_store.build_dataset_summary(dataset, current_user),
+            )
+            for dataset in sorted(
+                datasets,
+                key=lambda item: (
+                    item["brand"].lower(),
+                    item["dataset_name"].lower(),
+                    item["visibility"],
+                ),
+            )
+        ]
+        return sorted(
+            previews,
+            key=lambda item: (
+                str(item.get("brand") or "").lower(),
+                str(item.get("title") or "").lower(),
+            ),
+        )
 
     def get_dataset_images(self, route_path: str, current_user: dict[str, Any]) -> list[dict[str, Any]]:
         dataset, extra_segments = self.sql_store.resolve_dataset_route(route_path, current_user)
@@ -284,6 +322,69 @@ class DatasetService:
             "deleted_docs": deleted_docs,
         }
 
+    def _build_category_dataset_preview(
+        self,
+        *,
+        dataset: dict[str, Any],
+        summary: dict[str, Any],
+    ) -> dict[str, Any]:
+        storage_container = dataset["storage_container"]
+        storage_prefix = dataset["storage_prefix"].rstrip("/")
+
+        orig_blob = self._find_preview_blob(storage_container, f"{storage_prefix}/orig")
+        ego_blob = self._find_preview_blob(storage_container, f"{storage_prefix}/egos")
+        mask_blob = self._find_preview_blob(storage_container, f"{storage_prefix}/masks")
+        corner_blob = self._find_preview_blob(
+            storage_container,
+            f"{storage_prefix}/corner_images_controlnet",
+        ) or self._find_preview_blob(storage_container, f"{storage_prefix}/occl_del")
+        main_blob = (
+            orig_blob
+            or ego_blob
+            or self._find_preview_blob(storage_container, storage_prefix)
+            or mask_blob
+            or corner_blob
+        )
+
+        fallback_cycle = list(
+            dict.fromkeys(blob for blob in [orig_blob, ego_blob, main_blob, mask_blob, corner_blob] if blob)
+        )
+        fallback_index = 0
+
+        def take_preview(blob_name: str | None, label: str) -> dict[str, Any] | None:
+            nonlocal fallback_index
+
+            resolved_blob = blob_name
+            if resolved_blob is None and fallback_cycle:
+                resolved_blob = fallback_cycle[fallback_index % len(fallback_cycle)]
+                fallback_index += 1
+            if not resolved_blob:
+                return None
+            return self._build_preview_asset(dataset_id=dataset["id"], blob_name=resolved_blob, label=label)
+
+        thumbnail_specs = [
+            (mask_blob, "Mask"),
+            (ego_blob, "EGO"),
+            (orig_blob, "ORIG"),
+            (corner_blob, "Corner Case"),
+        ]
+        thumbnails = [preview for preview in (take_preview(blob_name, label) for blob_name, label in thumbnail_specs) if preview]
+
+        return {
+            "title": self._humanize_dataset_title(dataset["dataset_name"]),
+            "brand": str(dataset.get("brand") or "").strip(),
+            "full_path": summary["full_path"],
+            "viewer_path": summary["viewer_path"],
+            "visibility": summary["visibility"],
+            "owner_slug": summary["owner_storage_slug"],
+            "main_image": (
+                self._build_preview_asset(dataset_id=dataset["id"], blob_name=main_blob, label="Primary")
+                if main_blob
+                else None
+            ),
+            "thumbnails": thumbnails[:4],
+        }
+
     def _build_folder_record(
         self,
         *,
@@ -306,14 +407,15 @@ class DatasetService:
         self,
         current_user: dict[str, Any],
         category: str | None,
-    ) -> tuple[str, str | None]:
+        public_only: bool = False,
+    ) -> tuple[str, str | None, bool]:
         role = str(current_user.get("role") or "").strip()
         user_id = str(current_user.get("id") or "").strip()
-        return (f"{role}:{user_id}", category)
+        return (f"{role}:{user_id}", category, public_only)
 
     def _get_cached_dataset_paths(
         self,
-        cache_key: tuple[str, str | None],
+        cache_key: tuple[str, str | None, bool],
     ) -> list[dict[str, Any]] | None:
         if self._dataset_path_cache_ttl_seconds <= 0:
             return None
@@ -331,7 +433,7 @@ class DatasetService:
 
     def _set_cached_dataset_paths(
         self,
-        cache_key: tuple[str, str | None],
+        cache_key: tuple[str, str | None, bool],
         records: list[dict[str, Any]],
     ) -> None:
         if self._dataset_path_cache_ttl_seconds <= 0:
@@ -341,6 +443,22 @@ class DatasetService:
             time.time() + self._dataset_path_cache_ttl_seconds,
             records,
         )
+
+    def _filter_datasets_for_category(
+        self,
+        datasets: list[dict[str, Any]],
+        *,
+        category: str | None,
+        public_only: bool,
+    ) -> list[dict[str, Any]]:
+        filtered: list[dict[str, Any]] = []
+        for dataset in datasets:
+            if public_only and str(dataset.get("visibility") or "").strip() != "public":
+                continue
+            if category and not self._category_matches(dataset.get("category"), category):
+                continue
+            filtered.append(dataset)
+        return filtered
 
     def _list_storage_children(self, route_path: str, current_user: dict[str, Any]) -> list[dict[str, Any]]:
         try:
@@ -421,6 +539,33 @@ class DatasetService:
             key=lambda item: item["full_path"].lower(),
         )
 
+    def _find_preview_blob(self, container_name: str, prefix: str) -> str | None:
+        try:
+            return self.azure_service.find_first_matching_blob(container_name, prefix)
+        except ResourceNotFoundError:
+            logger.warning(
+                "Skipping preview lookup for prefix %s because container %s was not found",
+                prefix,
+                container_name,
+            )
+            return None
+
+    def _build_preview_asset(
+        self,
+        *,
+        dataset_id: str,
+        blob_name: str,
+        label: str,
+    ) -> dict[str, Any]:
+        asset_id = self.encode_asset_id(dataset_id, blob_name)
+        return {
+            "asset_id": asset_id,
+            "blob_path": blob_name,
+            "name": os.path.basename(blob_name),
+            "label": label,
+            "proxy_url": f"/api/proxy/{asset_id}",
+        }
+
     def resolve_asset(self, asset_id: str, current_user: dict[str, Any]) -> dict[str, Any]:
         try:
             padding = "=" * (-len(asset_id) % 4)
@@ -466,6 +611,40 @@ class DatasetService:
             if match:
                 return match.group(1)
         return None
+
+    @staticmethod
+    def _humanize_dataset_title(value: Any) -> str:
+        text = str(value or "").strip()
+        if not text:
+            return "Dataset"
+
+        text = re.sub(r"[_\-]+", " ", text)
+        text = re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", text)
+        text = re.sub(r"\s+", " ", text).strip()
+        return text[:1].upper() + text[1:] if text else "Dataset"
+
+    @staticmethod
+    def _normalize_category_key(value: Any) -> str:
+        normalized = re.sub(r"[^a-z0-9]+", "", str(value or "").strip().lower())
+
+        aliases = {
+            "automotive": "carautomation",
+            "carautomation": "carautomation",
+            "datacenter": "serverrack",
+            "datacentre": "serverrack",
+            "humanoid": "dexterity",
+            "dexterity": "dexterity",
+            "serverrack": "serverrack",
+            "warehouse": "warehouse",
+        }
+        return aliases.get(normalized, normalized)
+
+    @classmethod
+    def _category_matches(cls, dataset_category: Any, requested_category: Any) -> bool:
+        requested = cls._normalize_category_key(requested_category)
+        if not requested:
+            return False
+        return cls._normalize_category_key(dataset_category) == requested
 
     @staticmethod
     def _clean_tag_list(value: Any) -> list[str]:
