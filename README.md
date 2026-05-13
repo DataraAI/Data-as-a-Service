@@ -5,27 +5,49 @@ A comprehensive AI platform for robotics training and deployment with modern Rea
 ## 🚀 Quick Start
 
 ### Prerequisites
-- **Node.js** 18+ 
-- **Python** 3.10+
+- **Node.js**: Latest LTS version (18+)
+- **Python**: 3.12 or 3.13 Stable (*Note: Avoid Python 3.14 as some libraries like `backports.zstd` are not yet supported*)
+- **System Drivers**: Microsoft ODBC Driver 18 for SQL Server (x64)
 - **Docker** (optional, for containerized deployment)
 
-### Development Setup (5 minutes)
+### Development Setup
+
+**1. Clone the repository:**
+```bash
+git clone git@github.com:DataraAI/Data-as-a-Service.git
+cd Data-as-a-Service
+```
+
+**2. Environment Configuration:**
+Obtain the necessary environment variables and configuration files and place them into their respective directories in your local project root. (You can use config/.env.example as a starting point).
+
+We also recommend installing packages through a Python virtual environment. On the Data-as-a-Service directory:
+
+#### For Windows users
 
 ```bash
-# 1. Setup backend
+python -m venv .venv
+.venv\Scripts\activate
+```
+
+#### For Mac users
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+```
+
+**3. Setup and Start Backend:**
+```bash
 cd backend
 pip install -r requirements.txt
+python app.py
+```
 
-# 2. Setup frontend (in a new terminal)
+**4. Setup and Start Frontend (in a new terminal):**
+```bash
 cd dashboard
 npm install
-
-# 3. Start backend
-cd backend
-python app.py
-
-# 4. Start frontend (in new terminal)
-cd dashboard
 npm run dev
 ```
 
