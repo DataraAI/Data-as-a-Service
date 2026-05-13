@@ -21,11 +21,25 @@ cd Data-as-a-Service
 **2. Environment Configuration:**
 Obtain the necessary environment variables and configuration files and place them into their respective directories in your local project root. (You can use config/.env.example as a starting point).
 
+We also recommend installing packages through a Python virtual environment. On the Data-as-a-Service directory:
+
+#### For Windows users
+
+```bash
+python -m venv .venv
+.venv\Scripts\activate
+```
+
+#### For Mac users
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+```
+
 **3. Setup and Start Backend:**
 ```bash
 cd backend
-python -m venv venv
-venv\Scripts\activate
 pip install -r requirements.txt
 python app.py
 ```
