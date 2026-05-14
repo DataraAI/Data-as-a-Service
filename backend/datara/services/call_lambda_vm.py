@@ -44,22 +44,7 @@ SAAS_HOST = os.getenv("SAAS_HOST") or _legacy_saas_attr("HOST")
 SAAS_USER = os.getenv("SAAS_USER") or _legacy_saas_attr("USER") or "ubuntu"
 
 def _resolve_key_path():
-    # primary_fallback = os.path.expanduser("~/.ssh/lambdasamridh")
-    # if os.path.exists(primary_fallback):
-    #     return primary_fallback
-
-    env_path = os.getenv("SAAS_KEY_PATH")
-    if env_path and os.path.exists(env_path):
-        return env_path
-    legacy_path = _legacy_saas_attr("KEY_PATH")
-    if legacy_path and os.path.exists(legacy_path):
-        return legacy_path
-
-    fallback = os.path.expanduser("~/.ssh/azure_to_lambda")
-    if os.path.exists(fallback):
-        return fallback
-        
-    return env_path or fallback
+    return os.path.expanduser("~/.ssh/azure_to_lambda")
 
 SAAS_KEY_PATH = _resolve_key_path()
 SAAS_PYTHON_BIN = os.getenv("SAAS_PYTHON_BIN") or _legacy_saas_attr("PYTHON_BIN") or "python"
