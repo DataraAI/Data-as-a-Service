@@ -499,5 +499,91 @@ def generate_corner_case():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/generate_task_intelligence", methods=["POST"])
+def generate_task_intelligence():
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Invalid JSON body"}), 400
+
+    video_url = data.get("videoURL")
+    video_id = data.get("videoID")
+    dataset_name = data.get("datasetName", "default_dataset")
+
+    if not video_url or not video_id:
+        return jsonify({"error": "Missing 'videoURL' or 'videoID' in request body"}), 400
+
+    try:
+        # Call your subtask annotator script
+        # Make sure qwen_subtask_annotator.py is in the backend directory or adjust the path
+        cmd = [sys.executable, "qwen_subtask_annotator.py", "--asset_path", video_url]
+        print(f"Running subtask annotator: {cmd}")
+        
+        # Execute the script and capture the output file path printed to stdout
+        raw_output = subprocess.check_output(cmd, text=True)
+        output_path = raw_output.strip().split('\n')[-1]
+
+        with open(output_path, "r") as f:
+            raw_subtasks = json.load(f)
+        
+        formatted_subtasks = []
+        for st in raw_subtasks:
+            formatted_subtasks.append({
+                "subtask_name": st.get("sub_task", "unknown").title(),
+                "start_time": f"Frame {st.get('start_frame', 0)}",
+                "end_time": f"Frame {st.get('end_frame', 0)}",
+                "description": f"Model detected: {st.get('sub_task', 'unknown')}"
+            })
+
+        generated_json = {
+            "tasks": [
+                {
+                    "task_name": "Automated Video Breakdown",
+                    "description": f"Extracted from {dataset_name}",
+                    "start_time": f"Frame {raw_subtasks[0].get('start_frame', 0)}" if raw_subtasks else "Start",
+                    "end_time": f"Frame {raw_subtasks[-1].get('end_frame', 0)}" if raw_subtasks else "End",
+                    "subtasks": formatted_subtasks
+                }
+            ]
+        }
+
+        # Clean up the generated JSON output file
+        if os.path.exists(output_path):
+            os.remove(output_path)
+
+        # Store in Cosmos DB
+        client = CosmosClient(COSMOS_ENDPOINT, credential=COSMOS_KEY)
+        database = client.get_database_client(COSMOS_DATABASE)
+        container = database.get_container_client(COSMOS_CONTAINER)
+        
+        # Try to read the existing document to update it, or create a new one if it doesn't exist
+        try:
+            # Depending on your Cosmos DB partition key, you might need to adjust this
+            existing_item = container.read_item(item=video_id, partition_key=dataset_name)
+            existing_item["taskIntelligence"] = generated_json
+            container.upsert_item(existing_item)
+        except Exception:
+            # Document doesn't exist, create a new annotation record
+            new_item = {
+                "id": video_id,
+                "datasetName": dataset_name,
+                "blobPath": video_url,
+                "taskIntelligence": generated_json,
+                "type": "video_task_intelligence",
+                "date": datetime.now(timezone.utc).isoformat()
+            }
+            container.upsert_item(new_item)
+
+        return jsonify({
+            "message": "Task intelligence generated and stored successfully", 
+            "data": generated_json
+        })
+
+    except subprocess.CalledProcessError as e:
+        print(f"Task annotator script failed: {e}")
+        return jsonify({"error": f"Annotator failed: {str(e)}"}), 500
+    except Exception as e:
+        print(f"Task intelligence error: {e}")
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5151, debug=True, use_reloader=False)

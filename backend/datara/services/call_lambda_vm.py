@@ -42,11 +42,21 @@ def _legacy_saas_attr(name, default=None):
 
 SAAS_HOST = os.getenv("SAAS_HOST") or _legacy_saas_attr("HOST")
 SAAS_USER = os.getenv("SAAS_USER") or _legacy_saas_attr("USER") or "ubuntu"
-SAAS_KEY_PATH = (
-    os.getenv("SAAS_KEY_PATH")
-    or _legacy_saas_attr("KEY_PATH")
-    or os.path.expanduser("~/.ssh/azure_to_lambda")
-)
+
+def _resolve_key_path():
+    primary_fallback = os.path.expanduser("~/.ssh/lambdasamridh")
+    if os.path.exists(primary_fallback):
+        return primary_fallback
+
+    env_path = os.getenv("SAAS_KEY_PATH")
+    if env_path and os.path.exists(env_path):
+        return env_path
+    legacy_path = _legacy_saas_attr("KEY_PATH")
+    if legacy_path and os.path.exists(legacy_path):
+        return legacy_path
+
+
+SAAS_KEY_PATH = _resolve_key_path()
 SAAS_PYTHON_BIN = os.getenv("SAAS_PYTHON_BIN") or _legacy_saas_attr("PYTHON_BIN") or "python"
 SAAS_IMAGE_PYTHON_BIN = (
     os.getenv("SAAS_IMAGE_PYTHON_BIN")
@@ -83,6 +93,7 @@ REMOTE_CORNER_CASE_OUTPUT_ROOT = "corner_images_controlnet"
 REMOTE_CORNER_CASE_LOCALIZATION_MODEL = "attention_points_sam"
 REMOTE_VLM_IMAGE_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "Post Annotation", "qwen_vlm_image.py")
 REMOTE_SEGMENTATION_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "DataraAI_segmentation.py")
+REMOTE_SUBTASK_ANNOTATOR_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "post_annotation", "qwen_subtask_annotator.py")
 REMOTE_ROSE_RUNNER_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "DataraAI_rose_occlusion.py")
 REMOTE_ROSE_VERIFY_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "verify_rose_runtime.sh")
 REMOTE_ROSE_SETUP_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "setup_rose_runtime.sh")
@@ -105,17 +116,23 @@ def _ssh_session():
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     try:
-        key = paramiko.Ed25519Key.from_private_key_file(key_filename)
-        client.connect(hostname=hostname, username=username, pkey=key)
+        client.connect(
+            hostname=hostname,
+            username=username,
+            key_filename=key_filename,
+            look_for_keys=False,
+            allow_agent=False,
+            timeout=15
+        )
         yield client
+    except paramiko.AuthenticationException:
+        logger.error(f"Authentication failed for {username}@{hostname} using key {key_filename}")
+        raise
     except paramiko.SSHException as e:
         print(f"SSH connection error: {e}")
         raise
     except FileNotFoundError:
         print(f"Key file not found at: {key_filename}")
-        raise
-    except paramiko.AuthenticationException:
-        print("Authentication failed, please check your credentials.")
         raise
     finally:
         client.close()
@@ -550,3 +567,65 @@ def remove_occlusion(
     except Exception as exc:
         logger.error("remove_occlusion error: %s", exc, exc_info=True)
         return None, 500, str(exc)
+
+
+def generate_task_intelligence(video_url: str):
+    """
+    Run the subtask annotator script on the Lambda VM.
+    Fetches the output JSON file locally, then removes it from the VM.
+    Returns (local_json_path, status_code). On failure returns (None, status_code).
+    """
+    if not video_url:
+        return None, 400
+
+    safe_url = _shell_escape(video_url)
+    command = (
+        f'"{_shell_escape(SAAS_VLM_PYTHON_BIN)}" -s "{_shell_escape(REMOTE_SUBTASK_ANNOTATOR_SCRIPT)}" '
+        f'--asset_path "{safe_url}"'
+    )
+    logger.info("call_lambda_vm.generate_task_intelligence() command: %s", command)
+
+    try:
+        with _ssh_session() as ssh_client:
+            # Check where the script exists on the remote VM
+            check_script_cmd = (
+                f'if [ -f "{_shell_escape(REMOTE_SUBTASK_ANNOTATOR_SCRIPT)}" ]; then echo "{_shell_escape(REMOTE_SUBTASK_ANNOTATOR_SCRIPT)}"; '
+                f'elif [ -f "{_shell_escape(posixpath.join(REMOTE_SAAS_ROOT, "Post Annotation", "qwen_subtask_annotator.py"))}" ]; then echo "{_shell_escape(posixpath.join(REMOTE_SAAS_ROOT, "Post Annotation", "qwen_subtask_annotator.py"))}"; '
+                f'elif [ -f "{_shell_escape(posixpath.join(REMOTE_SAAS_ROOT, "qwen_subtask_annotator.py"))}" ]; then echo "{_shell_escape(posixpath.join(REMOTE_SAAS_ROOT, "qwen_subtask_annotator.py"))}"; '
+                f'else echo "MISSING"; fi'
+            )
+            script_path_out, _ = _run_command(ssh_client, check_script_cmd)
+            script_path_out = script_path_out.strip()
+
+            if script_path_out == "MISSING":
+                logger.error("qwen_subtask_annotator.py is missing from the Lambda VM. Ensure the SaaS repo is updated.")
+                return None, 404
+
+            command = (
+                f'"{_shell_escape(SAAS_VLM_PYTHON_BIN)}" -s "{script_path_out}" '
+                f'--asset_path "{safe_url}"'
+            )
+            stdout, stderr = _run_command(ssh_client, _remote_image_env_prefix() + command)
+            remote_json_path = (stdout.strip().split("\n")[-1].strip() if stdout else "") or ""
+
+            if not remote_json_path or not remote_json_path.endswith(".json"):
+                logger.error("Annotator script failed or returned invalid path: %s", stderr or stdout)
+                return None, 500
+
+            os.makedirs(DATASET_LIST_DIR, exist_ok=True)
+            local_json_path = os.path.join(DATASET_LIST_DIR, os.path.basename(remote_json_path))
+
+            sftp = ssh_client.open_sftp()
+            try:
+                sftp.get(remote_json_path, local_json_path)
+            finally:
+                sftp.close()
+
+            _run_command(ssh_client, f"rm -f '{_shell_escape(remote_json_path)}'")
+
+            if os.path.exists(local_json_path):
+                return local_json_path, 200
+            return None, 500
+    except Exception as e:
+        logger.error("generate_task_intelligence error: %s", e)
+        return None, 500
