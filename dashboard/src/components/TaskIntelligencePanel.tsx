@@ -65,13 +65,18 @@ export default function TaskIntelligencePanel({ videoID, videoURL, datasetName =
             </label>
 
             {!tasks && !loading && (
-                <button
-                    type="button"
-                    onClick={generateIntelligence}
-                    className="flex w-full items-center justify-center gap-2 rounded-sm bg-primary px-6 py-2 text-xs font-bold uppercase text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:opacity-90 disabled:opacity-50"
-                >
-                    Generate Intelligence
-                </button>
+                <div className="flex flex-col gap-3">
+                    <p className="font-sans-tech text-[11px] leading-relaxed text-muted-foreground">
+                        Automatically analyze this video to extract sequential tasks and subtasks using our Vision-Language Model.
+                    </p>
+                    <button
+                        type="button"
+                        onClick={generateIntelligence}
+                        className="flex w-full items-center justify-center gap-2 rounded-sm bg-primary px-6 py-2 text-xs font-bold uppercase text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:opacity-90 disabled:opacity-50"
+                    >
+                        Generate Intelligence
+                    </button>
+                </div>
             )}
 
             {error && (

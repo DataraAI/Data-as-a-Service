@@ -44,9 +44,9 @@ SAAS_HOST = os.getenv("SAAS_HOST") or _legacy_saas_attr("HOST")
 SAAS_USER = os.getenv("SAAS_USER") or _legacy_saas_attr("USER") or "ubuntu"
 
 def _resolve_key_path():
-    primary_fallback = os.path.expanduser("~/.ssh/lambdasamridh")
-    if os.path.exists(primary_fallback):
-        return primary_fallback
+    # primary_fallback = os.path.expanduser("~/.ssh/lambdasamridh")
+    # if os.path.exists(primary_fallback):
+    #     return primary_fallback
 
     env_path = os.getenv("SAAS_KEY_PATH")
     if env_path and os.path.exists(env_path):
@@ -55,6 +55,11 @@ def _resolve_key_path():
     if legacy_path and os.path.exists(legacy_path):
         return legacy_path
 
+    fallback = os.path.expanduser("~/.ssh/azure_to_lambda")
+    if os.path.exists(fallback):
+        return fallback
+        
+    return env_path or fallback
 
 SAAS_KEY_PATH = _resolve_key_path()
 SAAS_PYTHON_BIN = os.getenv("SAAS_PYTHON_BIN") or _legacy_saas_attr("PYTHON_BIN") or "python"
@@ -93,7 +98,7 @@ REMOTE_CORNER_CASE_OUTPUT_ROOT = "corner_images_controlnet"
 REMOTE_CORNER_CASE_LOCALIZATION_MODEL = "attention_points_sam"
 REMOTE_VLM_IMAGE_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "Post Annotation", "qwen_vlm_image.py")
 REMOTE_SEGMENTATION_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "DataraAI_segmentation.py")
-REMOTE_SUBTASK_ANNOTATOR_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "post_annotation", "qwen_subtask_annotator.py")
+REMOTE_SUBTASK_ANNOTATOR_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "Post Annotation", "qwen_subtask_annotator.py")
 REMOTE_ROSE_RUNNER_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "DataraAI_rose_occlusion.py")
 REMOTE_ROSE_VERIFY_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "verify_rose_runtime.sh")
 REMOTE_ROSE_SETUP_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "setup_rose_runtime.sh")

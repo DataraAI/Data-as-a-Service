@@ -1,10 +1,6 @@
 # Python
 *.py[cod]
 *$py.class
-
-# Keep specific pycache file
-!backend/routes/__pycache__/dashboard.cpython-313.pyc
-backend/venv/
 backend/.env
 backend/.youtube.env
 backend/utils/dataset_list/*
@@ -24,7 +20,6 @@ dashboard/package-lock.json
 *.log
 .DS_Store
 .idea/
-
 
 # VM configs
 backend/saas_config.py
