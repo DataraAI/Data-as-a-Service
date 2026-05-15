@@ -20,18 +20,12 @@ from datara.services.azure_service import AzureService
 from datara.services.dataset_service import DatasetService
 from datara.services.processing_service import ProcessingService
 from datara.services.sql_store import SQLStore
-from azure.cosmos import CosmosClient
 
 sql_store = SQLStore()
 azure_service = AzureService()
 auth_service = AuthService(sql_store)
 dataset_service = DatasetService(azure_service, sql_store)
 processing_service = ProcessingService(azure_service, dataset_service, sql_store)
-
-COSMOS_ENDPOINT = "https://daas-blob-annotations.documents.azure.com:443/"
-COSMOS_DATABASE = "BlobAnnotations"
-COSMOS_CONTAINER = "roboteyeview" 
-COSMOS_KEY = os.getenv("COSMOS_DB_KEY")
 
 
 def create_app() -> Flask:
@@ -416,85 +410,18 @@ def register_routes(app: Flask) -> None:
         )
 
     @app.route("/api/generate_task_intelligence", methods=["POST"])
+    @auth_service.require_approved_user
     def generate_task_intelligence():
+        current_user = auth_service.get_current_user_or_raise()
         data = request.get_json()
         if not data:
             return jsonify({"error": "Invalid JSON body"}), 400
 
-        video_url = data.get("videoURL")
-        video_id = data.get("videoID")
-        dataset_name = data.get("datasetName", "default_dataset")
+        if not data.get("asset_id"):
+            return jsonify({"error": "Missing 'asset_id' in request body"}), 400
 
-        if not video_url or not video_id:
-            return jsonify({"error": "Missing 'videoURL' or 'videoID' in request body"}), 400
-
-        try:
-            from datara.services import call_lambda_vm
-            
-            print(f"Running subtask annotator on Lambda VM for: {video_url}")
-            output_path, status_code = call_lambda_vm.generate_task_intelligence(video_url)
-            
-            if not output_path or status_code != 200:
-                return jsonify({"error": "Failed to generate task intelligence on the Lambda VM. Check logs for details."}), 500
-
-            with open(output_path, "r") as f:
-                raw_subtasks = json.load(f)
-            
-            formatted_subtasks = []
-            for st in raw_subtasks:
-                formatted_subtasks.append({
-                    "subtask_name": st.get("sub_task", "unknown").title(),
-                    "start_time": f"Frame {st.get('start_frame', 0)}",
-                    "end_time": f"Frame {st.get('end_frame', 0)}",
-                    "description": f"Model detected: {st.get('sub_task', 'unknown')}"
-                })
-
-            generated_json = {
-                "tasks": [
-                    {
-                        "task_name": "Automated Video Breakdown",
-                        "description": f"Extracted from {dataset_name}",
-                        "start_time": f"Frame {raw_subtasks[0].get('start_frame', 0)}" if raw_subtasks else "Start",
-                        "end_time": f"Frame {raw_subtasks[-1].get('end_frame', 0)}" if raw_subtasks else "End",
-                        "subtasks": formatted_subtasks
-                    }
-                ]
-            }
-
-            # Clean up the generated JSON output file
-            if os.path.exists(output_path):
-                os.remove(output_path)
-
-            # Store in Cosmos DB
-            client = CosmosClient(COSMOS_ENDPOINT, credential=COSMOS_KEY)
-            database = client.get_database_client(COSMOS_DATABASE)
-            container = database.get_container_client(COSMOS_CONTAINER)
-            
-            # Try to read the existing document to update it, or create a new one if it doesn't exist
-            try:
-                existing_item = container.read_item(item=video_id, partition_key=dataset_name)
-                existing_item["taskIntelligence"] = generated_json
-                container.upsert_item(existing_item)
-            except Exception:
-                # Document doesn't exist, create a new annotation record
-                new_item = {
-                    "id": video_id,
-                    "datasetName": dataset_name,
-                    "blobPath": video_url,
-                    "taskIntelligence": generated_json,
-                    "type": "video_task_intelligence",
-                    "date": datetime.now(timezone.utc).isoformat()
-                }
-                container.upsert_item(new_item)
-
-            return jsonify({
-                "message": "Task intelligence generated and stored successfully", 
-                "data": generated_json
-            })
-
-        except Exception as e:
-            print(f"Task intelligence error: {e}")
-            return jsonify({"error": str(e)}), 500
+        payload, status_code = processing_service.generate_task_intelligence(current_user, data)
+        return jsonify(payload), status_code
 
 
 def register_error_handlers(app: Flask) -> None:
