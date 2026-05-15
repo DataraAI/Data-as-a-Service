@@ -1269,6 +1269,94 @@ class ProcessingService:
             "video_name": "rose_removed.mp4",
         }, 200
 
+    def generate_task_intelligence(self, current_user: dict[str, Any], data: dict[str, Any]) -> tuple[dict[str, Any], int]:
+        """
+        Generates sub-task annotations for a video asset.
+        Checks for cached results in Cosmos DB before invoking the remote model.
+        """
+        source = self._resolve_source_asset(current_user, str(data.get("asset_id") or ""))
+
+        # 1. Check for cache in existing Cosmos doc
+        if source["metadata"].get("taskIntelligence"):
+            logger.info("Found cached task intelligence for asset %s", data.get("asset_id"))
+            return {
+                "message": "Task intelligence retrieved from cache.",
+                "data": source["metadata"]["taskIntelligence"],
+                "cached": True,
+            }, 200
+
+        # 2. If not cached, generate it
+        source_dataset = source["dataset"]
+        source_blob = source["blob_name"]
+
+        if not any(source_blob.lower().endswith(ext) for ext in (".mp4", ".mov", ".m4v", ".webm")):
+            return {"error": "Task intelligence can only be generated for video assets."}, 400
+
+        video_url = self.azure_service.generate_sas_url(
+            source_dataset["storage_container"],
+            source_blob,
+            expiry_hours=2,
+        )
+
+        local_json_path = None
+        try:
+            from datara.services import call_lambda_vm
+
+            logger.info("Running subtask annotator on Lambda VM for: %s", video_url)
+            local_json_path, status_code = call_lambda_vm.generate_task_intelligence(video_url)
+
+            if status_code != 200 or not local_json_path:
+                return {"error": "Failed to generate task intelligence on the Lambda VM."}, status_code or 500
+
+            with open(local_json_path, "r") as f:
+                raw_subtasks = json.load(f)
+
+            # Format the output
+            formatted_subtasks = []
+            for st in raw_subtasks:
+                formatted_subtasks.append({
+                    "subtask_name": str(st.get("sub_task", "unknown")).title(),
+                    "start_time": f"Frame {st.get('start_frame', 0)}",
+                    "end_time": f"Frame {st.get('end_frame', 0)}",
+                    "description": f"Model detected: {st.get('sub_task', 'unknown')}",
+                })
+
+            task_name = str(source["metadata"].get("task") or "Automated Video Breakdown").strip()
+            dataset_summary = self.sql_store.build_dataset_summary(source_dataset, current_user)
+
+            generated_json = {
+                "tasks": [
+                    {
+                        "task_name": task_name,
+                        "description": f"Extracted from {dataset_summary['full_path']}",
+                        "start_time": f"Frame {raw_subtasks[0].get('start_frame', 0)}" if raw_subtasks else "Start",
+                        "end_time": f"Frame {raw_subtasks[-1].get('end_frame', 0)}" if raw_subtasks else "End",
+                        "subtasks": formatted_subtasks,
+                    }
+                ]
+            }
+
+            # 3. Store in Cosmos DB
+            cosmos_doc = source["metadata"]
+            cosmos_doc["taskIntelligence"] = generated_json
+            self.azure_service.upsert_cosmos_item(cosmos_doc)
+
+            return {
+                "message": "Task intelligence generated and stored successfully.",
+                "data": generated_json,
+                "cached": False,
+            }, 200
+
+        except Exception as e:
+            logger.error("generate_task_intelligence error: %s", e, exc_info=True)
+            return {"error": str(e)}, 500
+        finally:
+            if local_json_path and os.path.exists(local_json_path):
+                try:
+                    os.remove(local_json_path)
+                except OSError:
+                    pass
+
     def _resolve_source_asset(self, current_user: dict[str, Any], asset_id: str) -> dict[str, Any]:
         if not asset_id:
             raise ValueError("Missing asset_id")
