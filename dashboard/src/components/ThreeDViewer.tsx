@@ -1,7 +1,7 @@
 import React, { Suspense } from 'react';
 import { Canvas, useLoader } from '@react-three/fiber';
 import { OrbitControls, Stage, Html } from '@react-three/drei';
-import { STLLoader, GLTFLoader } from 'three-stdlib';
+import { STLLoader, GLTFLoader, OBJLoader } from 'three-stdlib';
 import { Loader2, AlertTriangle } from 'lucide-react';
 
 interface ModelProps {
@@ -23,11 +23,21 @@ function GLBModel({ url }: ModelProps) {
     return <primitive object={gltf.scene} />;
 }
 
+function OBJModel({ url }: ModelProps) {
+    const object = useLoader(OBJLoader, url);
+    return <primitive object={object} />;
+}
+
 function ModelSelector({ url }: ModelProps) {
-    const isGLB = url.toLowerCase().endsWith('.glb') || url.toLowerCase().endsWith('.gltf') || url.toLowerCase().includes('.glb?') || url.toLowerCase().includes('.gltf?');
+    const lowerUrl = url.toLowerCase();
+    const isGLB = lowerUrl.endsWith('.glb') || lowerUrl.endsWith('.gltf') || lowerUrl.includes('.glb?') || lowerUrl.includes('.gltf?');
+    const isOBJ = lowerUrl.endsWith('.obj') || lowerUrl.includes('.obj?');
 
     if (isGLB) {
         return <GLBModel url={url} />;
+    }
+    if (isOBJ) {
+        return <OBJModel url={url} />;
     }
     return <STLModel url={url} />;
 }

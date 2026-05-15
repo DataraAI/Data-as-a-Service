@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Box, ChevronDown, ChevronRight, Images, Loader2, Search, WandSparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
@@ -31,6 +31,48 @@ interface MaskPromptOption {
 
 interface MaskOptionsResponse {
   prompts?: MaskPromptOption[];
+}
+
+type HandMeshJobStatus = "queued" | "running" | "succeeded" | "failed";
+
+interface HandMeshJob {
+  job_id: string;
+  status: HandMeshJobStatus;
+  stage: string;
+  route_path: string;
+  mesh_count?: number;
+  output_route_path?: string;
+  output_viewer_path?: string;
+  error?: string;
+}
+
+const HAND_MOTION_ACTIVE_STATUSES = new Set<HandMeshJobStatus>(["queued", "running"]);
+const HAND_MOTION_STAGE_LABELS: Record<string, string> = {
+  staging_frames: "Staging frames",
+  uploading_to_vm: "Uploading to VM",
+  running_vipe: "Running ViPE",
+  running_dynhamr: "Running Dyn-HaMR",
+  uploading_meshes: "Uploading meshes",
+};
+
+function isActiveHandMotionJob(job: HandMeshJob | null) {
+  return Boolean(job && HAND_MOTION_ACTIVE_STATUSES.has(job.status));
+}
+
+function formatHandMotionStatus(status: HandMeshJobStatus) {
+  if (status === "queued") return "Queued";
+  if (status === "running") return "Running";
+  if (status === "succeeded") return "Succeeded";
+  return "Failed";
+}
+
+function formatHandMotionStage(stage: string) {
+  return (
+    HAND_MOTION_STAGE_LABELS[stage] ||
+    stage
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (character) => character.toUpperCase())
+  );
 }
 
 interface MaskGenerationPanelProps {
@@ -87,8 +129,14 @@ export function MaskGenerationPanel({
   const [selectedSubtractInstance, setSelectedSubtractInstance] = useState("");
 
   const [isSubmittingOcclusion, setIsSubmittingOcclusion] = useState(false);
+  const [isSubmittingHandMotion, setIsSubmittingHandMotion] = useState(false);
+  const [handMotionJob, setHandMotionJob] = useState<HandMeshJob | null>(null);
+  const watchedHandMotionJobIdRef = useRef<string | null>(null);
 
   const canSubmitMask = prompt.trim().length > 0 && !isSubmittingMask;
+  const isHandMotionJobActive = isActiveHandMotionJob(handMotionJob);
+  const canSubmitHandMotion =
+    imageCount > 0 && !isSubmittingHandMotion && !isHandMotionJobActive;
 
   const primaryPromptOptions = useMemo(() => {
     const needle = primaryPromptSearch.trim().toLowerCase();
@@ -252,6 +300,135 @@ export function MaskGenerationPanel({
     });
   }, [subtractPrompt]);
 
+  function syncHandMotionJob(
+    job: HandMeshJob | null,
+    options: { watchActive?: boolean; announceTerminal?: boolean } = {},
+  ) {
+    setHandMotionJob(job);
+
+    if (!job) {
+      if (options.watchActive) {
+        watchedHandMotionJobIdRef.current = null;
+      }
+      return;
+    }
+
+    const active = HAND_MOTION_ACTIVE_STATUSES.has(job.status);
+    if (options.watchActive) {
+      watchedHandMotionJobIdRef.current = active ? job.job_id : null;
+    }
+
+    if (!options.announceTerminal) return;
+    if (watchedHandMotionJobIdRef.current !== job.job_id) return;
+
+    if (job.status === "succeeded") {
+      watchedHandMotionJobIdRef.current = null;
+      onGenerationSuccess?.();
+      toast.success("Hand mesh generation finished successfully.", {
+        description:
+          typeof job.mesh_count === "number"
+            ? `${job.mesh_count} OBJ meshes were uploaded to the dataset-level hand_meshes folder.`
+            : "OBJ meshes were uploaded to the dataset-level hand_meshes folder.",
+        action:
+          typeof job.output_viewer_path === "string" && job.output_viewer_path.trim()
+            ? {
+                label: "Open meshes",
+                onClick: () => onOpenViewerPath(job.output_viewer_path as string),
+              }
+            : undefined,
+      });
+      return;
+    }
+
+    if (job.status === "failed") {
+      watchedHandMotionJobIdRef.current = null;
+      toast.error("Hand mesh generation did not complete", {
+        description: job.error || "The Dyn-HaMR job failed before meshes were uploaded.",
+      });
+    }
+  }
+
+  useEffect(() => {
+    if (!showHandMotionGeneration) {
+      syncHandMotionJob(null, { watchActive: true });
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadLatestHandMotionJob() {
+      try {
+        const response = await fetch(
+          `/api/hand-mesh-jobs/latest?route_path=${encodeURIComponent(routePath)}`,
+          {
+            credentials: "include",
+          },
+        );
+
+        if (response.status === 404) {
+          if (!cancelled) {
+            syncHandMotionJob(null, { watchActive: true });
+          }
+          return;
+        }
+
+        const payload = (await response.json().catch(() => ({}))) as HandMeshJob & {
+          error?: string;
+        };
+        if (!response.ok) {
+          throw new Error(payload.error || "Failed to load hand mesh job");
+        }
+        if (!cancelled) {
+          syncHandMotionJob(payload, { watchActive: true });
+        }
+      } catch {
+        if (!cancelled) {
+          syncHandMotionJob(null, { watchActive: true });
+        }
+      }
+    }
+
+    void loadLatestHandMotionJob();
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshKey, routePath, showHandMotionGeneration]);
+
+  useEffect(() => {
+    if (!showHandMotionGeneration || !handMotionJob || !isActiveHandMotionJob(handMotionJob)) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function pollHandMotionJob() {
+      try {
+        const response = await fetch(`/api/hand-mesh-jobs/${encodeURIComponent(handMotionJob.job_id)}`, {
+          credentials: "include",
+        });
+        if (!response.ok) {
+          return;
+        }
+        const payload = (await response.json().catch(() => null)) as HandMeshJob | null;
+        if (!cancelled && payload) {
+          syncHandMotionJob(payload, { announceTerminal: true });
+        }
+      } catch {
+        // Preserve the current job state during transient polling failures.
+      }
+    }
+
+    void pollHandMotionJob();
+    const intervalId = window.setInterval(() => {
+      void pollHandMotionJob();
+    }, 4000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [handMotionJob?.job_id, handMotionJob?.status, showHandMotionGeneration]);
+
   async function handleMaskSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!canSubmitMask) return;
@@ -363,11 +540,58 @@ export function MaskGenerationPanel({
     }
   }
 
-  function handleHandMotionPlaceholder() {
-    toast.info("Hand motion generation UI is ready", {
-      description: "Backend execution will be connected separately.",
-    });
+  async function handleHandMotionSubmit() {
+    if (!canSubmitHandMotion) return;
+
+    setIsSubmittingHandMotion(true);
+    try {
+      const response = await fetch("/api/generate_hand_meshes", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          route_path: routePath,
+        }),
+      });
+
+      const payload = (await response.json().catch(() => ({}))) as HandMeshJob & {
+        error?: string;
+      };
+      if (!response.ok) {
+        throw new Error(payload.error || "Hand mesh generation failed");
+      }
+
+      syncHandMotionJob(payload, { watchActive: true });
+      toast.info(
+        payload.status === "running" ? "Hand mesh job resumed" : "Hand mesh job queued",
+        {
+          description:
+            "Dyn-HaMR is processing this ego frame sequence in the background. We'll keep this panel updated as each stage completes.",
+        },
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Hand mesh generation failed";
+      toast.error("Hand mesh generation did not start", {
+        description: message,
+      });
+    } finally {
+      setIsSubmittingHandMotion(false);
+    }
   }
+
+  const handMotionButtonLabel = isSubmittingHandMotion
+    ? "Queueing job..."
+    : isHandMotionJobActive
+      ? handMotionJob?.status === "queued"
+        ? "Job queued..."
+        : "Running model..."
+      : "Create hand mesh";
+  const handMotionStatusClasses =
+    handMotionJob?.status === "failed"
+      ? "border-destructive/30 bg-destructive/10"
+      : handMotionJob?.status === "succeeded"
+        ? "border-primary/20 bg-primary/5"
+        : "border-border bg-background/40";
 
   return (
     <div className="z-20 flex w-full shrink-0 flex-col border-t border-border bg-sidebar-background font-sans-tech text-xs text-muted-foreground xl:h-full xl:w-80 xl:border-l xl:border-t-0 2xl:w-96">
@@ -704,15 +928,59 @@ export function MaskGenerationPanel({
             {expandedSections.handMotion && (
               <div className="space-y-3 bg-background/30 px-4 pb-4">
                 <p className="text-[11px] leading-relaxed text-muted-foreground">
-                  Create 3D hand meshes from this egocentric frame sequence.
+                  Run ViPE plus Dyn-HaMR across every frame in this ego sequence. Completed
+                  meshes are stored under the dataset-level hand_meshes folder in Azure.
                 </p>
+                <div className="rounded-sm border border-primary/20 bg-primary/5 px-3 py-2 text-[11px] text-muted-foreground">
+                  Uses the full 30fps frame sequence from this leaf ego folder and uploads OBJ
+                  meshes only.
+                </div>
+                {handMotionJob && (
+                  <div className={`rounded-sm border px-3 py-2 ${handMotionStatusClasses}`}>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="font-sans-tech text-[10px] uppercase tracking-wider text-muted-foreground">
+                        Status
+                      </span>
+                      <span className="font-sans-tech text-[10px] uppercase tracking-wider text-foreground">
+                        {formatHandMotionStatus(handMotionJob.status)}
+                      </span>
+                    </div>
+                    <div className="mt-2 text-[11px] text-muted-foreground">
+                      Stage: {formatHandMotionStage(handMotionJob.stage)}
+                    </div>
+                    {typeof handMotionJob.mesh_count === "number" && (
+                      <div className="mt-1 text-[11px] text-muted-foreground">
+                        Meshes: {handMotionJob.mesh_count}
+                      </div>
+                    )}
+                    {handMotionJob.error && (
+                      <div className="mt-2 text-[11px] text-destructive">{handMotionJob.error}</div>
+                    )}
+                    {handMotionJob.status === "succeeded" &&
+                      typeof handMotionJob.output_viewer_path === "string" &&
+                      handMotionJob.output_viewer_path.trim() && (
+                        <button
+                          type="button"
+                          onClick={() => onOpenViewerPath(handMotionJob.output_viewer_path as string)}
+                          className="mt-2 font-sans-tech text-[11px] text-primary underline-offset-4 hover:underline"
+                        >
+                          Open meshes
+                        </button>
+                      )}
+                  </div>
+                )}
                 <Button
                   type="button"
-                  onClick={handleHandMotionPlaceholder}
+                  disabled={!canSubmitHandMotion}
+                  onClick={handleHandMotionSubmit}
                   className="h-10 w-full font-sans-tech text-xs text-primary-foreground"
                 >
-                  <Box className="h-3.5 w-3.5" />
-                  Create hand mesh
+                  {isSubmittingHandMotion || isHandMotionJobActive ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Box className="h-3.5 w-3.5" />
+                  )}
+                  {handMotionButtonLabel}
                 </Button>
               </div>
             )}
