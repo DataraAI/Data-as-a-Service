@@ -5,6 +5,7 @@ import stat
 import uuid
 from contextlib import contextmanager
 from pathlib import Path
+from typing import Callable
 
 import paramiko
 
@@ -74,6 +75,11 @@ SAAS_ROSE_PYTHON_BIN = (
     or _legacy_saas_attr("ROSE_PYTHON_BIN")
     or SAAS_PYTHON_BIN
 )
+SAAS_HAND_MOTION_PYTHON_BIN = (
+    os.getenv("SAAS_HAND_MOTION_PYTHON_BIN")
+    or _legacy_saas_attr("HAND_MOTION_PYTHON_BIN")
+    or SAAS_PYTHON_BIN
+)
 
 REMOTE_USER_HOME = f"/home/{SAAS_USER}"
 REMOTE_SAAS_ROOT = os.getenv("SAAS_REMOTE_ROOT") or f"{REMOTE_USER_HOME}/Software-as-a-Service"
@@ -86,6 +92,10 @@ REMOTE_SEGMENTATION_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "DataraAI_segmenta
 REMOTE_ROSE_RUNNER_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "DataraAI_rose_occlusion.py")
 REMOTE_ROSE_VERIFY_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "verify_rose_runtime.sh")
 REMOTE_ROSE_SETUP_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "setup_rose_runtime.sh")
+REMOTE_HAND_MESH_PIPELINE_SCRIPT = (
+    os.getenv("REMOTE_HAND_MESH_PIPELINE_SCRIPT")
+    or posixpath.join(REMOTE_SAAS_ROOT, "HandMotion", "hand_mesh_pipeline_runner.py")
+)
 REMOTE_SAM3_PACKAGE_ROOT = f"{REMOTE_USER_HOME}/packages/sam3"
 
 
@@ -141,6 +151,39 @@ def _run_command(client, command):
 def _run_bash_script(client, script_body):
     command = f'bash -lc "{_shell_escape(script_body)}"'
     return _run_command_with_status(client, command)
+
+
+def _run_bash_script_streaming(
+    client,
+    script_body,
+    *,
+    line_callback: Callable[[str], None] | None = None,
+):
+    command = f'bash -lc "{_shell_escape(script_body)}"'
+    stdin, stdout, stderr = client.exec_command(command, get_pty=True)
+    _ = stdin
+
+    stdout_lines: list[str] = []
+    while True:
+        line = stdout.readline() if stdout else ""
+        if line:
+            clean_line = line.rstrip("\r\n")
+            stdout_lines.append(clean_line)
+            if line_callback is not None:
+                try:
+                    line_callback(clean_line)
+                except Exception as exc:
+                    logger.warning("Streaming callback failed for command output '%s': %s", clean_line, exc)
+            continue
+
+        if not stdout or stdout.channel.exit_status_ready():
+            break
+
+    exit_status = stdout.channel.recv_exit_status() if stdout else 0
+    err = stderr.read().decode().strip() if stderr else ""
+    out = "\n".join(stdout_lines).strip()
+    logger.info("call_lambda_vm streaming command exit=%s stdout=%s stderr=%s", exit_status, out, err)
+    return out, err, exit_status
 
 
 def _sftp_mkdir_p(sftp, remote_dir):
@@ -549,4 +592,120 @@ def remove_occlusion(
             return None, 500, "ROSE output video could not be downloaded"
     except Exception as exc:
         logger.error("remove_occlusion error: %s", exc, exc_info=True)
+        return None, 500, str(exc)
+
+
+def generate_hand_meshes(
+    *,
+    local_input_dir,
+    local_output_dir,
+    seq,
+    fps=30.0,
+    is_static=False,
+    stage_callback: Callable[[str], None] | None = None,
+):
+    """
+    Upload a local frame folder to the Lambda VM, run the VM-side hand mesh
+    pipeline wrapper, fetch the generated OBJ bundle locally, and clean up the
+    remote job folder. Returns (local_output_dir, status_code, error_message).
+    """
+    if not local_input_dir or not local_output_dir:
+        return None, 400, "Missing input or output directory"
+    if not os.path.isdir(local_input_dir):
+        return None, 400, "Source image directory is missing"
+
+    os.makedirs(local_output_dir, exist_ok=True)
+
+    job_id = uuid.uuid4().hex[:12]
+    remote_root = f"/home/{SAAS_USER}/datara_dynhamr_jobs/{job_id}"
+    remote_input_dir = posixpath.join(remote_root, "input")
+    remote_output_dir = posixpath.join(remote_root, "output")
+    sequence_name = str(seq or f"sequence_{job_id}").strip() or f"sequence_{job_id}"
+
+    try:
+        with _ssh_session() as ssh_client:
+            runner_found, runner_err = _run_command(
+                ssh_client,
+                f'test -f "{_shell_escape(REMOTE_HAND_MESH_PIPELINE_SCRIPT)}" && echo "__FOUND__"',
+            )
+            if "__FOUND__" not in runner_found:
+                message = f"Hand mesh pipeline runner script was not found at {REMOTE_HAND_MESH_PIPELINE_SCRIPT}"
+                logger.error("%s | stderr=%s", message, runner_err)
+                return None, 500, message
+
+            if stage_callback is not None:
+                stage_callback("uploading_to_vm")
+
+            sftp = ssh_client.open_sftp()
+            try:
+                _sftp_put_tree(sftp, local_input_dir, remote_input_dir)
+            finally:
+                sftp.close()
+
+            _run_command(
+                ssh_client,
+                f'chmod +x "{_shell_escape(REMOTE_HAND_MESH_PIPELINE_SCRIPT)}"',
+            )
+
+            def handle_stage_line(line: str) -> None:
+                marker = "__STAGE__:"
+                if not line.startswith(marker):
+                    return
+                stage_name = line[len(marker) :].strip()
+                if stage_name and stage_callback is not None:
+                    stage_callback(stage_name)
+
+            runner_script = (
+                f'cd "{_shell_escape(REMOTE_SAAS_ROOT)}" && '
+                f'"{_shell_escape(SAAS_HAND_MOTION_PYTHON_BIN)}" -s '
+                f'"{_shell_escape(REMOTE_HAND_MESH_PIPELINE_SCRIPT)}" '
+                f'--image_dir "{_shell_escape(remote_input_dir)}" '
+                f'--output_dir "{_shell_escape(remote_output_dir)}" '
+                f'--seq "{_shell_escape(sequence_name)}" '
+                f'--fps "{float(fps):g}" '
+                f'--is_static "{"true" if is_static else "false"}"'
+            )
+            stdout, stderr, runner_status = _run_bash_script_streaming(
+                ssh_client,
+                runner_script,
+                line_callback=handle_stage_line,
+            )
+            if runner_status != 0:
+                logger.error("Hand mesh pipeline runner failed: %s", stderr or stdout)
+                _run_command(ssh_client, f'rm -rf "{_shell_escape(remote_root)}"')
+                return None, 500, stderr or stdout or "Dyn-HaMR hand mesh generation failed"
+
+            remote_result_dir = remote_output_dir
+            for line in reversed(stdout.splitlines()):
+                candidate = line.strip()
+                if candidate.startswith(remote_output_dir):
+                    remote_result_dir = candidate
+                    break
+
+            find_stdout, find_stderr, find_status = _run_bash_script(
+                ssh_client,
+                f'find "{_shell_escape(remote_result_dir)}" -type f -iname "*.obj" | head -n 1',
+            )
+            if find_status != 0 or not find_stdout.strip():
+                logger.error(
+                    "Hand mesh pipeline completed without OBJ meshes. stdout=%s stderr=%s find_stderr=%s",
+                    stdout,
+                    stderr,
+                    find_stderr,
+                )
+                _run_command(ssh_client, f'rm -rf "{_shell_escape(remote_root)}"')
+                return None, 500, "Hand mesh pipeline completed without returning OBJ meshes"
+
+            sftp = ssh_client.open_sftp()
+            try:
+                _sftp_get_tree(sftp, remote_result_dir, local_output_dir)
+            finally:
+                sftp.close()
+
+            _run_command(ssh_client, f'rm -rf "{_shell_escape(remote_root)}"')
+            if os.path.isdir(local_output_dir):
+                return local_output_dir, 200, ""
+            return None, 500, "Hand mesh output folder could not be downloaded"
+    except Exception as exc:
+        logger.error("generate_hand_meshes error: %s", exc, exc_info=True)
         return None, 500, str(exc)
