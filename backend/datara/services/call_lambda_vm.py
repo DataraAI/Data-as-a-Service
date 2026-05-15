@@ -699,8 +699,13 @@ def generate_hand_meshes(
             )
             if runner_status != 0:
                 logger.error("Hand mesh pipeline runner failed: %s", stderr or stdout)
-                _run_command(ssh_client, f'rm -rf "{_shell_escape(remote_root)}"')
-                return None, 500, stderr or stdout or "Dyn-HaMR hand mesh generation failed"
+                debug_message = (
+                    (stderr or stdout or "Dyn-HaMR hand mesh generation failed").rstrip()
+                    + f"\n[remote_debug_root] {remote_root}"
+                    + f"\n[remote_vipe_log] {posixpath.join(remote_output_dir, 'vipe_results', 'logs', 'vipe.log')}"
+                    + f"\n[remote_dynhamr_log] {posixpath.join(remote_output_dir, 'mesh_output', 'logs', 'dynhamr.log')}"
+                )
+                return None, 500, debug_message
 
             remote_result_dir = remote_output_dir
             for line in reversed(stdout.splitlines()):
@@ -720,8 +725,14 @@ def generate_hand_meshes(
                     stderr,
                     find_stderr,
                 )
-                _run_command(ssh_client, f'rm -rf "{_shell_escape(remote_root)}"')
-                return None, 500, "Hand mesh pipeline completed without returning OBJ meshes"
+                return (
+                    None,
+                    500,
+                    "Hand mesh pipeline completed without returning OBJ meshes"
+                    + f"\n[remote_debug_root] {remote_root}"
+                    + f"\n[remote_vipe_log] {posixpath.join(remote_output_dir, 'vipe_results', 'logs', 'vipe.log')}"
+                    + f"\n[remote_dynhamr_log] {posixpath.join(remote_output_dir, 'mesh_output', 'logs', 'dynhamr.log')}",
+                )
 
             sftp = ssh_client.open_sftp()
             try:
