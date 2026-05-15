@@ -17,12 +17,13 @@ interface Task {
 }
 
 interface TaskIntelligencePanelProps {
+    assetId?: string;
     videoID: string;
     videoURL: string;
     datasetName?: string;
 }
 
-export default function TaskIntelligencePanel({ videoID, videoURL, datasetName = "default_dataset" }: TaskIntelligencePanelProps) {
+export default function TaskIntelligencePanel({ assetId, videoID, videoURL, datasetName = "default_dataset" }: TaskIntelligencePanelProps) {
     const [loading, setLoading] = useState(false);
     const [tasks, setTasks] = useState<Task[] | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -38,17 +39,19 @@ export default function TaskIntelligencePanel({ videoID, videoURL, datasetName =
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
+                    asset_id: assetId || videoID,
                     videoID,
                     videoURL,
                     datasetName
                 }),
             });
 
+            const result = await response.json().catch(() => ({}));
+
             if (!response.ok) {
-                throw new Error('Failed to generate task intelligence');
+                throw new Error(result.error || 'Failed to generate task intelligence');
             }
 
-            const result = await response.json();
             setTasks(result.data.tasks);
         } catch (err: any) {
             setError(err.message || 'An unexpected error occurred');
