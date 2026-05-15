@@ -80,6 +80,10 @@ SAAS_HAND_MOTION_PYTHON_BIN = (
     or _legacy_saas_attr("HAND_MOTION_PYTHON_BIN")
     or SAAS_PYTHON_BIN
 )
+SAAS_VIPE_PYTHON_BIN = os.getenv("SAAS_VIPE_PYTHON_BIN") or _legacy_saas_attr("VIPE_PYTHON_BIN")
+SAAS_DYNHAMR_PYTHON_BIN = os.getenv("SAAS_DYNHAMR_PYTHON_BIN") or _legacy_saas_attr("DYNHAMR_PYTHON_BIN")
+SAAS_DYNHAMR_ROOT = os.getenv("SAAS_DYNHAMR_ROOT") or _legacy_saas_attr("DYNHAMR_ROOT")
+SAAS_VIPE_WORK_DIR = os.getenv("SAAS_VIPE_WORK_DIR") or _legacy_saas_attr("VIPE_WORK_DIR")
 
 REMOTE_USER_HOME = f"/home/{SAAS_USER}"
 REMOTE_SAAS_ROOT = os.getenv("SAAS_REMOTE_ROOT") or f"{REMOTE_USER_HOME}/Software-as-a-Service"
@@ -236,6 +240,27 @@ def _rose_env_exports():
         exports.append(f'export ROSE_ROOT="{_shell_escape(SAAS_ROSE_ROOT)}"')
     if SAAS_ROSE_PYTHON_BIN:
         exports.append(f'export ROSE_PYTHON_BIN="{_shell_escape(SAAS_ROSE_PYTHON_BIN)}"')
+    exports.append("export PYTHONNOUSERSITE=1")
+    return "; ".join(exports)
+
+
+def _hand_motion_env_exports():
+    exports = []
+    exports.extend(
+        [
+            "unset VIPE_CMD",
+            "unset VIPE_BIN",
+            "unset DYNHAMR_PYTHON_CMD",
+        ]
+    )
+    if SAAS_VIPE_PYTHON_BIN:
+        exports.append(f'export VIPE_PYTHON_BIN="{_shell_escape(SAAS_VIPE_PYTHON_BIN)}"')
+    if SAAS_DYNHAMR_PYTHON_BIN:
+        exports.append(f'export DYNHAMR_PYTHON_BIN="{_shell_escape(SAAS_DYNHAMR_PYTHON_BIN)}"')
+    if SAAS_DYNHAMR_ROOT:
+        exports.append(f'export DYNHAMR_ROOT="{_shell_escape(SAAS_DYNHAMR_ROOT)}"')
+    if SAAS_VIPE_WORK_DIR:
+        exports.append(f'export VIPE_WORK_DIR="{_shell_escape(SAAS_VIPE_WORK_DIR)}"')
     exports.append("export PYTHONNOUSERSITE=1")
     return "; ".join(exports)
 
@@ -655,7 +680,9 @@ def generate_hand_meshes(
                 if stage_name and stage_callback is not None:
                     stage_callback(stage_name)
 
-            runner_script = (
+            export_prefix = _hand_motion_env_exports()
+            runner_script = export_prefix + "; " if export_prefix else ""
+            runner_script += (
                 f'cd "{_shell_escape(REMOTE_SAAS_ROOT)}" && '
                 f'"{_shell_escape(SAAS_HAND_MOTION_PYTHON_BIN)}" -s '
                 f'"{_shell_escape(REMOTE_HAND_MESH_PIPELINE_SCRIPT)}" '
