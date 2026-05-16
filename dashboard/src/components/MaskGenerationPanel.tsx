@@ -41,8 +41,11 @@ interface HandMeshJob {
   stage: string;
   route_path: string;
   mesh_count?: number;
+  video_count?: number;
   output_route_path?: string;
   output_viewer_path?: string;
+  output_video_route_path?: string;
+  output_video_viewer_path?: string;
   error?: string;
 }
 
@@ -324,18 +327,31 @@ export function MaskGenerationPanel({
     if (job.status === "succeeded") {
       watchedHandMotionJobIdRef.current = null;
       onGenerationSuccess?.();
+      const descriptionParts: string[] = [];
+      if (typeof job.mesh_count === "number") {
+        descriptionParts.push(`${job.mesh_count} OBJ meshes were uploaded to the dataset-level hand_meshes folder.`);
+      } else {
+        descriptionParts.push("OBJ meshes were uploaded to the dataset-level hand_meshes folder.");
+      }
+      if (typeof job.video_count === "number" && job.video_count > 0) {
+        descriptionParts.push(
+          `${job.video_count} rendered MP4 ${job.video_count === 1 ? "video was" : "videos were"} uploaded to the dataset-level hand_motion_videos folder.`,
+        );
+      }
       toast.success("Hand mesh generation finished successfully.", {
-        description:
-          typeof job.mesh_count === "number"
-            ? `${job.mesh_count} OBJ meshes were uploaded to the dataset-level hand_meshes folder.`
-            : "OBJ meshes were uploaded to the dataset-level hand_meshes folder.",
+        description: descriptionParts.join(" "),
         action:
-          typeof job.output_viewer_path === "string" && job.output_viewer_path.trim()
+          typeof job.output_video_viewer_path === "string" && job.output_video_viewer_path.trim()
             ? {
-                label: "Open meshes",
-                onClick: () => onOpenViewerPath(job.output_viewer_path as string),
+                label: "Open video",
+                onClick: () => onOpenViewerPath(job.output_video_viewer_path as string),
               }
-            : undefined,
+            : typeof job.output_viewer_path === "string" && job.output_viewer_path.trim()
+              ? {
+                  label: "Open meshes",
+                  onClick: () => onOpenViewerPath(job.output_viewer_path as string),
+                }
+              : undefined,
       });
       return;
     }
