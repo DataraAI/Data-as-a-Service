@@ -6,6 +6,7 @@ import { Loader2, AlertTriangle } from 'lucide-react';
 
 interface ModelProps {
     url: string;
+    fileName?: string;
 }
 
 function STLModel({ url }: ModelProps) {
@@ -28,10 +29,10 @@ function OBJModel({ url }: ModelProps) {
     return <primitive object={object} />;
 }
 
-function ModelSelector({ url }: ModelProps) {
-    const lowerUrl = url.toLowerCase();
-    const isGLB = lowerUrl.endsWith('.glb') || lowerUrl.endsWith('.gltf') || lowerUrl.includes('.glb?') || lowerUrl.includes('.gltf?');
-    const isOBJ = lowerUrl.endsWith('.obj') || lowerUrl.includes('.obj?');
+function ModelSelector({ url, fileName }: ModelProps) {
+    const probe = (fileName || url).toLowerCase();
+    const isGLB = probe.endsWith('.glb') || probe.endsWith('.gltf') || probe.includes('.glb?') || probe.includes('.gltf?');
+    const isOBJ = probe.endsWith('.obj') || probe.includes('.obj?');
 
     if (isGLB) {
         return <GLBModel url={url} />;
@@ -58,13 +59,15 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, fallbac
 
 interface ThreeDViewerProps {
     url: string;
+    fileName?: string;
 }
 
-export function ThreeDViewer({ url }: ThreeDViewerProps) {
+export function ThreeDViewer({ url, fileName }: ThreeDViewerProps) {
     return (
         <div className="w-full h-full relative">
             <Canvas shadows gl={{ antialias: true }} camera={{ position: [0, 0, 150], fov: 50 }}>
                 <ErrorBoundary
+                    key={fileName || url}
                     fallback={
                         <Html center>
                             <div className="flex flex-col items-center bg-slate-900/80 p-4 rounded border border-red-500 text-red-500">
@@ -85,7 +88,7 @@ export function ThreeDViewer({ url }: ThreeDViewerProps) {
                         }
                     >
                         <Stage environment="city" intensity={0.6}>
-                            <ModelSelector url={url} />
+                            <ModelSelector url={url} fileName={fileName} />
                         </Stage>
                     </Suspense>
                 </ErrorBoundary>
