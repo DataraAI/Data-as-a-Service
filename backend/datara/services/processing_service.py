@@ -535,6 +535,12 @@ class ProcessingService:
             payload["output_viewer_path"] = result["output_viewer_path"]
         if "output_route_path" in result:
             payload["output_route_path"] = result["output_route_path"]
+        if "video_count" in result:
+            payload["video_count"] = result["video_count"]
+        if "output_video_viewer_path" in result:
+            payload["output_video_viewer_path"] = result["output_video_viewer_path"]
+        if "output_video_route_path" in result:
+            payload["output_video_route_path"] = result["output_video_route_path"]
         error_message = str(job.get("error_message") or "").strip()
         if error_message:
             payload["error"] = error_message
@@ -679,6 +685,45 @@ class ProcessingService:
         )
         return mesh_files
 
+    def _collect_hand_mesh_video_files(self, output_dir: str) -> list[dict[str, Any]]:
+        video_files: list[dict[str, Any]] = []
+        used_names: set[str] = set()
+
+        for root, _dirs, file_names in os.walk(output_dir):
+            for file_name in file_names:
+                lower_name = file_name.lower()
+                if not lower_name.endswith((".mp4", ".mov", ".m4v", ".webm")):
+                    continue
+
+                local_path = os.path.join(root, file_name)
+                relative_path = os.path.relpath(local_path, output_dir)
+                relative_dir = os.path.dirname(relative_path)
+                extension = os.path.splitext(file_name)[1].lower() or ".mp4"
+                video_name = self._slugify_filename_part(os.path.splitext(os.path.basename(file_name))[0], "rendered-video")
+                candidate_name = f"{video_name}{extension}"
+
+                if relative_dir:
+                    prefix = self._slugify_filename_part(relative_dir.replace(os.sep, "-"), "video")
+                    candidate_name = f"{prefix}-{candidate_name}"
+
+                base_name, extension = os.path.splitext(candidate_name)
+                duplicate_index = 2
+                while candidate_name.lower() in used_names:
+                    candidate_name = f"{base_name}-{duplicate_index}{extension}"
+                    duplicate_index += 1
+                used_names.add(candidate_name.lower())
+
+                video_files.append(
+                    {
+                        "local_path": local_path,
+                        "file_name": candidate_name,
+                        "relative_path": relative_path.replace(os.sep, "/"),
+                    }
+                )
+
+        video_files.sort(key=lambda item: str(item["file_name"]).lower())
+        return video_files
+
     def _upload_hand_meshes(
         self,
         *,
@@ -739,6 +784,72 @@ class ProcessingService:
                     "frameCount": source_image_count,
                     "fps": fps,
                     "sourceMeshPath": mesh["relative_path"],
+                }
+            )
+            uploaded_blobs.append(blob_name)
+
+        return uploaded_blobs
+
+    def _upload_hand_mesh_videos(
+        self,
+        *,
+        dataset: dict[str, Any],
+        output_prefix: str,
+        video_files: list[dict[str, Any]],
+        source_task: str,
+        source_image_count: int,
+        fps: float,
+    ) -> list[str]:
+        container_client = self.azure_service.get_container_client(dataset["storage_container"])
+        uploaded_blobs: list[str] = []
+
+        for video in video_files:
+            blob_name = f"{output_prefix.rstrip('/')}/{video['file_name']}"
+            with open(video["local_path"], "rb") as handle:
+                container_client.upload_blob(
+                    name=blob_name,
+                    data=handle,
+                    overwrite=True,
+                    content_settings=ContentSettings(content_type="video/mp4"),
+                )
+
+            existing_doc = self.azure_service.get_cosmos_doc_for_blob(dataset["storage_container"], blob_name) or {}
+            self.azure_service.upsert_cosmos_item(
+                {
+                    "id": existing_doc.get("id", os.urandom(16).hex()),
+                    "docType": "rendered_video",
+                    "containerName": dataset["storage_container"],
+                    "datasetName": output_prefix.rstrip("/"),
+                    "datasetId": dataset["id"],
+                    "ownerUserId": dataset["owner_user_id"],
+                    "visibility": dataset["visibility"],
+                    "sourceDatasetId": dataset["id"],
+                    "view": "hand_motion_videos",
+                    "frameName": video["file_name"],
+                    "blobPath": blob_name,
+                    "date": existing_doc.get("date", ""),
+                    "frameId": None,
+                    "width": None,
+                    "height": None,
+                    "miscTags": [
+                        "hand_motion_video",
+                        "generated_hand_motion_video",
+                        "dyn_hamr",
+                        "video",
+                        "mp4",
+                    ],
+                    "task": source_task,
+                    "VLM_tags": existing_doc.get("VLM_tags", []),
+                    "VLM_tags_by_prompt": existing_doc.get("VLM_tags_by_prompt", {}),
+                    "VLM_effective_prompts": existing_doc.get("VLM_effective_prompts", {}),
+                    "VLM_last_prompt_label": existing_doc.get("VLM_last_prompt_label"),
+                    "vlm": existing_doc.get("vlm"),
+                    "sharpnessScore": None,
+                    "clear": None,
+                    "sourceType": "dyn_hamr_hand_motion_video",
+                    "frameCount": source_image_count,
+                    "fps": fps,
+                    "sourceVideoPath": video["relative_path"],
                 }
             )
             uploaded_blobs.append(blob_name)
@@ -852,6 +963,8 @@ class ProcessingService:
             dataset_root = self.sql_store.route_path_for_dataset(dataset)
         output_route_path = f"{dataset_root.rstrip('/')}/hand_meshes"
         output_storage_prefix = f"{dataset['storage_prefix'].rstrip('/')}/hand_meshes"
+        output_video_route_path = f"{dataset_root.rstrip('/')}/hand_motion_videos"
+        output_video_storage_prefix = f"{dataset['storage_prefix'].rstrip('/')}/hand_motion_videos"
         job_root = tempfile.mkdtemp(prefix="hand_mesh_job_", dir=DATASET_LIST_DIR)
         staged_image_dir = os.path.join(job_root, "source_frames")
         local_output_dir = os.path.join(job_root, "dynhamr_output")
@@ -902,6 +1015,7 @@ class ProcessingService:
             mesh_files = self._collect_hand_mesh_files(local_output_dir)
             if not mesh_files:
                 raise RuntimeError("No OBJ hand meshes were returned")
+            video_files = self._collect_hand_mesh_video_files(local_output_dir)
 
             self.sql_store.update_processing_job(
                 job_id,
@@ -910,10 +1024,20 @@ class ProcessingService:
             )
             self.azure_service.delete_blobs_with_prefix(dataset["storage_container"], output_storage_prefix)
             self.azure_service.delete_cosmos_docs_for_prefix(dataset["storage_container"], output_storage_prefix)
+            self.azure_service.delete_blobs_with_prefix(dataset["storage_container"], output_video_storage_prefix)
+            self.azure_service.delete_cosmos_docs_for_prefix(dataset["storage_container"], output_video_storage_prefix)
             uploaded_blobs = self._upload_hand_meshes(
                 dataset=dataset,
                 output_prefix=output_storage_prefix,
                 mesh_files=mesh_files,
+                source_task=source_task,
+                source_image_count=len(route_images),
+                fps=fps,
+            )
+            uploaded_videos = self._upload_hand_mesh_videos(
+                dataset=dataset,
+                output_prefix=output_video_storage_prefix,
+                video_files=video_files,
                 source_task=source_task,
                 source_image_count=len(route_images),
                 fps=fps,
@@ -923,6 +1047,9 @@ class ProcessingService:
                 "mesh_count": len(uploaded_blobs),
                 "output_route_path": output_route_path,
                 "output_viewer_path": f"/viewer/{output_route_path}",
+                "video_count": len(uploaded_videos),
+                "output_video_route_path": output_video_route_path,
+                "output_video_viewer_path": f"/viewer/{output_video_route_path}",
                 "view": "hand_meshes",
             }
             self.sql_store.update_processing_job(
