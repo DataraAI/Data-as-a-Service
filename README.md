@@ -7,7 +7,8 @@ A comprehensive AI platform for robotics training and deployment with modern Rea
 ### Prerequisites
 - **Node.js**: Latest LTS version (18+)
 - **Python**: 3.12 or 3.13 Stable (*Note: Avoid Python 3.14 as some libraries like `backports.zstd` are not yet supported*)
-- **System Drivers**: Microsoft ODBC Driver 18 for SQL Server (x64)
+- **Azure SQL access**: Auth/catalog data uses SQLAlchemy with the `pymssql` driver (`mssql+pymssql://`). No Microsoft ODBC Driver or unixODBC installation is required.
+- **macOS (Apple Silicon only)**: If `import pymssql` fails with a `_bcp_batch` symbol error, install FreeTDS and rebuild: `brew install freetds`, then `pip install --no-build-isolation --no-binary :all: pymssql==2.3.2`.
 - **Docker** (optional, for containerized deployment)
 
 ### Development Setup
@@ -19,7 +20,23 @@ cd Data-as-a-Service
 ```
 
 **2. Environment Configuration:**
-Obtain the necessary environment variables and configuration files and place them into their respective directories in your local project root. (You can use config/.env.example as a starting point).
+Copy `config/.env.example` to `config/.env` and fill in your values. The backend loads `config/.env` automatically (see `backend/datara/config.py`).
+
+**Auth database (Azure SQL)** — choose one approach:
+- Set `AZURE_SQL_SERVER`, `AZURE_SQL_DATABASE`, `AZURE_SQL_USERNAME`, and `AZURE_SQL_PASSWORD` (the app builds a `mssql+pymssql://` URL), or
+- Set `AUTH_DATABASE_URL` directly, e.g. `mssql+pymssql://user:pass@your-server.database.windows.net:1433/your-db?charset=utf8`
+
+**Azure Blob Storage** — set `BLOB_CONNECTION_STRING` or `AZURE_STORAGE_CONNECTION_STRING`. Use the standard semicolon-separated format and ensure the protocol value is exactly `https`, not duplicated:
+
+```env
+# Correct
+DefaultEndpointsProtocol=https;AccountName=your-account;AccountKey=...;EndpointSuffix=core.windows.net
+
+# Incorrect (causes DNS errors like "defaultendpointsprotocol=https")
+DefaultEndpointsProtocol=DefaultEndpointsProtocol=https;AccountName=...
+```
+
+Optional: `AZURE_STORAGE_ACCOUNT_NAME`, `AZURE_STORAGE_ACCOUNT_KEY`, `AZURE_BLOB_CONTAINER`, `AZURE_PUBLIC_BLOB_CONTAINER`, and Cosmos DB variables for metadata features.
 
 We also recommend installing packages through a Python virtual environment. On the Data-as-a-Service directory:
 
@@ -57,14 +74,18 @@ npm run dev
 
 ### Docker Setup
 
+The backend image no longer installs unixODBC or Microsoft ODBC Driver 18; database connectivity uses `pymssql` from `backend/requirements.txt`.
+
 ```bash
-# Development with live reload
+# Development with live reload (mounts config/.env into the backend service)
 cd docker
-docker-compose -f docker-compose.dev.yml up
+docker compose -f docker-compose.dev.yml up
 
 # Production deployment
 ./scripts/deploy.sh prod
 ```
+
+For Docker development, place Azure SQL and Blob credentials in `config/.env` before starting compose. Production compose mounts `config/` read-only for the same variables.
 
 ## 📁 Project Structure
 

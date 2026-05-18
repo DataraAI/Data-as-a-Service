@@ -27,11 +27,13 @@ services:
   backend:
     build:
       context: ..
-      dockerfile: Dockerfile-backend
+      dockerfile: docker/Dockerfile-backend
       target: development
     container_name: datara-backend
     ports:
       - "5000:5000"
+    env_file:
+      - ../config/.env
     environment:
       FLASK_ENV: development
       FLASK_DEBUG: 1
