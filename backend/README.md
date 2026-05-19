@@ -173,15 +173,21 @@ DEBUG=false
 FLASK_HOST=127.0.0.1
 FLASK_PORT=5000
 
-# Azure
-AZURE_STORAGE_ACCOUNT_NAME=your_account
+# Auth database (Azure SQL — pymssql driver, no ODBC required)
+AZURE_SQL_SERVER=your-server.database.windows.net
+AZURE_SQL_DATABASE=your-database
+AZURE_SQL_USERNAME=your-username
+AZURE_SQL_PASSWORD=your-password
+# Or: AUTH_DATABASE_URL=mssql+pymssql://user:pass@host:1433/db?charset=utf8
+
+# Azure Blob Storage (see config/.env.example for connection string format)
+BLOB_CONNECTION_STRING=DefaultEndpointsProtocol=https;AccountName=your_account;AccountKey=...;EndpointSuffix=core.windows.net
 AZURE_BLOB_CONTAINER=roboteyeview
-AZURE_STORAGE_CONNECTION_STRING=your_connection_string
+AZURE_PUBLIC_BLOB_CONTAINER=roboteyeview-public
+
+# Azure Cosmos DB (optional metadata)
 AZURE_COSMOS_ENDPOINT=your_endpoint
 AZURE_COSMOS_KEY=your_key
-
-# Google Drive
-GDRIVE_OAUTH_TOKEN=your_token
 
 # Logging
 LOG_LEVEL=INFO

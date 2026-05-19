@@ -16,6 +16,28 @@ from datara.config import settings
 from datara.logging import logger
 
 
+def _normalize_azure_connection_string(connection_string: str) -> str:
+    """Repair common connection-string mistakes that break blob endpoint URLs."""
+    if not connection_string:
+        return connection_string
+
+    normalized_parts: list[str] = []
+    for segment in connection_string.split(";"):
+        segment = segment.strip()
+        if not segment:
+            continue
+        if "=" not in segment:
+            normalized_parts.append(segment)
+            continue
+
+        key, value = segment.split("=", 1)
+        if key == "DefaultEndpointsProtocol" and value.startswith("DefaultEndpointsProtocol="):
+            value = value.split("=", 1)[1]
+        normalized_parts.append(f"{key}={value}")
+
+    return ";".join(normalized_parts)
+
+
 class AzureService:
     """Service object for Azure Blob Storage and Cosmos DB operations."""
 
@@ -30,7 +52,7 @@ class AzureService:
         self._init_cosmos_db()
 
     def _init_blob_service(self) -> None:
-        connection_string = settings.azure_connection_string
+        connection_string = _normalize_azure_connection_string(settings.azure_connection_string or "")
         if connection_string:
             self.blob_service_client = BlobServiceClient.from_connection_string(connection_string)
             if not self.account_key:

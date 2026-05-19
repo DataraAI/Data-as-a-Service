@@ -84,17 +84,15 @@ def _build_azure_sqlalchemy_url(
     database: str | None,
     username: str | None,
     password: str | None,
-    driver: str,
 ) -> str | None:
     if not (server and database and username and password):
         return None
 
     quoted_username = quote_plus(username)
     quoted_password = quote_plus(password)
-    quoted_driver = quote_plus(driver)
     return (
-        f"mssql+pyodbc://{quoted_username}:{quoted_password}@{server}/{database}"
-        f"?driver={quoted_driver}&Encrypt=yes&TrustServerCertificate=no"
+        f"mssql+pymssql://{quoted_username}:{quoted_password}@{server}/{database}"
+        f"?charset=utf8"
     )
 
 
@@ -189,7 +187,6 @@ class Settings:
     azure_sql_database: str | None = field(default_factory=lambda: os.getenv("AZURE_SQL_DATABASE"))
     azure_sql_username: str | None = field(default_factory=lambda: os.getenv("AZURE_SQL_USERNAME"))
     azure_sql_password: str | None = field(default_factory=lambda: os.getenv("AZURE_SQL_PASSWORD"))
-    azure_sql_driver: str = field(default_factory=lambda: os.getenv("AZURE_SQL_DRIVER", "ODBC Driver 18 for SQL Server"))
 
     @property
     def auth_database_url(self) -> str:
@@ -201,7 +198,6 @@ class Settings:
             database=self.azure_sql_database,
             username=self.azure_sql_username,
             password=self.azure_sql_password,
-            driver=self.azure_sql_driver,
         )
         if built:
             return built
