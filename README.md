@@ -8,7 +8,7 @@ A comprehensive AI platform for robotics training and deployment with modern Rea
 - **Node.js**: Latest LTS version (18+)
 - **Python**: 3.12 or 3.13 Stable (*Note: Avoid Python 3.14 as some libraries like `backports.zstd` are not yet supported*)
 - **Azure SQL access**: Auth/catalog data uses SQLAlchemy with the `pymssql` driver (`mssql+pymssql://`). No Microsoft ODBC Driver or unixODBC installation is required.
-- **macOS (Apple Silicon only)**: If `import pymssql` fails with a `_bcp_batch` symbol error, install FreeTDS and rebuild: `brew install freetds`, then `pip install --no-build-isolation --no-binary :all: pymssql==2.3.2`.
+- **macOS (Apple Silicon only)**: If `import pymssql` fails with a `_bcp_batch` symbol error, install FreeTDS and rebuild: `brew install freetds`, then `pip install --no-build-isolation --no-binary :all: pymssql==2.3.2`. If it still fails, run `LDFLAGS="-L/opt/homebrew/lib" CFLAGS="-I/opt/homebrew/include" pip install --force-reinstall --no-cache-dir pymssql`, then rerun previous commands.
 - **Docker** (optional, for containerized deployment)
 
 ### Development Setup
