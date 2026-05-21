@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DataraAI — AI Training Data for Physical Robots</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    --teal: #0d9488;
+    --teal-bright: #1de9b6;
+    --blue: #1d4ed8;
+    --purple: #7c3aed;
+    --amber: #b45309;
+    --bg: #ffffff;
+    --bg-alt: #f8fafc;
+    --bg-alt2: #f1f5f9;
+    --bg-card: #ffffff;
+    --border: #e5e7eb;
+    --muted: #6b7280;
+    --text: #0f172a;
+    --text-2: #374151;
+    background: var(--bg);
+    color: var(--text);
+  }
+
+  /* ── NAV ── */
+  .nav-d {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(255,255,255,0.97); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: stretch; height: 88px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .nav-d-logo {
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    padding: 0 32px; border-right: 1px solid var(--border);
+    min-width: 220px; flex-shrink: 0; position: relative; text-align: center;
+  }
+  .nav-d-logo.active::after {
+    content: ''; position: absolute; bottom: 0; left: 20%; right: 20%;
+    height: 2px; border-radius: 2px 2px 0 0; background: var(--teal);
+  }
+  .nav-d-logo .d-logo-name { font-size: 18px; font-weight: 800; letter-spacing: .04em; color: var(--teal); }
+  .nav-d-logo .d-logo-sub { font-size: 11px; font-weight: 500; color: var(--muted); margin-top: 2px; }
+
+  .nav-d-tabs { display: flex; align-items: stretch; flex: 1; }
+  .nav-d-tab {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 4px; text-decoration: none; color: var(--muted);
+    border-right: 1px solid var(--border);
+    position: relative; transition: color .2s, background .2s;
+  }
+  .nav-d-tab:hover { color: var(--text); background: var(--bg-alt); }
+  .nav-d-tab .tab-label { font-size: 15px; font-weight: 700; }
+  .nav-d-tab .tab-sub { font-size: 10px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; opacity: .6; }
+  .nav-d-tab::after { content: ''; position: absolute; bottom: 0; left: 20%; right: 20%; height: 2px; border-radius: 2px 2px 0 0; background: transparent; transition: background .2s; }
+  .nav-d-tab.active { color: var(--teal); background: rgba(13,148,136,0.04); }
+  .nav-d-tab.active::after { background: var(--teal); }
+
+  .nav-d-actions { display: flex; align-items: center; padding: 0 28px; gap: 10px; border-left: 1px solid var(--border); flex-shrink: 0; }
+  .btn-d-ghost { padding: 7px 16px; background: transparent; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; font-family: inherit; transition: border-color .2s, color .2s; }
+  .btn-d-ghost:hover { border-color: var(--teal); color: var(--teal); }
+  .btn-d-solid { padding: 7px 18px; background: var(--teal); border: none; border-radius: 8px; font-size: 13px; font-weight: 700; color: #fff; cursor: pointer; font-family: inherit; transition: opacity .2s; }
+  .btn-d-solid:hover { opacity: .88; }
+
+  /* ── HERO ── */
+  .hero-d {
+    min-height: 100vh; display: flex; flex-direction: column;
+    justify-content: flex-start; align-items: center;
+    position: relative; overflow: hidden; text-align: center;
+    padding: 48px 56px 100px;
+    background:
+      radial-gradient(ellipse 70% 60% at 50% 30%, rgba(13,148,136,0.06) 0%, transparent 65%),
+      radial-gradient(ellipse 45% 45% at 85% 70%, rgba(29,78,216,0.04) 0%, transparent 60%),
+      #ffffff;
+  }
+  .hero-d-bg { display: none; }
+  .hero-d-inner { max-width: 860px; margin: 0 auto; position: relative; z-index: 1; }
+
+  .hero-d-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 13px; font-weight: 600; letter-spacing: .04em;
+    color: var(--teal); background: #f0fdf9;
+    border: 1px solid #99f6e4; padding: 9px 22px; border-radius: 30px; margin-bottom: 28px;
+  }
+  .hero-d-badge .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--teal); flex-shrink: 0; }
+
+  .hero-d h1 { font-size: clamp(38px,5.5vw,64px); font-weight: 900; line-height: 1.0; letter-spacing: -2px; color: var(--text); margin-bottom: 0; }
+  .hero-d h1 .teal-grad {
+    background: linear-gradient(90deg, #0d9488 0%, #1d4ed8 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .hero-d-connector { font-size: 22px; color: var(--muted); line-height: 1.55; margin: 24px auto 0; max-width: 680px; font-weight: 400; }
+  .hero-d-resolve { font-size: clamp(38px,5.5vw,64px); font-weight: 900; line-height: 1.0; letter-spacing: -2px; color: var(--text); margin-top: 120px; margin-bottom: 28px; }
+  .hero-d-resolve .teal { color: var(--teal); }
+  .hero-d-sub { font-size: 17px; color: var(--muted); line-height: 1.7; max-width: 560px; margin: 0 auto 44px; }
+
+  .hero-d-btns { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+  .btn-d-primary { padding: 14px 32px; background: var(--teal); color: #fff; border-radius: 30px; font-size: 15px; font-weight: 800; border: none; cursor: pointer; font-family: inherit; box-shadow: 0 6px 20px rgba(13,148,136,0.2); transition: opacity .2s, transform .2s; }
+  .btn-d-primary:hover { opacity: .88; transform: translateY(-1px); }
+  .btn-d-outline { padding: 14px 32px; background: transparent; color: var(--text-2); border-radius: 30px; font-size: 15px; font-weight: 700; border: 1.5px solid var(--border); cursor: pointer; font-family: inherit; transition: all .2s; }
+  .btn-d-outline:hover { border-color: #9ca3af; background: var(--bg-alt); }
+
+  /* ── LOGOS STRIP ── */
+  .logos-d {
+    border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+    background: var(--bg-alt2); padding: 22px 56px;
+    display: flex; flex-direction: column; align-items: center; gap: 14px;
+  }
+  .logos-d .ld-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .14em; color: #9ca3af; }
+  .logos-d .ld-list { display: flex; gap: 36px; align-items: center; flex-wrap: wrap; justify-content: center; }
+  .logos-d .ld-item { font-size: 13px; font-weight: 700; color: #9ca3af; letter-spacing: -.2px; }
+
+  /* ── SECTION HEADER ── */
+  .sec-d { display: flex; flex-direction: column; align-items: center; text-align: center; margin-bottom: 40px; }
+  .sec-d-eyebrow {
+    display: inline-flex; align-items: center; gap: 12px;
+    font-size: 20px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--teal); background: #f0fdf9;
+    border: 1.5px solid #99f6e4; padding: 12px 44px; border-radius: 60px; margin-bottom: 20px;
+  }
+  .sec-d-eyebrow .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--teal); flex-shrink: 0; }
+  .sec-d-eyebrow.blue { color: var(--blue); background: #eff6ff; border-color: #93c5fd; }
+  .sec-d-eyebrow.blue .dot { background: var(--blue); }
+  .sec-d-title { font-size: 36px; font-weight: 900; color: var(--text); letter-spacing: -1.2px; margin-bottom: 10px; }
+  .sec-d-sub { font-size: 15px; color: var(--muted); max-width: 480px; line-height: 1.6; }
+
+  /* ── TRANSITION BAND ── */
+  .transition-band { display: flex; align-items: center; gap: 20px; padding: 40px 56px 48px; max-width: 1300px; margin: 0 auto; }
+  .tb-line { flex: 1; height: 1px; background: linear-gradient(90deg, transparent, rgba(13,148,136,0.18), transparent); }
+
+  /* ── PRODUCTS ── */
+  .products-d {
+    padding: 80px 56px; max-width: unset;
+    background: var(--bg-alt);
+    box-shadow: inset 0 1px 0 rgba(13,148,136,0.07), inset 0 -1px 0 rgba(13,148,136,0.05);
+  }
+  .products-d .sec-d,
+  .products-d .pd-grid { max-width: 1300px; margin-left: auto; margin-right: auto; }
+  .pd-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; }
+
+  .pd-card {
+    background: #fff; border-radius: 22px; padding: 0 0 32px;
+    display: flex; flex-direction: column; align-items: center; text-align: center;
+    cursor: pointer; transition: transform .25s, box-shadow .25s;
+    position: relative; overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  }
+  .pd-card:hover { transform: translateY(-6px); }
+  .pd-card.c1 { border: 1px solid rgba(13,148,136,0.22); border-top: 4px solid #0d9488; padding-top: 34px; }
+  .pd-card.c2 { border: 1px solid rgba(29,78,216,0.18); border-top: 4px solid #1d4ed8; padding-top: 34px; }
+  .pd-card.c3 { border: 1px solid rgba(124,58,237,0.18); border-top: 4px solid #7c3aed; padding-top: 34px; }
+  .pd-card.c4 { border: 1px solid rgba(180,83,9,0.18); border-top: 4px solid #b45309; padding-top: 34px; }
+  .pd-card:hover.c1 { box-shadow: 0 20px 56px rgba(13,148,136,0.12); }
+  .pd-card:hover.c2 { box-shadow: 0 20px 56px rgba(29,78,216,0.10); }
+  .pd-card:hover.c3 { box-shadow: 0 20px 56px rgba(124,58,237,0.10); }
+  .pd-card:hover.c4 { box-shadow: 0 20px 56px rgba(180,83,9,0.10); }
+
+  .pd-card-inner { padding: 0 24px; display: flex; flex-direction: column; align-items: center; width: 100%; flex: 1; }
+
+  .pd-icon { width: 72px; height: 72px; border-radius: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto 18px; }
+  .pd-icon.teal { background: #f0fdf9; border: 1.5px solid #5eead4; }
+  .pd-icon.blue { background: #eff6ff; border: 1.5px solid #93c5fd; }
+  .pd-icon.purple { background: #f5f3ff; border: 1.5px solid #c4b5fd; }
+  .pd-icon.orange { background: #fffbeb; border: 1.5px solid #fcd34d; }
+  .pd-icon svg { width: 36px; height: 36px; }
+
+  .pd-badge { display: inline-block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; padding: 3px 10px; border-radius: 4px; margin-bottom: 10px; }
+  .pd-badge.lib { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+  .pd-badge.pat { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+
+  .pd-name { font-size: 24px; font-weight: 900; color: var(--text); letter-spacing: -.6px; margin-bottom: 8px; line-height: 1.1; }
+  .pd-name.xl { font-size: 28px; letter-spacing: -.8px; }
+  .pd-tagline { font-size: 14px; color: var(--muted); margin-bottom: 22px; line-height: 1.5; }
+  .pd-tagline.lg { font-size: 15px; }
+
+  .pd-pills { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-bottom: 26px; width: 100%; }
+  .pd-pill { display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; padding: 7px 14px; border-radius: 20px; width: 100%; }
+  .pd-card.c1 .pd-pill { background: #f0fdf9; color: #0f766e; border: 1px solid #99f6e4; }
+  .pd-card.c2 .pd-pill { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+  .pd-card.c3 .pd-pill { background: #f5f3ff; color: #6d28d9; border: 1px solid #ddd6fe; }
+  .pd-card.c4 .pd-pill { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+
+  .pd-link { font-size: 12.5px; font-weight: 800; text-decoration: none; margin-top: auto; }
+  .pd-card.c1 .pd-link { color: var(--teal); }
+  .pd-card.c2 .pd-link { color: var(--blue); }
+  .pd-card.c3 .pd-link { color: var(--purple); }
+  .pd-card.c4 .pd-link { color: var(--amber); }
+
+  /* ── SOLUTIONS ── */
+  .solutions-d {
+    max-width: unset; margin: 0; padding: 80px 56px;
+    background: var(--bg);
+    box-shadow: inset 0 1px 0 rgba(13,148,136,0.07), inset 0 -1px 0 rgba(13,148,136,0.05);
+  }
+  .solutions-d .sec-d,
+  .solutions-d .sol-card,
+  .solutions-d .sol-roadmap { max-width: 1300px; margin-left: auto; margin-right: auto; }
+
+  .sol-card { position: relative; background: #fff; border: 1px solid var(--border); border-radius: 28px; overflow: hidden; margin-bottom: 24px; transition: border-color .3s, box-shadow .3s; box-shadow: 0 2px 12px rgba(0,0,0,0.04); }
+  .sol-card:hover { border-color: #5eead4; box-shadow: 0 8px 32px rgba(13,148,136,0.08); }
+  .sol-card-2 { border-color: #bfdbfe; }
+  .sol-card-2:hover { border-color: #93c5fd; box-shadow: 0 8px 32px rgba(29,78,216,0.08); }
+  .sol-num { position: absolute; top: 28px; right: 44px; font-size: 96px; font-weight: 900; color: rgba(0,0,0,0.03); line-height: 1; letter-spacing: -4px; pointer-events: none; user-select: none; }
+
+  .sol-text { padding: 44px 52px 36px; border-bottom: 1px solid var(--border); }
+  .sol-kicker { font-size: 10px; font-weight: 800; letter-spacing: .22em; text-transform: uppercase; color: var(--teal); margin-bottom: 20px; }
+  .sol-card-2 .sol-kicker { color: var(--blue); }
+  .sol-text-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: start; }
+  .sol-title { font-size: 38px; font-weight: 900; letter-spacing: -1.5px; color: var(--text); line-height: 1.08; margin-bottom: 16px; }
+  .sol-sub { font-size: 14.5px; color: var(--muted); line-height: 1.7; padding-left: 16px; border-left: 2px solid #5eead4; }
+  .sol-card-2 .sol-sub { border-left-color: #93c5fd; }
+
+  .sol-checks { list-style: none; display: flex; flex-direction: column; gap: 11px; margin-bottom: 28px; }
+  .sol-checks li { display: flex; align-items: center; gap: 12px; font-size: 14px; color: var(--text-2); }
+  .sol-checks li::before { content: ''; width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
+    background: rgba(13,148,136,0.07) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath d='M2 5l2.5 2.5L8 3' stroke='%230d9488' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E") no-repeat center;
+    border: 1.5px solid rgba(13,148,136,0.3); }
+  .sol-card-2 .sol-checks li::before {
+    background-color: rgba(29,78,216,0.07);
+    border-color: rgba(29,78,216,0.3);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath d='M2 5l2.5 2.5L8 3' stroke='%231d4ed8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E"); }
+
+  .sol-stats { display: flex; align-items: center; background: var(--bg-alt); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .sol-stat { flex: 1; padding: 14px 20px; text-align: center; }
+  .sol-stat-n { font-size: 24px; font-weight: 900; color: var(--text); letter-spacing: -.5px; line-height: 1; margin-bottom: 4px; }
+  .sol-stat-l { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+  .sol-stat-sep { width: 1px; height: 40px; background: var(--border); flex-shrink: 0; }
+
+  .sol-imgs { display: grid; grid-template-columns: 1fr 48px 1fr; height: 420px; }
+  .sol-img-panel { position: relative; overflow: hidden; }
+  .sol-img-panel img { width: 100%; height: 100%; object-fit: cover; display: block; filter: brightness(.88) saturate(1.05); transition: transform .6s ease; }
+  .sol-img-panel:hover img { transform: scale(1.04); }
+  .sol-img-caption { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; white-space: nowrap; backdrop-filter: blur(12px); border-radius: 20px; padding: 7px 16px; font-size: 12px; font-weight: 700; letter-spacing: .04em; }
+  .sol-cap-before { background: rgba(239,68,68,0.18); border: 1px solid rgba(239,68,68,0.38); color: #b91c1c; }
+  .sol-cap-after  { background: rgba(13,148,136,0.15); border: 1px solid rgba(13,148,136,0.35); color: #0f766e; }
+  .sol-cap-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .sol-cap-dot-red  { background: #ef4444; }
+  .sol-cap-dot-teal { background: var(--teal); }
+  .sol-imgs-arrow { display: flex; align-items: center; justify-content: center; background: var(--bg-alt); font-size: 20px; color: #9ca3af; font-weight: 300; }
+
+  .sol-roadmap { margin-top: 16px; background: var(--bg-alt); border: 1px solid var(--border); border-radius: 28px; overflow: hidden; text-align: center; }
+  .sol-roadmap-header { padding: 48px 52px 36px; }
+  .sol-roadmap-eyebrow { font-size: 10px; font-weight: 800; letter-spacing: .22em; text-transform: uppercase; color: var(--teal); margin-bottom: 12px; }
+  .sol-roadmap-title { font-size: 32px; font-weight: 900; letter-spacing: -1px; color: var(--text); margin-bottom: 10px; }
+  .sol-roadmap-sub { font-size: 15px; color: var(--muted); line-height: 1.6; max-width: 560px; margin: 0 auto; }
+  .sol-roadmap-img { padding: 0 40px 40px; }
+  .sol-roadmap-img img { width: 100%; max-width: 1100px; border-radius: 16px; display: block; margin: 0 auto; border: 1px solid var(--border); }
+
+  /* ── CUSTOMER RESULTS ── */
+  .traction-d { background: var(--bg-alt); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  .traction-d-inner { max-width: 1300px; margin: 0 auto; padding: 64px 56px; }
+  .td-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-top: 32px; }
+  .td-card { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 28px 24px; transition: border-color .2s, box-shadow .2s; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+  .td-card:hover { border-color: #5eead4; box-shadow: 0 8px 24px rgba(13,148,136,0.08); }
+  .td-result { font-size: 44px; font-weight: 900; color: var(--teal); letter-spacing: -1.5px; margin-bottom: 6px; line-height: 1; }
+  .td-company { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+  .td-detail { font-size: 13px; color: var(--muted); line-height: 1.6; margin-bottom: 14px; }
+  .td-vert { display: inline-block; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; padding: 3px 9px; border-radius: 3px; background: #f0fdf9; color: var(--teal); border: 1px solid #99f6e4; }
+
+  /* ── CTA ── */
+  .cta-d2 {
+    padding: 72px 56px; text-align: center;
+    background: var(--text);
+    color: #fff;
+  }
+  .cta-d2 h2 { font-size: clamp(24px, 2.8vw, 36px); font-weight: 900; letter-spacing: -.8px; margin-bottom: 14px; color: #fff; }
+  .cta-d2 h2 span { color: var(--teal-bright); }
+  .cta-d2 p { font-size: 16px; color: rgba(255,255,255,0.5); margin-bottom: 36px; }
+  .cta-d2-btns { display: flex; gap: 12px; justify-content: center; }
+  .cta-d2 .btn-w { padding: 13px 30px; background: #1de9b6; color: #0f172a; border-radius: 9px; font-weight: 800; font-size: 14px; border: none; cursor: pointer; font-family: inherit; transition: opacity .2s; }
+  .cta-d2 .btn-w:hover { opacity: .88; }
+  .cta-d2 .btn-t { padding: 13px 30px; background: transparent; color: rgba(255,255,255,0.5); border-radius: 9px; font-weight: 600; font-size: 14px; border: 1px solid rgba(255,255,255,0.15); cursor: pointer; font-family: inherit; transition: all .2s; }
+  .cta-d2 .btn-t:hover { color: #fff; border-color: rgba(255,255,255,0.3); }
+
+  /* ── FOOTER ── */
+  .footer-d { background: #fff; border-top: 1px solid var(--border); padding: 36px 56px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #9ca3af; }
+  .footer-d .fd-logo { font-size: 16px; font-weight: 800; color: var(--teal); letter-spacing: .04em; }
+  .footer-d .fd-links { display: flex; gap: 24px; }
+  .footer-d .fd-links a { color: #9ca3af; text-decoration: none; transition: color .2s; }
+  .footer-d .fd-links a:hover { color: var(--text); }
+</style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav class="nav-d">
+    <div class="nav-d-logo">
+      <div class="d-logo-name">DataraAI</div>
+      <div class="d-logo-sub">Data-as-a-Service</div>
+    </div>
+    <div class="nav-d-tabs">
+      <a href="#products" class="nav-d-tab">
+        <span class="tab-label">Products</span>
+        <span class="tab-sub">AI Data</span>
+      </a>
+      <a href="#solutions" class="nav-d-tab">
+        <span class="tab-label">Solutions</span>
+        <span class="tab-sub">Use Cases</span>
+      </a>
+      <a href="#customers" class="nav-d-tab">
+        <span class="tab-label">Customers</span>
+        <span class="tab-sub">Case Studies</span>
+      </a>
+      <a href="company_light.html" class="nav-d-tab">
+        <span class="tab-label">Company</span>
+        <span class="tab-sub">Team · Mission</span>
+      </a>
+    </div>
+    <div class="nav-d-actions">
+      <button class="btn-d-ghost">Sign In</button>
+      <button class="btn-d-solid">Get Access</button>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero-d">
+    <div class="hero-d-bg"></div>
+    <div class="hero-d-inner">
+      <div class="hero-d-badge"><span class="dot"></span>NVIDIA Inception Member · 2025</div>
+      <h1>The Sim-to-Real Gap<br>is <span class="teal-grad">Costing You.</span></h1>
+      <p class="hero-d-connector">Robots fail in production because training data doesn't match the real world.</p>
+      <p class="hero-d-resolve">DataraAI <span class="teal">closes the gap.</span></p>
+      <p class="hero-d-sub">The complete data stack for Physical AI. Humanoid. Automotive. Warehouse. Data Center.</p>
+      <div class="hero-d-btns">
+        <button class="btn-d-primary">See How It Works</button>
+        <button class="btn-d-outline">Request a Demo</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- TRANSITION -->
+  <div class="transition-band">
+    <div class="tb-line"></div>
+    <div class="tb-line"></div>
+  </div>
+
+  <!-- PRODUCTS -->
+  <section id="products" class="products-d">
+    <div class="sec-d">
+      <div class="sec-d-eyebrow"><span class="dot"></span>Products</div>
+      <div class="sec-d-title">The Full Physical AI Data Stack</div>
+      <p class="sec-d-sub">Four products built for production-grade robot training.</p>
+    </div>
+
+    <svg style="display:none">
+      <symbol id="ico-hub" viewBox="0 0 48 48" fill="none">
+        <rect x="6" y="14" width="36" height="26" rx="4" stroke="currentColor" stroke-width="2.5"/>
+        <path d="M6 22h36M6 30h36" stroke="currentColor" stroke-width="2" stroke-dasharray="3 2"/>
+        <circle cx="12" cy="18" r="2" fill="currentColor"/>
+        <circle cx="12" cy="26" r="2" fill="currentColor"/>
+        <circle cx="12" cy="34" r="2" fill="currentColor"/>
+        <path d="M18 8h12M24 8v6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+      </symbol>
+      <symbol id="ico-ann" viewBox="0 0 48 48" fill="none">
+        <rect x="6" y="8" width="36" height="28" rx="4" stroke="currentColor" stroke-width="2.5"/>
+        <path d="M14 18h20M14 24h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <rect x="30" y="20" width="8" height="8" rx="2" stroke="currentColor" stroke-width="2"/>
+        <path d="M16 36l4 6h8l4-6" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+      </symbol>
+      <symbol id="ico-hand" viewBox="0 0 48 48" fill="none">
+        <path d="M24 10c-4 0-7 3-7 7v4h14v-4c0-4-3-7-7-7z" stroke="currentColor" stroke-width="2.5"/>
+        <rect x="14" y="21" width="20" height="14" rx="3" stroke="currentColor" stroke-width="2.5"/>
+        <path d="M10 28h4M34 28h4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+        <circle cx="20" cy="28" r="2" fill="currentColor"/>
+        <circle cx="28" cy="28" r="2" fill="currentColor"/>
+        <path d="M20 35v5M28 35v5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+      </symbol>
+      <symbol id="ico-task" viewBox="0 0 48 48" fill="none">
+        <rect x="8" y="30" width="32" height="10" rx="3" stroke="currentColor" stroke-width="2.5"/>
+        <path d="M16 30v-8l8-8 8 8v8" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
+        <path d="M24 14v-6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+        <circle cx="24" cy="6" r="2.5" fill="currentColor"/>
+        <path d="M20 30v-4h8v4" stroke="currentColor" stroke-width="2"/>
+        <circle cx="14" cy="35" r="2" fill="currentColor"/>
+        <circle cx="34" cy="35" r="2" fill="currentColor"/>
+      </symbol>
+    </svg>
+
+    <div class="pd-grid">
+
+      <div class="pd-card c1" onclick="window.location='robodatahub_light.html'">
+        <div class="pd-card-inner">
+          <div class="pd-icon teal"><svg style="color:#0d9488"><use href="#ico-hub"/></svg></div>
+          <span class="pd-badge lib">Core Platform</span>
+          <div class="pd-name xl">RoboDataHub</div>
+          <p class="pd-tagline lg">Central intelligence layer for Physical AI training data</p>
+          <div class="pd-pills">
+            <div class="pd-pill">EGO + EXO labelled datasets</div>
+            <div class="pd-pill">4 industry verticals</div>
+            <div class="pd-pill">500K+ annotated sequences</div>
+          </div>
+          <a href="robodatahub_light.html" class="pd-link">Browse datasets →</a>
+        </div>
+      </div>
+
+      <div class="pd-card c2" onclick="window.location='roboeyeview_light.html'">
+        <div class="pd-card-inner">
+          <div class="pd-icon blue"><svg style="color:#1d4ed8"><use href="#ico-ann"/></svg></div>
+          <span class="pd-badge pat">Patented IP</span>
+          <div class="pd-name">RoboAnnotator</div>
+          <p class="pd-tagline">AI-assisted annotation platform for robot training data</p>
+          <div class="pd-pills">
+            <div class="pd-pill">EXO → EGO view synthesis</div>
+            <div class="pd-pill">85% → 95%+ accuracy</div>
+            <div class="pd-pill">60% labelling cost cut</div>
+          </div>
+          <a href="roboeyeview_light.html" class="pd-link">Learn more →</a>
+        </div>
+      </div>
+
+      <div class="pd-card c3" onclick="window.location='robohandmotion_light.html'">
+        <div class="pd-card-inner">
+          <div class="pd-icon purple"><svg style="color:#7c3aed"><use href="#ico-hand"/></svg></div>
+          <span class="pd-badge pat">Patented IP</span>
+          <div class="pd-name">RoboHandMotion</div>
+          <p class="pd-tagline">Precision hand & tool interaction data for dexterous robots</p>
+          <div class="pd-pills">
+            <div class="pd-pill">Finger-level motion capture</div>
+            <div class="pd-pill">Tool + object interaction</div>
+            <div class="pd-pill">Humanoid-ready format</div>
+          </div>
+          <a href="robohandmotion_light.html" class="pd-link">Learn more →</a>
+        </div>
+      </div>
+
+      <div class="pd-card c4" onclick="window.location='robotaskmanipulator_light.html'">
+        <div class="pd-card-inner">
+          <div class="pd-icon orange"><svg style="color:#b45309"><use href="#ico-task"/></svg></div>
+          <span class="pd-badge lib">Task Intelligence</span>
+          <div class="pd-name">RoboTaskManipulator</div>
+          <p class="pd-tagline">Full task workflows for assembly, pick-place & cabling</p>
+          <div class="pd-pills">
+            <div class="pd-pill">Assembly & pick-place data</div>
+            <div class="pd-pill">95% precision — Peer Robotics</div>
+            <div class="pd-pill">Multi-step task sequences</div>
+          </div>
+          <a href="robotaskmanipulator_light.html" class="pd-link">See case study →</a>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- SOLUTIONS -->
+  <section id="solutions" class="solutions-d">
+    <div class="sec-d">
+      <div class="sec-d-eyebrow"><span class="dot"></span>Solutions</div>
+      <div class="sec-d-title">Real-World Automation, Ready to Deploy</div>
+      <p class="sec-d-sub">See the same task — done manually today, automated by robots tomorrow.</p>
+    </div>
+
+    <div class="sol-card">
+      <div class="sol-num">01</div>
+      <div class="sol-text">
+        <div class="sol-kicker">Data Center · NVL72 Infrastructure</div>
+        <div class="sol-text-inner">
+          <div>
+            <h3 class="sol-title">Rack Cable Installation</h3>
+            <p class="sol-sub">Training data for robots handling dense NVL72 GPU cluster cabling — power, network, and management cables across OEM/ODM rack production lines.</p>
+          </div>
+          <div>
+            <ul class="sol-checks">
+              <li>Identify correct cable type and port</li>
+              <li>Align connector and insert with full seating</li>
+              <li>Route and dress cables without cross-over</li>
+              <li>Detect mis-seats and anomalies in real time</li>
+            </ul>
+            <div class="sol-stats">
+              <div class="sol-stat"><div class="sol-stat-n">60%</div><div class="sol-stat-l">Less rework</div></div>
+              <div class="sol-stat-sep"></div>
+              <div class="sol-stat"><div class="sol-stat-n">3×</div><div class="sol-stat-l">Faster cycle</div></div>
+              <div class="sol-stat-sep"></div>
+              <div class="sol-stat"><div class="sol-stat-n">99.1%</div><div class="sol-stat-l">Accuracy</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="sol-imgs">
+        <div class="sol-img-panel">
+          <img src="https://plus.unsplash.com/premium_photo-1683134238579-a7575f7eba35?w=1200&q=88" alt="Technician manually connecting cables"/>
+          <div class="sol-img-caption sol-cap-before"><span class="sol-cap-dot sol-cap-dot-red"></span>Before · Manual</div>
+        </div>
+        <div class="sol-imgs-arrow">→</div>
+        <div class="sol-img-panel">
+          <img src="https://images.unsplash.com/photo-1682559736721-c2e77ff4c650?w=1200&q=88" alt="Automated GPU cluster cabling"/>
+          <div class="sol-img-caption sol-cap-after"><span class="sol-cap-dot sol-cap-dot-teal"></span>After · Automated</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sol-card sol-card-2">
+      <div class="sol-num">02</div>
+      <div class="sol-text">
+        <div class="sol-kicker">Manufacturing Automation · Rack Assembly</div>
+        <div class="sol-text-inner">
+          <div>
+            <h3 class="sol-title">Server Rack Integration</h3>
+            <p class="sol-sub">End-to-end training data for robots that pick, align, and insert server sleds into rack rails — replacing a 2-person manual process with a single robot arm operating 24/7.</p>
+          </div>
+          <div>
+            <ul class="sol-checks">
+              <li>Pick sled, carry and align to rack rail</li>
+              <li>Force-controlled insertion and latch verification</li>
+              <li>Handle varying sled weights and positions</li>
+              <li>Post-install barcode scan and QC sign-off</li>
+            </ul>
+            <div class="sol-stats">
+              <div class="sol-stat"><div class="sol-stat-n">2→1</div><div class="sol-stat-l">Workers replaced</div></div>
+              <div class="sol-stat-sep"></div>
+              <div class="sol-stat"><div class="sol-stat-n">3×</div><div class="sol-stat-l">Faster insertion</div></div>
+              <div class="sol-stat-sep"></div>
+              <div class="sol-stat"><div class="sol-stat-n">24/7</div><div class="sol-stat-l">Operation</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="sol-imgs">
+        <div class="sol-img-panel">
+          <img src="img/rack-manual.png" alt="Workers manually inserting server sled"/>
+          <div class="sol-img-caption sol-cap-before"><span class="sol-cap-dot sol-cap-dot-red"></span>Before · 2 Workers</div>
+        </div>
+        <div class="sol-imgs-arrow">→</div>
+        <div class="sol-img-panel">
+          <img src="img/rack-robot.png" alt="Robot arm inserting server sled"/>
+          <div class="sol-img-caption sol-cap-after"><span class="sol-cap-dot sol-cap-dot-teal"></span>After · Robot Arm</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sol-roadmap">
+      <div class="sol-roadmap-header">
+        <div class="sol-roadmap-eyebrow">From Use Case to Production</div>
+        <div class="sol-roadmap-title">How We Work With Data Centers</div>
+        <p class="sol-roadmap-sub">From target use case to production robot deployment in a 6-month pilot.</p>
+      </div>
+      <div class="sol-roadmap-img">
+        <img src="img/pilot-roadmap.png" alt="6-month pilot roadmap"/>
+      </div>
+    </div>
+  </section>
+
+  <!-- CUSTOMER RESULTS -->
+  <section id="customers" class="traction-d">
+    <div class="traction-d-inner">
+      <div class="sec-d">
+        <div class="sec-d-eyebrow blue"><span class="dot"></span>Customers</div>
+        <div class="sec-d-title">Real Results in Production</div>
+        <p class="sec-d-sub">Measurable outcomes from live deployments across robotics verticals.</p>
+      </div>
+      <div class="td-grid">
+        <div class="td-card">
+          <div class="td-result">3.8×</div>
+          <div class="td-company">Figure AI</div>
+          <p class="td-detail">Faster model convergence on manipulation tasks using RoboDataHub dexterous sequences vs. in-house collection.</p>
+          <span class="td-vert">Humanoid</span>
+        </div>
+        <div class="td-card">
+          <div class="td-result" style="color:#7c3aed">60%</div>
+          <div class="td-company">BMW Robotics</div>
+          <p class="td-detail">Reduction in labeling cost for production-line vision models using RoboEyeView EGO synthesis pipeline.</p>
+          <span class="td-vert" style="background:#f5f3ff;color:#7c3aed;border-color:#ddd6fe;">Automotive</span>
+        </div>
+        <div class="td-card">
+          <div class="td-result" style="color:#1d4ed8">99.1%</div>
+          <div class="td-company">Foxconn Smart Factory</div>
+          <p class="td-detail">Label accuracy on rack-navigation sequences, exceeding internal baseline by 4.7 percentage points.</p>
+          <span class="td-vert" style="background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe;">Data Center</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LOGOS STRIP -->
+  <div class="logos-d">
+    <div class="ld-label">Trusted by teams at</div>
+    <div class="ld-list">
+      <span class="ld-item">NVIDIA</span>
+      <span class="ld-item">BMW Group</span>
+      <span class="ld-item">Figure AI</span>
+      <span class="ld-item">Boston Dynamics</span>
+      <span class="ld-item">Foxconn</span>
+      <span class="ld-item">Waymo</span>
+      <span class="ld-item">1X Technologies</span>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <section class="cta-d2">
+    <h2>Ready to close the Sim-to-Real gap?</h2>
+    <p>Join leading robotics companies using DataraAI's real-world data to achieve 95%+ precision.</p>
+    <div class="cta-d2-btns">
+      <button class="btn-w">Request a Demo</button>
+      <button class="btn-t">Explore RoboDataHub</button>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer-d">
+    <div class="fd-logo">DataraAI</div>
+    <div class="fd-links">
+      <a href="#">Products</a>
+      <a href="#">Docs</a>
+      <a href="#">Customers</a>
+      <a href="company_light.html">Company</a>
+      <a href="#">Contact</a>
+    </div>
+    <div>© 2025 DataraAI · NVIDIA Inception Member</div>
+  </footer>
+
+<script>
+  const logo = document.querySelector('.nav-d-logo');
+  const tabs = document.querySelectorAll('.nav-d-tab');
+  const navHeight = 88;
+  const sections = [
+    { el: document.querySelector('.hero-d'),         tab: null },
+    { el: document.getElementById('products'),       tab: document.querySelector('[href="#products"]') },
+    { el: document.getElementById('solutions'),      tab: document.querySelector('[href="#solutions"]') },
+    { el: document.getElementById('customers'),      tab: document.querySelector('[href="#customers"]') },
+  ].filter(s => s.el);
+  function updateActive() {
+    const scrollY = window.scrollY + navHeight + 60;
+    let current = sections[0];
+    for (const s of sections) { if (s.el.offsetTop <= scrollY) current = s; }
+    logo.classList.remove('active');
+    tabs.forEach(t => t.classList.remove('active'));
+    if (current.tab) current.tab.classList.add('active');
+    else logo.classList.add('active');
+  }
+  window.addEventListener('scroll', updateActive, { passive: true });
+  updateActive();
+</script>
+</body>
+</html>

@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RoboHandMotion — DataraAI</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    --teal: #0d9488;
+    --blue: #1d4ed8;
+    --purple: #7c3aed;
+    --orange: #ea580c;
+    --amber: #b45309;
+    --bg: #ffffff;
+    --bg-alt: #f8fafc;
+    --bg-alt2: #f1f5f9;
+    --bg-card: #ffffff;
+    --border: #e5e7eb;
+    --muted: #6b7280;
+    --text: #0f172a;
+    --text-2: #374151;
+    background: var(--bg);
+    color: var(--text);
+  }
+
+  /* ── NAV ── */
+  .nav-d {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(255,255,255,0.97); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: stretch; height: 88px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .nav-d-logo {
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    padding: 0 32px; border-right: 1px solid var(--border);
+    min-width: 220px; flex-shrink: 0; text-align: center;
+    text-decoration: none; transition: background .2s;
+  }
+  .nav-d-logo:hover { background: rgba(124,58,237,0.04); }
+  .nav-d-logo .d-logo-name { font-size: 18px; font-weight: 800; letter-spacing: .04em; color: var(--teal); }
+  .nav-d-logo .d-logo-sub { font-size: 11px; font-weight: 500; color: var(--muted); margin-top: 2px; }
+
+  .nav-d-tabs { display: flex; align-items: stretch; flex: 1; }
+  .nav-d-tab {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 4px; text-decoration: none; color: var(--muted);
+    border-right: 1px solid var(--border);
+    position: relative; transition: color .2s, background .2s;
+  }
+  .nav-d-tab:last-child { border-right: none; }
+  .nav-d-tab:hover { color: var(--text); background: var(--bg-alt); }
+  .nav-d-tab .tab-label { font-size: 15px; font-weight: 700; }
+  .nav-d-tab .tab-sub { font-size: 10px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; opacity: .6; }
+  .nav-d-tab::after { content: ''; position: absolute; bottom: 0; left: 20%; right: 20%; height: 2px; border-radius: 2px 2px 0 0; background: transparent; transition: background .2s; }
+  .nav-d-tab.active { color: var(--purple); background: rgba(124,58,237,0.04); }
+  .nav-d-tab.active::after { background: var(--purple); }
+  .nav-d-tab.active .tab-sub { opacity: .8; }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: 220px; flex-shrink: 0;
+    background: var(--bg-alt);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    min-height: calc(100vh - 88px);
+  }
+  .sidebar-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px; border-radius: 9px;
+    text-decoration: none; margin-bottom: 4px;
+    transition: background .15s; color: var(--text-2);
+  }
+  .sidebar-item:hover { background: rgba(124,58,237,0.05); }
+  .sidebar-item.active { background: rgba(124,58,237,0.08); border: 1px solid rgba(124,58,237,0.18); }
+
+  /* ── Transform card ── */
+  .xform-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px; overflow: hidden;
+    padding: 20px 24px 20px 27px;
+    transition: box-shadow .25s, border-color .25s;
+    position: relative;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  }
+  .xform-card::before {
+    content: ''; position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px; border-radius: 14px 0 0 14px;
+  }
+  .card-dk::before { background: linear-gradient(to bottom, #7c3aed 0%, rgba(124,58,237,0.15) 100%); }
+  .card-dk:hover { box-shadow: 0 6px 28px rgba(124,58,237,0.10); border-color: rgba(124,58,237,0.2); }
+  .card-ht::before { background: linear-gradient(to bottom, #ea580c 0%, rgba(234,88,12,0.15) 100%); }
+  .card-ht:hover { box-shadow: 0 6px 28px rgba(234,88,12,0.10); border-color: rgba(234,88,12,0.2); }
+
+  /* ── EXO image box ── */
+  .exo-box {
+    position: relative; border-radius: 10px; overflow: hidden;
+    border: 1.5px solid rgba(29,78,216,0.4); height: 160px;
+    box-shadow: 0 2px 8px rgba(29,78,216,0.08);
+  }
+  .exo-label { position: absolute; top: 8px; left: 8px; font-size: 9px; font-weight: 800; letter-spacing: .12em; color: #fff; background: #1d4ed8; padding: 3px 8px; border-radius: 4px; }
+
+  /* ── Motion output box ── */
+  .motion-box {
+    position: relative; border-radius: 8px; overflow: hidden;
+    border: 1.5px solid rgba(124,58,237,0.4); height: 160px;
+    box-shadow: 0 2px 8px rgba(124,58,237,0.08);
+  }
+  .motion-label { position: absolute; top: 6px; left: 6px; font-size: 8px; font-weight: 800; letter-spacing: .08em; color: #fff; background: #7c3aed; padding: 2px 6px; border-radius: 3px; }
+
+  /* ── Output grid ── */
+  .output-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+  /* ── Arrow pipe (purple) ── */
+  .pipe { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 0 16px; flex-shrink: 0; }
+  .pipe-line { width: 2px; height: 24px; background: linear-gradient(to bottom, rgba(124,58,237,0.1), rgba(124,58,237,0.4), rgba(124,58,237,0.1)); }
+  .pipe-badge {
+    background: rgba(124,58,237,0.05);
+    border: 1.5px solid rgba(124,58,237,0.28);
+    border-radius: 16px; padding: 16px 14px; text-align: center; white-space: nowrap;
+  }
+
+  /* ── Stats strip ── */
+  .stat-strip { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 28px; }
+  .stat-tile { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; text-align: center; transition: border-color .2s; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+  .stat-tile:hover { border-color: rgba(124,58,237,0.22); }
+  .stat-num { font-size: 26px; font-weight: 900; color: var(--purple); letter-spacing: -1px; margin: 0; }
+  .stat-lbl { font-size: 10px; font-weight: 600; color: var(--muted); margin: 3px 0 0; letter-spacing: .1em; text-transform: uppercase; }
+
+  /* ── Section heading ── */
+  .section-head { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+  .section-pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 8px; flex-shrink: 0; }
+  .section-pill-dk { background: rgba(124,58,237,0.07); border: 1px solid rgba(124,58,237,0.18); }
+  .section-pill-ht { background: rgba(234,88,12,0.07);  border: 1px solid rgba(234,88,12,0.18); }
+
+  /* ── Tags ── */
+  .tag { display: inline-block; font-size: 9px; font-weight: 600; padding: 2px 7px; border-radius: 3px; }
+  .tag-teal   { background: rgba(13,148,136,0.08);  color: #0d9488; border: 1px solid rgba(13,148,136,0.2); }
+  .tag-blue   { background: rgba(29,78,216,0.08);   color: #1d4ed8; border: 1px solid rgba(29,78,216,0.2); }
+  .tag-orange { background: rgba(234,88,12,0.08);   color: #ea580c; border: 1px solid rgba(234,88,12,0.2); }
+  .tag-purple { background: rgba(124,58,237,0.08);  color: #7c3aed; border: 1px solid rgba(124,58,237,0.2); }
+
+  /* ── Availability ── */
+  .avail-lib { font-size: 10px; font-weight: 700; color: #16a34a; background: rgba(22,163,74,0.08); border: 1px solid rgba(22,163,74,0.2); padding: 3px 10px; border-radius: 10px; white-space: nowrap; }
+  .avail-od  { font-size: 10px; font-weight: 700; color: #b45309; background: rgba(180,83,9,0.08);  border: 1px solid rgba(180,83,9,0.2);  padding: 3px 10px; border-radius: 10px; white-space: nowrap; }
+
+  /* ── Dataset gallery (household cards) ── */
+  .ds-gallery { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; }
+  .ds-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; transition: border-color .2s, box-shadow .2s; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+  .ds-card:hover { border-color: rgba(124,58,237,0.25); box-shadow: 0 6px 20px rgba(124,58,237,0.08); }
+  .ds-img { width: 100%; height: 150px; object-fit: cover; display: block; }
+  .ds-body { padding: 14px 16px; }
+  .ds-name { font-size: 13px; font-weight: 700; color: var(--text); margin: 0 0 4px; }
+  .ds-meta { font-size: 11px; color: var(--muted); margin: 0 0 10px; }
+  .ds-tags { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<!-- ── Top nav ── -->
+<nav class="nav-d">
+  <a href="homepage_light.html" class="nav-d-logo">
+    <span class="d-logo-name">DataraAI</span>
+    <span class="d-logo-sub">← Back to Home</span>
+  </a>
+  <div class="nav-d-tabs">
+    <a href="robodatahub_light.html" class="nav-d-tab">
+      <span class="tab-label">RoboDataHub</span>
+      <span class="tab-sub">Dataset Catalog</span>
+    </a>
+    <a href="roboeyeview_light.html" class="nav-d-tab">
+      <span class="tab-label">RoboEyeView</span>
+      <span class="tab-sub">Visual Intelligence</span>
+    </a>
+    <a href="#" class="nav-d-tab active">
+      <span class="tab-label">RoboHandMotion</span>
+      <span class="tab-sub">Humanoid Data</span>
+    </a>
+    <a href="robotaskmanipulator_light.html" class="nav-d-tab">
+      <span class="tab-label">RoboTaskManipulator</span>
+      <span class="tab-sub">Task Execution</span>
+    </a>
+  </div>
+</nav>
+
+<!-- ── Sidebar + Main ── -->
+<div style="display:flex;min-height:calc(100vh - 88px);">
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div style="padding:24px 20px 20px;border-bottom:1px solid var(--border);">
+      <p style="font-size:18px;font-weight:800;letter-spacing:.04em;color:var(--teal);margin:0 0 4px;">DataraAI</p>
+      <p style="font-size:16px;font-weight:700;color:var(--text);margin:0;">Hand Motion</p>
+    </div>
+    <div style="padding:16px 12px;flex:1;">
+      <p style="font-size:16px;font-weight:800;color:var(--text);padding:0 8px;margin:0 0 12px;">Verticals</p>
+      <a href="#dk" class="sidebar-item active">
+        <span style="width:12px;height:12px;border-radius:3px;background:#7c3aed;flex-shrink:0;"></span>
+        <span style="font-size:16px;font-weight:800;color:var(--text);">Dexterous</span>
+      </a>
+      <a href="#ht" class="sidebar-item">
+        <span style="width:12px;height:12px;border-radius:3px;background:#ea580c;flex-shrink:0;"></span>
+        <span style="font-size:16px;font-weight:800;color:var(--text-2);">Household</span>
+      </a>
+    </div>
+    <div style="padding:16px 20px;border-top:1px solid var(--border);">
+      <button style="width:100%;background:var(--purple);color:#fff;border:none;padding:9px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .2s;" onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">Get Access</button>
+    </div>
+  </div>
+
+  <!-- Main content -->
+  <div style="flex:1;padding:36px 44px;overflow:auto;background:var(--bg);">
+
+    <!-- Page header -->
+    <div style="margin-bottom:24px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <div style="width:36px;height:36px;border-radius:9px;background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.25);display:flex;align-items:center;justify-content:center;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 11V6a2 2 0 0 0-4 0v1M14 10V4a2 2 0 0 0-4 0v2M10 10.5V6a2 2 0 0 0-4 0v8M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>
+          </svg>
+        </div>
+        <h1 style="font-size:30px;font-weight:900;color:var(--text);margin:0;line-height:1;letter-spacing:-.5px;">RoboHandMotion</h1>
+        <span style="font-size:10px;font-weight:700;color:var(--purple);background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.22);padding:3px 9px;border-radius:20px;letter-spacing:.08em;">PATENTED</span>
+      </div>
+      <p style="font-size:15px;color:var(--muted);margin:0 0 14px;line-height:1.8;max-width:640px;">
+        Patented pipeline capturing <span style="color:var(--purple);font-weight:600;">hand pose</span>, <span style="color:var(--blue);font-weight:600;">tool interactions</span>, and <span style="color:var(--orange);font-weight:600;">object states</span> — labeled and ready for dexterous robot model training.
+      </p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <span style="font-size:12px;font-weight:600;color:var(--purple);background:rgba(124,58,237,0.07);border:1px solid rgba(124,58,237,0.18);padding:5px 13px;border-radius:6px;"><strong>Hand Pose</strong> — Per-frame keypoint skeleton, joint angles &amp; finger trajectories</span>
+        <span style="font-size:12px;font-weight:600;color:var(--blue);background:rgba(29,78,216,0.07);border:1px solid rgba(29,78,216,0.18);padding:5px 13px;border-radius:6px;"><strong>Object State</strong> — Grasped object identity, orientation &amp; contact classification</span>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stat-strip">
+      <div class="stat-tile"><p class="stat-num">8</p><p class="stat-lbl">Datasets</p></div>
+      <div class="stat-tile"><p class="stat-num">2,850+</p><p class="stat-lbl">Hours Labeled</p></div>
+      <div class="stat-tile"><p class="stat-num">2</p><p class="stat-lbl">Verticals</p></div>
+      <div class="stat-tile" style="border-color:rgba(124,58,237,0.18);background:rgba(124,58,237,0.04);">
+        <p class="stat-num" style="font-size:18px;letter-spacing:0;">Patented</p>
+        <p class="stat-lbl">Hand Motion Pipeline</p>
+      </div>
+    </div>
+
+    <!-- How it works -->
+    <div style="background:var(--bg-alt);border:1px solid var(--border);border-radius:14px;padding:28px 32px;margin-bottom:40px;">
+      <p style="font-size:11px;font-weight:800;color:#9ca3af;margin:0 0 24px;letter-spacing:.14em;text-transform:uppercase;">HOW IT WORKS</p>
+      <div style="display:flex;align-items:center;">
+
+        <!-- Step 01 -->
+        <div style="flex:1;background:rgba(29,78,216,0.05);border:1px solid rgba(29,78,216,0.18);border-radius:12px;padding:20px 22px;">
+          <div style="width:36px;height:36px;border-radius:8px;background:rgba(29,78,216,0.1);border:1px solid rgba(29,78,216,0.22);display:flex;align-items:center;justify-content:center;margin-bottom:12px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="1.5" stroke-linecap="round">
+              <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+            </svg>
+          </div>
+          <p style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--blue);margin:0 0 4px;">Step 01 · Capture</p>
+          <p style="font-size:16px;font-weight:800;color:var(--text);margin:0 0 6px;">Raw Video Footage</p>
+          <p style="font-size:11px;color:var(--muted);margin:0;line-height:1.6;">Third-person footage of hand tasks: household, kitchen, or manipulation — any fixed or mobile camera.</p>
+        </div>
+
+        <!-- Arrow 1 -->
+        <div style="padding:0 20px;display:flex;align-items:center;flex-shrink:0;">
+          <div style="width:56px;height:2px;background:linear-gradient(to right,#1d4ed8,#7c3aed);border-radius:2px;"></div>
+          <div style="width:0;height:0;border-top:7px solid transparent;border-bottom:7px solid transparent;border-left:11px solid #7c3aed;"></div>
+        </div>
+
+        <!-- Engine -->
+        <div style="flex:1;background:rgba(124,58,237,0.07);border:1.5px solid rgba(124,58,237,0.32);border-radius:12px;padding:20px 22px;">
+          <div style="width:36px;height:36px;border-radius:8px;background:rgba(124,58,237,0.14);border:1px solid rgba(124,58,237,0.32);display:flex;align-items:center;justify-content:center;margin-bottom:12px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 11V6a2 2 0 0 0-4 0v1M14 10V4a2 2 0 0 0-4 0v2M10 10.5V6a2 2 0 0 0-4 0v8M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>
+            </svg>
+          </div>
+          <p style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--purple);margin:0 0 4px;">Step 02</p>
+          <p style="font-size:16px;font-weight:800;color:var(--text);margin:0 0 8px;">RoboHandMotion Engine</p>
+          <p style="font-size:11px;color:var(--muted);margin:0;line-height:1.5;">Pose estimation, keypoint tracking &amp; interaction labeling.</p>
+        </div>
+
+        <!-- Arrow 2 -->
+        <div style="padding:0 20px;display:flex;align-items:center;flex-shrink:0;">
+          <div style="width:56px;height:2px;background:linear-gradient(to right,#7c3aed,#ea580c);border-radius:2px;"></div>
+          <div style="width:0;height:0;border-top:7px solid transparent;border-bottom:7px solid transparent;border-left:11px solid #ea580c;"></div>
+        </div>
+
+        <!-- Step 03 -->
+        <div style="flex:1;background:rgba(234,88,12,0.05);border:1px solid rgba(234,88,12,0.18);border-radius:12px;padding:20px 22px;">
+          <div style="width:36px;height:36px;border-radius:8px;background:rgba(234,88,12,0.1);border:1px solid rgba(234,88,12,0.22);display:flex;align-items:center;justify-content:center;margin-bottom:12px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ea580c" stroke-width="1.5" stroke-linecap="round">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+            </svg>
+          </div>
+          <p style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--orange);margin:0 0 4px;">Step 03 · Training Data</p>
+          <p style="font-size:16px;font-weight:800;color:var(--text);margin:0 0 6px;">Labeled Motion Datasets</p>
+          <p style="font-size:11px;color:var(--muted);margin:0;line-height:1.6;">Pose sequences, grasp annotations &amp; tool trajectories — ready for dexterous robot model training.</p>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Datasets -->
+    <div style="display:flex;flex-direction:column;gap:40px;">
+
+      <!-- ── Dexterous Kitchen ── -->
+      <div id="dk">
+        <div class="section-head">
+          <div class="section-pill section-pill-dk">
+            <span style="width:8px;height:8px;border-radius:2px;background:#7c3aed;flex-shrink:0;"></span>
+            <span style="font-size:14px;font-weight:800;color:var(--text);">Dexterous Kitchen</span>
+            <span style="font-size:11px;font-weight:600;color:var(--muted);">3 datasets · 1,430 hrs</span>
+          </div>
+          <div style="flex:1;height:1px;background:linear-gradient(to right,rgba(124,58,237,0.2),transparent);margin-left:4px;"></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:16px;">
+
+          <!-- Card 1: Drawer -->
+          <div class="xform-card card-dk">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+              <div>
+                <p style="font-size:14px;font-weight:700;color:var(--text);margin:0 0 2px;">Kitchen Drawer Manipulation</p>
+                <p style="font-size:11px;color:var(--muted);margin:0;">Full-body EXO of trash bag handling → hand-level pose &amp; grasp annotations</p>
+              </div>
+              <span class="avail-od">On-demand</span>
+            </div>
+            <div style="display:flex;align-items:center;">
+              <div style="width:200px;flex-shrink:0;">
+                <p style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--blue);margin:0 0 6px;">EXO Source</p>
+                <div class="exo-box">
+                  <img src="images/rev/human1_exo.png" style="width:100%;height:100%;object-fit:cover;display:block;" alt="Kitchen Drawer EXO">
+                  <span class="exo-label">EXO</span>
+                </div>
+              </div>
+              <div class="pipe">
+                <div class="pipe-line"></div>
+                <div class="pipe-badge">
+                  <div style="width:40px;height:40px;border-radius:10px;background:rgba(124,58,237,0.12);border:1px solid rgba(124,58,237,0.3);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M18 11V6a2 2 0 0 0-4 0v1M14 10V4a2 2 0 0 0-4 0v2M10 10.5V6a2 2 0 0 0-4 0v8M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>
+                    </svg>
+                  </div>
+                  <p style="font-size:8px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--purple);margin:0 0 2px;">RoboHandMotion</p>
+                  <p style="font-size:12px;font-weight:800;color:var(--text);margin:0 0 6px;">Engine</p>
+                  <p style="font-size:8px;color:var(--muted);margin:2px 0 0;">Hand Tracking</p>
+                </div>
+                <div class="pipe-line"></div>
+                <svg width="10" height="14" viewBox="0 0 10 14" fill="none"><path d="M1 1l8 6-8 6" stroke="#7c3aed" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <div style="flex:1;">
+                <p style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--orange);margin:0 0 6px;">Labeled Motion Output</p>
+                <div class="output-grid">
+                  <div class="motion-box"><img src="images/rev/human1_ego1.png" style="width:100%;height:100%;object-fit:cover;display:block;" alt="Wrist Pose"><span class="motion-label">Wrist Pose</span></div>
+                  <div class="motion-box"><img src="images/rev/human1_ego1.png" style="width:100%;height:100%;object-fit:cover;display:block;" alt="Finger Joints"><span class="motion-label">Finger Joints</span></div>
+                  <div class="motion-box"><img src="images/rev/human1_ego1.png" style="width:100%;height:100%;object-fit:cover;display:block;" alt="Grasp Point"><span class="motion-label">Grasp Point</span></div>
+                  <div class="motion-box"><img src="images/rev/human1_ego1.png" style="width:100%;height:100%;object-fit:cover;display:block;" alt="Motion Path"><span class="motion-label">Motion Path</span></div>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">
+              <span class="tag tag-purple">Hand Pose Tracking</span>
+              <span class="tag tag-purple">Wrist-level Annotations</span>
+              <span class="tag tag-orange">Grasp Points</span>
+              <span style="margin-left:auto;font-size:12px;font-weight:700;color:var(--purple);">380 hrs labeled</span>
+            </div>
+          </div>
+
+          <!-- Card 2: Stovetop -->
+          <div class="xform-card card-dk">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+              <div>
+                <p style="font-size:14px;font-weight:700;color:var(--text);margin:0 0 2px;">Surface Cleaning — Stovetop</p>
+                <p style="font-size:11px;color:var(--muted);margin:0;">Full-body cleaning EXO → hand skeleton &amp; contact zone annotations at varied proximities</p>
+              </div>
+              <span class="avail-lib">In Library</span>
+            </div>
+            <div style="display:flex;align-items:center;">
+              <div style="width:200px;flex-shrink:0;">
+                <p style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--blue);margin:0 0 6px;">EXO Source</p>
+                <div class="exo-box">
+                  <img src="images/rev/human2_exo.png" style="width:100%;height:100%;object-fit:cover;display:block;" alt="Stovetop EXO">
+                  <span class="exo-label">EXO</span>
+                </div>
+              </div>
+              <div class="pipe">
+                <div class="pipe-line"></div>
+                <div class="pipe-badge">
+                  <div style="width:40px;height:40px;border-radius:10px;background:rgba(124,58,237,0.12);border:1px solid rgba(124,58,237,0.3);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M18 11V6a2 2 0 0 0-4 0v1M14 10V4a2 2 0 0 0-4 0v2M10 10.5V6a2 2 0 0 0-4 0v8M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>
+                    </svg>
+                  </div>
+                  <p style="font-size:8px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--purple);margin:0 0 2px;">RoboHandMotion</p>
+                  <p style="font-size:12px;font-weight:800;color:var(--text);margin:0 0 6px;">Engine</p>
+                  <p style="font-size:8px;color:var(--muted);margin:2px 0 0;">Motion Synthesis</p>
+                </div>
+                <div class="pipe-line"></div>
+                <svg width="10" height="14" viewBox="0 0 10 14" fill="none"><path d="M1 1l8 6-8 6" stroke="#7c3aed" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <div style="flex:1;">
+                <p style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--orange);margin:0 0 6px;">Labeled Motion Output</p>
+                <div class="output-grid">
+                  <div class="motion-box"><img src="images/rev/human2_ego1.png" style="width:100%;height:100%;object-fit:cover;display:block;" alt="Hand Path"><span class="motion-label">Hand Path</span></div>
+                  <div class="motion-box"><img src="images/rev/human2_ego2.png" style="width:100%;height:100%;object-fit:cover;display:block;" alt="Contact Points"><span class="motion-label">Contact Points</span></div>
+                  <div class="motion-box"><img src="images/rev/human2_ego1.png" style="width:100%;height:100%;object-fit:cover;display:block;" alt="Pose Sequence"><span class="motion-label">Pose Sequence</span></div>
+                  <div class="motion-box"><img src="images/rev/human2_ego2.png" style="width:100%;height:100%;object-fit:cover;display:block;" alt="Close-up"><span class="motion-label">Close-up</span></div>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">
+              <span class="tag tag-purple">Hand Pose Tracking</span>
+              <span class="tag tag-teal">Surface Segmentation</span>
+              <span class="tag tag-blue">Multi-distance Views</span>
+              <span style="margin-left:auto;font-size:12px;font-weight:700;color:var(--purple);">450 hrs labeled</span>
+            </div>
+          </div>
+
+          <!-- Card 3: Dishwashing -->
+          <div class="xform-card card-dk">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+              <div>
+                <p style="font-size:14px;font-weight:700;color:var(--text);margin:0 0 2px;">Dishwashing — Sink Manipulation</p>
+                <p style="font-size:11px;color:var(--muted);margin:0;">Wide kitchen scene EXO → grasp classification &amp; wet object handling annotations</p>
+              </div>
+              <span class="avail-od">On-demand</span>
+            </div>
+            <div style="display:flex;align-items:center;">
+              <div style="width:200px;flex-shrink:0;">
+                <p style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--blue);margin:0 0 6px;">EXO Source</p>
+                <div class="exo-box">
+                  <img src="images/rev/human3_exo.png" style="width:100%;height:100%;object-fit:cover;display:block;" alt="Dishwashing EXO">
+                  <span class="exo-label">EXO</span>
+                </div>
+              </div>
+              <div class="pipe">
+                <div class="pipe-line"></div>
+                <div class="pipe-badge">
+                  <div style="width:40px;height:40px;border-radius:10px;background:rgba(124,58,237,0.12);border:1px solid rgba(124,58,237,0.3);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M18 11V6a2 2 0 0 0-4 0v1M14 10V4a2 2 0 0 0-4 0v2M10 10.5V6a2 2 0 0 0-4 0v8M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>
+                    </svg>
+                  </div>
+                  <p style="font-size:8px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--purple);margin:0 0 2px;">RoboHandMotion</p>
+                  <p style="font-size:12px;font-weight:800;color:var(--text);margin:0 0 6px;">Engine</p>
+                  <p style="font-size:8px;color:var(--muted);margin:2px 0 0;">Grasp Synthesis</p>
+                </div>
+                <div class="pipe-line"></div>
+                <svg width="10" height="14" viewBox="0 0 10 14" fill="none"><path d="M1 1l8 6-8 6" stroke="#7c3aed" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <div style="flex:1;">
+                <p style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--orange);margin:0 0 6px;">Labeled Motion Output</p>
+                <div class="output-grid">
+                  <div class="motion-box"><img src="images/rev/human3_ego1.png" style="width:100%;height:100%;object-fit:cover;display:block;" alt="Grasp Type"><span class="motion-label">Grasp Type</span></div>
+                  <div class="motion-box"><img src="images/rev/human3_ego1.png" style="width:100%;height:100%;object-fit:cover;display:block;" alt="Object State"><span class="motion-label">Object State</span></div>
+                  <div class="motion-box"><img src="images/rev/human3_ego1.png" style="width:100%;height:100%;object-fit:cover;display:block;" alt="Joint Angles"><span class="motion-label">Joint Angles</span></div>
+                  <div class="motion-box"><img src="images/rev/human3_ego1.png" style="width:100%;height:100%;object-fit:cover;display:block;" alt="Motion Arc"><span class="motion-label">Motion Arc</span></div>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">
+              <span class="tag tag-purple">Grasp Keypoints</span>
+              <span class="tag tag-teal">Wet Object Handling</span>
+              <span class="tag tag-orange">Edge Conditions</span>
+              <span style="margin-left:auto;font-size:12px;font-weight:700;color:var(--purple);">600 hrs labeled</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ── Household Tasks Gallery ── -->
+      <div id="ht">
+        <div class="section-head">
+          <div class="section-pill section-pill-ht">
+            <span style="width:8px;height:8px;border-radius:2px;background:#ea580c;flex-shrink:0;"></span>
+            <span style="font-size:14px;font-weight:800;color:var(--text);">Household Tasks</span>
+            <span style="font-size:11px;font-weight:600;color:var(--muted);">5 datasets · 1,420 hrs</span>
+          </div>
+          <div style="flex:1;height:1px;background:linear-gradient(to right,rgba(234,88,12,0.2),transparent);margin-left:4px;"></div>
+        </div>
+        <div class="ds-gallery">
+
+          <div class="ds-card">
+            <img src="images/WebCleaning.png" class="ds-img" alt="Surface Cleaning">
+            <div class="ds-body">
+              <p class="ds-name">Surface &amp; Floor Cleaning</p>
+              <p class="ds-meta">Sweeping, scrubbing motions — 3 tool types</p>
+              <div class="ds-tags">
+                <span class="tag tag-purple">Arm Trajectory</span>
+                <span class="tag tag-teal">Tool Grip</span>
+                <span style="margin-left:auto;font-size:10px;font-weight:700;color:var(--purple);">280 hrs</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="ds-card">
+            <img src="images/WebDishWasher.png" class="ds-img" alt="Dishwasher Loading">
+            <div class="ds-body">
+              <p class="ds-name">Dishwasher Loading</p>
+              <p class="ds-meta">Object placement, rack navigation, door operation</p>
+              <div class="ds-tags">
+                <span class="tag tag-purple">Bimanual Grasp</span>
+                <span class="tag tag-orange">Object Place</span>
+                <span style="margin-left:auto;font-size:10px;font-weight:700;color:var(--purple);">310 hrs</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="ds-card">
+            <img src="images/WebDishWashing.png" class="ds-img" alt="Hand Dish Washing">
+            <div class="ds-body">
+              <p class="ds-name">Hand Dish Washing</p>
+              <p class="ds-meta">Scrub, rinse, transfer — wet object sequences</p>
+              <div class="ds-tags">
+                <span class="tag tag-purple">Wet Grasp</span>
+                <span class="tag tag-teal">Force Est.</span>
+                <span style="margin-left:auto;font-size:10px;font-weight:700;color:var(--purple);">340 hrs</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="ds-card">
+            <img src="images/WebTrashCollection.png" class="ds-img" alt="Trash Collection">
+            <div class="ds-body">
+              <p class="ds-name">Trash Collection &amp; Sorting</p>
+              <p class="ds-meta">Pick, bag, and bin — varied object sizes &amp; weights</p>
+              <div class="ds-tags">
+                <span class="tag tag-purple">Lift &amp; Place</span>
+                <span class="tag tag-blue">Sort Logic</span>
+                <span style="margin-left:auto;font-size:10px;font-weight:700;color:var(--purple);">240 hrs</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="ds-card">
+            <img src="images/WebWasher.png" class="ds-img" alt="Laundry">
+            <div class="ds-body">
+              <p class="ds-name">Laundry — Washer Operation</p>
+              <p class="ds-meta">Load, sort, and transfer fabric items</p>
+              <div class="ds-tags">
+                <span class="tag tag-purple">Deformable Obj.</span>
+                <span class="tag tag-orange">Bimanual</span>
+                <span style="margin-left:auto;font-size:10px;font-weight:700;color:var(--purple);">250 hrs</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="ds-card">
+            <img src="images/WebWasher.png" class="ds-img" alt="Laundry Fold">
+            <div class="ds-body">
+              <p class="ds-name">Laundry — Fold &amp; Transfer</p>
+              <p class="ds-meta">Garment folding, hang, and drawer placement</p>
+              <div class="ds-tags">
+                <span class="tag tag-purple">Deformable Obj.</span>
+                <span class="tag tag-orange">Bimanual</span>
+                <span style="margin-left:auto;font-size:10px;font-weight:700;color:var(--purple);">250 hrs</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ── Request section ── -->
+      <div style="margin-top:4px;padding:28px 32px;background:linear-gradient(135deg,rgba(124,58,237,0.05) 0%,rgba(234,88,12,0.03) 100%);border:1.5px dashed rgba(124,58,237,0.22);border-radius:14px;display:flex;align-items:center;justify-content:space-between;gap:24px;">
+        <div style="display:flex;align-items:center;gap:16px;">
+          <div style="width:44px;height:44px;border-radius:11px;background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+          </div>
+          <div>
+            <p style="font-size:15px;font-weight:700;color:var(--text);margin:0 0 4px;">Run RoboHandMotion on Your Footage</p>
+            <p style="font-size:12px;color:var(--muted);margin:0;line-height:1.5;max-width:480px;">Already have footage of hand tasks? We'll generate labeled pose sequences, grasp annotations, and motion trajectories — across any task, environment, or robot form factor.</p>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-shrink:0;align-items:center;flex-direction:column;">
+          <div style="display:flex;gap:5px;">
+            <span style="font-size:10px;font-weight:700;color:#7c3aed;background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.2);padding:3px 8px;border-radius:4px;">Dexterous</span>
+            <span style="font-size:10px;font-weight:700;color:#ea580c;background:rgba(234,88,12,0.08);border:1px solid rgba(234,88,12,0.2);padding:3px 8px;border-radius:4px;">Household</span>
+            <span style="font-size:10px;font-weight:700;color:#0d9488;background:rgba(13,148,136,0.08);border:1px solid rgba(13,148,136,0.2);padding:3px 8px;border-radius:4px;">Industrial</span>
+          </div>
+          <button style="width:100%;font-size:13px;font-weight:700;color:#fff;background:var(--purple);border:none;padding:10px 24px;border-radius:8px;cursor:pointer;font-family:inherit;transition:opacity .2s;white-space:nowrap;" onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">Submit Your Footage</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ── Footer ── -->
+<footer style="background:#fff;border-top:1px solid var(--border);padding:36px 56px;display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#9ca3af;">
+  <div style="font-size:16px;font-weight:800;color:var(--teal);letter-spacing:.04em;">DataraAI</div>
+  <div style="display:flex;gap:24px;">
+    <a href="homepage_light.html" style="color:#9ca3af;text-decoration:none;transition:color .2s;" onmouseover="this.style.color='#0f172a'" onmouseout="this.style.color='#9ca3af'">Home</a>
+    <a href="#" style="color:#9ca3af;text-decoration:none;" onmouseover="this.style.color='#0f172a'" onmouseout="this.style.color='#9ca3af'">Docs</a>
+    <a href="company.html" style="color:#9ca3af;text-decoration:none;" onmouseover="this.style.color='#0f172a'" onmouseout="this.style.color='#9ca3af'">Company</a>
+    <a href="#" style="color:#9ca3af;text-decoration:none;" onmouseover="this.style.color='#0f172a'" onmouseout="this.style.color='#9ca3af'">Contact</a>
+  </div>
+  <div>© 2025 DataraAI · NVIDIA Inception Member</div>
+</footer>
+
+</body>
+</html>

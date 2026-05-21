@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RoboDataHub — DataraAI</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    --teal: #0d9488;
+    --teal-bright: #1de9b6;
+    --blue: #1d4ed8;
+    --purple: #7c3aed;
+    --amber: #b45309;
+    --bg: #ffffff;
+    --bg-alt: #f8fafc;
+    --bg-alt2: #f1f5f9;
+    --bg-card: #ffffff;
+    --border: #e5e7eb;
+    --muted: #6b7280;
+    --text: #0f172a;
+    --text-2: #374151;
+    background: var(--bg);
+    color: var(--text);
+  }
+
+  /* ── NAV ── */
+  .nav-d {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(255,255,255,0.97); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: stretch; height: 88px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .nav-d-logo {
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    padding: 0 32px; border-right: 1px solid var(--border);
+    min-width: 220px; flex-shrink: 0; text-align: center;
+    text-decoration: none; transition: background .2s;
+  }
+  .nav-d-logo:hover { background: rgba(13,148,136,0.04); }
+  .nav-d-logo .d-logo-name { font-size: 18px; font-weight: 800; letter-spacing: .04em; color: var(--teal); }
+  .nav-d-logo .d-logo-sub { font-size: 11px; font-weight: 500; color: var(--muted); margin-top: 2px; }
+
+  .nav-d-tabs { display: flex; align-items: stretch; flex: 1; }
+  .nav-d-tab {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 4px; text-decoration: none; color: var(--muted);
+    border-right: 1px solid var(--border);
+    position: relative; transition: color .2s, background .2s;
+  }
+  .nav-d-tab:last-child { border-right: none; }
+  .nav-d-tab:hover { color: var(--text); background: var(--bg-alt); }
+  .nav-d-tab .tab-label { font-size: 15px; font-weight: 700; }
+  .nav-d-tab .tab-sub { font-size: 10px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; opacity: .6; }
+  .nav-d-tab::after { content: ''; position: absolute; bottom: 0; left: 20%; right: 20%; height: 2px; border-radius: 2px 2px 0 0; background: transparent; transition: background .2s; }
+  .nav-d-tab.active { color: var(--teal); background: rgba(13,148,136,0.04); }
+  .nav-d-tab.active::after { background: var(--teal); }
+  .nav-d-tab.active .tab-sub { opacity: .8; }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: 220px; flex-shrink: 0;
+    background: var(--bg-alt);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    min-height: calc(100vh - 88px);
+  }
+  .sidebar-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px; border-radius: 9px;
+    text-decoration: none; margin-bottom: 4px;
+    transition: background .15s; color: var(--text-2);
+  }
+  .sidebar-item:hover { background: rgba(13,148,136,0.06); }
+  .sidebar-item.active {
+    background: rgba(13,148,136,0.1);
+    border: 1px solid rgba(13,148,136,0.2);
+  }
+
+  /* ── DATASET CARD ── */
+  .ds-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px; overflow: hidden;
+    transition: border-color .2s, transform .2s, box-shadow .2s;
+    display: flex; flex-direction: column;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  }
+  .ds-card:hover {
+    border-color: #5eead4;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(13,148,136,0.10);
+  }
+  .card-body { flex: 1; display: flex; flex-direction: column; padding: 12px; }
+  .card-footer { margin-top: auto; display: flex; justify-content: space-between; align-items: center; }
+
+  /* ── TAGS ── */
+  .tag { display: inline-block; font-size: 9px; font-weight: 600; padding: 2px 7px; border-radius: 3px; }
+  .tag-teal { background: rgba(13,148,136,0.08); color: #0d9488; border: 1px solid rgba(13,148,136,0.2); }
+  .tag-blue { background: rgba(29,78,216,0.08); color: #1d4ed8; border: 1px solid rgba(29,78,216,0.2); }
+  .tag-orange { background: rgba(251,146,60,0.1); color: #ea580c; border: 1px solid rgba(251,146,60,0.2); }
+  .tag-purple { background: rgba(124,58,237,0.08); color: #7c3aed; border: 1px solid rgba(124,58,237,0.2); }
+
+  /* ── EXO / EGO badges ── */
+  .badge-exo {
+    font-size: 9px; font-weight: 800; letter-spacing: .08em;
+    color: #1d4ed8; background: rgba(29,78,216,0.08);
+    border: 1px solid rgba(29,78,216,0.3);
+    padding: 2px 6px; border-radius: 3px;
+  }
+  .badge-ego {
+    font-size: 9px; font-weight: 800; letter-spacing: .08em;
+    color: #0d9488; background: rgba(13,148,136,0.08);
+    border: 1px solid rgba(13,148,136,0.3);
+    padding: 2px 6px; border-radius: 3px;
+  }
+
+  /* ── Availability badges ── */
+  .avail-lib { font-size: 10px; font-weight: 600; color: #16a34a; background: rgba(22,163,74,0.08); border: 1px solid rgba(22,163,74,0.2); padding: 2px 8px; border-radius: 10px; }
+  .avail-od  { font-size: 10px; font-weight: 600; color: #b45309; background: rgba(180,83,9,0.08);  border: 1px solid rgba(180,83,9,0.2);  padding: 2px 8px; border-radius: 10px; }
+
+  /* ── Search input ── */
+  .search-wrap { position: relative; }
+  .search-wrap svg.icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); pointer-events: none; }
+  .search-input {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 12px 8px 34px;
+    font-size: 13px; color: var(--text); outline: none;
+    font-family: Inter, sans-serif; width: 260px;
+    transition: border-color .2s;
+  }
+  .search-input::placeholder { color: #9ca3af; }
+  .search-input:focus { border-color: rgba(13,148,136,0.4); }
+
+  /* ── Section heading ── */
+  .section-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+
+  /* ── Card grid ── */
+  .card-grid { grid-template-columns: repeat(4,1fr); }
+  .card-grid.two-panel { grid-template-columns: repeat(2,1fr); }
+
+  /* ── Card image overlay ── */
+  .card-img-overlay { background: linear-gradient(to top, #ffffff 0%, transparent 55%); }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<!-- ── Top nav bar ── -->
+<nav class="nav-d">
+  <a href="homepage_light.html" class="nav-d-logo">
+    <span class="d-logo-name">DataraAI</span>
+    <span class="d-logo-sub">← Back to Home</span>
+  </a>
+  <div class="nav-d-tabs">
+    <a href="#" class="nav-d-tab active">
+      <span class="tab-label">RoboDataHub</span>
+      <span class="tab-sub">Dataset Catalog</span>
+    </a>
+    <a href="roboeyeview_light.html" class="nav-d-tab">
+      <span class="tab-label">RoboEyeView</span>
+      <span class="tab-sub">Visual Intelligence</span>
+    </a>
+    <a href="robohandmotion_light.html" class="nav-d-tab">
+      <span class="tab-label">RoboHandMotion</span>
+      <span class="tab-sub">Humanoid Data</span>
+    </a>
+    <a href="robotaskmanipulator_light.html" class="nav-d-tab">
+      <span class="tab-label">RoboTaskManipulator</span>
+      <span class="tab-sub">Task Execution</span>
+    </a>
+  </div>
+</nav>
+
+<!-- ── Sidebar + Main ── -->
+<div style="display:flex;min-height:calc(100vh - 88px);">
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div style="padding:24px 20px 20px;border-bottom:1px solid var(--border);">
+      <p style="font-size:18px;font-weight:800;letter-spacing:.04em;color:var(--teal);margin:0 0 4px;">DataraAI</p>
+      <p style="font-size:16px;font-weight:700;color:var(--text);margin:0;">Physical AI Data</p>
+    </div>
+    <div style="padding:16px 12px;flex:1;">
+      <p style="font-size:16px;font-weight:800;color:var(--text);padding:0 8px;margin:0 0 12px;">Verticals</p>
+      <a href="#dc" class="sidebar-item active">
+        <span style="width:12px;height:12px;border-radius:3px;background:#1d4ed8;flex-shrink:0;"></span>
+        <span style="font-size:16px;font-weight:800;color:var(--text);">Data Center</span>
+      </a>
+      <a href="#wh" class="sidebar-item">
+        <span style="width:12px;height:12px;border-radius:3px;background:#ea580c;flex-shrink:0;"></span>
+        <span style="font-size:16px;font-weight:800;color:var(--text-2);">Warehouse</span>
+      </a>
+      <a href="#hu" class="sidebar-item">
+        <span style="width:12px;height:12px;border-radius:3px;background:#0d9488;flex-shrink:0;"></span>
+        <span style="font-size:16px;font-weight:800;color:var(--text-2);">Humanoid</span>
+      </a>
+      <a href="#au" class="sidebar-item">
+        <span style="width:12px;height:12px;border-radius:3px;background:#7c3aed;flex-shrink:0;"></span>
+        <span style="font-size:16px;font-weight:800;color:var(--text-2);">Automotive</span>
+      </a>
+    </div>
+    <div style="padding:16px 20px;border-top:1px solid var(--border);">
+      <button style="width:100%;background:var(--teal);color:#fff;border:none;padding:9px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .2s;" onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">Get Access</button>
+    </div>
+  </div>
+
+  <!-- Main content -->
+  <div style="flex:1;padding:32px 40px;overflow:auto;background:var(--bg);">
+
+    <!-- Header row: title + search + layout toggle -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;gap:16px;flex-wrap:wrap;">
+      <div>
+        <h1 style="font-size:24px;font-weight:800;color:var(--text);margin:0 0 4px;">RoboDataHub</h1>
+        <p style="font-size:13px;color:var(--muted);margin:0;">100+ datasets · Physical AI training data</p>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <div class="search-wrap">
+          <svg class="icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input class="search-input" type="text" placeholder="Search datasets…">
+        </div>
+        <button style="background:var(--teal);color:#fff;border:none;padding:8px 18px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .2s;" onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">Search</button>
+        <!-- layout toggle -->
+        <div style="display:flex;gap:3px;background:var(--bg-alt2);border:1px solid var(--border);border-radius:7px;padding:3px;">
+          <button id="btn-4" onclick="setLayout(4)" style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:4px 10px;border-radius:4px;border:none;cursor:pointer;background:var(--teal);color:#fff;transition:all .15s;">
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><rect x="0" y="0" width="6" height="6" rx="1"/><rect x="9" y="0" width="6" height="6" rx="1"/><rect x="0" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+            4
+          </button>
+          <button id="btn-2" onclick="setLayout(2)" style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:4px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--muted);transition:all .15s;">
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><rect x="0" y="0" width="6" height="16" rx="1"/><rect x="9" y="0" width="6" height="16" rx="1"/></svg>
+            2
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dataset sections -->
+    <div style="display:flex;flex-direction:column;gap:32px;">
+
+      <!-- ── Data Center ── -->
+      <div id="dc" onclick="window.location.href='robodatahubadc_light.html'" style="cursor:pointer;">
+        <div class="section-head">
+          <span style="width:12px;height:12px;border-radius:3px;background:#1d4ed8;flex-shrink:0;"></span>
+          <span style="font-size:16px;font-weight:800;color:var(--text);">Data Center</span>
+          <div style="flex:1;height:1px;background:rgba(29,78,216,0.15);"></div>
+        </div>
+        <div class="card-grid" style="display:grid;gap:12px;">
+
+          <div class="ds-card">
+            <div style="height:120px;position:relative;overflow:hidden;">
+              <img src="images/dc_Screenshot_2026-01-13_at_2.06.33_PM.png" style="width:100%;height:100%;object-fit:cover;">
+              <div style="position:absolute;inset:0;" class="card-img-overlay"></div>
+              <span style="position:absolute;top:8px;right:8px;" class="badge-exo">EXO</span>
+            </div>
+            <div class="card-body">
+              <h3 style="font-size:13px;font-weight:700;color:var(--text);margin:0 0 4px;">Rack Cabling &amp; Patch Panel</h3>
+              <p style="font-size:11px;color:var(--muted);margin:0 0 10px;line-height:1.5;">Full patch panel workflow — cable insertion, loop management, labeling on live data center floor.</p>
+              <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px;">
+                <span class="tag tag-blue">EXO-Centric</span>
+                <span class="tag tag-teal">Task Labels</span>
+                <span class="tag tag-teal">Bbox</span>
+              </div>
+              <div class="card-footer">
+                <p style="font-size:13px;font-weight:700;color:var(--teal);margin:0;">1,200 hrs</p>
+                <span class="avail-lib">In Library</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="ds-card">
+            <div style="height:120px;position:relative;overflow:hidden;">
+              <img src="images/dc_Screenshot_2026-01-13_at_4.38.50_PM.png" style="width:100%;height:100%;object-fit:cover;">
+              <div style="position:absolute;inset:0;" class="card-img-overlay"></div>
+              <span style="position:absolute;top:8px;right:8px;" class="badge-exo">EXO</span>
+            </div>
+            <div class="card-body">
+              <h3 style="font-size:13px;font-weight:700;color:var(--text);margin:0 0 4px;">Loop Cable Installation</h3>
+              <p style="font-size:11px;color:var(--muted);margin:0 0 10px;line-height:1.5;">Hands-on cable loop management — routing, fastening, and dress-out in live server room environment.</p>
+              <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px;">
+                <span class="tag tag-blue">EXO-Centric</span>
+                <span class="tag tag-teal">Task Labels</span>
+              </div>
+              <div class="card-footer">
+                <p style="font-size:13px;font-weight:700;color:var(--teal);margin:0;">600 hrs</p>
+                <span class="avail-od">On-demand</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="ds-card">
+            <div style="height:120px;position:relative;overflow:hidden;">
+              <img src="images/dc_Screenshot_2026-01-13_at_4.38.12_PM.png" style="width:100%;height:100%;object-fit:cover;">
+              <div style="position:absolute;inset:0;" class="card-img-overlay"></div>
+              <span style="position:absolute;top:8px;right:8px;" class="badge-ego">EGO</span>
+            </div>
+            <div class="card-body">
+              <h3 style="font-size:13px;font-weight:700;color:var(--text);margin:0 0 4px;">Server Rack Inspection</h3>
+              <p style="font-size:11px;color:var(--muted);margin:0 0 10px;line-height:1.5;">EGO-centric inspection — slot identification, LED status reading, and hardware swap sequences.</p>
+              <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px;">
+                <span class="tag tag-teal">EGO-Centric</span>
+                <span class="tag tag-teal">Task Labels</span>
+                <span class="tag tag-blue">Bbox</span>
+              </div>
+              <div class="card-footer">
+                <p style="font-size:13px;font-weight:700;color:var(--teal);margin:0;">840 hrs</p>
+                <span class="avail-lib">In Library</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="ds-card">
+            <div style="height:120px;position:relative;overflow:hidden;">
+              <img src="images/dc_Screenshot_2026-01-13_at_4.38.43_PM.png" style="width:100%;height:100%;object-fit:cover;">
+              <div style="position:absolute;inset:0;" class="card-img-overlay"></div>
+              <span style="position:absolute;top:8px;right:8px;" class="badge-exo">EXO</span>
+            </div>
+            <div class="card-body">
+              <h3 style="font-size:13px;font-weight:700;color:var(--text);margin:0 0 4px;">Hardware Swap &amp; Replacement</h3>
+              <p style="font-size:11px;color:var(--muted);margin:0 0 10px;line-height:1.5;">Drive, NIC, and PSU replacement workflows across multiple server generations.</p>
+              <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px;">
+                <span class="tag tag-blue">EXO-Centric</span>
+                <span class="tag tag-teal">Task Labels</span>
+                <span class="tag tag-purple">Seg</span>
+              </div>
+              <div class="card-footer">
+                <p style="font-size:13px;font-weight:700;color:var(--teal);margin:0;">720 hrs</p>
+                <span class="avail-od">On-demand</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ── Warehouse ── -->
+      <div id="wh" onclick="window.location.href='robodatahubawarehouse_light.html'" style="cursor:pointer;">
+        <div class="section-head">
+          <span style="width:12px;height:12px;border-radius:3px;background:#ea580c;flex-shrink:0;"></span>
+          <span style="font-size:16px;font-weight:800;color:var(--text);">Warehouse</span>
+          <div style="flex:1;height:1px;background:rgba(234,88,12,0.15);"></div>
+        </div>
+        <div class="card-grid" style="display:grid;gap:12px;">
+
+          <div class="ds-card">
+            <div style="height:120px;position:relative;overflow:hidden;">
+              <img src="images/wh_pexels-goldcircuits-8377802.jpg" style="width:100%;height:100%;object-fit:cover;">
+              <div style="position:absolute;inset:0;" class="card-img-overlay"></div>
+              <span style="position:absolute;top:8px;right:8px;" class="badge-ego">EGO</span>
+            </div>
+            <div class="card-body">
+              <h3 style="font-size:13px;font-weight:700;color:var(--text);margin:0 0 4px;">Pick &amp; Place — Shelf Interaction</h3>
+              <p style="font-size:11px;color:var(--muted);margin:0 0 10px;line-height:1.5;">Robot-eye-view of shelf pick operations. Mixed SKUs, glare conditions, and dynamic obstacles.</p>
+              <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px;">
+                <span class="tag tag-teal">EGO-Centric</span>
+                <span class="tag tag-teal">Task Labels</span>
+                <span class="tag tag-orange">Edge Cases</span>
+              </div>
+              <div class="card-footer">
+                <p style="font-size:13px;font-weight:700;color:var(--teal);margin:0;">1,200 hrs</p>
+                <span class="avail-lib">In Library</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="ds-card">
+            <div style="height:120px;position:relative;overflow:hidden;">
+              <img src="images/wh_pexels-endura-tiles-370085044-14554082.jpg" style="width:100%;height:100%;object-fit:cover;">
+              <div style="position:absolute;inset:0;" class="card-img-overlay"></div>
+              <span style="position:absolute;top:8px;right:8px;" class="badge-exo">EXO</span>
+            </div>
+            <div class="card-body">
+              <h3 style="font-size:13px;font-weight:700;color:var(--text);margin:0 0 4px;">Pallet Stacking &amp; Transport</h3>
+              <p style="font-size:11px;color:var(--muted);margin:0 0 10px;line-height:1.5;">Overhead EXO capture of pallet build, wrap, and forklift handoff. Mixed-weight loads and aisle navigation.</p>
+              <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px;">
+                <span class="tag tag-blue">EXO-Centric</span>
+                <span class="tag tag-teal">Task Labels</span>
+                <span class="tag tag-teal">Bbox</span>
+              </div>
+              <div class="card-footer">
+                <p style="font-size:13px;font-weight:700;color:var(--teal);margin:0;">980 hrs</p>
+                <span class="avail-lib">In Library</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="ds-card">
+            <div style="height:120px;position:relative;overflow:hidden;">
+              <img src="images/wh_pexels-ihsanaditya-10834810.jpg" style="width:100%;height:100%;object-fit:cover;">
+              <div style="position:absolute;inset:0;" class="card-img-overlay"></div>
+              <span style="position:absolute;top:8px;right:8px;" class="badge-ego">EGO</span>
+            </div>
+            <div class="card-body">
+              <h3 style="font-size:13px;font-weight:700;color:var(--text);margin:0 0 4px;">Inventory Scanning &amp; Audit</h3>
+              <p style="font-size:11px;color:var(--muted);margin:0 0 10px;line-height:1.5;">Mobile robot scanning of barcodes and QR codes. Low-light and motion-blur edge cases included.</p>
+              <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px;">
+                <span class="tag tag-teal">EGO-Centric</span>
+                <span class="tag tag-teal">Task Labels</span>
+                <span class="tag tag-orange">Edge Cases</span>
+              </div>
+              <div class="card-footer">
+                <p style="font-size:13px;font-weight:700;color:var(--teal);margin:0;">650 hrs</p>
+                <span class="avail-lib">In Library</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="ds-card">
+            <div style="height:120px;position:relative;overflow:hidden;">
+              <img src="images/wh_pexels-tiger-lily-4483772.jpg" style="width:100%;height:100%;object-fit:cover;">
+              <div style="position:absolute;inset:0;" class="card-img-overlay"></div>
+              <span style="position:absolute;top:8px;right:8px;" class="badge-exo">EXO</span>
+            </div>
+            <div class="card-body">
+              <h3 style="font-size:13px;font-weight:700;color:var(--text);margin:0 0 4px;">Conveyor Loading &amp; Sortation</h3>
+              <p style="font-size:11px;color:var(--muted);margin:0 0 10px;line-height:1.5;">Package induction, divert, and sortation across high-speed conveyor lines. Multi-SKU parcels included.</p>
+              <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px;">
+                <span class="tag tag-blue">EXO-Centric</span>
+                <span class="tag tag-teal">Task Labels</span>
+                <span class="tag tag-purple">Seg</span>
+              </div>
+              <div class="card-footer">
+                <p style="font-size:13px;font-weight:700;color:var(--teal);margin:0;">780 hrs</p>
+                <span class="avail-od">On-demand</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ── Humanoid ── -->
+      <div id="hu" onclick="window.location.href='robodatahubahumanoid_light.html'" style="cursor:pointer;">
+        <div class="section-head">
+          <span style="width:12px;height:12px;border-radius:3px;background:#0d9488;flex-shrink:0;"></span>
+          <span style="font-size:16px;font-weight:800;color:var(--text);">Humanoid</span>
+          <div style="flex:1;height:1px;background:rgba(13,148,136,0.15);"></div>
+        </div>
+        <div class="card-grid" style="display:grid;gap:12px;">
+
+          <div class="ds-card">
+            <div style="height:120px;position:relative;overflow:hidden;">
+              <img src="images/WebDishWashing.png" style="width:100%;height:100%;object-fit:cover;">
+              <div style="position:absolute;inset:0;" class="card-img-overlay"></div>
+              <span style="position:absolute;top:8px;right:8px;" class="badge-exo">EXO</span>
+            </div>
+            <div class="card-body">
+              <h3 style="font-size:13px;font-weight:700;color:var(--text);margin:0 0 4px;">Dishwashing — Hand Manipulation</h3>
+              <p style="font-size:11px;color:var(--muted);margin:0 0 10px;line-height:1.5;">Fine-grained hand and object manipulation in wet, soapy conditions. Ideal for humanoid dexterity training.</p>
+              <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px;">
+                <span class="tag tag-blue">EXO-Centric</span>
+                <span class="tag tag-teal">Hand Pose</span>
+                <span class="tag tag-orange">Wet Conditions</span>
+              </div>
+              <div class="card-footer">
+                <p style="font-size:13px;font-weight:700;color:var(--teal);margin:0;">600 hrs</p>
+                <span class="avail-od">On-demand</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="ds-card">
+            <div style="height:120px;position:relative;overflow:hidden;">
+              <img src="images/WebCleaning.png" style="width:100%;height:100%;object-fit:cover;">
+              <div style="position:absolute;inset:0;" class="card-img-overlay"></div>
+              <span style="position:absolute;top:8px;right:8px;" class="badge-exo">EXO</span>
+            </div>
+            <div class="card-body">
+              <h3 style="font-size:13px;font-weight:700;color:var(--text);margin:0 0 4px;">Surface Cleaning &amp; Wiping</h3>
+              <p style="font-size:11px;color:var(--muted);margin:0 0 10px;line-height:1.5;">Humanoid arm trajectories for table, counter, and floor cleaning. Circular, linear, and avoidance wipe patterns.</p>
+              <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px;">
+                <span class="tag tag-blue">EXO-Centric</span>
+                <span class="tag tag-teal">Hand Pose</span>
+                <span class="tag tag-teal">Task Labels</span>
+              </div>
+              <div class="card-footer">
+                <p style="font-size:13px;font-weight:700;color:var(--teal);margin:0;">450 hrs</p>
+                <span class="avail-lib">In Library</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="ds-card">
+            <div style="height:120px;position:relative;overflow:hidden;">
+              <img src="images/WebTrashCollection.png" style="width:100%;height:100%;object-fit:cover;">
+              <div style="position:absolute;inset:0;" class="card-img-overlay"></div>
+              <span style="position:absolute;top:8px;right:8px;" class="badge-ego">EGO</span>
+            </div>
+            <div class="card-body">
+              <h3 style="font-size:13px;font-weight:700;color:var(--text);margin:0 0 4px;">Trash Collection &amp; Sorting</h3>
+              <p style="font-size:11px;color:var(--muted);margin:0 0 10px;line-height:1.5;">Grasp-and-bin sequences for mixed waste streams. Recyclable detection, lid manipulation, and bag tying.</p>
+              <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px;">
+                <span class="tag tag-teal">EGO-Centric</span>
+                <span class="tag tag-teal">Hand Pose</span>
+                <span class="tag tag-orange">Edge Cases</span>
+              </div>
+              <div class="card-footer">
+                <p style="font-size:13px;font-weight:700;color:var(--teal);margin:0;">380 hrs</p>
+                <span class="avail-od">On-demand</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="ds-card">
+            <div style="height:120px;position:relative;overflow:hidden;">
+              <img src="images/WebWasher.png" style="width:100%;height:100%;object-fit:cover;">
+              <div style="position:absolute;inset:0;" class="card-img-overlay"></div>
+              <span style="position:absolute;top:8px;right:8px;" class="badge-exo">EXO</span>
+            </div>
+            <div class="card-body">
+              <h3 style="font-size:13px;font-weight:700;color:var(--text);margin:0 0 4px;">Laundry — Load &amp; Fold</h3>
+              <p style="font-size:11px;color:var(--muted);margin:0 0 10px;line-height:1.5;">Cloth manipulation — sorting, loading washer/dryer, and folding garments. High deformable-object variety.</p>
+              <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px;">
+                <span class="tag tag-blue">EXO-Centric</span>
+                <span class="tag tag-teal">Hand Pose</span>
+                <span class="tag tag-purple">Seg</span>
+              </div>
+              <div class="card-footer">
+                <p style="font-size:13px;font-weight:700;color:var(--teal);margin:0;">520 hrs</p>
+                <span class="avail-lib">In Library</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ── Automotive ── -->
+      <div id="au" onclick="window.location.href='robodatahubauto_light.html'" style="cursor:pointer;">
+        <div class="section-head">
+          <span style="width:12px;height:12px;border-radius:3px;background:#7c3aed;flex-shrink:0;"></span>
+          <span style="font-size:16px;font-weight:800;color:var(--text);">Automotive</span>
+          <div style="flex:1;height:1px;background:rgba(124,58,237,0.15);"></div>
+        </div>
+        <div class="card-grid" style="display:grid;gap:12px;">
+
+          <div class="ds-card">
+            <div style="height:120px;position:relative;overflow:hidden;">
+              <img src="images/frontGrille_012.png" style="width:100%;height:100%;object-fit:cover;">
+              <div style="position:absolute;inset:0;" class="card-img-overlay"></div>
+              <span style="position:absolute;top:8px;right:8px;" class="badge-exo">EXO</span>
+            </div>
+            <div class="card-body">
+              <h3 style="font-size:13px;font-weight:700;color:var(--text);margin:0 0 4px;">BMW Front Grille Assembly</h3>
+              <p style="font-size:11px;color:var(--muted);margin:0 0 10px;line-height:1.5;">Production-line assembly from BMW facility. Multi-step grille fitting, fastening and QC inspection.</p>
+              <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px;">
+                <span class="tag tag-blue">EXO-Centric</span>
+                <span class="tag tag-teal">Task Labels</span>
+                <span class="tag tag-purple">Seg</span>
+              </div>
+              <div class="card-footer">
+                <p style="font-size:13px;font-weight:700;color:var(--teal);margin:0;">2,100 hrs</p>
+                <span class="avail-lib">In Library</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="ds-card">
+            <div style="height:120px;position:relative;overflow:hidden;">
+              <img src="images/frontSeat_007.png" style="width:100%;height:100%;object-fit:cover;">
+              <div style="position:absolute;inset:0;" class="card-img-overlay"></div>
+              <span style="position:absolute;top:8px;right:8px;" class="badge-exo">EXO</span>
+            </div>
+            <div class="card-body">
+              <h3 style="font-size:13px;font-weight:700;color:var(--text);margin:0 0 4px;">Front Seat Installation</h3>
+              <p style="font-size:11px;color:var(--muted);margin:0 0 10px;line-height:1.5;">Seat alignment, bolt-down, and connector-clip sequences across multiple vehicle platforms.</p>
+              <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px;">
+                <span class="tag tag-blue">EXO-Centric</span>
+                <span class="tag tag-teal">Task Labels</span>
+                <span class="tag tag-teal">Bbox</span>
+              </div>
+              <div class="card-footer">
+                <p style="font-size:13px;font-weight:700;color:var(--teal);margin:0;">1,400 hrs</p>
+                <span class="avail-lib">In Library</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="ds-card">
+            <div style="height:120px;position:relative;overflow:hidden;">
+              <img src="images/passengerSeat_0100_Rotate_left_45_degrees.png" style="width:100%;height:100%;object-fit:cover;">
+              <div style="position:absolute;inset:0;" class="card-img-overlay"></div>
+              <span style="position:absolute;top:8px;right:8px;" class="badge-ego">EGO</span>
+            </div>
+            <div class="card-body">
+              <h3 style="font-size:13px;font-weight:700;color:var(--text);margin:0 0 4px;">Passenger Seat QC Inspection</h3>
+              <p style="font-size:11px;color:var(--muted);margin:0 0 10px;line-height:1.5;">EGO-centric quality inspection of seat fitment, trim alignment, and seatbelt anchor verification.</p>
+              <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px;">
+                <span class="tag tag-teal">EGO-Centric</span>
+                <span class="tag tag-teal">Task Labels</span>
+                <span class="tag tag-purple">Seg</span>
+              </div>
+              <div class="card-footer">
+                <p style="font-size:13px;font-weight:700;color:var(--teal);margin:0;">900 hrs</p>
+                <span class="avail-od">On-demand</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="ds-card">
+            <div style="height:120px;position:relative;overflow:hidden;">
+              <img src="images/rearBumper_021.png" style="width:100%;height:100%;object-fit:cover;">
+              <div style="position:absolute;inset:0;" class="card-img-overlay"></div>
+              <span style="position:absolute;top:8px;right:8px;" class="badge-exo">EXO</span>
+            </div>
+            <div class="card-body">
+              <h3 style="font-size:13px;font-weight:700;color:var(--text);margin:0 0 4px;">Rear Bumper Assembly</h3>
+              <p style="font-size:11px;color:var(--muted);margin:0 0 10px;line-height:1.5;">Bumper alignment, clip insertion, and sensor harness routing across multiple trim levels.</p>
+              <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px;">
+                <span class="tag tag-blue">EXO-Centric</span>
+                <span class="tag tag-teal">Task Labels</span>
+                <span class="tag tag-orange">Edge Cases</span>
+              </div>
+              <div class="card-footer">
+                <p style="font-size:13px;font-weight:700;color:var(--teal);margin:0;">1,100 hrs</p>
+                <span class="avail-lib">In Library</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ── Custom Dataset Request ── -->
+      <div style="margin-top:8px;padding:28px 32px;background:linear-gradient(135deg,rgba(13,148,136,0.05) 0%,rgba(29,78,216,0.03) 100%);border:1.5px dashed rgba(13,148,136,0.25);border-radius:12px;display:flex;align-items:center;justify-content:space-between;gap:24px;">
+        <div style="display:flex;align-items:center;gap:14px;">
+          <div style="width:40px;height:40px;border-radius:10px;background:rgba(13,148,136,0.08);border:1px solid rgba(13,148,136,0.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </div>
+          <div>
+            <p style="font-size:14px;font-weight:700;color:var(--text);margin:0 0 3px;">Request a Custom Dataset</p>
+            <p style="font-size:12px;color:var(--muted);margin:0;line-height:1.5;">Don't see what you need? Our 100+ person team captures any task, environment, or robot workflow on demand.</p>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-shrink:0;align-items:center;">
+          <div style="display:flex;gap:5px;">
+            <span style="font-size:10px;font-weight:700;color:#1d4ed8;background:rgba(29,78,216,0.08);border:1px solid rgba(29,78,216,0.2);padding:3px 8px;border-radius:4px;">Data Center</span>
+            <span style="font-size:10px;font-weight:700;color:#ea580c;background:rgba(234,88,12,0.08);border:1px solid rgba(234,88,12,0.2);padding:3px 8px;border-radius:4px;">Warehouse</span>
+            <span style="font-size:10px;font-weight:700;color:#0d9488;background:rgba(13,148,136,0.08);border:1px solid rgba(13,148,136,0.2);padding:3px 8px;border-radius:4px;">Humanoid</span>
+            <span style="font-size:10px;font-weight:700;color:#7c3aed;background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.2);padding:3px 8px;border-radius:4px;">Automotive</span>
+          </div>
+          <button style="font-size:12px;font-weight:700;color:#fff;background:var(--teal);border:none;padding:8px 20px;border-radius:8px;cursor:pointer;white-space:nowrap;font-family:inherit;transition:opacity .2s;" onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">Submit Request</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ── Footer ── -->
+<footer style="background:#fff;border-top:1px solid var(--border);padding:36px 56px;display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#9ca3af;">
+  <div style="font-size:16px;font-weight:800;color:var(--teal);letter-spacing:.04em;">DataraAI</div>
+  <div style="display:flex;gap:24px;">
+    <a href="homepage_light.html" style="color:#9ca3af;text-decoration:none;transition:color .2s;" onmouseover="this.style.color='#0f172a'" onmouseout="this.style.color='#9ca3af'">Home</a>
+    <a href="#" style="color:#9ca3af;text-decoration:none;transition:color .2s;" onmouseover="this.style.color='#0f172a'" onmouseout="this.style.color='#9ca3af'">Docs</a>
+    <a href="#" style="color:#9ca3af;text-decoration:none;transition:color .2s;" onmouseover="this.style.color='#0f172a'" onmouseout="this.style.color='#9ca3af'">Customers</a>
+    <a href="company.html" style="color:#9ca3af;text-decoration:none;transition:color .2s;" onmouseover="this.style.color='#0f172a'" onmouseout="this.style.color='#9ca3af'">Company</a>
+    <a href="#" style="color:#9ca3af;text-decoration:none;transition:color .2s;" onmouseover="this.style.color='#0f172a'" onmouseout="this.style.color='#9ca3af'">Contact</a>
+  </div>
+  <div>© 2025 DataraAI · NVIDIA Inception Member</div>
+</footer>
+
+<script>
+  function setLayout(cols) {
+    document.querySelectorAll('.card-grid').forEach(function(g) {
+      g.classList.toggle('two-panel', cols === 2);
+    });
+    var btn4 = document.getElementById('btn-4');
+    var btn2 = document.getElementById('btn-2');
+    if (cols === 4) {
+      btn4.style.background = 'var(--teal)'; btn4.style.color = '#fff';
+      btn2.style.background = 'transparent'; btn2.style.color = 'var(--muted)';
+    } else {
+      btn2.style.background = 'var(--teal)'; btn2.style.color = '#fff';
+      btn4.style.background = 'transparent'; btn4.style.color = 'var(--muted)';
+    }
+  }
+</script>
+</body>
+</html>
