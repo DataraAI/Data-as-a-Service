@@ -277,7 +277,7 @@ export default function RoboDataHubHumanoidLight() {
             </div>
           </div>
           <div className="d-hero-img">
-            <img src="images/WebDishWashing.png" alt="Humanoid robot in kitchen environment" />
+            <img src="../../assets/images/humanoid/humanoid3.png" alt="Humanoid robot in kitchen environment" />
             <div className="d-hero-img-ov"></div>
             <div className="d-hero-badge"><div className="d-hb-b">Featured · Robotics AI</div><div className="d-hb-n">Kitchen Tasks — Live Capture</div></div>
             <div className="d-hero-pill"><strong>9</strong> datasets available</div>
@@ -359,11 +359,11 @@ export default function RoboDataHubHumanoidLight() {
               <div className="d-card">
                 <div className="d-card-head"><div className="d-card-title">Dishwashing — Hand Manipulation</div><span className="d-badge-od">On-demand</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/WebDishWashing.png" alt="Dishwashing hand manipulation" /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/humanoid/humanoid3.png" alt="Dishwashing hand manipulation" /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/WebWasher.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/WebTrashCollection.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/WebCleaning.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/humanoid/humanoid5.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/humanoid/humanoid4.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/humanoid/humanoid1.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EXO-Centric</div><div className="d-tag">Hand Pose</div><div className="d-tag">Wet Conditions</div></div>
@@ -377,11 +377,11 @@ export default function RoboDataHubHumanoidLight() {
               <div className="d-card">
                 <div className="d-card-head"><div className="d-card-title">Food Prep &amp; Plating</div><span className="d-badge">In Library</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/WebCleaning.png" alt="Food preparation and plating" /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/humanoid/humanoid1.png" alt="Food preparation and plating" /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/WebDishWashing.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/WebTrashCollection.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/WebWasher.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/humanoid/humanoid3.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/humanoid/humanoid4.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/humanoid/humanoid5.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EXO-Centric</div><div className="d-tag">Hand Pose</div><div className="d-tag">Task Labels</div></div>
@@ -395,11 +395,11 @@ export default function RoboDataHubHumanoidLight() {
               <div className="d-card">
                 <div className="d-card-head"><div className="d-card-title">Appliance Operation</div><span className="d-badge">In Library</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/WebWasher.png" alt="Appliance operation" /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/humanoid/humanoid5.png" alt="Appliance operation" /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/WebDishWashing.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/WebCleaning.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/WebTrashCollection.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/humanoid/humanoid3.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/humanoid/humanoid1.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/humanoid/humanoid4.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EXO-Centric</div><div className="d-tag">Hand Pose</div></div>
@@ -429,11 +429,11 @@ export default function RoboDataHubHumanoidLight() {
               <div className="d-card">
                 <div className="d-card-head"><div className="d-card-title">Surface Cleaning &amp; Wiping</div><span className="d-badge">In Library</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/WebCleaning.png" alt="Surface cleaning and wiping" /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/humanoid/humanoid1.png" alt="Surface cleaning and wiping" /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/WebDishWashing.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/WebTrashCollection.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/WebWasher.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/humanoid/humanoid3.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/humanoid/humanoid4.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/humanoid/humanoid5.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EXO-Centric</div><div className="d-tag">Hand Pose</div><div className="d-tag">Task Labels</div></div>
@@ -447,11 +447,11 @@ export default function RoboDataHubHumanoidLight() {
               <div className="d-card">
                 <div className="d-card-head"><div className="d-card-title">Floor Mopping &amp; Sweeping</div><span className="d-badge-od">On-demand</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/WebTrashCollection.png" alt="Floor mopping and sweeping" /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/humanoid/humanoid4.png" alt="Floor mopping and sweeping" /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/WebCleaning.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/WebWasher.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/WebDishWashing.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/humanoid/humanoid1.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/humanoid/humanoid5.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/humanoid/humanoid3.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EGO-Centric</div><div className="d-tag">Hand Pose</div><div className="d-tag">Edge Cases</div></div>
@@ -465,11 +465,11 @@ export default function RoboDataHubHumanoidLight() {
               <div className="d-card">
                 <div className="d-card-head"><div className="d-card-title">Bathroom Sanitization</div><span className="d-badge-od">On-demand</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/WebDishWashing.png" alt="Bathroom sanitization" /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/humanoid/humanoid3.png" alt="Bathroom sanitization" /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/WebTrashCollection.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/WebCleaning.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/WebWasher.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/humanoid/humanoid4.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/humanoid/humanoid1.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/humanoid/humanoid5.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EXO-Centric</div><div className="d-tag">Task Labels</div></div>
@@ -499,11 +499,11 @@ export default function RoboDataHubHumanoidLight() {
               <div className="d-card">
                 <div className="d-card-head"><div className="d-card-title">Trash Collection &amp; Sorting</div><span className="d-badge-od">On-demand</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/WebTrashCollection.png" alt="Trash collection and sorting" /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/humanoid/humanoid4.png" alt="Trash collection and sorting" /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/WebDishWashing.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/WebWasher.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/WebCleaning.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/humanoid/humanoid3.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/humanoid/humanoid5.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/humanoid/humanoid1.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EGO-Centric</div><div className="d-tag">Hand Pose</div><div className="d-tag">Edge Cases</div></div>
@@ -517,11 +517,11 @@ export default function RoboDataHubHumanoidLight() {
               <div className="d-card">
                 <div className="d-card-head"><div className="d-card-title">Laundry — Load &amp; Fold</div><span className="d-badge">In Library</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/WebWasher.png" alt="Laundry load and fold" /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/humanoid/humanoid5.png" alt="Laundry load and fold" /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/WebCleaning.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/WebDishWashing.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/WebTrashCollection.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/humanoid/humanoid1.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/humanoid/humanoid3.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/humanoid/humanoid4.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EXO-Centric</div><div className="d-tag">Hand Pose</div><div className="d-tag">Seg</div></div>
@@ -535,11 +535,11 @@ export default function RoboDataHubHumanoidLight() {
               <div className="d-card">
                 <div className="d-card-head"><div className="d-card-title">Object Organization</div><span className="d-badge">In Library</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/WebCleaning.png" alt="Object organization" /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/humanoid/humanoid1.png" alt="Object organization" /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/WebTrashCollection.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/WebDishWashing.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/WebWasher.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/humanoid/humanoid4.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/humanoid/humanoid3.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/humanoid/humanoid5.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EXO-Centric</div><div className="d-tag">Task Labels</div></div>

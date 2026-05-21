@@ -521,12 +521,12 @@ export default function HomepageLight() {
           </div>
           <div className="sol-imgs">
             <div className="sol-img-panel">
-              <img src="img/rack-manual.png" alt="Workers manually inserting server sled" />
+              <img src="../../assets/rack-manual.png" alt="Workers manually inserting server sled" />
               <div className="sol-img-caption sol-cap-before"><span className="sol-cap-dot sol-cap-dot-red"></span>Before · 2 Workers</div>
             </div>
             <div className="sol-imgs-arrow">→</div>
             <div className="sol-img-panel">
-              <img src="img/rack-robot.png" alt="Robot arm inserting server sled" />
+              <img src="../../assets/rack-robot.png" alt="Robot arm inserting server sled" />
               <div className="sol-img-caption sol-cap-after"><span className="sol-cap-dot sol-cap-dot-teal"></span>After · Robot Arm</div>
             </div>
           </div>
@@ -539,7 +539,7 @@ export default function HomepageLight() {
             <p className="sol-roadmap-sub">From target use case to production robot deployment in a 6-month pilot.</p>
           </div>
           <div className="sol-roadmap-img">
-            <img src="img/pilot-roadmap.png" alt="6-month pilot roadmap" />
+            <img src="../../assets/pilot-roadmap.png" alt="6-month pilot roadmap" />
           </div>
         </div>
       </section>

@@ -332,7 +332,7 @@ export default function RoboEyeViewLight() {
                     <div style={{ width: '200px', flexShrink: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                       <p style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--blue)', margin: '0 0 6px' }}>EXO Source</p>
                       <div className="exo-box">
-                        <img src="images/rev/data1_exo.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                        <img src="../../assets/images/serverrack/exo_serverrack.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                         <span className="exo-label">EXO</span>
                       </div>
                     </div>
@@ -352,10 +352,10 @@ export default function RoboEyeViewLight() {
                     <div style={{ flex: 1 }}>
                       <p style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--amber)', margin: '0 0 6px' }}>Generated EGO Views</p>
                       <div className="ego-grid">
-                        <div className="ego-box"><img src="images/rev/data1_ego1.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Front</span></div>
-                        <div className="ego-box"><img src="images/rev/data1_ego2.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Overhead</span></div>
-                        <div className="ego-box"><img src="images/rev/data1_ego3.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Side</span></div>
-                        <div className="ego-box"><img src="images/rev/data1_ego3.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Low Angle</span></div>
+                        <div className="ego-box"><img src="../../assets/images/serverrack/ego_serverrack.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Front</span></div>
+                        <div className="ego-box"><img src="../../assets/images/serverrack/ego_serverrack1.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Overhead</span></div>
+                        <div className="ego-box"><img src="../../assets/images/serverrack/2ego_serverrack.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Side</span></div>
+                        <div className="ego-box"><img src="../../assets/images/serverrack/2ego_serverrack.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Low Angle</span></div>
                       </div>
                     </div>
                   </div>
@@ -380,7 +380,7 @@ export default function RoboEyeViewLight() {
                     <div style={{ width: '200px', flexShrink: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                       <p style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--blue)', margin: '0 0 6px' }}>EXO Source</p>
                       <div className="exo-box">
-                        <img src="images/rev/data2_exo.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                        <img src="../../assets/images/serverrack/2exo_serverrack.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                         <span className="exo-label">EXO</span>
                       </div>
                     </div>
@@ -400,10 +400,10 @@ export default function RoboEyeViewLight() {
                     <div style={{ flex: 1 }}>
                       <p style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--amber)', margin: '0 0 6px' }}>Generated EGO Views</p>
                       <div className="ego-grid">
-                        <div className="ego-box"><img src="images/rev/data2_ego1.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Front</span></div>
-                        <div className="ego-box"><img src="images/rev/data2_ego2.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Overhead</span></div>
-                        <div className="ego-box"><img src="images/rev/data2_ego3.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Side</span></div>
-                        <div className="ego-box"><img src="images/rev/data2_ego3.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Low Angle</span></div>
+                        <div className="ego-box"><img src="../../assets/images/serverrack/2ego_serverrack1.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Front</span></div>
+                        <div className="ego-box"><img src="../../assets/images/serverrack/2ego_serverrack2.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Overhead</span></div>
+                        <div className="ego-box"><img src="../../assets/images/serverrack/serverrack5.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Side</span></div>
+                        <div className="ego-box"><img src="../../assets/images/serverrack/serverrack5.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Low Angle</span></div>
                       </div>
                     </div>
                   </div>
@@ -443,7 +443,7 @@ export default function RoboEyeViewLight() {
                     <div style={{ width: '200px', flexShrink: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                       <p style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--blue)', margin: '0 0 6px' }}>EXO Source</p>
                       <div className="exo-box">
-                        <img src="images/rev/human1_exo.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                        <img src="../../assets/images/humanoid/humanoid.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                         <span className="exo-label">EXO</span>
                       </div>
                     </div>
@@ -463,10 +463,10 @@ export default function RoboEyeViewLight() {
                     <div style={{ flex: 1 }}>
                       <p style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--amber)', margin: '0 0 6px' }}>Generated EGO Views</p>
                       <div className="ego-grid">
-                        <div className="ego-box"><img src="images/rev/human1_ego1.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Robot Hand-level</span></div>
-                        <div className="ego-box"><img src="images/rev/human1_ego1.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Side</span></div>
-                        <div className="ego-box"><img src="images/rev/human1_ego1.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Overhead</span></div>
-                        <div className="ego-box"><img src="images/rev/human1_ego1.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Low Angle</span></div>
+                        <div className="ego-box"><img src="../../assets/images/humanoid/humanoid1.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Robot Hand-level</span></div>
+                        <div className="ego-box"><img src="../../assets/images/humanoid/humanoid1.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Side</span></div>
+                        <div className="ego-box"><img src="../../assets/images/humanoid/humanoid1.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Overhead</span></div>
+                        <div className="ego-box"><img src="../../assets/images/humanoid/humanoid1.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Low Angle</span></div>
                       </div>
                     </div>
                   </div>
@@ -491,7 +491,7 @@ export default function RoboEyeViewLight() {
                     <div style={{ width: '200px', flexShrink: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                       <p style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--blue)', margin: '0 0 6px' }}>EXO Source</p>
                       <div className="exo-box">
-                        <img src="images/rev/human2_exo.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                        <img src="../../assets/images/humanoid/humanoid2.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                         <span className="exo-label">EXO</span>
                       </div>
                     </div>
@@ -511,10 +511,10 @@ export default function RoboEyeViewLight() {
                     <div style={{ flex: 1 }}>
                       <p style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--amber)', margin: '0 0 6px' }}>Generated EGO Views</p>
                       <div className="ego-grid">
-                        <div className="ego-box"><img src="images/rev/human2_ego1.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Mid-range</span></div>
-                        <div className="ego-box"><img src="images/rev/human2_ego2.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Close-up</span></div>
-                        <div className="ego-box"><img src="images/rev/human2_ego2.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Overhead</span></div>
-                        <div className="ego-box"><img src="images/rev/human2_ego2.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Low Angle</span></div>
+                        <div className="ego-box"><img src="../../assets/images/humanoid/humanoid3.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Mid-range</span></div>
+                        <div className="ego-box"><img src="../../assets/images/humanoid/humanoid4.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Close-up</span></div>
+                        <div className="ego-box"><img src="../../assets/images/humanoid/humanoid4.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Overhead</span></div>
+                        <div className="ego-box"><img src="../../assets/images/humanoid/humanoid4.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Low Angle</span></div>
                       </div>
                     </div>
                   </div>
@@ -539,7 +539,7 @@ export default function RoboEyeViewLight() {
                     <div style={{ width: '200px', flexShrink: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                       <p style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--blue)', margin: '0 0 6px' }}>EXO Source</p>
                       <div className="exo-box">
-                        <img src="images/rev/human3_exo.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                        <img src="../../assets/images/humanoid/humanoid5.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                         <span className="exo-label">EXO</span>
                       </div>
                     </div>
@@ -559,10 +559,10 @@ export default function RoboEyeViewLight() {
                     <div style={{ flex: 1 }}>
                       <p style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--amber)', margin: '0 0 6px' }}>Generated EGO Views</p>
                       <div className="ego-grid">
-                        <div className="ego-box"><img src="images/rev/human3_ego1.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Hand-level Grasp</span></div>
-                        <div className="ego-box"><img src="images/rev/human3_ego1.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Side</span></div>
-                        <div className="ego-box"><img src="images/rev/human3_ego1.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Overhead</span></div>
-                        <div className="ego-box"><img src="images/rev/human3_ego1.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Low Angle</span></div>
+                        <div className="ego-box"><img src="../../assets/images/humanoid/humanoid6.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Hand-level Grasp</span></div>
+                        <div className="ego-box"><img src="../../assets/images/humanoid/humanoid6.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Side</span></div>
+                        <div className="ego-box"><img src="../../assets/images/humanoid/humanoid6.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Overhead</span></div>
+                        <div className="ego-box"><img src="../../assets/images/humanoid/humanoid6.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Low Angle</span></div>
                       </div>
                     </div>
                   </div>
@@ -601,7 +601,7 @@ export default function RoboEyeViewLight() {
                     <div style={{ width: '200px', flexShrink: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                       <p style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--blue)', margin: '0 0 6px' }}>EXO Source</p>
                       <div className="exo-box">
-                        <img src="images/rev/auto1_exo.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                        <img src="../../assets/images/carAutomation/exo_carautomation.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                         <span className="exo-label">EXO</span>
                       </div>
                     </div>
@@ -621,10 +621,10 @@ export default function RoboEyeViewLight() {
                     <div style={{ flex: 1 }}>
                       <p style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--amber)', margin: '0 0 6px' }}>Generated EGO Views</p>
                       <div className="ego-grid">
-                        <div className="ego-box"><img src="images/rev/auto1_ego1.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Front</span></div>
-                        <div className="ego-box"><img src="images/rev/auto1_ego2.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Rotate Left</span></div>
-                        <div className="ego-box"><img src="images/rev/auto1_ego3.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Low Angle</span></div>
-                        <div className="ego-box"><img src="images/rev/auto1_ego4.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Studio</span></div>
+                        <div className="ego-box"><img src="../../assets/images/carAutomation/ego_carautomation.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Front</span></div>
+                        <div className="ego-box"><img src="../../assets/images/carAutomation/ego_carautomation1.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Rotate Left</span></div>
+                        <div className="ego-box"><img src="../../assets/images/carAutomation/carAutomation.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Low Angle</span></div>
+                        <div className="ego-box"><img src="../../assets/images/carAutomation/carAutomation1.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /><span className="ego-label">Studio</span></div>
                       </div>
                     </div>
                   </div>

@@ -272,7 +272,7 @@ export default function RoboDataHubLight() {
 
                 <div className="ds-card">
                   <div style={{ height: '120px', position: 'relative', overflow: 'hidden' }}>
-                    <img src="images/dc_Screenshot_2026-01-13_at_2.06.33_PM.png" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img src="../../assets/images/serverrack/serverrack1.png" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     <div style={{ position: 'absolute', inset: 0 }} className="card-img-overlay"></div>
                     <span style={{ position: 'absolute', top: '8px', right: '8px' }} className="badge-exo">EXO</span>
                   </div>
@@ -293,7 +293,7 @@ export default function RoboDataHubLight() {
 
                 <div className="ds-card">
                   <div style={{ height: '120px', position: 'relative', overflow: 'hidden' }}>
-                    <img src="images/dc_Screenshot_2026-01-13_at_4.38.50_PM.png" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img src="../../assets/images/serverrack/serverrack4.png" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     <div style={{ position: 'absolute', inset: 0 }} className="card-img-overlay"></div>
                     <span style={{ position: 'absolute', top: '8px', right: '8px' }} className="badge-exo">EXO</span>
                   </div>
@@ -313,7 +313,7 @@ export default function RoboDataHubLight() {
 
                 <div className="ds-card">
                   <div style={{ height: '120px', position: 'relative', overflow: 'hidden' }}>
-                    <img src="images/dc_Screenshot_2026-01-13_at_4.38.12_PM.png" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img src="../../assets/images/serverrack/serverrack2.png" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     <div style={{ position: 'absolute', inset: 0 }} className="card-img-overlay"></div>
                     <span style={{ position: 'absolute', top: '8px', right: '8px' }} className="badge-ego">EGO</span>
                   </div>
@@ -334,7 +334,7 @@ export default function RoboDataHubLight() {
 
                 <div className="ds-card">
                   <div style={{ height: '120px', position: 'relative', overflow: 'hidden' }}>
-                    <img src="images/dc_Screenshot_2026-01-13_at_4.38.43_PM.png" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img src="../../assets/images/serverrack/serverrack3.png" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     <div style={{ position: 'absolute', inset: 0 }} className="card-img-overlay"></div>
                     <span style={{ position: 'absolute', top: '8px', right: '8px' }} className="badge-exo">EXO</span>
                   </div>
@@ -367,7 +367,7 @@ export default function RoboDataHubLight() {
 
                 <div className="ds-card">
                   <div style={{ height: '120px', position: 'relative', overflow: 'hidden' }}>
-                    <img src="images/wh_pexels-goldcircuits-8377802.jpg" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img src="../../assets/images/warehouse/warehouse2.png" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     <div style={{ position: 'absolute', inset: 0 }} className="card-img-overlay"></div>
                     <span style={{ position: 'absolute', top: '8px', right: '8px' }} className="badge-ego">EGO</span>
                   </div>
@@ -388,7 +388,7 @@ export default function RoboDataHubLight() {
 
                 <div className="ds-card">
                   <div style={{ height: '120px', position: 'relative', overflow: 'hidden' }}>
-                    <img src="images/wh_pexels-endura-tiles-370085044-14554082.jpg" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img src="../../assets/images/warehouse/warehouse1.png" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     <div style={{ position: 'absolute', inset: 0 }} className="card-img-overlay"></div>
                     <span style={{ position: 'absolute', top: '8px', right: '8px' }} className="badge-exo">EXO</span>
                   </div>
@@ -409,7 +409,7 @@ export default function RoboDataHubLight() {
 
                 <div className="ds-card">
                   <div style={{ height: '120px', position: 'relative', overflow: 'hidden' }}>
-                    <img src="images/wh_pexels-ihsanaditya-10834810.jpg" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img src="../../assets/images/warehouse/warehouse3.png" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     <div style={{ position: 'absolute', inset: 0 }} className="card-img-overlay"></div>
                     <span style={{ position: 'absolute', top: '8px', right: '8px' }} className="badge-ego">EGO</span>
                   </div>
@@ -430,7 +430,7 @@ export default function RoboDataHubLight() {
 
                 <div className="ds-card">
                   <div style={{ height: '120px', position: 'relative', overflow: 'hidden' }}>
-                    <img src="images/wh_pexels-tiger-lily-4483772.jpg" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img src="../../assets/images/warehouse/warehouse4.png" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     <div style={{ position: 'absolute', inset: 0 }} className="card-img-overlay"></div>
                     <span style={{ position: 'absolute', top: '8px', right: '8px' }} className="badge-exo">EXO</span>
                   </div>
@@ -463,7 +463,7 @@ export default function RoboDataHubLight() {
 
                 <div className="ds-card">
                   <div style={{ height: '120px', position: 'relative', overflow: 'hidden' }}>
-                    <img src="images/WebDishWashing.png" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img src="../../assets/images/humanoid/humanoid3.png" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     <div style={{ position: 'absolute', inset: 0 }} className="card-img-overlay"></div>
                     <span style={{ position: 'absolute', top: '8px', right: '8px' }} className="badge-exo">EXO</span>
                   </div>
@@ -484,7 +484,7 @@ export default function RoboDataHubLight() {
 
                 <div className="ds-card">
                   <div style={{ height: '120px', position: 'relative', overflow: 'hidden' }}>
-                    <img src="images/WebCleaning.png" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img src="../../assets/images/humanoid/humanoid1.png" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     <div style={{ position: 'absolute', inset: 0 }} className="card-img-overlay"></div>
                     <span style={{ position: 'absolute', top: '8px', right: '8px' }} className="badge-exo">EXO</span>
                   </div>
@@ -505,7 +505,7 @@ export default function RoboDataHubLight() {
 
                 <div className="ds-card">
                   <div style={{ height: '120px', position: 'relative', overflow: 'hidden' }}>
-                    <img src="images/WebTrashCollection.png" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img src="../../assets/images/humanoid/humanoid4.png" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     <div style={{ position: 'absolute', inset: 0 }} className="card-img-overlay"></div>
                     <span style={{ position: 'absolute', top: '8px', right: '8px' }} className="badge-ego">EGO</span>
                   </div>
@@ -526,7 +526,7 @@ export default function RoboDataHubLight() {
 
                 <div className="ds-card">
                   <div style={{ height: '120px', position: 'relative', overflow: 'hidden' }}>
-                    <img src="images/WebWasher.png" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img src="../../assets/images/humanoid/humanoid5.png" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     <div style={{ position: 'absolute', inset: 0 }} className="card-img-overlay"></div>
                     <span style={{ position: 'absolute', top: '8px', right: '8px' }} className="badge-exo">EXO</span>
                   </div>
@@ -559,7 +559,7 @@ export default function RoboDataHubLight() {
 
                 <div className="ds-card">
                   <div style={{ height: '120px', position: 'relative', overflow: 'hidden' }}>
-                    <img src="images/frontGrille_012.png" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img src="../../assets/images/carAutomation/carAutomation2.png" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     <div style={{ position: 'absolute', inset: 0 }} className="card-img-overlay"></div>
                     <span style={{ position: 'absolute', top: '8px', right: '8px' }} className="badge-exo">EXO</span>
                   </div>
@@ -580,7 +580,7 @@ export default function RoboDataHubLight() {
 
                 <div className="ds-card">
                   <div style={{ height: '120px', position: 'relative', overflow: 'hidden' }}>
-                    <img src="images/frontSeat_007.png" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img src="../../assets/images/carAutomation/carAutomation3.png" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     <div style={{ position: 'absolute', inset: 0 }} className="card-img-overlay"></div>
                     <span style={{ position: 'absolute', top: '8px', right: '8px' }} className="badge-exo">EXO</span>
                   </div>
@@ -601,7 +601,7 @@ export default function RoboDataHubLight() {
 
                 <div className="ds-card">
                   <div style={{ height: '120px', position: 'relative', overflow: 'hidden' }}>
-                    <img src="images/passengerSeat_0100_Rotate_left_45_degrees.png" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img src="../../assets/images/carAutomation/carAutomation4.png" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     <div style={{ position: 'absolute', inset: 0 }} className="card-img-overlay"></div>
                     <span style={{ position: 'absolute', top: '8px', right: '8px' }} className="badge-ego">EGO</span>
                   </div>
@@ -622,7 +622,7 @@ export default function RoboDataHubLight() {
 
                 <div className="ds-card">
                   <div style={{ height: '120px', position: 'relative', overflow: 'hidden' }}>
-                    <img src="images/rearBumper_021.png" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img src="../../assets/images/carAutomation/carAutomation5.png" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     <div style={{ position: 'absolute', inset: 0 }} className="card-img-overlay"></div>
                     <span style={{ position: 'absolute', top: '8px', right: '8px' }} className="badge-exo">EXO</span>
                   </div>

@@ -278,7 +278,7 @@ export default function RoboDataHubWarehouseLight() {
             </div>
           </div>
           <div className="d-hero-img">
-            <img src="images/wh_pexels-goldcircuits-8377802.jpg" alt="Warehouse fulfilment environment" />
+            <img src="../../assets/images/warehouse/warehouse2.png" alt="Warehouse fulfilment environment" />
             <div className="d-hero-img-ov"></div>
             <div className="d-hero-badge"><div className="d-hb-b">Featured · Robotics AI</div><div className="d-hb-n">Pick &amp; Place — Live Capture</div></div>
             <div className="d-hero-pill"><strong>9</strong> datasets available</div>
@@ -357,11 +357,11 @@ export default function RoboDataHubWarehouseLight() {
               <div className="d-card">
                 <div className="d-card-head"><div className="d-card-title">Pick &amp; Place — Shelf Interaction</div><span className="d-badge">In Library</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/wh_pexels-goldcircuits-8377802.jpg" alt="Pick and place shelf interaction" /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/warehouse/warehouse2.png" alt="Pick and place shelf interaction" /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/wh_pexels-tiger-lily-4483772.jpg" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/wh_pexels-ihsanaditya-10834810.jpg" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/wh_pexels-endura-tiles-370085044-14554082.jpg" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/warehouse/warehouse4.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/warehouse/warehouse3.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/warehouse/warehouse1.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EGO-Centric</div><div className="d-tag">Task Labels</div><div className="d-tag">Edge Cases</div><div className="d-tag">1,200 hrs</div></div>
@@ -372,11 +372,11 @@ export default function RoboDataHubWarehouseLight() {
               <div className="d-card">
                 <div className="d-card-head"><div className="d-card-title">Bin Picking — Unstructured Piles</div><span className="d-badge-od">On-demand</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/wh_pexels-endura-tiles-370085044-14554082.jpg" alt="Bin picking unstructured piles" /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/warehouse/warehouse1.png" alt="Bin picking unstructured piles" /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/wh_pexels-goldcircuits-8377802.jpg" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/wh_pexels-ihsanaditya-10834810.jpg" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/wh_pexels-tiger-lily-4483772.jpg" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/warehouse/warehouse2.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/warehouse/warehouse3.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/warehouse/warehouse4.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EXO-Centric</div><div className="d-tag">Task Labels</div><div className="d-tag">Bbox</div><div className="d-tag">760 hrs</div></div>
@@ -387,11 +387,11 @@ export default function RoboDataHubWarehouseLight() {
               <div className="d-card">
                 <div className="d-card-head"><div className="d-card-title">Multi-Shape SKU Grasping</div><span className="d-badge">In Library</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/wh_pexels-ihsanaditya-10834810.jpg" alt="Multi-shape SKU grasping" /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/warehouse/warehouse3.png" alt="Multi-shape SKU grasping" /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/wh_pexels-goldcircuits-8377802.jpg" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/wh_pexels-endura-tiles-370085044-14554082.jpg" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/wh_pexels-tiger-lily-4483772.jpg" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/warehouse/warehouse2.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/warehouse/warehouse1.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/warehouse/warehouse4.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EGO-Centric</div><div className="d-tag">Task Labels</div><div className="d-tag">Edge Cases</div><div className="d-tag">540 hrs</div></div>
@@ -415,11 +415,11 @@ export default function RoboDataHubWarehouseLight() {
               <div className="d-card">
                 <div className="d-card-head"><div className="d-card-title">Pallet Stacking &amp; Transport</div><span className="d-badge">In Library</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/wh_pexels-endura-tiles-370085044-14554082.jpg" alt="Pallet stacking and transport" /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/warehouse/warehouse1.png" alt="Pallet stacking and transport" /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/wh_pexels-goldcircuits-8377802.jpg" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/wh_pexels-ihsanaditya-10834810.jpg" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/wh_pexels-tiger-lily-4483772.jpg" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/warehouse/warehouse2.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/warehouse/warehouse3.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/warehouse/warehouse4.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EXO-Centric</div><div className="d-tag">Task Labels</div><div className="d-tag">Bbox</div><div className="d-tag">980 hrs</div></div>
@@ -430,11 +430,11 @@ export default function RoboDataHubWarehouseLight() {
               <div className="d-card">
                 <div className="d-card-head"><div className="d-card-title">Conveyor Loading &amp; Sortation</div><span className="d-badge-od">On-demand</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/wh_pexels-tiger-lily-4483772.jpg" alt="Conveyor loading and sortation" /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/warehouse/warehouse4.png" alt="Conveyor loading and sortation" /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/wh_pexels-endura-tiles-370085044-14554082.jpg" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/wh_pexels-goldcircuits-8377802.jpg" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/wh_pexels-ihsanaditya-10834810.jpg" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/warehouse/warehouse1.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/warehouse/warehouse2.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/warehouse/warehouse3.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EXO-Centric</div><div className="d-tag">Task Labels</div><div className="d-tag">Seg</div><div className="d-tag">780 hrs</div></div>
@@ -445,11 +445,11 @@ export default function RoboDataHubWarehouseLight() {
               <div className="d-card">
                 <div className="d-card-head"><div className="d-card-title">Cross-Dock Transfer</div><span className="d-badge">In Library</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/wh_pexels-goldcircuits-8377802.jpg" alt="Cross-dock transfer" /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/warehouse/warehouse2.png" alt="Cross-dock transfer" /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/wh_pexels-ihsanaditya-10834810.jpg" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/wh_pexels-tiger-lily-4483772.jpg" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/wh_pexels-endura-tiles-370085044-14554082.jpg" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/warehouse/warehouse3.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/warehouse/warehouse4.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/warehouse/warehouse1.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EXO-Centric</div><div className="d-tag">Task Labels</div><div className="d-tag">620 hrs</div></div>
@@ -473,11 +473,11 @@ export default function RoboDataHubWarehouseLight() {
               <div className="d-card">
                 <div className="d-card-head"><div className="d-card-title">Inventory Scanning &amp; Audit</div><span className="d-badge">In Library</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/wh_pexels-ihsanaditya-10834810.jpg" alt="Inventory scanning and audit" /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/warehouse/warehouse3.png" alt="Inventory scanning and audit" /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/wh_pexels-goldcircuits-8377802.jpg" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/wh_pexels-endura-tiles-370085044-14554082.jpg" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/wh_pexels-tiger-lily-4483772.jpg" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/warehouse/warehouse2.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/warehouse/warehouse1.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/warehouse/warehouse4.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EGO-Centric</div><div className="d-tag">Task Labels</div><div className="d-tag">Edge Cases</div><div className="d-tag">650 hrs</div></div>
@@ -488,11 +488,11 @@ export default function RoboDataHubWarehouseLight() {
               <div className="d-card">
                 <div className="d-card-head"><div className="d-card-title">QC Defect Inspection</div><span className="d-badge-od">On-demand</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/wh_pexels-tiger-lily-4483772.jpg" alt="QC defect inspection" /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/warehouse/warehouse4.png" alt="QC defect inspection" /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/wh_pexels-endura-tiles-370085044-14554082.jpg" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/wh_pexels-ihsanaditya-10834810.jpg" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/wh_pexels-goldcircuits-8377802.jpg" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/warehouse/warehouse1.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/warehouse/warehouse3.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/warehouse/warehouse2.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EGO-Centric</div><div className="d-tag">Defect Labels</div><div className="d-tag">420 hrs</div></div>
@@ -503,11 +503,11 @@ export default function RoboDataHubWarehouseLight() {
               <div className="d-card">
                 <div className="d-card-head"><div className="d-card-title">Receiving &amp; Putaway</div><span className="d-badge">In Library</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/wh_pexels-endura-tiles-370085044-14554082.jpg" alt="Receiving and putaway" /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/warehouse/warehouse1.png" alt="Receiving and putaway" /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/wh_pexels-goldcircuits-8377802.jpg" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/wh_pexels-tiger-lily-4483772.jpg" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/wh_pexels-ihsanaditya-10834810.jpg" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/warehouse/warehouse2.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/warehouse/warehouse4.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/warehouse/warehouse3.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EXO-Centric</div><div className="d-tag">Task Labels</div><div className="d-tag">Bbox</div><div className="d-tag">380 hrs</div></div>

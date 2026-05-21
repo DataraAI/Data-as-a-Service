@@ -337,7 +337,7 @@ export default function RoboHandMotionLight() {
                     <div style={{ width: '200px', flexShrink: 0 }}>
                       <p style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--blue)', margin: '0 0 6px' }}>EXO Source</p>
                       <div className="exo-box">
-                        <img src="images/rev/human1_exo.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Kitchen Drawer EXO" />
+                        <img src="../../assets/images/humanoid/humanoid.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Kitchen Drawer EXO" />
                         <span className="exo-label">EXO</span>
                       </div>
                     </div>
@@ -359,10 +359,10 @@ export default function RoboHandMotionLight() {
                     <div style={{ flex: 1 }}>
                       <p style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--orange)', margin: '0 0 6px' }}>Labeled Motion Output</p>
                       <div className="output-grid">
-                        <div className="motion-box"><img src="images/rev/human1_ego1.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Wrist Pose" /><span className="motion-label">Wrist Pose</span></div>
-                        <div className="motion-box"><img src="images/rev/human1_ego1.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Finger Joints" /><span className="motion-label">Finger Joints</span></div>
-                        <div className="motion-box"><img src="images/rev/human1_ego1.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Grasp Point" /><span className="motion-label">Grasp Point</span></div>
-                        <div className="motion-box"><img src="images/rev/human1_ego1.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Motion Path" /><span className="motion-label">Motion Path</span></div>
+                        <div className="motion-box"><img src="../../assets/images/humanoid/humanoid1.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Wrist Pose" /><span className="motion-label">Wrist Pose</span></div>
+                        <div className="motion-box"><img src="../../assets/images/humanoid/humanoid1.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Finger Joints" /><span className="motion-label">Finger Joints</span></div>
+                        <div className="motion-box"><img src="../../assets/images/humanoid/humanoid1.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Grasp Point" /><span className="motion-label">Grasp Point</span></div>
+                        <div className="motion-box"><img src="../../assets/images/humanoid/humanoid1.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Motion Path" /><span className="motion-label">Motion Path</span></div>
                       </div>
                     </div>
                   </div>
@@ -387,7 +387,7 @@ export default function RoboHandMotionLight() {
                     <div style={{ width: '200px', flexShrink: 0 }}>
                       <p style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--blue)', margin: '0 0 6px' }}>EXO Source</p>
                       <div className="exo-box">
-                        <img src="images/rev/human2_exo.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Stovetop EXO" />
+                        <img src="../../assets/images/humanoid/humanoid2.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Stovetop EXO" />
                         <span className="exo-label">EXO</span>
                       </div>
                     </div>
@@ -409,10 +409,10 @@ export default function RoboHandMotionLight() {
                     <div style={{ flex: 1 }}>
                       <p style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--orange)', margin: '0 0 6px' }}>Labeled Motion Output</p>
                       <div className="output-grid">
-                        <div className="motion-box"><img src="images/rev/human2_ego1.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Hand Path" /><span className="motion-label">Hand Path</span></div>
-                        <div className="motion-box"><img src="images/rev/human2_ego2.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Contact Points" /><span className="motion-label">Contact Points</span></div>
-                        <div className="motion-box"><img src="images/rev/human2_ego1.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Pose Sequence" /><span className="motion-label">Pose Sequence</span></div>
-                        <div className="motion-box"><img src="images/rev/human2_ego2.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Close-up" /><span className="motion-label">Close-up</span></div>
+                        <div className="motion-box"><img src="../../assets/images/humanoid/humanoid3.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Hand Path" /><span className="motion-label">Hand Path</span></div>
+                        <div className="motion-box"><img src="../../assets/images/humanoid/humanoid4.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Contact Points" /><span className="motion-label">Contact Points</span></div>
+                        <div className="motion-box"><img src="../../assets/images/humanoid/humanoid3.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Pose Sequence" /><span className="motion-label">Pose Sequence</span></div>
+                        <div className="motion-box"><img src="../../assets/images/humanoid/humanoid4.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Close-up" /><span className="motion-label">Close-up</span></div>
                       </div>
                     </div>
                   </div>
@@ -437,7 +437,7 @@ export default function RoboHandMotionLight() {
                     <div style={{ width: '200px', flexShrink: 0 }}>
                       <p style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--blue)', margin: '0 0 6px' }}>EXO Source</p>
                       <div className="exo-box">
-                        <img src="images/rev/human3_exo.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Dishwashing EXO" />
+                        <img src="../../assets/images/humanoid/humanoid5.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Dishwashing EXO" />
                         <span className="exo-label">EXO</span>
                       </div>
                     </div>
@@ -459,10 +459,10 @@ export default function RoboHandMotionLight() {
                     <div style={{ flex: 1 }}>
                       <p style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--orange)', margin: '0 0 6px' }}>Labeled Motion Output</p>
                       <div className="output-grid">
-                        <div className="motion-box"><img src="images/rev/human3_ego1.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Grasp Type" /><span className="motion-label">Grasp Type</span></div>
-                        <div className="motion-box"><img src="images/rev/human3_ego1.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Object State" /><span className="motion-label">Object State</span></div>
-                        <div className="motion-box"><img src="images/rev/human3_ego1.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Joint Angles" /><span className="motion-label">Joint Angles</span></div>
-                        <div className="motion-box"><img src="images/rev/human3_ego1.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Motion Arc" /><span className="motion-label">Motion Arc</span></div>
+                        <div className="motion-box"><img src="../../assets/images/humanoid/humanoid6.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Grasp Type" /><span className="motion-label">Grasp Type</span></div>
+                        <div className="motion-box"><img src="../../assets/images/humanoid/humanoid6.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Object State" /><span className="motion-label">Object State</span></div>
+                        <div className="motion-box"><img src="../../assets/images/humanoid/humanoid6.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Joint Angles" /><span className="motion-label">Joint Angles</span></div>
+                        <div className="motion-box"><img src="../../assets/images/humanoid/humanoid6.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Motion Arc" /><span className="motion-label">Motion Arc</span></div>
                       </div>
                     </div>
                   </div>
@@ -490,7 +490,7 @@ export default function RoboHandMotionLight() {
               <div className="ds-gallery">
 
                 <div className="ds-card">
-                  <img src="images/WebCleaning.png" className="ds-img" alt="Surface Cleaning" />
+                  <img src="../../assets/images/humanoid/humanoid1.png" className="ds-img" alt="Surface Cleaning" />
                   <div className="ds-body">
                     <p className="ds-name">Surface &amp; Floor Cleaning</p>
                     <p className="ds-meta">Sweeping, scrubbing motions — 3 tool types</p>
@@ -503,7 +503,7 @@ export default function RoboHandMotionLight() {
                 </div>
 
                 <div className="ds-card">
-                  <img src="images/WebDishWasher.png" className="ds-img" alt="Dishwasher Loading" />
+                  <img src="../../assets/images/humanoid/humanoid2.png" className="ds-img" alt="Dishwasher Loading" />
                   <div className="ds-body">
                     <p className="ds-name">Dishwasher Loading</p>
                     <p className="ds-meta">Object placement, rack navigation, door operation</p>
@@ -516,7 +516,7 @@ export default function RoboHandMotionLight() {
                 </div>
 
                 <div className="ds-card">
-                  <img src="images/WebDishWashing.png" className="ds-img" alt="Hand Dish Washing" />
+                  <img src="../../assets/images/humanoid/humanoid3.png" className="ds-img" alt="Hand Dish Washing" />
                   <div className="ds-body">
                     <p className="ds-name">Hand Dish Washing</p>
                     <p className="ds-meta">Scrub, rinse, transfer — wet object sequences</p>
@@ -529,7 +529,7 @@ export default function RoboHandMotionLight() {
                 </div>
 
                 <div className="ds-card">
-                  <img src="images/WebTrashCollection.png" className="ds-img" alt="Trash Collection" />
+                  <img src="../../assets/images/humanoid/humanoid4.png" className="ds-img" alt="Trash Collection" />
                   <div className="ds-body">
                     <p className="ds-name">Trash Collection &amp; Sorting</p>
                     <p className="ds-meta">Pick, bag, and bin — varied object sizes &amp; weights</p>
@@ -542,7 +542,7 @@ export default function RoboHandMotionLight() {
                 </div>
 
                 <div className="ds-card">
-                  <img src="images/WebWasher.png" className="ds-img" alt="Laundry" />
+                  <img src="../../assets/images/humanoid/humanoid5.png" className="ds-img" alt="Laundry" />
                   <div className="ds-body">
                     <p className="ds-name">Laundry — Washer Operation</p>
                     <p className="ds-meta">Load, sort, and transfer fabric items</p>
@@ -555,7 +555,7 @@ export default function RoboHandMotionLight() {
                 </div>
 
                 <div className="ds-card">
-                  <img src="images/WebWasher.png" className="ds-img" alt="Laundry Fold" />
+                  <img src="../../assets/images/humanoid/humanoid5.png" className="ds-img" alt="Laundry Fold" />
                   <div className="ds-body">
                     <p className="ds-name">Laundry — Fold &amp; Transfer</p>
                     <p className="ds-meta">Garment folding, hang, and drawer placement</p>

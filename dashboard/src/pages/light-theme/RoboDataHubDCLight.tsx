@@ -277,7 +277,7 @@ export default function RoboDataHubDCLight() {
             </div>
           </div>
           <div className="d-hero-img">
-            <img src="images/dc_Screenshot_2026-01-13_at_2.06.33_PM.png" alt="Data center server room" />
+            <img src="../../assets/images/serverrack/serverrack1.png" alt="Data center server room" />
             <div className="d-hero-img-ov"></div>
             <div className="d-hero-badge"><div className="d-hb-b">Featured · Robotics AI</div><div className="d-hb-n">Cable Management — Live Capture</div></div>
             <div className="d-hero-pill"><strong>9</strong> datasets available</div>
@@ -356,11 +356,11 @@ export default function RoboDataHubDCLight() {
               <div className="d-card">
                 <div className="d-card-head"><div className="d-card-title">Rack Cabling &amp; Patch Panel</div><span className="d-badge">In Library</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/dc_Screenshot_2026-01-13_at_2.06.33_PM.png" alt="Rack cabling and patch panel" /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/serverrack/serverrack1.png" alt="Rack cabling and patch panel" /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/dc_Screenshot_2026-01-13_at_4.38.43_PM.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/dc_Screenshot_2026-01-13_at_4.38.12_PM.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/dc_Screenshot_2026-01-13_at_4.38.50_PM.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/serverrack/serverrack3.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/serverrack/serverrack2.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/serverrack/serverrack4.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EXO-Centric</div><div className="d-tag">Task Labels</div><div className="d-tag">Bbox</div><div className="d-tag">1,200 hrs</div></div>
@@ -371,11 +371,11 @@ export default function RoboDataHubDCLight() {
               <div className="d-card">
                 <div className="d-card-head"><div className="d-card-title">Loop Cable Installation</div><span className="d-badge-od">On-demand</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/dc_Screenshot_2026-01-13_at_4.38.50_PM.png" alt="Loop cable installation" /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/serverrack/serverrack4.png" alt="Loop cable installation" /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/dc_Screenshot_2026-01-13_at_2.06.33_PM.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/dc_Screenshot_2026-01-13_at_4.38.12_PM.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/dc_Screenshot_2026-01-13_at_4.38.43_PM.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/serverrack/serverrack1.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/serverrack/serverrack2.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/serverrack/serverrack3.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EXO-Centric</div><div className="d-tag">Task Labels</div><div className="d-tag">600 hrs</div></div>
@@ -386,11 +386,11 @@ export default function RoboDataHubDCLight() {
               <div className="d-card">
                 <div className="d-card-head"><div className="d-card-title">Overhead Tray Routing</div><span className="d-badge">In Library</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/dc_Screenshot_2026-01-13_at_4.38.12_PM.png" alt="Overhead tray routing" /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/serverrack/serverrack2.png" alt="Overhead tray routing" /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/dc_Screenshot_2026-01-13_at_2.06.33_PM.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/dc_Screenshot_2026-01-13_at_4.38.50_PM.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/dc_Screenshot_2026-01-13_at_4.38.43_PM.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/serverrack/serverrack1.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/serverrack/serverrack4.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/serverrack/serverrack3.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EGO-Centric</div><div className="d-tag">Task Labels</div><div className="d-tag">Seg</div><div className="d-tag">480 hrs</div></div>
@@ -414,11 +414,11 @@ export default function RoboDataHubDCLight() {
               <div className="d-card">
                 <div className="d-card-head"><div className="d-card-title">Server Rack Inspection</div><span className="d-badge">In Library</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/dc_Screenshot_2026-01-13_at_4.38.12_PM.png" alt="Server rack inspection" /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/serverrack/serverrack2.png" alt="Server rack inspection" /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/dc_Screenshot_2026-01-13_at_2.06.33_PM.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/dc_Screenshot_2026-01-13_at_4.38.50_PM.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/dc_Screenshot_2026-01-13_at_4.38.43_PM.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/serverrack/serverrack1.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/serverrack/serverrack4.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/serverrack/serverrack3.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EGO-Centric</div><div className="d-tag">Task Labels</div><div className="d-tag">Bbox</div><div className="d-tag">840 hrs</div></div>
@@ -429,11 +429,11 @@ export default function RoboDataHubDCLight() {
               <div className="d-card">
                 <div className="d-card-head"><div className="d-card-title">Blade Server Hot-Swap</div><span className="d-badge-od">On-demand</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/dc_Screenshot_2026-01-13_at_4.38.43_PM.png" alt="Blade server hot-swap" /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/serverrack/serverrack3.png" alt="Blade server hot-swap" /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/dc_Screenshot_2026-01-13_at_4.38.50_PM.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/dc_Screenshot_2026-01-13_at_2.06.33_PM.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/dc_Screenshot_2026-01-13_at_4.38.12_PM.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/serverrack/serverrack4.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/serverrack/serverrack1.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/serverrack/serverrack2.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EXO-Centric</div><div className="d-tag">Task Labels</div><div className="d-tag">520 hrs</div></div>
@@ -444,11 +444,11 @@ export default function RoboDataHubDCLight() {
               <div className="d-card">
                 <div className="d-card-head"><div className="d-card-title">Power Distribution Unit Check</div><span className="d-badge-od">On-demand</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/dc_Screenshot_2026-01-13_at_2.06.33_PM.png" alt="Power distribution unit check" /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/serverrack/serverrack1.png" alt="Power distribution unit check" /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/dc_Screenshot_2026-01-13_at_4.38.12_PM.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/dc_Screenshot_2026-01-13_at_4.38.43_PM.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/dc_Screenshot_2026-01-13_at_4.38.50_PM.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/serverrack/serverrack2.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/serverrack/serverrack3.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/serverrack/serverrack4.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EXO-Centric</div><div className="d-tag">Bbox</div><div className="d-tag">390 hrs</div></div>
@@ -472,11 +472,11 @@ export default function RoboDataHubDCLight() {
               <div className="d-card">
                 <div className="d-card-head"><div className="d-card-title">Hardware Swap &amp; Replacement</div><span className="d-badge-od">On-demand</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/dc_Screenshot_2026-01-13_at_4.38.43_PM.png" alt="Hardware swap and replacement" /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/serverrack/serverrack3.png" alt="Hardware swap and replacement" /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/dc_Screenshot_2026-01-13_at_2.06.33_PM.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/dc_Screenshot_2026-01-13_at_4.38.12_PM.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/dc_Screenshot_2026-01-13_at_4.38.50_PM.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/serverrack/serverrack1.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/serverrack/serverrack2.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/serverrack/serverrack4.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EXO-Centric</div><div className="d-tag">Task Labels</div><div className="d-tag">Seg</div><div className="d-tag">720 hrs</div></div>
@@ -487,11 +487,11 @@ export default function RoboDataHubDCLight() {
               <div className="d-card">
                 <div className="d-card-head"><div className="d-card-title">Drive Bay Diagnostics</div><span className="d-badge">In Library</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/dc_Screenshot_2026-01-13_at_4.38.50_PM.png" alt="Drive bay diagnostics" /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/serverrack/serverrack4.png" alt="Drive bay diagnostics" /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/dc_Screenshot_2026-01-13_at_4.38.50_PM.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/dc_Screenshot_2026-01-13_at_4.38.43_PM.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/dc_Screenshot_2026-01-13_at_2.06.33_PM.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/serverrack/serverrack4.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/serverrack/serverrack3.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/serverrack/serverrack1.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EGO-Centric</div><div className="d-tag">Defect Labels</div><div className="d-tag">440 hrs</div></div>
@@ -502,11 +502,11 @@ export default function RoboDataHubDCLight() {
               <div className="d-card">
                 <div className="d-card-head"><div className="d-card-title">Network Card Installation</div><span className="d-badge-od">On-demand</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/dc_Screenshot_2026-01-13_at_4.38.12_PM.png" alt="Network card installation" /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/serverrack/serverrack2.png" alt="Network card installation" /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/dc_Screenshot_2026-01-13_at_4.38.12_PM.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/dc_Screenshot_2026-01-13_at_2.06.33_PM.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/dc_Screenshot_2026-01-13_at_4.38.43_PM.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/serverrack/serverrack2.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/serverrack/serverrack1.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/serverrack/serverrack3.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EXO-Centric</div><div className="d-tag">Task Labels</div><div className="d-tag">310 hrs</div></div>

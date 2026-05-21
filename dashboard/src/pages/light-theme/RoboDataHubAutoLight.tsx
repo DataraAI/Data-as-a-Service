@@ -270,7 +270,7 @@ export default function RoboDataHubAutoLight() {
             </div>
           </div>
           <div className="d-hero-img">
-            <img src="images/frontGrille_012.png" alt="Automotive production line" />
+            <img src="../../assets/images/carAutomation/carAutomation2.png" alt="Automotive production line" />
             <div className="d-hero-img-ov"></div>
             <div className="d-hero-badge"><div className="d-hb-b">Featured · Robotics AI</div><div className="d-hb-n">Assembly Line — Live Capture</div></div>
             <div className="d-hero-pill"><strong>34</strong> datasets available</div>
@@ -395,11 +395,11 @@ export default function RoboDataHubAutoLight() {
               <div className="d-card" style={{ display: activeFilter === 'all' || activeFilter === 'bmw' ? 'flex' : 'none' }}>
                 <div className="d-card-head"><div className="d-card-title">Front Grille Assembly</div><span className="d-badge">In Library</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/frontGrille_012.png" alt="Front grille assembly" /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/carAutomation/carAutomation2.png" alt="Front grille assembly" /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/rearBumper_021.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/frontSeat_007.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/passengerSeat_0100_Rotate_left_45_degrees.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation5.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation3.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation4.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EXO-Centric</div><div className="d-tag">Task Labels</div><div className="d-tag">2,100 hrs</div></div>
@@ -409,11 +409,11 @@ export default function RoboDataHubAutoLight() {
               <div className="d-card" style={{ display: activeFilter === 'all' || activeFilter === 'ford' ? 'flex' : 'none' }}>
                 <div className="d-card-head"><div className="d-card-title">Front Seat Installation</div><span className="d-badge">In Library</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/frontSeat_007.png" alt="Front seat installation" /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/carAutomation/carAutomation3.png" alt="Front seat installation" /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/frontGrille_012.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/passengerSeat_0100_Rotate_left_45_degrees.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/rearBumper_021.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation2.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation4.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation5.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EXO-Centric</div><div className="d-tag">Task Labels</div><div className="d-tag">1,400 hrs</div></div>
@@ -423,11 +423,11 @@ export default function RoboDataHubAutoLight() {
               <div className="d-card" style={{ display: activeFilter === 'all' || activeFilter === 'toyota' ? 'flex' : 'none' }}>
                 <div className="d-card-head"><div className="d-card-title">Rear Bumper Assembly</div><span className="d-badge">In Library</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/rearBumper_021.png" alt="Rear bumper assembly" /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/carAutomation/carAutomation5.png" alt="Rear bumper assembly" /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/frontGrille_012.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/frontSeat_007.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/passengerSeat_0100_Rotate_left_45_degrees.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation2.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation3.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation4.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EXO-Centric</div><div className="d-tag">Task Labels</div><div className="d-tag">1,100 hrs</div></div>
@@ -437,11 +437,11 @@ export default function RoboDataHubAutoLight() {
               <div className="d-card" style={{ display: activeFilter === 'all' || activeFilter === 'multi' ? 'flex' : 'none' }}>
                 <div className="d-card-head"><div className="d-card-title">Windshield Installation</div><span className="d-badge">In Library</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/rearBumper_021.png" alt="Windshield installation" style={{ objectPosition: '30% center' }} /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/carAutomation/carAutomation5.png" alt="Windshield installation" style={{ objectPosition: '30% center' }} /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/frontSeat_007.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/frontGrille_012.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/passengerSeat_0100_Rotate_left_45_degrees.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation3.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation2.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation4.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EGO-Centric</div><div className="d-tag">Task Labels</div><div className="d-tag">960 hrs</div></div>
@@ -451,11 +451,11 @@ export default function RoboDataHubAutoLight() {
               <div className="d-card" style={{ display: activeFilter === 'all' || activeFilter === 'ford' ? 'flex' : 'none' }}>
                 <div className="d-card-head"><div className="d-card-title">Door Panel Trim Fitting</div><span className="d-badge-od">On-demand</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/frontGrille_012.png" alt="Door panel trim" style={{ objectPosition: 'center 70%' }} /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/carAutomation/carAutomation2.png" alt="Door panel trim" style={{ objectPosition: 'center 70%' }} /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/frontSeat_007.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/rearBumper_021.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/passengerSeat_0100_Rotate_left_45_degrees.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation3.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation5.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation4.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EXO-Centric</div><div className="d-tag">Task Labels</div><div className="d-tag">820 hrs</div></div>
@@ -465,11 +465,11 @@ export default function RoboDataHubAutoLight() {
               <div className="d-card" style={{ display: activeFilter === 'all' || activeFilter === 'multi' ? 'flex' : 'none' }}>
                 <div className="d-card-head"><div className="d-card-title">Dashboard &amp; Console Fitment</div><span className="d-badge-od">On-demand</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/frontSeat_007.png" alt="Dashboard fitment" style={{ objectPosition: 'center 20%' }} /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/carAutomation/carAutomation3.png" alt="Dashboard fitment" style={{ objectPosition: 'center 20%' }} /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/passengerSeat_0100_Rotate_left_45_degrees.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/frontGrille_012.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/rearBumper_021.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation4.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation2.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation5.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EXO-Centric</div><div className="d-tag">Task Labels</div><div className="d-tag">740 hrs</div></div>
@@ -479,11 +479,11 @@ export default function RoboDataHubAutoLight() {
               <div className="d-card" style={{ display: activeFilter === 'all' || activeFilter === 'audi' ? 'flex' : 'none' }}>
                 <div className="d-card-head"><div className="d-card-title">Audi Door Panel Assembly</div><span className="d-badge">In Library</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/passengerSeat_0100_Rotate_left_45_degrees.png" alt="Audi door panel assembly" /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/carAutomation/carAutomation4.png" alt="Audi door panel assembly" /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/frontSeat_007.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/frontGrille_012.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/rearBumper_021.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation3.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation2.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation5.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EXO-Centric</div><div className="d-tag">Task Labels</div><div className="d-tag">950 hrs</div></div>
@@ -493,11 +493,11 @@ export default function RoboDataHubAutoLight() {
               <div className="d-card" style={{ display: activeFilter === 'all' || activeFilter === 'bmw' ? 'flex' : 'none' }}>
                 <div className="d-card-head"><div className="d-card-title">Front Grille Assembly</div><span className="d-badge">In Library</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/frontGrille_012.png" alt="Front grille assembly" /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/carAutomation/carAutomation2.png" alt="Front grille assembly" /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/rearBumper_021.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/frontSeat_007.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/passengerSeat_0100_Rotate_left_45_degrees.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation5.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation3.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation4.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EXO-Centric</div><div className="d-tag">Task Labels</div><div className="d-tag">2,100 hrs</div></div>
@@ -507,11 +507,11 @@ export default function RoboDataHubAutoLight() {
               <div className="d-card" style={{ display: activeFilter === 'all' || activeFilter === 'ford' ? 'flex' : 'none' }}>
                 <div className="d-card-head"><div className="d-card-title">Front Seat Installation</div><span className="d-badge">In Library</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/frontSeat_007.png" alt="Front seat installation" /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/carAutomation/carAutomation3.png" alt="Front seat installation" /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/frontGrille_012.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/passengerSeat_0100_Rotate_left_45_degrees.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/rearBumper_021.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation2.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation4.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation5.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EXO-Centric</div><div className="d-tag">Task Labels</div><div className="d-tag">1,400 hrs</div></div>
@@ -534,11 +534,11 @@ export default function RoboDataHubAutoLight() {
               <div className="d-card" style={{ display: activeFilter === 'all' || activeFilter === 'bmw' ? 'flex' : 'none' }}>
                 <div className="d-card-head"><div className="d-card-title">Passenger Seat QC Inspection</div><span className="d-badge-od">On-demand</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/passengerSeat_0100_Rotate_left_45_degrees.png" alt="Passenger seat QC" /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/carAutomation/carAutomation4.png" alt="Passenger seat QC" /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/frontGrille_012.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/frontSeat_007.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/rearBumper_021.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation2.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation3.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation5.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EGO-Centric</div><div className="d-tag">Seg Masks</div><div className="d-tag">900 hrs</div></div>
@@ -548,11 +548,11 @@ export default function RoboDataHubAutoLight() {
               <div className="d-card" style={{ display: activeFilter === 'all' || activeFilter === 'tesla' ? 'flex' : 'none' }}>
                 <div className="d-card-head"><div className="d-card-title">Grille &amp; Fascia Gap Inspection</div><span className="d-badge">In Library</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/frontGrille_012.png" alt="Grille gap inspection" style={{ filter: 'brightness(0.97)' }} /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/carAutomation/carAutomation2.png" alt="Grille gap inspection" style={{ filter: 'brightness(0.97)' }} /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/rearBumper_021.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/passengerSeat_0100_Rotate_left_45_degrees.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/frontSeat_007.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation5.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation4.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation3.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EGO-Centric</div><div className="d-tag">Defect Labels</div><div className="d-tag">680 hrs</div></div>
@@ -562,11 +562,11 @@ export default function RoboDataHubAutoLight() {
               <div className="d-card" style={{ display: activeFilter === 'all' || activeFilter === 'multi' ? 'flex' : 'none' }}>
                 <div className="d-card-head"><div className="d-card-title">Underbody Structural Inspection</div><span className="d-badge">In Library</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/rearBumper_021.png" alt="Underbody inspection" style={{ filter: 'brightness(0.97)' }} /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/carAutomation/carAutomation5.png" alt="Underbody inspection" style={{ filter: 'brightness(0.97)' }} /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/frontSeat_007.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/frontGrille_012.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/passengerSeat_0100_Rotate_left_45_degrees.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation3.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation2.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation4.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EGO-Centric</div><div className="d-tag">Seg Masks</div><div className="d-tag">540 hrs</div></div>
@@ -576,11 +576,11 @@ export default function RoboDataHubAutoLight() {
               <div className="d-card" style={{ display: activeFilter === 'all' || activeFilter === 'toyota' ? 'flex' : 'none' }}>
                 <div className="d-card-head"><div className="d-card-title">End-of-Line Vehicle Audit</div><span className="d-badge-od">On-demand</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/passengerSeat_0100_Rotate_left_45_degrees.png" alt="End-of-line audit" style={{ objectPosition: 'right center', filter: 'brightness(0.97)' }} /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/carAutomation/carAutomation4.png" alt="End-of-line audit" style={{ objectPosition: 'right center', filter: 'brightness(0.97)' }} /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/frontGrille_012.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/rearBumper_021.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/frontSeat_007.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation2.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation5.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation3.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EXO-Centric</div><div className="d-tag">Task Labels</div><div className="d-tag">1,050 hrs</div></div>
@@ -590,11 +590,11 @@ export default function RoboDataHubAutoLight() {
               <div className="d-card" style={{ display: activeFilter === 'all' || activeFilter === 'bmw' ? 'flex' : 'none' }}>
                 <div className="d-card-head"><div className="d-card-title">Paint Defect Detection</div><span className="d-badge">In Library</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/frontGrille_012.png" alt="Paint defect detection" style={{ filter: 'hue-rotate(10deg) brightness(0.97)' }} /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/carAutomation/carAutomation2.png" alt="Paint defect detection" style={{ filter: 'hue-rotate(10deg) brightness(0.97)' }} /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/rearBumper_021.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/frontSeat_007.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/passengerSeat_0100_Rotate_left_45_degrees.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation5.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation3.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation4.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EGO-Centric</div><div className="d-tag">Defect Labels</div><div className="d-tag">610 hrs</div></div>
@@ -604,11 +604,11 @@ export default function RoboDataHubAutoLight() {
               <div className="d-card" style={{ display: activeFilter === 'all' || activeFilter === 'multi' ? 'flex' : 'none' }}>
                 <div className="d-card-head"><div className="d-card-title">Torque Verification Scan</div><span className="d-badge-od">On-demand</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/passengerSeat_0100_Rotate_left_45_degrees.png" alt="Torque verification" style={{ filter: 'brightness(0.97) saturate(0.9)' }} /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/carAutomation/carAutomation4.png" alt="Torque verification" style={{ filter: 'brightness(0.97) saturate(0.9)' }} /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/frontGrille_012.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/rearBumper_021.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/frontSeat_007.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation2.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation5.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation3.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EXO-Centric</div><div className="d-tag">Bbox</div><div className="d-tag">430 hrs</div></div>
@@ -618,11 +618,11 @@ export default function RoboDataHubAutoLight() {
               <div className="d-card" style={{ display: activeFilter === 'all' || activeFilter === 'audi' ? 'flex' : 'none' }}>
                 <div className="d-card-head"><div className="d-card-title">Audi Paint Surface QC Scan</div><span className="d-badge">In Library</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/frontGrille_012.png" alt="Audi paint QC" style={{ filter: 'brightness(0.97) hue-rotate(10deg)' }} /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/carAutomation/carAutomation2.png" alt="Audi paint QC" style={{ filter: 'brightness(0.97) hue-rotate(10deg)' }} /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/passengerSeat_0100_Rotate_left_45_degrees.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/rearBumper_021.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/frontSeat_007.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation4.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation5.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation3.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EGO-Centric</div><div className="d-tag">Defect Labels</div><div className="d-tag">520 hrs</div></div>
@@ -632,11 +632,11 @@ export default function RoboDataHubAutoLight() {
               <div className="d-card" style={{ display: activeFilter === 'all' || activeFilter === 'bmw' ? 'flex' : 'none' }}>
                 <div className="d-card-head"><div className="d-card-title">Passenger Seat QC Inspection</div><span className="d-badge-od">On-demand</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/passengerSeat_0100_Rotate_left_45_degrees.png" alt="Passenger seat QC" /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/carAutomation/carAutomation4.png" alt="Passenger seat QC" /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/frontGrille_012.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/frontSeat_007.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/rearBumper_021.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation2.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation3.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation5.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EGO-Centric</div><div className="d-tag">Seg Masks</div><div className="d-tag">900 hrs</div></div>
@@ -646,11 +646,11 @@ export default function RoboDataHubAutoLight() {
               <div className="d-card" style={{ display: activeFilter === 'all' || activeFilter === 'tesla' ? 'flex' : 'none' }}>
                 <div className="d-card-head"><div className="d-card-title">Grille &amp; Fascia Gap Inspection</div><span className="d-badge">In Library</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/frontGrille_012.png" alt="Grille gap inspection" style={{ filter: 'brightness(0.97)' }} /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/carAutomation/carAutomation2.png" alt="Grille gap inspection" style={{ filter: 'brightness(0.97)' }} /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/rearBumper_021.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/passengerSeat_0100_Rotate_left_45_degrees.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/frontSeat_007.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation5.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation4.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation3.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EGO-Centric</div><div className="d-tag">Defect Labels</div><div className="d-tag">680 hrs</div></div>
@@ -673,11 +673,11 @@ export default function RoboDataHubAutoLight() {
               <div className="d-card" style={{ display: activeFilter === 'all' || activeFilter === 'tesla' ? 'flex' : 'none' }}>
                 <div className="d-card-head"><div className="d-card-title">Spray Paint Application</div><span className="d-badge">In Library</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/frontGrille_012.png" alt="Spray paint" style={{ filter: 'hue-rotate(20deg) brightness(0.97)' }} /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/carAutomation/carAutomation2.png" alt="Spray paint" style={{ filter: 'hue-rotate(20deg) brightness(0.97)' }} /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/rearBumper_021.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/frontSeat_007.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/passengerSeat_0100_Rotate_left_45_degrees.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation5.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation3.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation4.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EXO-Centric</div><div className="d-tag">Seg Masks</div><div className="d-tag">1,300 hrs</div></div>
@@ -687,11 +687,11 @@ export default function RoboDataHubAutoLight() {
               <div className="d-card" style={{ display: activeFilter === 'all' || activeFilter === 'multi' ? 'flex' : 'none' }}>
                 <div className="d-card-head"><div className="d-card-title">Surface Sanding &amp; Prep</div><span className="d-badge-od">On-demand</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/rearBumper_021.png" alt="Surface sanding" style={{ filter: 'hue-rotate(200deg) brightness(0.97)' }} /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/carAutomation/carAutomation5.png" alt="Surface sanding" style={{ filter: 'hue-rotate(200deg) brightness(0.97)' }} /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/frontGrille_012.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/passengerSeat_0100_Rotate_left_45_degrees.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/frontSeat_007.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation2.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation4.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation3.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EGO-Centric</div><div className="d-tag">Task Labels</div><div className="d-tag">480 hrs</div></div>
@@ -701,11 +701,11 @@ export default function RoboDataHubAutoLight() {
               <div className="d-card" style={{ display: activeFilter === 'all' || activeFilter === 'multi' ? 'flex' : 'none' }}>
                 <div className="d-card-head"><div className="d-card-title">Body Panel Seam Sealing</div><span className="d-badge">In Library</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/frontSeat_007.png" alt="Seam sealing" style={{ filter: 'hue-rotate(270deg) brightness(0.97)' }} /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/carAutomation/carAutomation3.png" alt="Seam sealing" style={{ filter: 'hue-rotate(270deg) brightness(0.97)' }} /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/rearBumper_021.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/frontGrille_012.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/passengerSeat_0100_Rotate_left_45_degrees.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation5.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation2.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation4.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EXO-Centric</div><div className="d-tag">Task Labels</div><div className="d-tag">620 hrs</div></div>
@@ -715,11 +715,11 @@ export default function RoboDataHubAutoLight() {
               <div className="d-card" style={{ display: activeFilter === 'all' || activeFilter === 'audi' ? 'flex' : 'none' }}>
                 <div className="d-card-head"><div className="d-card-title">Audi Primer &amp; Base Coat</div><span className="d-badge">In Library</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/rearBumper_021.png" alt="Audi primer coat" style={{ filter: 'hue-rotate(180deg) brightness(0.97)' }} /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/carAutomation/carAutomation5.png" alt="Audi primer coat" style={{ filter: 'hue-rotate(180deg) brightness(0.97)' }} /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/frontGrille_012.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/frontSeat_007.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/passengerSeat_0100_Rotate_left_45_degrees.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation2.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation3.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation4.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EXO-Centric</div><div className="d-tag">Task Labels</div><div className="d-tag">780 hrs</div></div>
@@ -729,11 +729,11 @@ export default function RoboDataHubAutoLight() {
               <div className="d-card" style={{ display: activeFilter === 'all' || activeFilter === 'tesla' ? 'flex' : 'none' }}>
                 <div className="d-card-head"><div className="d-card-title">Spray Paint Application</div><span className="d-badge">In Library</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/frontGrille_012.png" alt="Spray paint" style={{ filter: 'hue-rotate(20deg) brightness(0.97)' }} /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/carAutomation/carAutomation2.png" alt="Spray paint" style={{ filter: 'hue-rotate(20deg) brightness(0.97)' }} /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/rearBumper_021.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/frontSeat_007.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/passengerSeat_0100_Rotate_left_45_degrees.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation5.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation3.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation4.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EXO-Centric</div><div className="d-tag">Seg Masks</div><div className="d-tag">1,300 hrs</div></div>
@@ -743,11 +743,11 @@ export default function RoboDataHubAutoLight() {
               <div className="d-card" style={{ display: activeFilter === 'all' || activeFilter === 'multi' ? 'flex' : 'none' }}>
                 <div className="d-card-head"><div className="d-card-title">Surface Sanding &amp; Prep</div><span className="d-badge-od">On-demand</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/rearBumper_021.png" alt="Surface sanding" style={{ filter: 'hue-rotate(200deg) brightness(0.97)' }} /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/carAutomation/carAutomation5.png" alt="Surface sanding" style={{ filter: 'hue-rotate(200deg) brightness(0.97)' }} /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/frontGrille_012.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/passengerSeat_0100_Rotate_left_45_degrees.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/frontSeat_007.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation2.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation4.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation3.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EGO-Centric</div><div className="d-tag">Task Labels</div><div className="d-tag">480 hrs</div></div>
@@ -770,11 +770,11 @@ export default function RoboDataHubAutoLight() {
               <div className="d-card" style={{ display: activeFilter === 'all' || activeFilter === 'multi' ? 'flex' : 'none' }}>
                 <div className="d-card-head"><div className="d-card-title">Engine Harness Routing</div><span className="d-badge">In Library</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/frontSeat_007.png" alt="Engine harness" style={{ filter: 'brightness(0.97) saturate(0.7)' }} /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/carAutomation/carAutomation3.png" alt="Engine harness" style={{ filter: 'brightness(0.97) saturate(0.7)' }} /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/frontGrille_012.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/rearBumper_021.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/passengerSeat_0100_Rotate_left_45_degrees.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation2.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation5.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation4.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EGO-Centric</div><div className="d-tag">Task Labels</div><div className="d-tag">860 hrs</div></div>
@@ -784,11 +784,11 @@ export default function RoboDataHubAutoLight() {
               <div className="d-card" style={{ display: activeFilter === 'all' || activeFilter === 'multi' ? 'flex' : 'none' }}>
                 <div className="d-card-head"><div className="d-card-title">Sensor Module Installation</div><span className="d-badge">In Library</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/rearBumper_021.png" alt="Sensor module" style={{ filter: 'brightness(0.97) saturate(0.7)' }} /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/carAutomation/carAutomation5.png" alt="Sensor module" style={{ filter: 'brightness(0.97) saturate(0.7)' }} /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/frontSeat_007.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/passengerSeat_0100_Rotate_left_45_degrees.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/frontGrille_012.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation3.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation4.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation2.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EXO-Centric</div><div className="d-tag">Bbox</div><div className="d-tag">720 hrs</div></div>
@@ -798,11 +798,11 @@ export default function RoboDataHubAutoLight() {
               <div className="d-card" style={{ display: activeFilter === 'all' || activeFilter === 'multi' ? 'flex' : 'none' }}>
                 <div className="d-card-head"><div className="d-card-title">Interior Connector Plug-In</div><span className="d-badge-od">On-demand</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/passengerSeat_0100_Rotate_left_45_degrees.png" alt="Connector plug-in" style={{ filter: 'brightness(0.97) saturate(0.7)' }} /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/carAutomation/carAutomation4.png" alt="Connector plug-in" style={{ filter: 'brightness(0.97) saturate(0.7)' }} /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/frontGrille_012.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/frontSeat_007.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/rearBumper_021.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation2.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation3.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation5.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EGO-Centric</div><div className="d-tag">Edge Cases</div><div className="d-tag">490 hrs</div></div>
@@ -812,11 +812,11 @@ export default function RoboDataHubAutoLight() {
               <div className="d-card" style={{ display: activeFilter === 'all' || activeFilter === 'audi' ? 'flex' : 'none' }}>
                 <div className="d-card-head"><div className="d-card-title">Audi Sensor Array Wiring</div><span className="d-badge">In Library</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/frontSeat_007.png" alt="Audi sensor wiring" style={{ filter: 'brightness(0.97) saturate(0.7)' }} /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/carAutomation/carAutomation3.png" alt="Audi sensor wiring" style={{ filter: 'brightness(0.97) saturate(0.7)' }} /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/frontGrille_012.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/passengerSeat_0100_Rotate_left_45_degrees.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/rearBumper_021.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation2.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation4.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation5.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EGO-Centric</div><div className="d-tag">Task Labels</div><div className="d-tag">410 hrs</div></div>
@@ -826,11 +826,11 @@ export default function RoboDataHubAutoLight() {
               <div className="d-card" style={{ display: activeFilter === 'all' || activeFilter === 'multi' ? 'flex' : 'none' }}>
                 <div className="d-card-head"><div className="d-card-title">Engine Harness Routing</div><span className="d-badge">In Library</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/frontSeat_007.png" alt="Engine harness" style={{ filter: 'brightness(0.97) saturate(0.7)' }} /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/carAutomation/carAutomation3.png" alt="Engine harness" style={{ filter: 'brightness(0.97) saturate(0.7)' }} /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/frontGrille_012.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/rearBumper_021.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/passengerSeat_0100_Rotate_left_45_degrees.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation2.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation5.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation4.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EGO-Centric</div><div className="d-tag">Task Labels</div><div className="d-tag">860 hrs</div></div>
@@ -840,11 +840,11 @@ export default function RoboDataHubAutoLight() {
               <div className="d-card" style={{ display: activeFilter === 'all' || activeFilter === 'multi' ? 'flex' : 'none' }}>
                 <div className="d-card-head"><div className="d-card-title">Sensor Module Installation</div><span className="d-badge">In Library</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/rearBumper_021.png" alt="Sensor module" style={{ filter: 'brightness(0.97) saturate(0.7)' }} /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/carAutomation/carAutomation5.png" alt="Sensor module" style={{ filter: 'brightness(0.97) saturate(0.7)' }} /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/frontSeat_007.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/passengerSeat_0100_Rotate_left_45_degrees.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/frontGrille_012.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation3.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation4.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation2.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EXO-Centric</div><div className="d-tag">Bbox</div><div className="d-tag">720 hrs</div></div>
@@ -867,11 +867,11 @@ export default function RoboDataHubAutoLight() {
               <div className="d-card" style={{ display: activeFilter === 'all' || activeFilter === 'bmw' ? 'flex' : 'none' }}>
                 <div className="d-card-head"><div className="d-card-title">BMW 3-Series Full Exterior</div><span className="d-badge">In Library</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/frontGrille_012.png" alt="BMW 3-Series exterior" /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/carAutomation/carAutomation2.png" alt="BMW 3-Series exterior" /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/rearBumper_021.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/frontSeat_007.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/passengerSeat_0100_Rotate_left_45_degrees.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation5.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation3.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation4.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EXO-Centric</div><div className="d-tag">360° Capture</div><div className="d-tag">1,800 hrs</div></div>
@@ -881,11 +881,11 @@ export default function RoboDataHubAutoLight() {
               <div className="d-card" style={{ display: activeFilter === 'all' || activeFilter === 'ford' ? 'flex' : 'none' }}>
                 <div className="d-card-head"><div className="d-card-title">Ford F-150 Cabin Interior</div><span className="d-badge">In Library</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/frontSeat_007.png" alt="Ford F-150 cabin" /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/carAutomation/carAutomation3.png" alt="Ford F-150 cabin" /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/passengerSeat_0100_Rotate_left_45_degrees.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/frontGrille_012.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/rearBumper_021.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation4.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation2.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation5.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EGO-Centric</div><div className="d-tag">Task Labels</div><div className="d-tag">1,450 hrs</div></div>
@@ -895,11 +895,11 @@ export default function RoboDataHubAutoLight() {
               <div className="d-card" style={{ display: activeFilter === 'all' || activeFilter === 'toyota' ? 'flex' : 'none' }}>
                 <div className="d-card-head"><div className="d-card-title">Toyota Camry Rear Assembly</div><span className="d-badge">In Library</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/rearBumper_021.png" alt="Toyota Camry rear" /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/carAutomation/carAutomation5.png" alt="Toyota Camry rear" /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/frontGrille_012.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/passengerSeat_0100_Rotate_left_45_degrees.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/frontSeat_007.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation2.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation4.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation3.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EXO-Centric</div><div className="d-tag">Bbox</div><div className="d-tag">1,120 hrs</div></div>
@@ -909,11 +909,11 @@ export default function RoboDataHubAutoLight() {
               <div className="d-card" style={{ display: activeFilter === 'all' || activeFilter === 'tesla' ? 'flex' : 'none' }}>
                 <div className="d-card-head"><div className="d-card-title">Tesla Model 3 Passenger Compartment</div><span className="d-badge-od">On-demand</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/passengerSeat_0100_Rotate_left_45_degrees.png" alt="Tesla Model 3 passenger" style={{ objectPosition: 'center 20%' }} /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/carAutomation/carAutomation4.png" alt="Tesla Model 3 passenger" style={{ objectPosition: 'center 20%' }} /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/frontSeat_007.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/rearBumper_021.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/frontGrille_012.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation3.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation5.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation2.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EGO-Centric</div><div className="d-tag">Seg</div><div className="d-tag">980 hrs</div></div>
@@ -923,11 +923,11 @@ export default function RoboDataHubAutoLight() {
               <div className="d-card" style={{ display: activeFilter === 'all' || activeFilter === 'multi' ? 'flex' : 'none' }}>
                 <div className="d-card-head"><div className="d-card-title">Multi-Brand Door Fitment</div><span className="d-badge">In Library</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/frontGrille_012.png" alt="Door fitment multi-brand" style={{ objectPosition: 'center 70%', filter: 'brightness(0.97)' }} /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/carAutomation/carAutomation2.png" alt="Door fitment multi-brand" style={{ objectPosition: 'center 70%', filter: 'brightness(0.97)' }} /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/frontSeat_007.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/passengerSeat_0100_Rotate_left_45_degrees.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/rearBumper_021.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation3.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation4.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation5.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EXO-Centric</div><div className="d-tag">Edge Cases</div><div className="d-tag">2,200 hrs</div></div>
@@ -937,11 +937,11 @@ export default function RoboDataHubAutoLight() {
               <div className="d-card" style={{ display: activeFilter === 'all' || activeFilter === 'audi' ? 'flex' : 'none' }}>
                 <div className="d-card-head"><div className="d-card-title">Audi A4 Passenger Compartment</div><span className="d-badge-od">On-demand</span></div>
                 <div className="d-photos">
-                  <div className="d-ph-main"><img src="images/passengerSeat_0100_Rotate_left_45_degrees.png" alt="Audi A4 passenger" style={{ objectPosition: 'center 20%' }} /></div>
+                  <div className="d-ph-main"><img src="../../assets/images/carAutomation/carAutomation4.png" alt="Audi A4 passenger" style={{ objectPosition: 'center 20%' }} /></div>
                   <div className="d-ph-thumbs">
-                    <div className="d-ph-t"><img src="images/frontSeat_007.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/rearBumper_021.png" alt="" /></div>
-                    <div className="d-ph-t"><img src="images/frontGrille_012.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation3.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation5.png" alt="" /></div>
+                    <div className="d-ph-t"><img src="../../assets/images/carAutomation/carAutomation2.png" alt="" /></div>
                   </div>
                 </div>
                 <div className="d-tags"><div className="d-tag">EGO-Centric</div><div className="d-tag">Seg</div><div className="d-tag">980 hrs</div></div>

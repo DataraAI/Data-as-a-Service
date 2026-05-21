@@ -352,7 +352,7 @@ export default function RoboTaskManipulatorLight() {
                     <div style={{ width: '200px', flexShrink: 0 }}>
                       <p style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--blue)', margin: '0 0 6px' }}>Task Demo</p>
                       <div className="exo-box">
-                        <img src="images/wh_pexels-tiger-lily-4483772.jpg" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Bin Sorting Demo" />
+                        <img src="../../assets/images/warehouse/warehouse4.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Bin Sorting Demo" />
                         <span className="exo-label">DEMO</span>
                       </div>
                     </div>
@@ -374,10 +374,10 @@ export default function RoboTaskManipulatorLight() {
                     <div style={{ flex: 1 }}>
                       <p style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--teal)', margin: '0 0 6px' }}>Task Sequence Output</p>
                       <div className="output-grid">
-                        <div className="task-box"><img src="images/wh_pexels-goldcircuits-8377802.jpg" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Approach" /><span className="task-label">Approach</span></div>
-                        <div className="task-box"><img src="images/wh_pexels-goldcircuits-8377802.jpg" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Grasp" /><span className="task-label">Grasp</span></div>
-                        <div className="task-box"><img src="images/wh_pexels-goldcircuits-8377802.jpg" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Transport" /><span className="task-label">Transport</span></div>
-                        <div className="task-box"><img src="images/wh_pexels-goldcircuits-8377802.jpg" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Place" /><span className="task-label">Place</span></div>
+                        <div className="task-box"><img src="../../assets/images/warehouse/warehouse2.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Approach" /><span className="task-label">Approach</span></div>
+                        <div className="task-box"><img src="../../assets/images/warehouse/warehouse2.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Grasp" /><span className="task-label">Grasp</span></div>
+                        <div className="task-box"><img src="../../assets/images/warehouse/warehouse2.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Transport" /><span className="task-label">Transport</span></div>
+                        <div className="task-box"><img src="../../assets/images/warehouse/warehouse2.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Place" /><span className="task-label">Place</span></div>
                       </div>
                     </div>
                   </div>
@@ -402,7 +402,7 @@ export default function RoboTaskManipulatorLight() {
                     <div style={{ width: '200px', flexShrink: 0 }}>
                       <p style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--blue)', margin: '0 0 6px' }}>Task Demo</p>
                       <div className="exo-box">
-                        <img src="images/wh_pexels-ihsanaditya-10834810.jpg" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Pallet Build Demo" />
+                        <img src="../../assets/images/warehouse/warehouse3.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Pallet Build Demo" />
                         <span className="exo-label">DEMO</span>
                       </div>
                     </div>
@@ -424,10 +424,10 @@ export default function RoboTaskManipulatorLight() {
                     <div style={{ flex: 1 }}>
                       <p style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--teal)', margin: '0 0 6px' }}>Task Sequence Output</p>
                       <div className="output-grid">
-                        <div className="task-box"><img src="images/wh_pexels-endura-tiles-370085044-14554082.jpg" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Layer 1" /><span className="task-label">Layer 1</span></div>
-                        <div className="task-box"><img src="images/wh_pexels-endura-tiles-370085044-14554082.jpg" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Stack Pt." /><span className="task-label">Stack Pt.</span></div>
-                        <div className="task-box"><img src="images/wh_pexels-endura-tiles-370085044-14554082.jpg" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Wrap Path" /><span className="task-label">Wrap Path</span></div>
-                        <div className="task-box"><img src="images/wh_pexels-endura-tiles-370085044-14554082.jpg" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Secure" /><span className="task-label">Secure</span></div>
+                        <div className="task-box"><img src="../../assets/images/warehouse/warehouse1.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Layer 1" /><span className="task-label">Layer 1</span></div>
+                        <div className="task-box"><img src="../../assets/images/warehouse/warehouse1.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Stack Pt." /><span className="task-label">Stack Pt.</span></div>
+                        <div className="task-box"><img src="../../assets/images/warehouse/warehouse1.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Wrap Path" /><span className="task-label">Wrap Path</span></div>
+                        <div className="task-box"><img src="../../assets/images/warehouse/warehouse1.png" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="Secure" /><span className="task-label">Secure</span></div>
                       </div>
                     </div>
                   </div>
@@ -455,7 +455,7 @@ export default function RoboTaskManipulatorLight() {
               <div className="ds-gallery-2">
 
                 <div className="ds-card">
-                  <img src="images/frontGrille_012.png" className="ds-img" alt="Front Grille Assembly" />
+                  <img src="../../assets/images/carAutomation/carAutomation2.png" className="ds-img" alt="Front Grille Assembly" />
                   <div className="ds-body">
                     <p className="ds-name">Front Grille Assembly</p>
                     <p className="ds-meta">Clip-insert &amp; fastener sequence — 12 sub-steps</p>
@@ -468,7 +468,7 @@ export default function RoboTaskManipulatorLight() {
                 </div>
 
                 <div className="ds-card">
-                  <img src="images/rearBumper_021.png" className="ds-img" alt="Rear Bumper Installation" />
+                  <img src="../../assets/images/carAutomation/carAutomation5.png" className="ds-img" alt="Rear Bumper Installation" />
                   <div className="ds-body">
                     <p className="ds-name">Rear Bumper Installation</p>
                     <p className="ds-meta">Two-arm alignment, clip-in &amp; torque verification</p>
@@ -481,7 +481,7 @@ export default function RoboTaskManipulatorLight() {
                 </div>
 
                 <div className="ds-card">
-                  <img src="images/frontSeat_007.png" className="ds-img" alt="Front Seat Assembly" />
+                  <img src="../../assets/images/carAutomation/carAutomation3.png" className="ds-img" alt="Front Seat Assembly" />
                   <div className="ds-body">
                     <p className="ds-name">Front Seat Assembly</p>
                     <p className="ds-meta">Rail mount, bolt torque &amp; harness connection sequence</p>
@@ -494,7 +494,7 @@ export default function RoboTaskManipulatorLight() {
                 </div>
 
                 <div className="ds-card">
-                  <img src="images/passengerSeat_0100_Rotate_left_45_degrees.png" className="ds-img" alt="Passenger Seat Positioning" />
+                  <img src="../../assets/images/carAutomation/carAutomation4.png" className="ds-img" alt="Passenger Seat Positioning" />
                   <div className="ds-body">
                     <p className="ds-name">Passenger Seat Positioning</p>
                     <p className="ds-meta">Rotation &amp; slide-lock with 45° approach variant</p>
@@ -522,7 +522,7 @@ export default function RoboTaskManipulatorLight() {
               <div className="ds-gallery-4">
 
                 <div className="ds-card">
-                  <img src="images/dc_Screenshot_2026-01-13_at_2.06.33_PM.png" className="ds-img-sm" alt="Server Rack Cabling" />
+                  <img src="../../assets/images/serverrack/serverrack1.png" className="ds-img-sm" alt="Server Rack Cabling" />
                   <div className="ds-body">
                     <p className="ds-name">Server Rack Cabling</p>
                     <p className="ds-meta">Cable route, insert &amp; label sequence</p>
@@ -534,7 +534,7 @@ export default function RoboTaskManipulatorLight() {
                 </div>
 
                 <div className="ds-card">
-                  <img src="images/dc_Screenshot_2026-01-13_at_4.38.12_PM.png" className="ds-img-sm" alt="Hardware Swap" />
+                  <img src="../../assets/images/serverrack/serverrack2.png" className="ds-img-sm" alt="Hardware Swap" />
                   <div className="ds-body">
                     <p className="ds-name">Hardware Swap Protocol</p>
                     <p className="ds-meta">Drive, card &amp; module replacement</p>
@@ -546,7 +546,7 @@ export default function RoboTaskManipulatorLight() {
                 </div>
 
                 <div className="ds-card">
-                  <img src="images/dc_Screenshot_2026-01-13_at_4.38.43_PM.png" className="ds-img-sm" alt="Component Inspection" />
+                  <img src="../../assets/images/serverrack/serverrack3.png" className="ds-img-sm" alt="Component Inspection" />
                   <div className="ds-body">
                     <p className="ds-name">Component Inspection</p>
                     <p className="ds-meta">Visual scan &amp; probe verification steps</p>
@@ -558,7 +558,7 @@ export default function RoboTaskManipulatorLight() {
                 </div>
 
                 <div className="ds-card">
-                  <img src="images/dc_Screenshot_2026-01-13_at_4.38.50_PM.png" className="ds-img-sm" alt="Cable Management" />
+                  <img src="../../assets/images/serverrack/serverrack4.png" className="ds-img-sm" alt="Cable Management" />
                   <div className="ds-body">
                     <p className="ds-name">Cable Management</p>
                     <p className="ds-meta">Bundle, route &amp; secure with label scan</p>
