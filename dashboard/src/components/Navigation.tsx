@@ -1,17 +1,49 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/auth/useAuth";
 import { buildAuthPath } from "@/lib/authLinks";
 
-const NAV_ITEMS = [
-  { label: "Home", subtitle: "Overview", href: "/" },
-  { label: "Solutions", subtitle: "Full Stack", href: "/product" },
-  { label: "RoboDataHub", subtitle: "Dataset Catalog", href: "/viewer" },
-  { label: "RoboEyeView", subtitle: "Visual Intelligence", href: "/roboeyeview" },
-  { label: "Explore", subtitle: "Datasets", href: "/explore" },
-  { label: "Company", subtitle: "Team / Mission", href: "/company" },
+type NavItem = {
+  label: string;
+  subtitle: string;
+  href: string;
+  key: string;
+};
+
+const MARKETING_NAV_ITEMS: NavItem[] = [
+  { key: "products", label: "Products", subtitle: "AI Data", href: "/#products" },
+  { key: "solutions", label: "Solutions", subtitle: "Use Cases", href: "/#solutions" },
+  { key: "customers", label: "Customers", subtitle: "Case Studies", href: "/#customers" },
+  { key: "company", label: "Company", subtitle: "Team / Mission", href: "/company" },
+];
+
+const PRODUCT_NAV_ITEMS: NavItem[] = [
+  {
+    key: "robodatahub",
+    label: "RoboDataHub",
+    subtitle: "Dataset Catalog",
+    href: "/robodatahub",
+  },
+  {
+    key: "roboeyeview",
+    label: "RoboEyeView",
+    subtitle: "Visual Intelligence",
+    href: "/roboeyeview",
+  },
+  {
+    key: "robohandmotion",
+    label: "RoboHandMotion",
+    subtitle: "Humanoid Data",
+    href: "/robohandmotion",
+  },
+  {
+    key: "robotaskmanipulator",
+    label: "RoboTaskManipulator",
+    subtitle: "Task Execution",
+    href: "/robotaskmanipulator",
+  },
 ];
 
 export default function Navigation() {
@@ -24,9 +56,39 @@ export default function Navigation() {
   const registerHref = buildAuthPath("register", currentPath);
   const canManageUsers =
     isAuthenticated && isApproved && (user?.role === "admin" || user?.role === "analyst");
+  const isMarketingNav = location.pathname === "/" || location.pathname === "/company";
+
+  const navItems = useMemo(
+    () => (isMarketingNav ? MARKETING_NAV_ITEMS : PRODUCT_NAV_ITEMS),
+    [isMarketingNav],
+  );
+
+  const activeNavKey = useMemo(() => {
+    if (isMarketingNav) {
+      if (location.pathname === "/company") return "company";
+      if (location.hash === "#solutions") return "solutions";
+      if (location.hash === "#customers") return "customers";
+      if (location.hash === "#products" || location.pathname === "/") return "products";
+      return null;
+    }
+
+    if (location.pathname.startsWith("/viewer") || location.pathname.startsWith("/robodatahub")) {
+      return "robodatahub";
+    }
+    if (location.pathname.startsWith("/roboeyeview")) return "roboeyeview";
+    if (location.pathname.startsWith("/robohandmotion")) return "robohandmotion";
+    if (location.pathname.startsWith("/robotaskmanipulator")) return "robotaskmanipulator";
+    if (location.pathname === "/product" && location.hash === "#robohandmotion") {
+      return "robohandmotion";
+    }
+    if (location.pathname === "/product" && location.hash === "#robotaskmanipulator") {
+      return "robotaskmanipulator";
+    }
+    return null;
+  }, [isMarketingNav, location.hash, location.pathname]);
 
   return (
-    <nav className="fixed inset-x-0 top-0 z-50 border-b border-primary/10 bg-[#050907]/95 text-foreground backdrop-blur-xl">
+    <nav className="fixed inset-x-0 top-0 z-50 border-b border-slate-200/80 bg-white/92 text-foreground backdrop-blur-xl">
       <div className="mx-auto max-w-[1440px] px-4 sm:px-6">
         <div className="flex h-[88px] items-center justify-between gap-4">
           <Link
@@ -34,44 +96,40 @@ export default function Navigation() {
             className="flex min-w-0 items-center gap-3"
             onClick={() => setIsMenuOpen(false)}
           >
-            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-primary/15 bg-primary text-[15px] font-black text-primary-foreground shadow-[0_10px_30px_rgba(29,233,182,0.18)]">
+            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-primary/20 bg-primary text-[15px] font-black text-primary-foreground shadow-[0_14px_30px_rgba(13,148,136,0.18)]">
               D
             </div>
             <div className="min-w-0">
               <div className="truncate font-sans-tech text-lg font-extrabold tracking-[0.04em] text-primary">
                 DataraAI
               </div>
-              <div className="truncate text-[11px] font-medium text-muted-foreground">
-                Data-as-a-Service
+              <div className="truncate text-[11px] font-medium text-slate-500">
+                {isMarketingNav ? "Data-as-a-Service" : "Back to Home"}
               </div>
             </div>
           </Link>
 
-          <div className="hidden items-stretch lg:flex">
-            {NAV_ITEMS.map((item) => {
-              const isActive =
-                item.href === "/"
-                  ? location.pathname === "/"
-                  : location.pathname.startsWith(item.href);
-
+          <div className="hidden flex-1 items-stretch justify-center lg:flex">
+            {navItems.map((item) => {
+              const isActive = activeNavKey === item.key;
               return (
                 <Link
                   key={item.href}
                   to={item.href}
-                  className={`relative flex min-w-[124px] flex-col items-center justify-center border-x border-white/4 px-5 text-center transition-colors ${
+                  className={`relative flex min-w-[124px] flex-col items-center justify-center border-x border-slate-200/80 px-5 text-center transition-colors ${
                     isActive
-                      ? "bg-primary/4 text-primary"
-                      : "text-muted-foreground hover:bg-white/[0.02] hover:text-foreground"
+                      ? "bg-primary/5 text-primary"
+                      : "text-slate-500 hover:bg-slate-50 hover:text-foreground"
                   }`}
                 >
                   <span className="text-[14px] font-bold leading-none">{item.label}</span>
-                  <span className="mt-1 text-[10px] uppercase tracking-[0.18em] opacity-60">
+                  <span className="mt-1 text-[10px] uppercase tracking-[0.18em] opacity-70">
                     {item.subtitle}
                   </span>
                   <span
                     className={`absolute inset-x-[20%] bottom-0 h-0.5 rounded-t-full ${
                       isActive
-                        ? "bg-primary shadow-[0_0_14px_rgba(29,233,182,0.7)]"
+                        ? "bg-primary shadow-[0_0_14px_rgba(13,148,136,0.3)]"
                         : "bg-transparent"
                     }`}
                   />
@@ -86,12 +144,12 @@ export default function Navigation() {
                 {canManageUsers && (
                   <Link
                     to="/admin/users"
-                    className="rounded-full border border-white/10 px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-primary/20 hover:text-primary"
+                    className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-500 transition-colors hover:border-primary/30 hover:text-primary"
                   >
                     User Access
                   </Link>
                 )}
-                <div className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-2 text-right">
+                <div className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-right shadow-[0_12px_28px_rgba(15,23,42,0.05)]">
                   <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
                     {isApproved ? user?.role ?? "customer" : "pending"}
                   </div>
@@ -101,7 +159,7 @@ export default function Navigation() {
                 </div>
                 <Button
                   variant="ghost"
-                  className="h-10 rounded-full border border-white/12 px-5 text-sm font-semibold text-muted-foreground hover:border-primary/20 hover:bg-primary/6 hover:text-primary"
+                  className="h-10 rounded-full border border-slate-200 px-5 text-sm font-semibold text-slate-500 hover:border-primary/30 hover:bg-primary/5 hover:text-primary"
                   onClick={() => void logout()}
                 >
                   Sign Out
@@ -111,13 +169,13 @@ export default function Navigation() {
               <>
                 <Link
                   to={loginHref}
-                  className="inline-flex h-10 items-center justify-center rounded-full border border-white/12 px-5 text-sm font-semibold text-muted-foreground transition-colors hover:border-primary/20 hover:text-primary"
+                  className="inline-flex h-10 items-center justify-center rounded-full border border-slate-200 px-5 text-sm font-semibold text-slate-500 transition-colors hover:border-primary/30 hover:text-primary"
                 >
                   Sign In
                 </Link>
                 <Link
                   to={registerHref}
-                  className="inline-flex h-10 items-center justify-center rounded-full bg-primary px-5 text-sm font-bold text-primary-foreground shadow-[0_12px_28px_rgba(29,233,182,0.22)] transition-opacity hover:opacity-90"
+                  className="inline-flex h-10 items-center justify-center rounded-full bg-primary px-5 text-sm font-bold text-primary-foreground shadow-[0_12px_28px_rgba(13,148,136,0.22)] transition-opacity hover:opacity-90"
                 >
                   Get Access
                 </Link>
@@ -129,7 +187,7 @@ export default function Navigation() {
             type="button"
             variant="ghost"
             size="icon"
-            className="h-11 w-11 rounded-2xl border border-white/8 bg-white/[0.03] text-muted-foreground hover:text-primary lg:hidden"
+            className="h-11 w-11 rounded-2xl border border-slate-200 bg-white text-slate-500 shadow-[0_10px_20px_rgba(15,23,42,0.04)] hover:text-primary lg:hidden"
             onClick={() => setIsMenuOpen((open) => !open)}
             aria-label={isMenuOpen ? "Close navigation menu" : "Open navigation menu"}
           >
@@ -138,22 +196,18 @@ export default function Navigation() {
         </div>
 
         {isMenuOpen && (
-          <div className="border-t border-white/6 pb-5 pt-4 lg:hidden">
+          <div className="border-t border-slate-200 pb-5 pt-4 lg:hidden">
             <div className="space-y-2">
-              {NAV_ITEMS.map((item) => {
-                const isActive =
-                  item.href === "/"
-                    ? location.pathname === "/"
-                    : location.pathname.startsWith(item.href);
-
+              {navItems.map((item) => {
+                const isActive = activeNavKey === item.key;
                 return (
                   <Link
                     key={item.href}
                     to={item.href}
                     className={`block rounded-2xl border px-4 py-3 ${
                       isActive
-                        ? "border-primary/20 bg-primary/8 text-primary"
-                        : "border-white/8 bg-white/[0.03] text-muted-foreground"
+                        ? "border-primary/20 bg-primary/6 text-primary"
+                        : "border-slate-200 bg-white text-slate-500"
                     }`}
                     onClick={() => setIsMenuOpen(false)}
                   >
@@ -166,10 +220,10 @@ export default function Navigation() {
               })}
             </div>
 
-            <div className="mt-4 space-y-3 border-t border-white/6 pt-4">
+            <div className="mt-4 space-y-3 border-t border-slate-200 pt-4">
               {isAuthenticated ? (
                 <>
-                  <div className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3">
+                  <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
                     <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
                       {isApproved ? user?.role ?? "customer" : "pending"}
                     </div>
@@ -181,7 +235,7 @@ export default function Navigation() {
                   {canManageUsers && (
                     <Link
                       to="/admin/users"
-                      className="block rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-muted-foreground"
+                      className="block rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-500"
                       onClick={() => setIsMenuOpen(false)}
                     >
                       User Access
@@ -190,7 +244,7 @@ export default function Navigation() {
 
                   <Button
                     variant="ghost"
-                    className="h-11 w-full justify-start rounded-2xl border border-white/8 bg-white/[0.03] px-4 text-sm font-semibold text-muted-foreground hover:text-primary"
+                    className="h-11 w-full justify-start rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-500 hover:text-primary"
                     onClick={() => void logout()}
                   >
                     Sign Out
@@ -200,7 +254,7 @@ export default function Navigation() {
                 <>
                   <Link
                     to={loginHref}
-                    className="flex h-11 items-center rounded-2xl border border-white/8 bg-white/[0.03] px-4 text-sm font-semibold text-muted-foreground"
+                    className="flex h-11 items-center rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-500"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     Sign In
