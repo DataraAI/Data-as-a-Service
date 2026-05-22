@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
 
 type ProductSurfaceKey =
-  | "solutions"
   | "robodatahub"
   | "roboeyeview"
   | "robohandmotion"
@@ -19,16 +18,10 @@ const ITEMS: Array<{
   to: string;
 }> = [
   {
-    key: "solutions",
-    label: "Solutions",
-    subtitle: "Full stack overview",
-    to: "/product",
-  },
-  {
     key: "robodatahub",
     label: "RoboDataHub",
     subtitle: "Dataset catalog",
-    to: "/viewer",
+    to: "/robodatahub",
   },
   {
     key: "roboeyeview",
@@ -40,13 +33,13 @@ const ITEMS: Array<{
     key: "robohandmotion",
     label: "RoboHandMotion",
     subtitle: "Humanoid data",
-    to: "/product#robohandmotion",
+    to: "/robohandmotion",
   },
   {
     key: "robotaskmanipulator",
     label: "RoboTaskManipulator",
     subtitle: "Task execution",
-    to: "/product#robotaskmanipulator",
+    to: "/robotaskmanipulator",
   },
 ];
 
@@ -67,8 +60,7 @@ export default function ProductSurfaceTabs({
             Navigate the DataraAI stack
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-            Move between the broader solutions overview and the live product surfaces without
-            losing the shared visual system.
+            Move between the live product surfaces without losing the shared visual system.
           </p>
         </div>
 
