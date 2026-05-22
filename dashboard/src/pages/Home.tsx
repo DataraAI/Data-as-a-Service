@@ -14,9 +14,9 @@ import {
 import Navigation from "@/components/Navigation";
 import FooterSection from "@/components/FooterSection";
 import { buildAuthPath } from "@/lib/authLinks";
-import pilotRoadmap from "@/assets/images/pilot-roadmap.png";
-import rackManual from "@/assets/images/rack-manual.png";
-import rackRobot from "@/assets/images/rack-robot.png";
+import pilotRoadmap from "@/assets/pilot-roadmap.png";
+import rackManual from "@/assets/rack-manual.png";
+import rackRobot from "@/assets/rack-robot.png";
 
 type ProductCard = {
   name: string;
