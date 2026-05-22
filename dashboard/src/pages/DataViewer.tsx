@@ -814,7 +814,7 @@ function PathSearchPanel({
 function LoggedOutHub({ viewerBasePath }: { viewerBasePath: string }) {
   return (
     <div className="mx-auto w-full max-w-[1440px] px-4 py-12 sm:px-6 md:py-16">
-      <div className="overflow-hidden rounded-[34px] border border-slate-200 bg-[radial-gradient(circle_at_top_right,rgba(29,78,216,0.08),transparent_30%),radial-gradient(circle_at_18%_14%,rgba(13,148,136,0.08),transparent_22%),linear-gradient(180deg,rgba(248,250,252,0.94),rgba(255,255,255,1))] p-6 shadow-[0_28px_70px_rgba(15,23,42,0.1)] md:p-8">
+      <div className="marketing-hero-data overflow-hidden rounded-[34px] border border-slate-200 p-6 shadow-[0_28px_70px_rgba(15,23,42,0.1)] md:p-8">
         <div className="max-w-3xl">
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-[11px] uppercase tracking-[0.22em] text-primary">
             RoboDataHub
@@ -1411,7 +1411,7 @@ export default function DataViewer() {
   const renderRootLanding = () => (
     <div className="mx-auto w-full max-w-[1440px] px-4 py-12 sm:px-6 md:py-16">
       <div className="min-w-0">
-        <div className="mb-8 overflow-hidden rounded-[34px] border border-slate-200 bg-[radial-gradient(circle_at_top_right,rgba(29,78,216,0.08),transparent_30%),radial-gradient(circle_at_18%_14%,rgba(13,148,136,0.08),transparent_22%),linear-gradient(180deg,rgba(248,250,252,0.94),rgba(255,255,255,1))] p-6 shadow-[0_28px_70px_rgba(15,23,42,0.1)] md:p-8">
+        <div className="marketing-hero-data mb-8 overflow-hidden rounded-[34px] border border-slate-200 p-6 shadow-[0_28px_70px_rgba(15,23,42,0.1)] md:p-8">
           <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 font-sans-tech text-[11px] uppercase tracking-[0.22em] text-primary">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
             RoboDataHub
@@ -1535,7 +1535,7 @@ export default function DataViewer() {
     <div className="mx-auto w-full max-w-[1440px] px-4 py-12 sm:px-6 md:py-16">
       <div className="min-w-0">
         <div className="overflow-hidden rounded-[34px] border border-slate-200 bg-white shadow-[0_28px_70px_rgba(15,23,42,0.1)]">
-          <div className="grid gap-8 border-b border-slate-200 bg-[radial-gradient(circle_at_top_right,rgba(29,78,216,0.08),transparent_30%),radial-gradient(circle_at_18%_14%,rgba(13,148,136,0.08),transparent_22%),linear-gradient(180deg,rgba(248,250,252,0.94),rgba(255,255,255,1))] p-6 md:grid-cols-[minmax(0,1.1fr)_300px] md:p-8">
+          <div className="marketing-hero-data grid gap-8 border-b border-slate-200 p-6 md:grid-cols-[minmax(0,1.1fr)_300px] md:p-8">
             <div className="max-w-3xl">
               <div className={`mb-5 inline-flex items-center gap-2 rounded-full border px-4 py-2 font-sans-tech text-[11px] uppercase tracking-[0.22em] ${getCategoryAccent(category.routeKey).chip}`}>
                 {getCategoryStory(category).eyebrow}

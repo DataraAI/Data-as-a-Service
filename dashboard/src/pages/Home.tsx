@@ -14,9 +14,9 @@ import {
 import Navigation from "@/components/Navigation";
 import FooterSection from "@/components/FooterSection";
 import { buildAuthPath } from "@/lib/authLinks";
-import pilotRoadmap from "@/assets/pilot-roadmap.png";
-import rackManual from "@/assets/rack-manual.png";
-import rackRobot from "@/assets/rack-robot.png";
+import pilotRoadmap from "@/assets/images/pilot-roadmap.png";
+import rackManual from "@/assets/images/rack-manual.png";
+import rackRobot from "@/assets/images/rack-robot.png";
 
 type ProductCard = {
   name: string;
@@ -179,8 +179,8 @@ export default function Home() {
       <Navigation />
 
       <main className="pt-[88px]">
-        <section className="border-b border-slate-200 bg-[radial-gradient(circle_at_top_left,rgba(13,148,136,0.12),transparent_24%),radial-gradient(circle_at_85%_12%,rgba(29,78,216,0.08),transparent_20%),linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] px-4 py-18 sm:px-6 md:py-24">
-          <div className="mx-auto grid max-w-[1440px] gap-12 xl:grid-cols-[minmax(0,1.05fr)_360px] xl:items-end">
+        <section className="marketing-hero-home border-b border-slate-200 px-4 py-18 sm:px-6 md:py-24">
+          <div className="mx-auto grid max-w-[1440px] gap-12 xl:grid-cols-[minmax(0,1.05fr)_360px] xl:items-center">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/6 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.2em] text-primary">
                 <span className="h-1.5 w-1.5 rounded-full bg-primary" />
@@ -417,7 +417,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="bg-[linear-gradient(135deg,#f8fafc_0%,#eef6f5_50%,#eff6ff_100%)] px-4 py-16 text-center sm:px-6">
+        <section className="marketing-cta-shared px-4 py-16 text-center sm:px-6">
           <div className="mx-auto max-w-4xl">
             <h2 className="text-[clamp(1.9rem,2.8vw,2.5rem)] font-extrabold tracking-tight text-slate-950">
               Ready to close the Sim-to-Real gap?

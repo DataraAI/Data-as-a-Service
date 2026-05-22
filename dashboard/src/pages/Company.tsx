@@ -71,7 +71,7 @@ export default function Company() {
       <Navigation />
 
       <main className="pt-[88px]">
-        <section className="border-b border-slate-200 bg-[radial-gradient(circle_at_top_left,rgba(13,148,136,0.1),transparent_24%),linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] px-4 py-16 sm:px-6 md:py-20">
+        <section className="marketing-hero-company border-b border-slate-200 px-4 py-16 sm:px-6 md:py-20">
           <div className="mx-auto max-w-[1440px]">
             <div className="max-w-3xl">
               <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">
@@ -193,7 +193,7 @@ export default function Company() {
           </div>
         </section>
 
-        <section className="bg-[linear-gradient(135deg,#f8fafc_0%,#eef6f5_50%,#eff6ff_100%)] px-4 py-16 text-center sm:px-6">
+        <section className="marketing-cta-shared px-4 py-16 text-center sm:px-6">
           <div className="mx-auto max-w-4xl">
             <h2 className="text-[clamp(1.75rem,2.7vw,2.3rem)] font-extrabold tracking-tight text-slate-950">
               Ready to close the Sim-to-Real gap?

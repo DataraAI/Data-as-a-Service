@@ -437,7 +437,7 @@ export default function RoboEyeView() {
       <Navigation />
 
       <main className="relative z-10 overflow-hidden pt-[88px]">
-        <section className="border-b border-slate-200 bg-[radial-gradient(circle_at_top_right,rgba(29,78,216,0.08),transparent_30%),radial-gradient(circle_at_20%_10%,rgba(13,148,136,0.08),transparent_22%),linear-gradient(180deg,rgba(248,250,252,0.95),rgba(255,255,255,1))]">
+        <section className="marketing-hero-roboeye border-b border-slate-200">
           <div className="mx-auto max-w-[1440px] px-4 py-14 sm:px-6 md:py-20">
             <div className="grid gap-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)] lg:items-center">
               <div>
@@ -553,7 +553,7 @@ export default function RoboEyeView() {
           {resolvedVerticals.map((vertical) => (
             <section key={vertical.id} id={vertical.id} className="scroll-mt-28 px-4 sm:px-6">
               <div className="mx-auto max-w-7xl overflow-hidden rounded-[30px] border border-slate-200 bg-white shadow-[0_30px_70px_rgba(15,23,42,0.08)]">
-                <div className="border-b border-slate-200 bg-[linear-gradient(180deg,rgba(248,250,252,0.92),rgba(255,255,255,1))] px-6 py-6 md:px-8 md:py-7">
+                <div className="marketing-panel-header border-b border-slate-200 px-6 py-6 md:px-8 md:py-7">
                   <div className="max-w-4xl">
                     <div className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-primary">
                       {vertical.eyebrow}
@@ -583,7 +583,7 @@ export default function RoboEyeView() {
         </div>
 
         <section className="px-4 pb-20 sm:px-6">
-          <div className="mx-auto max-w-7xl rounded-[30px] border border-primary/15 bg-[linear-gradient(135deg,rgba(13,148,136,0.12),rgba(255,255,255,0.96)_45%,rgba(29,78,216,0.08))] p-8 shadow-[0_22px_58px_rgba(15,23,42,0.08)] md:flex md:items-center md:justify-between md:gap-8">
+          <div className="marketing-cta-roboeye mx-auto max-w-7xl rounded-[30px] border border-primary/15 p-8 shadow-[0_22px_58px_rgba(15,23,42,0.08)] md:flex md:items-center md:justify-between md:gap-8">
             <div className="max-w-2xl">
               <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">
                 Deployment Ready

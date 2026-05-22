@@ -342,7 +342,7 @@ export default function Product() {
       <Navigation />
 
       <main className="pt-[88px]">
-        <section className="border-b border-slate-200 bg-[radial-gradient(circle_at_top_left,rgba(13,148,136,0.08),transparent_24%),radial-gradient(circle_at_82%_8%,rgba(29,78,216,0.08),transparent_18%),linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] px-4 py-14 sm:px-6 md:py-18">
+        <section className="marketing-hero-product border-b border-slate-200 px-4 py-14 sm:px-6 md:py-18">
           <div className="mx-auto max-w-[1440px]">
             <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/6 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.2em] text-primary">
               {focusedSection ? focusedSection.badge : "DataraAI Product Suite"}
@@ -477,7 +477,7 @@ export default function Product() {
             })}
           </div>
 
-          <section className="mt-8 rounded-[28px] border border-slate-200 bg-[linear-gradient(135deg,#ffffff_0%,#f8fafc_45%,#eef6f5_100%)] p-8 text-center shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
+          <section className="marketing-cta-product mt-8 rounded-[28px] border border-slate-200 p-8 text-center shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
             <h2 className="text-[clamp(1.8rem,2.5vw,2.3rem)] font-extrabold tracking-tight text-slate-950">
               Ready to build with DataraAI?
             </h2>
