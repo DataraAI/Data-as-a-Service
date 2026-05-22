@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Menu, Moon, Sun, X } from "lucide-react";
-import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/auth/useAuth";
 import { buildAuthPath } from "@/lib/authLinks";
+import { useAppTheme } from "@/theme/AppThemeProvider";
 
 type NavItem = {
   label: string;
@@ -50,7 +50,7 @@ const PRODUCT_NAV_ITEMS: NavItem[] = [
 export default function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
-  const { resolvedTheme, setTheme } = useTheme();
+  const { isDarkMode, toggleTheme } = useAppTheme();
   const { isAuthenticated, isApproved, user, logout } = useAuth();
 
   const currentPath = `${location.pathname}${location.search}`;
@@ -59,7 +59,6 @@ export default function Navigation() {
   const canManageUsers =
     isAuthenticated && isApproved && (user?.role === "admin" || user?.role === "analyst");
   const isMarketingNav = location.pathname === "/" || location.pathname === "/company";
-  const isDarkMode = resolvedTheme === "dark";
 
   const navItems = useMemo(
     () => (isMarketingNav ? MARKETING_NAV_ITEMS : PRODUCT_NAV_ITEMS),
@@ -89,10 +88,6 @@ export default function Navigation() {
     }
     return null;
   }, [isMarketingNav, location.hash, location.pathname]);
-
-  const toggleTheme = () => {
-    setTheme(isDarkMode ? "light" : "dark");
-  };
 
   return (
     <nav className="fixed inset-x-0 top-0 z-50 border-b border-slate-200/80 bg-white/92 text-foreground backdrop-blur-xl">
