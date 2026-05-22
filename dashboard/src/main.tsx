@@ -1,27 +1,16 @@
-import { StrictMode, useEffect } from "react";
+import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { ThemeProvider, useTheme } from "next-themes";
 import "./index.css";
 import App from "./App";
 import { AuthProvider } from "./auth/AuthProvider";
-
-function ThemeInitializer() {
-  const { setTheme } = useTheme();
-
-  useEffect(() => {
-    setTheme("light");
-  }, [setTheme]);
-
-  return null;
-}
+import { AppThemeProvider } from "./theme/AppThemeProvider";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} storageKey="datara-theme">
-      <ThemeInitializer />
+    <AppThemeProvider>
       <AuthProvider>
         <App />
       </AuthProvider>
-    </ThemeProvider>
+    </AppThemeProvider>
   </StrictMode>,
 );
