@@ -36,17 +36,17 @@ export function DatasetSelector({ datasets, selected, onChange }: DatasetSelecto
         <div className="relative" ref={containerRef}>
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${isOpen ? 'bg-slate-800' : 'hover:bg-slate-800'}`}
+                className={`flex items-center space-x-2 rounded-md px-3 py-2 transition-colors ${isOpen ? 'bg-accent' : 'hover:bg-accent'}`}
             >
-                <Database className="w-4 h-4 text-orange-500" />
-                <span className="font-semibold text-slate-200">{selected || "Select Dataset"}</span>
-                <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                <Database className="w-4 h-4 text-primary" />
+                <span className="font-semibold text-foreground">{selected || "Select Dataset"}</span>
+                <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
             </button>
 
             {/* Dropdown Menu */}
             {isOpen && (
-                <div className="absolute top-full left-0 mt-1 w-72 bg-slate-900 border border-slate-700 rounded-md shadow-xl py-1 z-50 animate-in fade-in zoom-in-95 duration-100 max-h-96 overflow-y-auto">
-                    <div className="px-3 py-2 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-800 bg-slate-900/50 flex justify-between">
+                <div className="absolute top-full left-0 z-50 mt-1 max-h-96 w-72 overflow-y-auto rounded-md border border-border bg-card py-1 shadow-xl animate-in fade-in zoom-in-95 duration-100">
+                    <div className="flex justify-between border-b border-border bg-background/50 px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                         <span>Dataset</span>
                         <span>Uploaded</span>
                     </div>
@@ -54,20 +54,20 @@ export function DatasetSelector({ datasets, selected, onChange }: DatasetSelecto
                         <button
                             key={ds.name}
                             onClick={() => handleSelect(ds.name)}
-                            className={`w-full text-left px-4 py-3 hover:bg-slate-800 transition-colors border-b border-slate-800/50 last:border-0 ${ds.name === selected ? 'bg-slate-800/30' : ''}`}
+                            className={`w-full border-b border-border/70 px-4 py-3 text-left transition-colors hover:bg-accent last:border-0 ${ds.name === selected ? 'bg-primary/10' : ''}`}
                         >
                             <div className="flex justify-between items-center">
-                                <span className={`text-sm font-medium ${ds.name === selected ? 'text-orange-400' : 'text-slate-200'}`}>
+                                <span className={`text-sm font-medium ${ds.name === selected ? 'text-primary' : 'text-foreground'}`}>
                                     {ds.name}
                                 </span>
-                                <span className="text-[10px] text-slate-500 flex items-center">
+                                <span className="flex items-center text-[10px] text-muted-foreground">
                                     {ds.uploaded_at ? new Date(ds.uploaded_at * 1000).toLocaleDateString() : '-'}
                                 </span>
                             </div>
                         </button>
                     ))}
                     {datasets.length === 0 && (
-                        <div className="px-4 py-2 text-sm text-slate-500 italic">No datasets found</div>
+                        <div className="px-4 py-2 text-sm italic text-muted-foreground">No datasets found</div>
                     )}
                 </div>
             )}

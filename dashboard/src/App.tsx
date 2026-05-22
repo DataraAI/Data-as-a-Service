@@ -16,10 +16,13 @@ const App = () => (
         <Route path="/" element={<Home />} />
         <Route path="/company" element={<Company />} />
         <Route path="/product" element={<Product />} />
+        <Route path="/robohandmotion" element={<Product />} />
+        <Route path="/robotaskmanipulator" element={<Product />} />
         <Route path="/explore" element={<ExploreDatasets />} />
         <Route path="/roboeyeview" element={<RoboEyeView />} />
         <Route path="/auth" element={<AuthPage />} />
         <Route path="/admin/users" element={<AdminUsers />} />
+        <Route path="/robodatahub/*" element={<DataViewer />} />
         <Route path="/viewer/*" element={<DataViewer />} />
       </Routes>
       <Toaster richColors />

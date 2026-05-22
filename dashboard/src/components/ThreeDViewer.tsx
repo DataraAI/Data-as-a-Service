@@ -57,7 +57,7 @@ export function ThreeDViewer({ url }: ThreeDViewerProps) {
                 <ErrorBoundary
                     fallback={
                         <Html center>
-                            <div className="flex flex-col items-center bg-slate-900/80 p-4 rounded border border-red-500 text-red-500">
+                            <div className="flex flex-col items-center rounded border border-destructive/40 bg-card/90 p-4 text-destructive shadow-xl backdrop-blur-sm">
                                 <AlertTriangle className="w-6 h-6 mb-2" />
                                 <span className="text-xs font-mono">Failed to load 3D model</span>
                             </div>
@@ -67,7 +67,7 @@ export function ThreeDViewer({ url }: ThreeDViewerProps) {
                     <Suspense
                         fallback={
                             <Html center>
-                                <div className="flex items-center space-x-2 text-orange-500 bg-slate-900/80 p-2 rounded">
+                                <div className="flex items-center space-x-2 rounded bg-card/90 p-2 text-primary shadow-xl backdrop-blur-sm">
                                     <Loader2 className="w-5 h-5 animate-spin" />
                                     <span className="text-xs font-mono">Loading Model...</span>
                                 </div>

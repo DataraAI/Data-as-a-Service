@@ -318,7 +318,7 @@ function buildCategoryHeroImagePaths(category: CategoryConfig) {
   );
 }
 
-function buildViewerPath(fullPath: string, imageName?: string) {
+function buildViewerPath(fullPath: string, imageName?: string, basePath = "/viewer") {
   const encodedPath = fullPath
     .split("/")
     .filter(Boolean)
@@ -331,7 +331,11 @@ function buildViewerPath(fullPath: string, imageName?: string) {
   }
 
   const query = params.toString();
-  return `/viewer/${encodedPath}${query ? `?${query}` : ""}`;
+  return `${basePath}/${encodedPath}${query ? `?${query}` : ""}`;
+}
+
+function withViewerBase(viewerPath: string, basePath: string) {
+  return viewerPath.startsWith("/viewer") ? `${basePath}${viewerPath.slice("/viewer".length)}` : viewerPath;
 }
 
 function groupVlmPromptTags(tags: string[]) {
@@ -402,10 +406,10 @@ function ShowcasePreviewImage({
       <button
         type="button"
         onClick={onClick}
-        className="group relative flex aspect-[5/4] w-full items-center justify-center overflow-hidden rounded-[18px] border border-white/6 bg-[#0b0f13] transition-all duration-300 hover:border-primary/30 hover:shadow-[0_0_0_2px_rgba(29,233,182,0.18)]"
+        className="group relative flex aspect-[5/4] w-full items-center justify-center overflow-hidden rounded-[20px] border border-slate-200 bg-slate-100 transition-all duration-300 hover:border-primary/30 hover:shadow-[0_0_0_2px_rgba(13,148,136,0.12)]"
       >
         <Database className="h-9 w-9 text-primary/60" />
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 to-transparent px-4 py-3 text-left">
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-background via-background/80 to-transparent px-4 py-3 text-left">
           <span className="font-sans-tech text-[11px] uppercase tracking-[0.18em] text-primary">
             Open in viewer
           </span>
@@ -418,7 +422,7 @@ function ShowcasePreviewImage({
     <button
       type="button"
       onClick={onClick}
-      className="group relative w-full overflow-hidden rounded-[18px] border border-white/6 bg-[#0b0f13] shadow-xl shadow-black/20 transition-all duration-300 hover:border-primary/30 hover:shadow-[0_0_0_2px_rgba(29,233,182,0.2)] focus:border-primary focus:outline-none focus:shadow-[0_0_0_2px_rgba(29,233,182,0.2)]"
+      className="group relative w-full overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-[0_18px_40px_rgba(15,23,42,0.08)] transition-all duration-300 hover:border-primary/30 hover:shadow-[0_0_0_2px_rgba(13,148,136,0.12)] focus:border-primary focus:outline-none focus:shadow-[0_0_0_2px_rgba(13,148,136,0.12)]"
     >
       <div className="aspect-[5/4] overflow-hidden">
         <img
@@ -447,14 +451,14 @@ function CategoryHeroImage({ blobPath, alt }: { blobPath: string; alt: string })
 
   if (!src || failed) {
     return (
-      <div className="flex aspect-[4/3] w-full items-center justify-center rounded-[18px] border border-white/6 bg-[#0b0f13]">
+      <div className="flex aspect-[4/3] w-full items-center justify-center rounded-[20px] border border-slate-200 bg-slate-100">
         <Database className="h-8 w-8 text-primary/60" />
       </div>
     );
   }
 
   return (
-    <div className="w-full overflow-hidden rounded-[18px] border border-white/6 bg-[#0b0f13] shadow-lg shadow-black/20">
+    <div className="w-full overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-[0_16px_36px_rgba(15,23,42,0.08)]">
       <div className="aspect-[4/3] overflow-hidden">
         <img
           src={src}
@@ -473,27 +477,64 @@ function getCategoryAccent(routeKey: CategoryKey) {
   switch (routeKey) {
     case "serverrack":
       return {
-        dot: "bg-blue-400 shadow-[0_0_12px_rgba(96,165,250,0.45)]",
-        chip: "border-blue-400/25 bg-blue-400/10 text-blue-300",
-        line: "bg-blue-400/20",
+        dot: "bg-blue-600 shadow-[0_0_14px_rgba(37,99,235,0.28)]",
+        chip: "border-blue-200 bg-blue-50 text-blue-700",
+        line: "bg-blue-200",
       };
     case "warehouse":
       return {
-        dot: "bg-orange-400 shadow-[0_0_12px_rgba(251,146,60,0.45)]",
-        chip: "border-orange-400/25 bg-orange-400/10 text-orange-300",
-        line: "bg-orange-400/20",
+        dot: "bg-amber-600 shadow-[0_0_14px_rgba(217,119,6,0.24)]",
+        chip: "border-amber-200 bg-amber-50 text-amber-700",
+        line: "bg-amber-200",
       };
     case "dexterity":
       return {
-        dot: "bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.45)]",
-        chip: "border-emerald-400/25 bg-emerald-400/10 text-emerald-300",
-        line: "bg-emerald-400/20",
+        dot: "bg-emerald-600 shadow-[0_0_14px_rgba(5,150,105,0.24)]",
+        chip: "border-emerald-200 bg-emerald-50 text-emerald-700",
+        line: "bg-emerald-200",
       };
     default:
       return {
-        dot: "bg-violet-400 shadow-[0_0_12px_rgba(167,139,250,0.45)]",
-        chip: "border-violet-400/25 bg-violet-400/10 text-violet-300",
-        line: "bg-violet-400/20",
+        dot: "bg-violet-600 shadow-[0_0_14px_rgba(124,58,237,0.22)]",
+        chip: "border-violet-200 bg-violet-50 text-violet-700",
+        line: "bg-violet-200",
+      };
+  }
+}
+
+function getCategoryStory(category: CategoryConfig) {
+  switch (category.routeKey) {
+    case "serverrack":
+      return {
+        eyebrow: "Data Center · Robotics AI",
+        summary:
+          "High-fidelity server-room captures built for port-level manipulation, rack maintenance, and robotics automation workflows.",
+        statLabel: "Operational focus",
+        statValue: "Rack + cabling",
+      };
+    case "warehouse":
+      return {
+        eyebrow: "Warehouse · Material Flow",
+        summary:
+          "Warehouse movement, handling, and storage-operation data shaped for logistics robotics and live facility workflows.",
+        statLabel: "Operational focus",
+        statValue: "Picking + transport",
+      };
+    case "dexterity":
+      return {
+        eyebrow: "Dexterity · Embodied Control",
+        summary:
+          "Fine-motor manipulation data for embodied systems working across close-range object interaction and practical task execution.",
+        statLabel: "Operational focus",
+        statValue: "Fine manipulation",
+      };
+    default:
+      return {
+        eyebrow: "Automotive · Physical AI",
+        summary:
+          "Assembly, inspection, and service-oriented captures for vehicle-production robotics and automation training pipelines.",
+        statLabel: "Operational focus",
+        statValue: "Assembly + inspection",
       };
   }
 }
@@ -538,7 +579,7 @@ function CompactPathSearch({
             onFocus={onFocus}
             onChange={(event) => onChange(event.target.value)}
             placeholder={placeholder}
-            className="h-11 w-full rounded-xl border border-white/8 bg-[#0d1014] pl-11 pr-10 font-sans-tech text-sm text-foreground shadow-black/20 placeholder:text-muted-foreground focus:border-primary/30 focus:outline-none"
+            className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-10 font-sans-tech text-sm text-slate-900 shadow-[0_10px_24px_rgba(15,23,42,0.06)] placeholder:text-slate-400 focus:border-primary/30 focus:outline-none"
           />
           {loading && (
             <Loader2 className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-primary" />
@@ -554,15 +595,15 @@ function CompactPathSearch({
       </form>
 
       {value.trim() !== "" && (
-        <div className="absolute left-0 right-0 top-[calc(100%+0.75rem)] z-30 overflow-hidden rounded-[18px] border border-white/8 bg-[#0b0f13]/96 text-left shadow-xl shadow-black/30 backdrop-blur-sm">
+        <div className="absolute left-0 right-0 top-[calc(100%+0.75rem)] z-30 overflow-hidden rounded-[20px] border border-slate-200 bg-white/95 text-left shadow-[0_24px_60px_rgba(15,23,42,0.14)] backdrop-blur-sm dark:bg-card/95 dark:shadow-[0_24px_60px_rgba(0,0,0,0.3)]">
           {suggestions.length > 0 ? (
-            <div className="divide-y divide-white/6">
+            <div className="divide-y divide-border">
               {suggestions.map((suggestion) => (
                 <button
                   key={suggestion.full_path}
                   type="button"
                   onClick={() => onSuggestionClick(suggestion.full_path)}
-                  className="w-full px-4 py-3 text-left transition-colors hover:bg-primary/10"
+                  className="w-full px-4 py-3 text-left transition-colors hover:bg-primary/8"
                 >
                   {renderHighlightedPath(suggestion.full_path)}
                 </button>
@@ -592,7 +633,7 @@ function DatasetPreviewImage({
 
   return (
     <div
-      className={`relative overflow-hidden rounded-[18px] border border-white/8 bg-[#0b0f13] ${className ?? ""}`}
+      className={`relative overflow-hidden rounded-[18px] border border-slate-200 bg-slate-100 ${className ?? ""}`}
     >
       {asset?.proxy_url && !failed ? (
         <img
@@ -604,7 +645,7 @@ function DatasetPreviewImage({
           onError={() => setFailed(true)}
         />
       ) : (
-        <div className="flex h-full min-h-[120px] items-center justify-center bg-black/30">
+        <div className="flex h-full min-h-[120px] items-center justify-center bg-slate-100">
           <Database className="h-8 w-8 text-primary/55" />
         </div>
       )}
@@ -626,20 +667,20 @@ function CategoryDatasetPreviewCard({
     <button
       type="button"
       onClick={onClick}
-      className="group flex h-full flex-col overflow-hidden rounded-[24px] border border-white/6 bg-[#0d1014]/88 p-5 text-left shadow-[0_20px_46px_rgba(0,0,0,0.22)] transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/20 hover:bg-[#11161b]"
+      className="group flex h-full flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white p-5 text-left shadow-[0_22px_54px_rgba(15,23,42,0.08)] transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-[0_28px_70px_rgba(15,23,42,0.12)]"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">
             {item.brand || "DataraAI"}
           </div>
-          <h3 className="mt-2 text-xl font-extrabold text-white">{item.title}</h3>
+          <h3 className="mt-2 text-xl font-extrabold text-slate-950">{item.title}</h3>
         </div>
         <span
           className={`rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
             item.visibility === "public"
-              ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-300"
-              : "border-white/10 bg-black/20 text-muted-foreground"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+              : "border-slate-200 bg-slate-100 text-slate-500"
           }`}
         >
           {item.visibility === "public" ? "Public" : "Private"}
@@ -665,8 +706,8 @@ function CategoryDatasetPreviewCard({
         </div>
       </div>
 
-      <div className="mt-5 flex items-center justify-between gap-3 border-t border-white/6 pt-4">
-        <span className="truncate text-xs text-muted-foreground">{item.full_path}</span>
+      <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-200 pt-4">
+        <span className="truncate text-xs text-slate-500">{item.full_path}</span>
         <span className="inline-flex shrink-0 items-center gap-2 text-xs font-bold text-primary">
           Open folder
           <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
@@ -704,11 +745,11 @@ function PathSearchPanel({
   renderHighlightedPath: (fullPath: string) => ReactNode;
 }) {
   return (
-    <div className="rounded-[24px] border border-white/6 bg-[#0d1014]/88 p-6 shadow-[0_20px_46px_rgba(0,0,0,0.22)] md:p-8">
+    <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_24px_60px_rgba(15,23,42,0.08)] md:p-8">
       <div className="max-w-3xl">
         <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Path Search</div>
-        <h3 className="mt-3 mb-2 font-sans-tech text-2xl font-bold text-white">{title}</h3>
-        <p className="font-sans-tech text-sm leading-7 text-muted-foreground">
+        <h3 className="mt-3 mb-2 font-sans-tech text-2xl font-bold text-slate-950">{title}</h3>
+        <p className="font-sans-tech text-sm leading-7 text-slate-600">
           {description}
         </p>
       </div>
@@ -728,8 +769,8 @@ function PathSearchPanel({
               onFocus={onFocus}
               onChange={(event) => onChange(event.target.value)}
               placeholder={placeholder}
-              className="h-12 w-full rounded-xl border border-primary/20 bg-black/20 pl-11 pr-10 font-sans-tech text-sm text-foreground shadow-lg shadow-black/20 placeholder:text-muted-foreground focus:border-primary focus:outline-none"
-            />
+            className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50/80 pl-11 pr-10 font-sans-tech text-sm text-slate-900 shadow-[0_10px_24px_rgba(15,23,42,0.05)] placeholder:text-slate-400 focus:border-primary focus:outline-none"
+          />
             {loading && (
               <Loader2 className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-primary" />
             )}
@@ -744,15 +785,15 @@ function PathSearchPanel({
         </form>
 
         {value.trim() !== "" && (
-          <div className="mt-3 overflow-hidden rounded-[18px] border border-primary/15 bg-[#0b0f13]/96 text-left shadow-xl shadow-black/20 backdrop-blur-sm">
+          <div className="mt-3 overflow-hidden rounded-[20px] border border-slate-200 bg-white/96 text-left shadow-[0_24px_60px_rgba(15,23,42,0.12)] backdrop-blur-sm dark:bg-card/95 dark:shadow-[0_24px_60px_rgba(0,0,0,0.3)]">
             {suggestions.length > 0 ? (
-              <div className="divide-y divide-white/6">
+              <div className="divide-y divide-border">
                 {suggestions.map((suggestion) => (
                   <button
                     key={suggestion.full_path}
                     type="button"
                     onClick={() => onSuggestionClick(suggestion.full_path)}
-                    className="w-full px-4 py-3 text-left transition-colors hover:bg-primary/10"
+                    className="w-full px-4 py-3 text-left transition-colors hover:bg-primary/8"
                   >
                     {renderHighlightedPath(suggestion.full_path)}
                   </button>
@@ -770,30 +811,30 @@ function PathSearchPanel({
   );
 }
 
-function LoggedOutHub() {
+function LoggedOutHub({ viewerBasePath }: { viewerBasePath: string }) {
   return (
     <div className="mx-auto w-full max-w-[1440px] px-4 py-12 sm:px-6 md:py-16">
-      <div className="overflow-hidden rounded-[30px] border border-white/6 bg-[#0d1014]/88 p-6 shadow-[0_24px_60px_rgba(0,0,0,0.24)] md:p-8">
+      <div className="marketing-hero-data overflow-hidden rounded-[34px] border border-slate-200 p-6 shadow-[0_28px_70px_rgba(15,23,42,0.1)] md:p-8">
         <div className="max-w-3xl">
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-[11px] uppercase tracking-[0.22em] text-primary">
             RoboDataHub
           </div>
-          <h1 className="mt-6 text-[clamp(2.3rem,4.8vw,4rem)] font-black tracking-[-0.05em] text-white">
+          <h1 className="mt-6 text-[clamp(2.3rem,4.8vw,4rem)] font-black tracking-[-0.05em] text-slate-950">
             Sign in to browse the full data library.
           </h1>
-          <p className="mt-5 max-w-2xl text-base leading-8 text-muted-foreground">
+          <p className="mt-5 max-w-2xl text-base leading-8 text-slate-600">
             Keep the public-facing design visible, but preserve the current access model:
             dataset contents stay behind account approval.
           </p>
           <div className="mt-8 flex flex-col gap-4 sm:flex-row">
             <Link
-              to={buildAuthPath("login", "/viewer")}
-              className="inline-flex h-12 items-center justify-center rounded-xl border border-white/12 px-6 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground"
+              to={buildAuthPath("login", viewerBasePath)}
+              className="inline-flex h-12 items-center justify-center rounded-xl border border-slate-300 bg-white px-6 text-sm font-semibold text-slate-600 transition-colors hover:border-primary/20 hover:text-primary"
             >
               Sign In
             </Link>
             <Link
-              to={buildAuthPath("register", "/viewer")}
+              to={buildAuthPath("register", viewerBasePath)}
               className="inline-flex h-12 items-center justify-center rounded-xl bg-primary px-6 text-sm font-bold text-primary-foreground"
             >
               Get Access
@@ -806,13 +847,13 @@ function LoggedOutHub() {
         {CATEGORIES.map((category) => (
           <div
             key={category.routeKey}
-            className="rounded-[24px] border border-white/6 bg-[#0d1014]/88 p-6 shadow-[0_20px_46px_rgba(0,0,0,0.2)]"
+            className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_20px_46px_rgba(15,23,42,0.08)]"
           >
             <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
               <Database className="h-5 w-5 text-primary" />
             </div>
-            <div className="font-sans-tech text-xl font-bold text-foreground">{category.label}</div>
-            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+            <div className="font-sans-tech text-xl font-bold text-slate-950">{category.label}</div>
+            <p className="mt-3 text-sm leading-relaxed text-slate-600">
               {category.description}
             </p>
           </div>
@@ -826,6 +867,10 @@ export default function DataViewer() {
   const location = useLocation();
   const navigate = useNavigate();
   const { isLoading: authLoading, isAuthenticated, isApproved, user } = useAuth();
+  const viewerBasePath = useMemo(
+    () => (location.pathname.startsWith("/robodatahub") ? "/robodatahub" : "/viewer"),
+    [location.pathname],
+  );
 
   const [folders, setFolders] = useState<FolderItem[]>([]);
   const [categoryPreviews, setCategoryPreviews] = useState<CategoryDatasetPreview[]>([]);
@@ -854,7 +899,7 @@ export default function DataViewer() {
   const [reloadTick, setReloadTick] = useState(0);
 
   const pathSegments = useMemo(
-    () => location.pathname.split("/").filter((part) => part && part !== "viewer"),
+    () => location.pathname.split("/").filter((part) => part && part !== "viewer" && part !== "robodatahub"),
     [location.pathname],
   );
   const currentDisplayPath = useMemo(() => pathSegments.join("/"), [pathSegments]);
@@ -1192,7 +1237,7 @@ export default function DataViewer() {
 
   function handlePathSuggestionClick(fullPath: string) {
     setPathSearchText("");
-    navigate(buildViewerPath(fullPath));
+    navigate(buildViewerPath(fullPath, undefined, viewerBasePath));
   }
 
   function handlePathSearchSubmit() {
@@ -1201,7 +1246,11 @@ export default function DataViewer() {
   }
 
   function handleCategoryPreviewClick(item: CategoryDatasetPreview) {
-    navigate(item.viewer_path || buildViewerPath(item.full_path));
+    navigate(
+      item.viewer_path
+        ? withViewerBase(item.viewer_path, viewerBasePath)
+        : buildViewerPath(item.full_path, undefined, viewerBasePath),
+    );
   }
 
   async function handleDeleteFolder() {
@@ -1260,8 +1309,14 @@ export default function DataViewer() {
           return (
             <div
               key={folder.full_path}
-              className="group relative cursor-pointer overflow-hidden rounded-[24px] border border-white/6 bg-[#0d1014]/88 p-6 transition-all duration-300 hover:-translate-y-1 hover:border-primary/20 hover:bg-[#10151a] hover:shadow-2xl hover:shadow-black/10"
-              onClick={() => navigate(folder.viewer_path || buildViewerPath(folder.full_path))}
+              className="group relative cursor-pointer overflow-hidden rounded-[28px] border border-slate-200 bg-white p-6 transition-all duration-300 hover:-translate-y-1 hover:border-primary/20 hover:shadow-[0_28px_70px_rgba(15,23,42,0.12)]"
+              onClick={() =>
+                navigate(
+                  folder.viewer_path
+                    ? withViewerBase(folder.viewer_path, viewerBasePath)
+                    : buildViewerPath(folder.full_path, undefined, viewerBasePath),
+                )
+              }
             >
               {isDataset && (
                 <div className="absolute right-4 top-4 z-20">
@@ -1286,7 +1341,7 @@ export default function DataViewer() {
                         onClick={() => setFolderDropdownOpen(null)}
                         aria-hidden
                       />
-                      <div className="absolute right-0 z-20 mt-1 w-40 rounded-2xl border border-white/8 bg-[#0d1014] py-1 shadow-lg">
+                      <div className="absolute right-0 z-20 mt-1 w-40 rounded-2xl border border-slate-200 bg-white py-1 shadow-[0_20px_40px_rgba(15,23,42,0.12)]">
                         <button
                           type="button"
                           onClick={(event) => {
@@ -1306,7 +1361,7 @@ export default function DataViewer() {
               )}
 
               <div className="relative z-10 flex flex-col items-center gap-6">
-                <div className="h-44 w-full overflow-hidden rounded-[18px] border border-white/6 bg-black/20 transition-all group-hover:border-primary/25 group-hover:shadow-[0_0_18px_rgba(29,233,182,0.1)]">
+                <div className="h-44 w-full overflow-hidden rounded-[20px] border border-slate-200 bg-slate-50 transition-all group-hover:border-primary/25 group-hover:shadow-[0_0_18px_rgba(13,148,136,0.08)]">
                   <DatasetFolderCover
                     key={folder.full_path}
                     fullPath={folder.source_path ?? folder.full_path}
@@ -1317,15 +1372,15 @@ export default function DataViewer() {
                   />
                 </div>
                 <div className="w-full text-center">
-                  <span className="block break-words font-sans-tech text-lg font-bold uppercase tracking-[0.12em] text-foreground transition-colors group-hover:text-primary">
+                  <span className="block break-words font-sans-tech text-lg font-bold uppercase tracking-[0.12em] text-slate-950 transition-colors group-hover:text-primary">
                     {folder.name}
                   </span>
                   {folder.visibility && (
                     <span
                       className={`mt-2 inline-flex rounded-full px-2 py-1 text-[10px] uppercase tracking-wide ${
                         folder.visibility === "public"
-                          ? "bg-primary/15 text-primary"
-                          : "bg-amber-500/15 text-amber-300"
+                          ? "bg-primary/10 text-primary"
+                          : "bg-amber-100 text-amber-700"
                       }`}
                     >
                       {folder.visibility}
@@ -1338,8 +1393,8 @@ export default function DataViewer() {
         })}
 
         {items.length === 0 && !loading && (
-          <div className="col-span-full flex flex-col items-center justify-center rounded-[24px] border border-dashed border-white/8 bg-black/20 py-20 text-muted-foreground">
-            <AlertCircle className="mb-4 h-12 w-12 text-muted-foreground/50" />
+          <div className="col-span-full flex flex-col items-center justify-center rounded-[28px] border border-dashed border-slate-300 bg-slate-50 py-20 text-slate-500">
+            <AlertCircle className="mb-4 h-12 w-12 text-slate-400" />
             <p className="font-sans-tech text-lg">No data found</p>
             <button
               onClick={() => setIsUploadModalOpen(true)}
@@ -1356,22 +1411,22 @@ export default function DataViewer() {
   const renderRootLanding = () => (
     <div className="mx-auto w-full max-w-[1440px] px-4 py-12 sm:px-6 md:py-16">
       <div className="min-w-0">
-        <div className="mb-8 overflow-hidden rounded-[30px] border border-white/6 bg-[#0d1014]/88 p-6 shadow-[0_24px_60px_rgba(0,0,0,0.24)] md:p-8">
+        <div className="marketing-hero-data mb-8 overflow-hidden rounded-[34px] border border-slate-200 p-6 shadow-[0_28px_70px_rgba(15,23,42,0.1)] md:p-8">
           <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 font-sans-tech text-[11px] uppercase tracking-[0.22em] text-primary">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
             RoboDataHub
           </div>
-          <h1 className="mb-4 max-w-3xl font-sans-tech text-[clamp(2.3rem,4.8vw,4rem)] font-black tracking-[-0.05em] text-white">
+          <h1 className="mb-4 max-w-3xl font-sans-tech text-[clamp(2.3rem,4.8vw,4rem)] font-black tracking-[-0.05em] text-slate-950">
             RoboDataHub
           </h1>
-          <p className="max-w-3xl font-sans-tech text-base leading-8 text-muted-foreground">
+          <p className="max-w-3xl font-sans-tech text-base leading-8 text-slate-600">
             Browse DataraAI&apos;s public physical-AI datasets by category, or search a known path
             when you already know the folder you want.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <button
               type="button"
-              onClick={() => navigate("/viewer/my")}
+              onClick={() => navigate(`${viewerBasePath}/my`)}
               className="inline-flex h-12 items-center gap-2 rounded-xl border border-primary/20 bg-primary px-5 font-sans-tech text-sm font-bold text-primary-foreground transition-colors hover:opacity-90"
             >
               My private data
@@ -1380,8 +1435,8 @@ export default function DataViewer() {
             {user?.role === "admin" && (
               <button
                 type="button"
-                onClick={() => navigate(`/viewer/admin/${user.storageSlug}`)}
-                className="inline-flex h-12 items-center gap-2 rounded-xl border border-white/10 bg-black/20 px-5 font-sans-tech text-sm font-semibold text-foreground transition-colors hover:border-primary/20 hover:text-primary"
+                onClick={() => navigate(`${viewerBasePath}/admin/${user.storageSlug}`)}
+                className="inline-flex h-12 items-center gap-2 rounded-xl border border-slate-300 bg-white px-5 font-sans-tech text-sm font-semibold text-slate-700 transition-colors hover:border-primary/20 hover:text-primary"
               >
                 Admin access
                 <Shield className="h-4 w-4" />
@@ -1410,57 +1465,65 @@ export default function DataViewer() {
 
         <div className="mt-10">
           <div className="mb-6 flex items-center gap-3">
-            <div className="h-3 w-3 rounded-[4px] bg-primary shadow-[0_0_12px_rgba(29,233,182,0.5)]" />
-            <div className="text-2xl font-extrabold text-white">Categories</div>
+            <div className="h-3 w-3 rounded-[4px] bg-primary shadow-[0_0_12px_rgba(13,148,136,0.35)]" />
+            <div className="text-2xl font-extrabold text-slate-950">Categories</div>
           </div>
-          <p className="mb-8 max-w-3xl text-sm leading-7 text-muted-foreground">
+          <p className="mb-8 max-w-3xl text-sm leading-7 text-slate-600">
             Start with the four active DataraAI categories, then step into the endpoint folders
             inside each one.
           </p>
 
           <div className="grid gap-6 lg:grid-cols-2">
             {CATEGORIES.map((category) => (
-            <section
-              key={category.routeKey}
-              className="grid gap-6 overflow-hidden rounded-[28px] border border-white/6 bg-[#0d1014]/88 p-5 shadow-[0_24px_60px_rgba(0,0,0,0.22)] lg:grid-cols-[minmax(0,1fr)_320px]"
-            >
-              <div className="flex flex-col justify-between">
-                <div className="mb-4 flex items-center gap-3">
-                  <div className={`h-3 w-3 rounded-[4px] ${getCategoryAccent(category.routeKey).dot}`} />
-                  <div className="text-lg font-extrabold text-white">{category.label}</div>
+              <section
+                key={category.routeKey}
+                className="grid gap-6 overflow-hidden rounded-[30px] border border-slate-200 bg-white p-5 shadow-[0_24px_60px_rgba(15,23,42,0.08)] lg:grid-cols-[minmax(0,1fr)_320px]"
+              >
+                <div className="flex flex-col justify-between">
+                  <div>
+                    <div className={`mb-4 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${getCategoryAccent(category.routeKey).chip}`}>
+                      <span className={`h-2 w-2 rounded-full ${getCategoryAccent(category.routeKey).dot}`} />
+                      {getCategoryStory(category).eyebrow}
+                    </div>
+                    <div className="text-2xl font-extrabold tracking-[-0.03em] text-slate-950">
+                      {category.label}
+                    </div>
+                    <p className="mt-4 max-w-xl text-sm leading-7 text-slate-600">
+                      {getCategoryStory(category).summary}
+                    </p>
+                  </div>
+                  <div className="mt-6 flex flex-wrap items-center gap-3">
+                    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-slate-500">
+                      Browse endpoint folders
+                    </span>
+                    <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-slate-500">
+                      {getCategoryStory(category).statLabel}: {getCategoryStory(category).statValue}
+                    </span>
+                  </div>
+                  <div className="mt-6">
+                    <button
+                      type="button"
+                      onClick={() => navigate(`${viewerBasePath}/${category.routeKey}`)}
+                      className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 font-sans-tech text-sm font-bold text-primary-foreground transition-colors hover:opacity-90"
+                    >
+                      Enter Category
+                      <ArrowRight className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
-                <p className="max-w-xl text-sm leading-6 text-muted-foreground">
-                  {category.description}
-                </p>
-                <div className="mt-6">
-                  <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                    Browse endpoint folders
-                  </span>
-                </div>
-                <div className="mt-6">
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/viewer/${category.routeKey}`)}
-                    className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 font-sans-tech text-sm font-bold text-primary-foreground transition-colors hover:opacity-90"
-                  >
-                    Enter Category
-                    <ArrowRight className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                {buildCategoryHeroImagePaths(category)
-                  .slice(0, 4)
-                  .map((blobPath, index) => (
-                    <CategoryHeroImage
-                      key={`${category.routeKey}-${blobPath}`}
-                      blobPath={blobPath}
-                      alt={`${category.label} preview ${index + 1}`}
-                    />
-                  ))}
-              </div>
-            </section>
+                <div className="grid grid-cols-2 gap-3">
+                  {buildCategoryHeroImagePaths(category)
+                    .slice(0, 4)
+                    .map((blobPath, index) => (
+                      <CategoryHeroImage
+                        key={`${category.routeKey}-${blobPath}`}
+                        blobPath={blobPath}
+                        alt={`${category.label} preview ${index + 1}`}
+                      />
+                    ))}
+                </div>
+              </section>
             ))}
           </div>
         </div>
@@ -1471,23 +1534,58 @@ export default function DataViewer() {
   const renderCategoryLanding = (category: CategoryConfig) => (
     <div className="mx-auto w-full max-w-[1440px] px-4 py-12 sm:px-6 md:py-16">
       <div className="min-w-0">
-        <div className="overflow-hidden rounded-[30px] border border-white/6 bg-[#0d1014]/88 p-6 shadow-[0_24px_60px_rgba(0,0,0,0.22)] md:p-8">
-          <div className="max-w-3xl">
-            <div className={`mb-5 inline-flex items-center gap-2 rounded-full border px-4 py-2 font-sans-tech text-[11px] uppercase tracking-[0.22em] ${getCategoryAccent(category.routeKey).chip}`}>
-              {category.label}
+        <div className="overflow-hidden rounded-[34px] border border-slate-200 bg-white shadow-[0_28px_70px_rgba(15,23,42,0.1)]">
+          <div className="marketing-hero-data grid gap-8 border-b border-slate-200 p-6 md:grid-cols-[minmax(0,1.1fr)_300px] md:p-8">
+            <div className="max-w-3xl">
+              <div className={`mb-5 inline-flex items-center gap-2 rounded-full border px-4 py-2 font-sans-tech text-[11px] uppercase tracking-[0.22em] ${getCategoryAccent(category.routeKey).chip}`}>
+                {getCategoryStory(category).eyebrow}
+              </div>
+              <h1 className="text-[clamp(2.3rem,4.8vw,4rem)] font-black tracking-[-0.05em] text-slate-950">
+                RoboDataHub {category.label}
+              </h1>
+              <p className="mt-5 max-w-2xl text-base leading-8 text-slate-600 md:text-lg">
+                {getCategoryStory(category).summary}
+              </p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-slate-500">
+                  {categoryPreviews.length} public endpoint folders
+                </span>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-slate-500">
+                  {getCategoryStory(category).statLabel}: {getCategoryStory(category).statValue}
+                </span>
+              </div>
             </div>
-            <h1 className="text-[clamp(2.3rem,4.8vw,4rem)] font-black tracking-[-0.05em] text-white">
-              RoboDataHub - {category.label}
-            </h1>
-            <p className="mt-5 max-w-2xl text-base leading-8 text-foreground/90 md:text-lg">
-              {category.description}
-            </p>
+
+            <CategoryHeroImage
+              blobPath={buildCategoryHeroImagePaths(category)[0]}
+              alt={`${category.label} hero`}
+            />
           </div>
 
-          <div className="mt-8">
+          <div className="p-6 md:p-8">
+            <div className="mb-8">
+              <PathSearchPanel
+                title={`Search inside ${category.label}`}
+                description={`Jump to a brand, endpoint folder, or deeper asset path within the ${category.label.toLowerCase()} catalog while keeping the current viewer access rules intact.`}
+                value={pathSearchText}
+                loading={pathSearchLoading}
+                suggestions={pathSuggestions}
+                placeholder={`Search ${category.label.toLowerCase()} paths`}
+                submitDisabled={pathSuggestions.length === 0}
+                onFocus={() => setPathSearchTouched(true)}
+                onChange={(value) => {
+                  setPathSearchTouched(true);
+                  setPathSearchText(value);
+                }}
+                onSubmit={handlePathSearchSubmit}
+                onSuggestionClick={handlePathSuggestionClick}
+                renderHighlightedPath={renderHighlightedPath}
+              />
+            </div>
+
             {categoryPreviewsLoading ? (
-              <div className="flex min-h-[220px] items-center justify-center rounded-[24px] border border-white/6 bg-black/20">
-                <div className="flex items-center gap-3 text-sm text-muted-foreground">
+              <div className="flex min-h-[220px] items-center justify-center rounded-[24px] border border-slate-200 bg-slate-50">
+                <div className="flex items-center gap-3 text-sm text-slate-500">
                   <Loader2 className="h-5 w-5 animate-spin text-primary" />
                   Loading folder previews...
                 </div>
@@ -1503,7 +1601,7 @@ export default function DataViewer() {
                 ))}
               </div>
             ) : (
-              <div className="rounded-[24px] border border-dashed border-white/10 bg-black/20 p-6 text-sm leading-7 text-muted-foreground">
+              <div className="rounded-[24px] border border-dashed border-slate-300 bg-slate-50 p-6 text-sm leading-7 text-slate-500">
                 No public endpoint folders are available in this category yet.
               </div>
             )}
@@ -1515,15 +1613,15 @@ export default function DataViewer() {
 
   return (
     <div className="relative flex min-h-screen flex-col bg-background font-sans-tech text-foreground md:h-screen md:overflow-hidden">
-      <div className="pointer-events-none absolute inset-0 bg-grid-pattern opacity-[0.05]" />
+      <div className="pointer-events-none absolute inset-0 bg-grid-pattern opacity-[0.04]" />
       <Navigation />
 
       <div className="relative z-10 flex flex-1 flex-col pt-[88px] md:overflow-hidden">
-        <div className="z-20 flex min-h-12 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-background/80 px-4 py-2 backdrop-blur-md sm:flex-nowrap sm:py-0">
+        <div className="z-20 flex min-h-12 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-background/90 px-4 py-2 backdrop-blur-md sm:flex-nowrap sm:py-0">
           <div className="flex min-w-0 items-center gap-4">
             <div className="flex items-center gap-2 text-sm">
               <Link
-                to="/viewer"
+                to={viewerBasePath}
                 className="hidden font-sans-tech font-bold text-primary transition-colors hover:text-primary-glow md:block"
               >
                 RoboDataHub
@@ -1531,13 +1629,13 @@ export default function DataViewer() {
               <Breadcrumbs />
             </div>
           </div>
-          <div className="ml-auto flex items-center gap-4 font-sans-tech text-[11px] font-medium text-muted-foreground sm:ml-0 sm:gap-6 sm:text-xs">
-            {isAuthenticated && isApproved ? (
-              <span className="flex items-center gap-2 text-primary-glow">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary-glow" />
-                Live Connection
-              </span>
-            ) : (
+            <div className="ml-auto flex items-center gap-4 font-sans-tech text-[11px] font-medium text-slate-500 sm:ml-0 sm:gap-6 sm:text-xs">
+              {isAuthenticated && isApproved ? (
+                <span className="flex items-center gap-2 text-primary">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
+                  Live Connection
+                </span>
+              ) : (
               <span className="flex items-center gap-2">
                 <LockKeyhole className="h-3.5 w-3.5" />
                 Signed out
@@ -1552,7 +1650,7 @@ export default function DataViewer() {
           </div>
         ) : !isAuthenticated ? (
           isRootLanding ? (
-            <LoggedOutHub />
+            <LoggedOutHub viewerBasePath={viewerBasePath} />
           ) : (
             <div className="mx-auto flex-1 w-full max-w-[1440px] px-4 py-10 sm:px-6">
               <AuthRequiredState description="Sign in before viewing dataset contents. Public datasets stay available to signed-in users only." />
@@ -1582,16 +1680,16 @@ export default function DataViewer() {
             )}
 
             <div className="flex min-w-0 flex-1 flex-col bg-background/50">
-              <div className="flex min-h-10 flex-wrap items-center justify-between gap-3 border-b border-border bg-card/10 px-4 py-2 sm:flex-nowrap sm:py-0">
+              <div className="flex min-h-10 flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50/70 px-4 py-2 sm:flex-nowrap sm:py-0">
                 <div className="flex items-center space-x-4">
-                  <div className="flex items-center rounded-sm border border-border bg-card px-2 py-1 text-xs">
-                    <span className="mr-2 font-sans-tech text-muted-foreground">Items:</span>
-                    <span className="font-sans-tech text-foreground">{itemCount}</span>
+                  <div className="flex items-center rounded-sm border border-slate-200 bg-white px-2 py-1 text-xs shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                    <span className="mr-2 font-sans-tech text-slate-500">Items:</span>
+                    <span className="font-sans-tech text-slate-900">{itemCount}</span>
                   </div>
-                  <div className="h-4 w-px bg-border" />
+                  <div className="h-4 w-px bg-slate-200" />
                   <button
                     onClick={() => setReloadTick((value) => value + 1)}
-                    className="flex items-center gap-1 font-sans-tech text-xs text-muted-foreground transition-colors hover:text-foreground"
+                    className="flex items-center gap-1 font-sans-tech text-xs text-slate-500 transition-colors hover:text-slate-900"
                   >
                     <RefreshCw
                       className={`h-3.5 w-3.5 ${loading || categoryPreviewsLoading ? "animate-spin" : ""}`}
@@ -1603,7 +1701,7 @@ export default function DataViewer() {
                 {!isLeaf && (
                   <button
                     onClick={() => setIsUploadModalOpen(true)}
-                    className="flex items-center gap-2 rounded-sm border border-primary/50 bg-primary/10 px-3 py-1 font-sans-tech text-xs font-medium text-primary transition-colors hover:bg-primary/20"
+                    className="flex items-center gap-2 rounded-sm border border-primary/25 bg-primary/10 px-3 py-1 font-sans-tech text-xs font-medium text-primary transition-colors hover:bg-primary/15"
                   >
                     <Terminal className="h-3 w-3" />
                     Import Data
@@ -1611,9 +1709,9 @@ export default function DataViewer() {
                 )}
               </div>
 
-              <div className="custom-scrollbar relative flex-1 overflow-y-auto bg-background/30 p-0">
+              <div className="custom-scrollbar relative flex-1 overflow-y-auto bg-background/40 p-0">
                 {loading && (
-                  <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+                  <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/70 backdrop-blur-sm">
                     <div className="flex flex-col items-center gap-4">
                       <Loader2 className="h-8 w-8 animate-spin text-primary" />
                       <span className="animate-pulse font-sans-tech text-xs text-primary">
@@ -1632,7 +1730,7 @@ export default function DataViewer() {
                       {currentDisplayPath && (
                         <div className="mx-auto mb-6 flex max-w-5xl items-center gap-2">
                           <div className="h-4 w-1 bg-primary" />
-                          <h2 className="font-sans-tech text-lg font-bold uppercase tracking-widest text-muted-foreground">
+                          <h2 className="font-sans-tech text-lg font-bold uppercase tracking-widest text-slate-500">
                             Subdirectories
                           </h2>
                         </div>

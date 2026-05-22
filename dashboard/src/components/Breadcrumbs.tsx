@@ -11,13 +11,16 @@ function formatSegment(segment: string) {
 
 export function Breadcrumbs() {
     const location = useLocation();
+    const viewerBasePath = location.pathname.startsWith('/robodatahub') ? '/robodatahub' : '/viewer';
 
-    const pathSegments = location.pathname.split('/').filter(p => p && p !== 'viewer');
+    const pathSegments = location.pathname
+        .split('/')
+        .filter(p => p && p !== 'viewer' && p !== 'robodatahub');
 
     return (
         <div className="flex items-center text-sm font-sans-tech font-bold text-muted-foreground uppercase tracking-wider">
             {pathSegments.map((segment, index) => {
-                const to = `/viewer/${pathSegments.slice(0, index + 1).join('/')}`;
+                const to = `${viewerBasePath}/${pathSegments.slice(0, index + 1).join('/')}`;
                 const isLast = index === pathSegments.length - 1;
                 const displaySegment = formatSegment(segment);
 
