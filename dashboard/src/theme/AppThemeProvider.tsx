@@ -1,4 +1,12 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { ThemeProvider } from "next-themes";
 
 type AppTheme = "light" | "dark";
@@ -54,6 +62,17 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
     }),
     [theme, setTheme, toggleTheme],
   );
+
+  useEffect(() => {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const root = document.documentElement;
+    root.classList.toggle("dark", theme === "dark");
+    root.style.colorScheme = theme;
+    root.setAttribute("data-theme", theme);
+  }, [theme]);
 
   return (
     <AppThemeContext.Provider value={value}>
