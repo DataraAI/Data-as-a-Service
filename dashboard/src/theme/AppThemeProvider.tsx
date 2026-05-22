@@ -7,7 +7,6 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { ThemeProvider } from "next-themes";
 
 type AppTheme = "light" | "dark";
 
@@ -76,15 +75,7 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
 
   return (
     <AppThemeContext.Provider value={value}>
-      <ThemeProvider
-        attribute="class"
-        defaultTheme="light"
-        forcedTheme={theme}
-        enableSystem={false}
-        disableTransitionOnChange
-      >
-        {children}
-      </ThemeProvider>
+      {children}
     </AppThemeContext.Provider>
   );
 }
