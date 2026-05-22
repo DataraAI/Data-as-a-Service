@@ -394,7 +394,7 @@ function ImageLightbox({
 
   return (
     <div
-      className="fixed inset-0 z-[70] bg-white/92 px-4 py-6 backdrop-blur-md md:p-8"
+      className="fixed inset-0 z-[70] bg-background/92 px-4 py-6 backdrop-blur-md md:p-8"
       onClick={onClose}
     >
       <button

@@ -409,7 +409,7 @@ function ShowcasePreviewImage({
         className="group relative flex aspect-[5/4] w-full items-center justify-center overflow-hidden rounded-[20px] border border-slate-200 bg-slate-100 transition-all duration-300 hover:border-primary/30 hover:shadow-[0_0_0_2px_rgba(13,148,136,0.12)]"
       >
         <Database className="h-9 w-9 text-primary/60" />
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-white via-white/80 to-transparent px-4 py-3 text-left">
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-background via-background/80 to-transparent px-4 py-3 text-left">
           <span className="font-sans-tech text-[11px] uppercase tracking-[0.18em] text-primary">
             Open in viewer
           </span>
@@ -595,9 +595,9 @@ function CompactPathSearch({
       </form>
 
       {value.trim() !== "" && (
-        <div className="absolute left-0 right-0 top-[calc(100%+0.75rem)] z-30 overflow-hidden rounded-[20px] border border-slate-200 bg-white/95 text-left shadow-[0_24px_60px_rgba(15,23,42,0.14)] backdrop-blur-sm">
+        <div className="absolute left-0 right-0 top-[calc(100%+0.75rem)] z-30 overflow-hidden rounded-[20px] border border-slate-200 bg-white/95 text-left shadow-[0_24px_60px_rgba(15,23,42,0.14)] backdrop-blur-sm dark:bg-card/95 dark:shadow-[0_24px_60px_rgba(0,0,0,0.3)]">
           {suggestions.length > 0 ? (
-            <div className="divide-y divide-slate-100">
+            <div className="divide-y divide-border">
               {suggestions.map((suggestion) => (
                 <button
                   key={suggestion.full_path}
@@ -785,9 +785,9 @@ function PathSearchPanel({
         </form>
 
         {value.trim() !== "" && (
-          <div className="mt-3 overflow-hidden rounded-[20px] border border-slate-200 bg-white/96 text-left shadow-[0_24px_60px_rgba(15,23,42,0.12)] backdrop-blur-sm">
+          <div className="mt-3 overflow-hidden rounded-[20px] border border-slate-200 bg-white/96 text-left shadow-[0_24px_60px_rgba(15,23,42,0.12)] backdrop-blur-sm dark:bg-card/95 dark:shadow-[0_24px_60px_rgba(0,0,0,0.3)]">
             {suggestions.length > 0 ? (
-              <div className="divide-y divide-slate-100">
+              <div className="divide-y divide-border">
                 {suggestions.map((suggestion) => (
                   <button
                     key={suggestion.full_path}
@@ -1617,7 +1617,7 @@ export default function DataViewer() {
       <Navigation />
 
       <div className="relative z-10 flex flex-1 flex-col pt-[88px] md:overflow-hidden">
-        <div className="z-20 flex min-h-12 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-white/90 px-4 py-2 backdrop-blur-md sm:flex-nowrap sm:py-0">
+        <div className="z-20 flex min-h-12 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-background/90 px-4 py-2 backdrop-blur-md sm:flex-nowrap sm:py-0">
           <div className="flex min-w-0 items-center gap-4">
             <div className="flex items-center gap-2 text-sm">
               <Link
@@ -1711,7 +1711,7 @@ export default function DataViewer() {
 
               <div className="custom-scrollbar relative flex-1 overflow-y-auto bg-background/40 p-0">
                 {loading && (
-                  <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/70 backdrop-blur-sm">
+                  <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/70 backdrop-blur-sm">
                     <div className="flex flex-col items-center gap-4">
                       <Loader2 className="h-8 w-8 animate-spin text-primary" />
                       <span className="animate-pulse font-sans-tech text-xs text-primary">
