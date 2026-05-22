@@ -23,14 +23,14 @@ const FOUNDERS: TeamMember[] = [
     name: "Durgesh Srivastava",
     role: "Co-Founder & CEO",
     bio: "Serial entrepreneur (exited MIPS). Ex-NVIDIA Sr. Director AI & Robotics. Omniverse, Systems, LLM expert. IIT Kanpur.",
-    tone: "border-blue-400/30 bg-blue-400/12 text-blue-300",
+    tone: "border-blue-200 bg-blue-50 text-sky-700",
   },
   {
     initials: "NR",
     name: "Niraj Rai",
     role: "Co-Founder & CTO",
     bio: "Serial entrepreneur. Founder SproutsAi. Ex-CTO Vimaan (AI/Robotics). Software & AI expert. IIT Kharagpur.",
-    tone: "border-primary/30 bg-primary/12 text-primary",
+    tone: "border-teal-200 bg-teal-50 text-primary",
   },
 ];
 
@@ -57,24 +57,58 @@ const ADVISORS: Advisor[] = [
   },
 ];
 
+const CREDENTIALS = [
+  "NVIDIA Inception Member",
+  "Figure AI Partner",
+  "BMW Robotics Partner",
+  "Foxconn Smart Factory",
+  "Peer Robotics Customer",
+];
+
 export default function Company() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Navigation />
 
       <main className="pt-[88px]">
-        <section className="border-b border-white/6 px-4 py-16 sm:px-6">
+        <section className="border-b border-slate-200 bg-[radial-gradient(circle_at_top_left,rgba(13,148,136,0.1),transparent_24%),linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] px-4 py-16 sm:px-6 md:py-20">
           <div className="mx-auto max-w-[1440px]">
             <div className="max-w-3xl">
               <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">
                 Company
               </div>
-              <h1 className="mt-4 text-[clamp(2.4rem,4.8vw,3.9rem)] font-black tracking-[-0.05em] text-white">
+              <h1 className="mt-4 text-[clamp(2.5rem,4.9vw,4rem)] font-black tracking-[-0.05em] text-slate-950">
                 Built by PhysicalAI Veterans.
               </h1>
-              <p className="mt-5 max-w-2xl text-base leading-8 text-muted-foreground">
+              <p className="mt-5 max-w-2xl text-base leading-8 text-slate-600">
                 40+ years of combined expertise from NVIDIA, IIT, and deep robotics - building
                 the data infrastructure Physical AI demands.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section className="border-b border-slate-200 bg-slate-50/80 px-4 py-12 sm:px-6">
+          <div className="mx-auto grid max-w-[1440px] gap-4 md:grid-cols-3">
+            <div className="marketing-surface rounded-[22px] p-6">
+              <div className="text-sm font-extrabold text-slate-950">Real-World First</div>
+              <p className="mt-3 text-sm leading-6 text-slate-600">
+                Authentic multi-modal datasets captured in operating environments instead of
+                simulation-only approximations.
+              </p>
+            </div>
+            <div className="marketing-surface rounded-[22px] p-6">
+              <div className="text-sm font-extrabold text-slate-950">Data Infrastructure</div>
+              <p className="mt-3 text-sm leading-6 text-slate-600">
+                End-to-end pipelines from capture to policy-ready training data across active
+                robotics sectors.
+              </p>
+            </div>
+            <div className="marketing-surface rounded-[22px] p-6">
+              <div className="text-sm font-extrabold text-slate-950">Partnership-Driven</div>
+              <p className="mt-3 text-sm leading-6 text-slate-600">
+                Co-developed with industry teams to match the fidelity and pace real deployment
+                programs demand.
               </p>
             </div>
           </div>
@@ -83,10 +117,10 @@ export default function Company() {
         <section className="mx-auto max-w-[1440px] px-4 py-16 sm:px-6">
           <div className="mb-10">
             <div className="flex items-center gap-3">
-              <div className="h-3 w-3 rounded-[4px] bg-violet-400 shadow-[0_0_12px_rgba(167,139,250,0.55)]" />
-              <div className="text-2xl font-extrabold text-white">Founders</div>
+              <div className="h-3 w-3 rounded-[4px] bg-violet-500" />
+              <div className="text-2xl font-extrabold text-slate-950">Founders</div>
             </div>
-            <p className="mt-3 text-sm text-muted-foreground">
+            <p className="mt-3 text-sm text-slate-500">
               Serial entrepreneurs with deep roots in NVIDIA, AI, and robotics infrastructure.
             </p>
           </div>
@@ -95,7 +129,7 @@ export default function Company() {
             {FOUNDERS.map((founder) => (
               <article
                 key={founder.name}
-                className="rounded-[24px] border border-white/6 bg-[#0d1014] p-6 shadow-[0_24px_60px_rgba(0,0,0,0.22)]"
+                className="marketing-surface rounded-[24px] p-6"
               >
                 <div className="flex gap-4">
                   <div
@@ -104,11 +138,11 @@ export default function Company() {
                     {founder.initials}
                   </div>
                   <div>
-                    <div className="text-lg font-extrabold text-white">{founder.name}</div>
+                    <div className="text-lg font-extrabold text-slate-950">{founder.name}</div>
                     <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-primary">
                       {founder.role}
                     </div>
-                    <p className="mt-4 text-sm leading-6 text-muted-foreground">{founder.bio}</p>
+                    <p className="mt-4 text-sm leading-6 text-slate-600">{founder.bio}</p>
                   </div>
                 </div>
               </article>
@@ -117,10 +151,10 @@ export default function Company() {
 
           <div className="mb-10 mt-14">
             <div className="flex items-center gap-3">
-              <div className="h-3 w-3 rounded-[4px] bg-blue-400 shadow-[0_0_12px_rgba(96,165,250,0.55)]" />
-              <div className="text-2xl font-extrabold text-white">Advisors</div>
+              <div className="h-3 w-3 rounded-[4px] bg-sky-700" />
+              <div className="text-2xl font-extrabold text-slate-950">Advisors</div>
             </div>
-            <p className="mt-3 text-sm text-muted-foreground">
+            <p className="mt-3 text-sm text-slate-500">
               Senior leaders from NVIDIA, Intel, and leading robotics institutions.
             </p>
           </div>
@@ -129,37 +163,55 @@ export default function Company() {
             {ADVISORS.map((advisor) => (
               <article
                 key={advisor.name}
-                className="rounded-[20px] border border-white/6 bg-[#0d1014] p-5 shadow-[0_24px_60px_rgba(0,0,0,0.18)]"
+                className="marketing-surface rounded-[20px] p-5"
               >
                 <div className="grid h-10 w-10 place-items-center rounded-xl border border-primary/15 bg-primary/8 text-xs font-black text-primary">
                   {advisor.initials}
                 </div>
-                <div className="mt-4 text-sm font-bold text-white">{advisor.name}</div>
-                <div className="mt-2 text-xs leading-5 text-muted-foreground">{advisor.role}</div>
+                <div className="mt-4 text-sm font-bold text-slate-950">{advisor.name}</div>
+                <div className="mt-2 text-xs leading-5 text-slate-500">{advisor.role}</div>
               </article>
             ))}
           </div>
         </section>
 
-        <section className="bg-[linear-gradient(135deg,#050e0a_0%,#060c14_50%,#04080f_100%)] px-4 py-16 text-center sm:px-6">
+        <section className="border-y border-slate-200 bg-slate-50/90 px-4 py-12 sm:px-6">
+          <div className="mx-auto max-w-[1440px]">
+            <div className="text-center text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+              Recognized and backed by
+            </div>
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              {CREDENTIALS.map((credential) => (
+                <div
+                  key={credential}
+                  className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-[0_10px_22px_rgba(15,23,42,0.05)]"
+                >
+                  {credential}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="bg-[linear-gradient(135deg,#f8fafc_0%,#eef6f5_50%,#eff6ff_100%)] px-4 py-16 text-center sm:px-6">
           <div className="mx-auto max-w-4xl">
-            <h2 className="text-[clamp(1.75rem,2.6vw,2.25rem)] font-extrabold tracking-tight text-white">
+            <h2 className="text-[clamp(1.75rem,2.7vw,2.3rem)] font-extrabold tracking-tight text-slate-950">
               Ready to close the Sim-to-Real gap?
             </h2>
-            <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-muted-foreground">
-              Join leading robotics companies using DataraAI&apos;s real-world data to achieve
-              95%+ precision.
+            <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-slate-600">
+              Join robotics teams using DataraAI&apos;s real-world data to move faster from capture
+              to deployable models.
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <Link
-                to={buildAuthPath("register", "/viewer")}
-                className="inline-flex h-12 items-center justify-center rounded-xl bg-primary px-6 text-sm font-bold text-primary-foreground"
+                to={buildAuthPath("register", "/robodatahub")}
+                className="inline-flex h-12 items-center justify-center rounded-xl bg-primary px-6 text-sm font-bold text-primary-foreground shadow-[0_14px_28px_rgba(13,148,136,0.16)]"
               >
                 Get Access
               </Link>
               <Link
-                to="/viewer"
-                className="inline-flex h-12 items-center justify-center rounded-xl border border-white/12 px-6 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground"
+                to="/robodatahub"
+                className="inline-flex h-12 items-center justify-center rounded-xl border border-slate-200 bg-white px-6 text-sm font-semibold text-slate-600 transition-colors hover:border-primary/30 hover:text-primary"
               >
                 Explore RoboDataHub
               </Link>
