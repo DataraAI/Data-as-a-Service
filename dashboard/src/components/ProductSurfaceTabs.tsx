@@ -49,7 +49,7 @@ export default function ProductSurfaceTabs({
 }: ProductSurfaceTabsProps) {
   return (
     <section
-      className={`overflow-hidden rounded-[28px] border border-white/6 bg-[#040608]/92 shadow-[0_24px_60px_rgba(0,0,0,0.3)] backdrop-blur-xl ${className}`}
+      className={`marketing-frame overflow-hidden rounded-[28px] ${className}`}
     >
       <div className="flex flex-col gap-5 px-4 py-4 md:px-5 md:py-5">
         <div className="px-2">
@@ -75,8 +75,8 @@ export default function ProductSurfaceTabs({
                   to={item.to}
                   className={`group w-[220px] rounded-[24px] border p-5 transition-all duration-200 ${
                     isActive
-                      ? "border-primary/35 bg-primary/10 shadow-[0_16px_40px_rgba(0,0,0,0.24)]"
-                      : "border-white/6 bg-[#0b0f13]/85 hover:-translate-y-0.5 hover:border-primary/20 hover:bg-[#0d1116]"
+                      ? "border-primary/35 bg-primary/10 shadow-[0_16px_40px_rgba(15,23,42,0.18)] dark:shadow-[0_16px_40px_rgba(0,0,0,0.24)]"
+                      : "border-border bg-card/80 hover:-translate-y-0.5 hover:border-primary/20 hover:bg-card"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -84,7 +84,7 @@ export default function ProductSurfaceTabs({
                       className={`inline-flex rounded-full border px-2.5 py-1 font-mono-tech text-[10px] uppercase tracking-[0.16em] ${
                         isActive
                           ? "border-primary-glow/25 bg-primary-glow/10 text-primary-glow"
-                          : "border-white/10 bg-black/20 text-muted-foreground"
+                          : "border-border bg-background/70 text-muted-foreground"
                       }`}
                     >
                       {isActive ? "Open" : "Browse"}
