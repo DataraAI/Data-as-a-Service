@@ -229,6 +229,8 @@ class DatasetService:
 
         for blob in blobs:
             lower_name = blob.name.lower()
+            if "/preview/" in lower_name:
+                continue
             is_image = lower_name.endswith((".png", ".jpg", ".jpeg", ".webp"))
             is_video = lower_name.endswith((".mp4", ".mov", ".m4v", ".webm"))
             is_3d = lower_name.endswith((".stl", ".obj", ".glb", ".gltf"))
@@ -445,6 +447,10 @@ class DatasetService:
                 else None
             ),
             "thumbnails": thumbnails[:4],
+            "preview_video": self._build_preview_video_asset(
+                dataset_id=dataset["id"],
+                storage_prefix=storage_prefix,
+            ),
         }
 
     def _build_folder_record(
@@ -732,6 +738,19 @@ class DatasetService:
             "label": label,
             "proxy_url": f"/api/proxy/{asset_id}",
         }
+
+    def _build_preview_video_asset(
+        self,
+        *,
+        dataset_id: str,
+        storage_prefix: str,
+    ) -> dict[str, Any]:
+        blob_name = f"{storage_prefix.rstrip('/')}/preview/hover.mp4"
+        return self._build_preview_asset(
+            dataset_id=dataset_id,
+            blob_name=blob_name,
+            label="Hover Preview",
+        )
 
     def resolve_asset(self, asset_id: str, current_user: dict[str, Any]) -> dict[str, Any]:
         try:

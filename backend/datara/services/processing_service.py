@@ -335,6 +335,27 @@ class ProcessingService:
             fps=fps,
         )
 
+    def _stage_folder_preview_hover_video(
+        self,
+        *,
+        source_video_path: str,
+        local_process_dir: str,
+        width: int,
+        height: int,
+        fps: float,
+    ) -> None:
+        preview_dir = os.path.join(local_process_dir, "preview")
+        os.makedirs(preview_dir, exist_ok=True)
+        output_path = os.path.join(preview_dir, "hover.mp4")
+        self._resize_video_to_dimensions(
+            input_path=source_video_path,
+            output_path=output_path,
+            width=width,
+            height=height,
+            fps=fps,
+            max_duration_seconds=5.0,
+        )
+
     def _ingest_video_path(
         self,
         video_path: str,
@@ -361,6 +382,13 @@ class ProcessingService:
             source_video_path=video_path,
             local_process_dir=local_process_dir,
             dataset_basename=dataset_basename,
+            width=width,
+            height=height,
+            fps=target_fps,
+        )
+        self._stage_folder_preview_hover_video(
+            source_video_path=video_path,
+            local_process_dir=local_process_dir,
             width=width,
             height=height,
             fps=target_fps,
@@ -919,6 +947,7 @@ class ProcessingService:
         width: int,
         height: int,
         fps: float,
+        max_duration_seconds: float | None = None,
     ) -> None:
         capture = cv2.VideoCapture(input_path)
         if not capture.isOpened():
@@ -943,6 +972,10 @@ class ProcessingService:
                 "-y",
                 "-i",
                 input_path,
+            ]
+            if max_duration_seconds and max_duration_seconds > 0:
+                command.extend(["-t", f"{max_duration_seconds:.3f}"])
+            command.extend([
                 "-an",
                 "-c:v",
                 "libx264",
@@ -950,7 +983,7 @@ class ProcessingService:
                 "yuv420p",
                 "-movflags",
                 "+faststart",
-            ]
+            ])
             if filter_parts:
                 command.extend(["-vf", ",".join(filter_parts)])
             command.append(output_path)
@@ -984,13 +1017,21 @@ class ProcessingService:
             raise ValueError("Failed to create resized output video") from exc
 
         try:
+            source_fps = current_fps if current_fps > 0 else effective_fps
+            max_frames = None
+            if max_duration_seconds and max_duration_seconds > 0 and source_fps > 0:
+                max_frames = max(1, int(round(source_fps * max_duration_seconds)))
+            frames_written = 0
             while True:
+                if max_frames is not None and frames_written >= max_frames:
+                    break
                 success, frame = capture.read()
                 if not success:
                     break
                 if frame.shape[1] != width or frame.shape[0] != height:
                     frame = cv2.resize(frame, (width, height), interpolation=cv2.INTER_AREA)
                 writer.write(frame)
+                frames_written += 1
         finally:
             capture.release()
             writer.release()
