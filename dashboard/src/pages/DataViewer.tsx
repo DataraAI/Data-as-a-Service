@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import axios from "axios";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -26,7 +26,7 @@ import { DatasetFolderCover } from "../components/DatasetFolderCover";
 import AuthRequiredState from "@/components/AuthRequiredState";
 import { useAuth } from "@/auth/useAuth";
 import { buildAuthPath } from "@/lib/authLinks";
-import { frontPageImageUrl } from "@/lib/datasetFolderCover";
+import { folderPreviewMediaUrl, frontPageImageUrl } from "@/lib/datasetFolderCover";
 
 interface FolderItem {
   name: string;
@@ -111,6 +111,7 @@ interface CategoryDatasetPreview {
   owner_slug?: string;
   main_image: CategoryPreviewAsset | null;
   thumbnails: CategoryPreviewAsset[];
+  preview_video?: CategoryPreviewAsset | null;
 }
 
 const CATEGORIES: CategoryConfig[] = [
@@ -630,14 +631,15 @@ function DatasetPreviewImage({
   className?: string;
 }) {
   const [failed, setFailed] = useState(false);
+  const src = failed ? null : resolvePreviewMediaUrl(asset);
 
   return (
     <div
       className={`relative overflow-hidden rounded-[18px] border border-slate-200 bg-slate-100 ${className ?? ""}`}
     >
-      {asset?.proxy_url && !failed ? (
+      {src ? (
         <img
-          src={asset.proxy_url}
+          src={src}
           alt={alt}
           loading="lazy"
           decoding="async"
@@ -654,6 +656,104 @@ function DatasetPreviewImage({
   );
 }
 
+function resolvePreviewMediaUrl(asset: CategoryPreviewAsset | null | undefined): string | null {
+  if (!asset) return null;
+  const localUrl = folderPreviewMediaUrl(asset.blob_path);
+  if (localUrl) return localUrl;
+  return asset.proxy_url || null;
+}
+
+function DatasetPreviewPrimaryMedia({
+  imageAsset,
+  videoAsset,
+  alt,
+  isVideoActive,
+  onVideoEnter,
+  onVideoLeave,
+}: {
+  imageAsset: CategoryPreviewAsset | null | undefined;
+  videoAsset: CategoryPreviewAsset | null | undefined;
+  alt: string;
+  isVideoActive: boolean;
+  onVideoEnter: () => void;
+  onVideoLeave: () => void;
+}) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const [videoFailed, setVideoFailed] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const imageSrc = imageFailed ? null : resolvePreviewMediaUrl(imageAsset);
+  const videoSrc = videoFailed ? null : resolvePreviewMediaUrl(videoAsset);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !videoSrc) return;
+
+    if (isVideoActive) {
+      const playPromise = video.play();
+      if (playPromise) {
+        playPromise.catch(() => {
+          // Ignore autoplay timing issues and keep the poster visible underneath.
+        });
+      }
+      return;
+    }
+
+    video.pause();
+    if (video.currentTime !== 0) {
+      video.currentTime = 0;
+    }
+  }, [isVideoActive, videoSrc]);
+
+  useEffect(() => {
+    return () => {
+      const video = videoRef.current;
+      if (video) {
+        video.pause();
+      }
+    };
+  }, []);
+
+  return (
+    <div
+      className="relative aspect-[1.08/1] overflow-hidden rounded-[18px] border border-slate-200 bg-slate-100"
+      onMouseEnter={videoSrc ? onVideoEnter : undefined}
+      onMouseLeave={videoSrc ? onVideoLeave : undefined}
+    >
+      {imageSrc ? (
+        <img
+          src={imageSrc}
+          alt={alt}
+          loading="lazy"
+          decoding="async"
+          className="h-full w-full object-cover"
+          onError={() => setImageFailed(true)}
+        />
+      ) : (
+        <div className="flex h-full min-h-[160px] items-center justify-center bg-slate-100">
+          <Database className="h-8 w-8 text-primary/55" />
+        </div>
+      )}
+
+      {videoSrc ? (
+        <video
+          ref={videoRef}
+          src={videoSrc}
+          poster={imageSrc ?? undefined}
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          aria-hidden="true"
+          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${
+            isVideoActive ? "opacity-100" : "opacity-0"
+          }`}
+          onError={() => setVideoFailed(true)}
+        />
+      ) : null}
+    </div>
+  );
+}
+
 function CategoryDatasetPreviewCard({
   item,
   onClick,
@@ -661,12 +761,17 @@ function CategoryDatasetPreviewCard({
   item: CategoryDatasetPreview;
   onClick: () => void;
 }) {
+  const [isPreviewVideoActive, setIsPreviewVideoActive] = useState(false);
   const thumbnailItems = Array.from({ length: 4 }, (_, index) => item.thumbnails[index] ?? item.main_image);
+  const activatePreviewVideo = () => setIsPreviewVideoActive(true);
+  const deactivatePreviewVideo = () => setIsPreviewVideoActive(false);
 
   return (
     <button
       type="button"
       onClick={onClick}
+      onFocusCapture={item.preview_video ? activatePreviewVideo : undefined}
+      onBlurCapture={item.preview_video ? deactivatePreviewVideo : undefined}
       className="group flex h-full flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white p-5 text-left shadow-[0_22px_54px_rgba(15,23,42,0.08)] transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-[0_28px_70px_rgba(15,23,42,0.12)]"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -688,10 +793,13 @@ function CategoryDatasetPreviewCard({
       </div>
 
       <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1.08fr)_220px]">
-        <DatasetPreviewImage
-          asset={item.main_image}
+        <DatasetPreviewPrimaryMedia
+          imageAsset={item.main_image}
+          videoAsset={item.preview_video}
           alt={`${item.title} primary preview`}
-          className="aspect-[1.08/1]"
+          isVideoActive={isPreviewVideoActive}
+          onVideoEnter={activatePreviewVideo}
+          onVideoLeave={deactivatePreviewVideo}
         />
 
         <div className="grid grid-cols-2 gap-3">
