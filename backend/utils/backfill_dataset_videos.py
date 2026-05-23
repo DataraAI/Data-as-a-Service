@@ -189,6 +189,7 @@ def _render_video_from_frame_blobs(
 
     from datara.services.processing_service import ProcessingService
 
+    source_output_path = str(Path(output_path).with_suffix(".source.mp4"))
     writer = None
     width = None
     height = None
@@ -204,7 +205,7 @@ def _render_video_from_frame_blobs(
 
             if writer is None:
                 height, width = frame.shape[:2]
-                writer = ProcessingService._open_mp4_writer(output_path, fps, width, height)
+                writer = ProcessingService._open_mp4_writer(source_output_path, fps, width, height)
 
             if frame.shape[1] != width or frame.shape[0] != height:
                 frame = cv2.resize(frame, (width, height), interpolation=cv2.INTER_AREA)
@@ -217,6 +218,17 @@ def _render_video_from_frame_blobs(
     finally:
         if writer is not None:
             writer.release()
+
+    # Match the normal ingestion pipeline's browser-playable MP4 output.
+    ProcessingService._resize_video_to_dimensions(
+        input_path=source_output_path,
+        output_path=output_path,
+        width=width,
+        height=height,
+        fps=fps,
+    )
+    if os.path.exists(source_output_path):
+        os.remove(source_output_path)
 
     return {
         "width": width,
