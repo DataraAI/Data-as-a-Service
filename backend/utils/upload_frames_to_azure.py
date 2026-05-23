@@ -28,7 +28,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--input_dir",
         required=True,
-        help="Local directory containing orig/egos/corner_images_controlnet and optional video/",
+        help="Local directory containing orig/egos/corner_images_controlnet and optional video/preview/",
     )
     parser.add_argument("--view", choices=["orig", "egos", "corner_images_controlnet"], default="orig")
     parser.add_argument("--connection_string", required=False)
@@ -214,6 +214,38 @@ def _upload_video_assets(
     return uploaded_count
 
 
+def _upload_preview_assets(
+    *,
+    base_input_dir: str,
+    dataset_prefix: str,
+    container_client,
+) -> int:
+    preview_dir = os.path.join(base_input_dir, "preview")
+    if not os.path.isdir(preview_dir):
+        return 0
+
+    valid_extensions = (".mp4", ".mov", ".m4v", ".webm")
+    uploaded_count = 0
+
+    for filename in sorted(os.listdir(preview_dir)):
+        if not filename.lower().endswith(valid_extensions):
+            continue
+
+        local_path = os.path.join(preview_dir, filename)
+        blob_name = f"{dataset_prefix}/preview/{filename}"
+        with open(local_path, "rb") as handle:
+            container_client.upload_blob(
+                name=blob_name,
+                data=handle,
+                overwrite=True,
+                content_settings=ContentSettings(content_type=_video_content_type(filename)),
+            )
+        uploaded_count += 1
+        print(f"Uploaded preview ({uploaded_count}): {blob_name}")
+
+    return uploaded_count
+
+
 def main() -> None:
     args = parse_args()
     try:
@@ -309,6 +341,11 @@ def main() -> None:
             cosmos_container=cosmos_container,
             misc_tags=misc_tags,
             resolved_task=resolved_task,
+        )
+        _upload_preview_assets(
+            base_input_dir=base_input_dir,
+            dataset_prefix=dataset_prefix,
+            container_client=container_client,
         )
 
     print(
