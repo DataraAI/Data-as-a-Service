@@ -1,6 +1,6 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Loader2, LockKeyhole, ShieldAlert, UserPlus } from "lucide-react";
+import { Eye, EyeOff, Loader2, LockKeyhole, ShieldAlert, UserPlus } from "lucide-react";
 import Navigation from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,40 @@ function sanitizeNext(nextValue: string | null) {
   if (!nextValue) return "/viewer";
   if (nextValue.startsWith("/")) return nextValue;
   return "/viewer";
+}
+
+type PasswordInputProps = {
+  id: string;
+  value: string;
+  onChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  autoComplete?: string;
+};
+
+function PasswordInput({ id, value, onChange, autoComplete }: PasswordInputProps) {
+  const [visible, setVisible] = useState(false);
+
+  return (
+    <div className="relative">
+      <Input
+        id={id}
+        type={visible ? "text" : "password"}
+        value={value}
+        onChange={onChange}
+        className="h-11 rounded-sm border-border bg-background/80 pr-11"
+        autoComplete={autoComplete}
+        required
+      />
+      <button
+        type="button"
+        onClick={() => setVisible((prev) => !prev)}
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+        aria-label={visible ? "Hide password" : "Show password"}
+        aria-pressed={visible}
+      >
+        {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+      </button>
+    </div>
+  );
 }
 
 export default function AuthPage() {
@@ -211,14 +245,11 @@ export default function AuthPage() {
                       <Label htmlFor="auth-password" className="font-mono-tech text-[11px] uppercase tracking-wide text-muted-foreground">
                         Password
                       </Label>
-                      <Input
+                      <PasswordInput
                         id="auth-password"
-                        type="password"
                         value={password}
                         onChange={(event) => setPassword(event.target.value)}
-                        className="h-11 rounded-sm border-border bg-background/80"
                         autoComplete="current-password"
-                        required
                       />
                     </div>
 
@@ -294,14 +325,11 @@ export default function AuthPage() {
                       <Label htmlFor="register-password" className="font-mono-tech text-[11px] uppercase tracking-wide text-muted-foreground">
                         Password
                       </Label>
-                      <Input
+                      <PasswordInput
                         id="register-password"
-                        type="password"
                         value={password}
                         onChange={(event) => setPassword(event.target.value)}
-                        className="h-11 rounded-sm border-border bg-background/80"
                         autoComplete="new-password"
-                        required
                       />
                     </div>
 
@@ -309,14 +337,11 @@ export default function AuthPage() {
                       <Label htmlFor="register-confirm-password" className="font-mono-tech text-[11px] uppercase tracking-wide text-muted-foreground">
                         Confirm password
                       </Label>
-                      <Input
+                      <PasswordInput
                         id="register-confirm-password"
-                        type="password"
                         value={confirmPassword}
                         onChange={(event) => setConfirmPassword(event.target.value)}
-                        className="h-11 rounded-sm border-border bg-background/80"
                         autoComplete="new-password"
-                        required
                       />
                     </div>
 

@@ -15,6 +15,14 @@ const FRONT_PAGE_IMAGE_MODULES = import.meta.glob(
   },
 ) as Record<string, string>;
 
+const FOLDER_PREVIEW_MEDIA_MODULES = import.meta.glob(
+  "../assets/folder-previews/**/*.{png,jpg,jpeg,webp,avif,svg,mp4,webm,mov,m4v}",
+  {
+    eager: true,
+    import: "default",
+  },
+) as Record<string, string>;
+
 function uniqueNonEmpty(values: string[]): string[] {
   return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
 }
@@ -29,6 +37,25 @@ function normalizeImagePath(imagePath: string): string {
     normalized = normalized.replace(CONTAINER_PREFIX, "");
   }
   return normalized.split("/").filter(Boolean).join("/");
+}
+
+function resolveLocalAssetUrl(
+  modules: Record<string, string>,
+  assetRoot: string,
+  assetPath: string,
+): string | null {
+  const normalized = normalizeImagePath(assetPath);
+  const directCandidates = uniqueNonEmpty([
+    `../assets/${assetRoot}/${normalized}`,
+    `../assets/${assetRoot}/${normalized.toLowerCase()}`,
+  ]);
+
+  for (const candidate of directCandidates) {
+    const resolved = modules[candidate];
+    if (resolved) return resolved;
+  }
+
+  return null;
 }
 
 function lowerCamelFromDelimited(token: string): string {
@@ -64,18 +91,7 @@ function coverBaseNameCandidates(segment: string): string[] {
  * Example: `carAutomation/carAutomation.png` -> `src/assets/images/carAutomation/carAutomation.png`
  */
 export function frontPageImageUrl(imagePath: string): string | null {
-  const normalized = normalizeImagePath(imagePath);
-  const directCandidates = uniqueNonEmpty([
-    `../assets/images/${normalized}`,
-    `../assets/images/${normalized.toLowerCase()}`,
-  ]);
-
-  for (const candidate of directCandidates) {
-    const resolved = FRONT_PAGE_IMAGE_MODULES[candidate];
-    if (resolved) return resolved;
-  }
-
-  return null;
+  return resolveLocalAssetUrl(FRONT_PAGE_IMAGE_MODULES, "images", imagePath);
 }
 
 export function frontPageImageExists(imagePath: string): boolean {
@@ -114,4 +130,8 @@ export function datasetCoverBlobCandidates(fullPath: string): string[] {
 
 export function blobProxyUrl(blobPath: string): string {
   return `/api/proxy/${blobPath.split("/").map((segment) => encodeURIComponent(segment)).join("/")}`;
+}
+
+export function folderPreviewMediaUrl(blobPath: string): string | null {
+  return resolveLocalAssetUrl(FOLDER_PREVIEW_MEDIA_MODULES, "folder-previews", blobPath);
 }
