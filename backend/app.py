@@ -6,8 +6,6 @@ import json
 import os
 import re
 import shutil
-import sys
-import subprocess
 from datetime import datetime, timedelta, timezone
 
 from flask import Flask, Response, jsonify, request, stream_with_context
@@ -386,6 +384,31 @@ def register_routes(app: Flask) -> None:
         payload, status_code = processing_service.remove_occlusion(current_user, data)
         return jsonify(payload), status_code
 
+    @app.route("/api/generate_hand_meshes", methods=["POST"])
+    @auth_service.require_approved_user
+    def generate_hand_meshes():
+        current_user = auth_service.get_current_user_or_raise()
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "Invalid JSON body"}), 400
+        payload, status_code = processing_service.queue_hand_mesh_job(current_user, data)
+        return jsonify(payload), status_code
+
+    @app.route("/api/hand-mesh-jobs/<job_id>", methods=["GET"])
+    @auth_service.require_approved_user
+    def get_hand_mesh_job(job_id: str):
+        current_user = auth_service.get_current_user_or_raise()
+        payload, status_code = processing_service.get_hand_mesh_job(current_user, job_id)
+        return jsonify(payload), status_code
+
+    @app.route("/api/hand-mesh-jobs/latest", methods=["GET"])
+    @auth_service.require_approved_user
+    def get_latest_hand_mesh_job():
+        current_user = auth_service.get_current_user_or_raise()
+        route_path = str(request.args.get("route_path") or "").strip()
+        payload, status_code = processing_service.get_latest_hand_mesh_job(current_user, route_path)
+        return jsonify(payload), status_code
+
     @app.route("/api/delete_dataset", methods=["POST"])
     @auth_service.require_approved_user
     def delete_dataset():
@@ -408,20 +431,6 @@ def register_routes(app: Flask) -> None:
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         )
-
-    @app.route("/api/generate_task_intelligence", methods=["POST"])
-    @auth_service.require_approved_user
-    def generate_task_intelligence():
-        current_user = auth_service.get_current_user_or_raise()
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "Invalid JSON body"}), 400
-
-        if not data.get("asset_id"):
-            return jsonify({"error": "Missing 'asset_id' in request body"}), 400
-
-        payload, status_code = processing_service.generate_task_intelligence(current_user, data)
-        return jsonify(payload), status_code
 
 
 def register_error_handlers(app: Flask) -> None:
