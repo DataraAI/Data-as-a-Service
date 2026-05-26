@@ -4,17 +4,19 @@ from __future__ import annotations
 
 import json
 import os
+import queue
 import re
 import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 from datetime import datetime, timezone
 from typing import Any
-
 import cv2
 import gdown
 import numpy as np
+from azure.core.exceptions import HttpResponseError
 from azure.storage.blob import ContentSettings
 
 from datara.config import settings
@@ -25,6 +27,14 @@ from datara.services.sql_store import SQLStore
 BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 UTILS_DIR = os.path.join(BACKEND_DIR, "utils")
 DATASET_LIST_DIR = os.path.join(UTILS_DIR, "dataset_list")
+HAND_MESH_JOB_TYPE = "hand_mesh_generation"
+HAND_MESH_STAGE_STAGING = "staging_frames"
+HAND_MESH_STAGE_UPLOAD_VM = "uploading_to_vm"
+HAND_MESH_STAGE_VIPE = "running_vipe"
+HAND_MESH_STAGE_DYNHAMR = "running_dynhamr"
+HAND_MESH_STAGE_UPLOAD_RESULTS = "uploading_results"
+HAND_MESH_ACTIVE_STATUSES = {"queued", "running"}
+HAND_MESH_ALLOWED_VIEWS = {"ego", "egos"}
 
 
 class ProcessingService:
@@ -41,6 +51,9 @@ class ProcessingService:
         self.dataset_service = dataset_service
         self.sql_store = sql_store
         self.upload_folder = settings.upload_folder
+        self._hand_mesh_queue: queue.Queue[str] = queue.Queue()
+        self._hand_mesh_worker: threading.Thread | None = None
+        self._hand_mesh_worker_lock = threading.Lock()
         os.makedirs(self.upload_folder, exist_ok=True)
         os.makedirs(DATASET_LIST_DIR, exist_ok=True)
 
@@ -335,27 +348,6 @@ class ProcessingService:
             fps=fps,
         )
 
-    def _stage_folder_preview_hover_video(
-        self,
-        *,
-        source_video_path: str,
-        local_process_dir: str,
-        width: int,
-        height: int,
-        fps: float,
-    ) -> None:
-        preview_dir = os.path.join(local_process_dir, "preview")
-        os.makedirs(preview_dir, exist_ok=True)
-        output_path = os.path.join(preview_dir, "hover.mp4")
-        self._resize_video_to_dimensions(
-            input_path=source_video_path,
-            output_path=output_path,
-            width=width,
-            height=height,
-            fps=fps,
-            max_duration_seconds=5.0,
-        )
-
     def _ingest_video_path(
         self,
         video_path: str,
@@ -382,13 +374,6 @@ class ProcessingService:
             source_video_path=video_path,
             local_process_dir=local_process_dir,
             dataset_basename=dataset_basename,
-            width=width,
-            height=height,
-            fps=target_fps,
-        )
-        self._stage_folder_preview_hover_video(
-            source_video_path=video_path,
-            local_process_dir=local_process_dir,
             width=width,
             height=height,
             fps=target_fps,
@@ -490,6 +475,644 @@ class ProcessingService:
             download = self.azure_service.download_blob(dataset["storage_container"], image["id"])
             with open(target_path, "wb") as handle:
                 handle.write(download.readall())
+
+    def _ensure_hand_mesh_worker(self) -> None:
+        with self._hand_mesh_worker_lock:
+            if self._hand_mesh_worker and self._hand_mesh_worker.is_alive():
+                return
+
+            self._hand_mesh_worker = threading.Thread(
+                target=self._hand_mesh_worker_loop,
+                name="hand-mesh-worker",
+                daemon=True,
+            )
+            self._hand_mesh_worker.start()
+
+    def _hand_mesh_worker_loop(self) -> None:
+        while True:
+            job_id = self._hand_mesh_queue.get()
+            try:
+                self._run_hand_mesh_job(job_id)
+            except Exception as exc:
+                logger.error("Unhandled hand mesh worker failure for job %s: %s", job_id, exc, exc_info=True)
+                self.sql_store.update_processing_job(
+                    job_id,
+                    status="failed",
+                    error_message=self._trim_job_error(str(exc)),
+                    finished_at=datetime.now(timezone.utc).isoformat(),
+                )
+            finally:
+                self._hand_mesh_queue.task_done()
+
+    @staticmethod
+    def _trim_job_error(message: str, limit: int = 4000) -> str:
+        text = str(message or "").strip()
+        if len(text) <= limit:
+            return text
+        return text[: limit - 3].rstrip() + "..."
+
+    @staticmethod
+    def _parse_job_result(result_json: str | None) -> dict[str, Any]:
+        if not result_json:
+            return {}
+        try:
+            parsed = json.loads(result_json)
+        except json.JSONDecodeError:
+            return {}
+        return parsed if isinstance(parsed, dict) else {}
+
+    def _serialize_hand_mesh_job(self, job: dict[str, Any]) -> dict[str, Any]:
+        result = self._parse_job_result(job.get("result_json"))
+        payload: dict[str, Any] = {
+            "job_id": job["id"],
+            "status": job["status"],
+            "stage": job.get("stage") or HAND_MESH_STAGE_STAGING,
+            "route_path": job["route_path"],
+        }
+        if "mesh_count" in result:
+            payload["mesh_count"] = result["mesh_count"]
+        if "output_viewer_path" in result:
+            payload["output_viewer_path"] = result["output_viewer_path"]
+        if "output_route_path" in result:
+            payload["output_route_path"] = result["output_route_path"]
+        if "video_count" in result:
+            payload["video_count"] = result["video_count"]
+        if "output_video_viewer_path" in result:
+            payload["output_video_viewer_path"] = result["output_video_viewer_path"]
+        if "output_video_route_path" in result:
+            payload["output_video_route_path"] = result["output_video_route_path"]
+        error_message = str(job.get("error_message") or "").strip()
+        if error_message:
+            payload["error"] = error_message
+        return payload
+
+    def _get_hand_mesh_job_for_user(
+        self,
+        *,
+        current_user: dict[str, Any],
+        job_id: str,
+    ) -> dict[str, Any]:
+        job = self.sql_store.get_processing_job(job_id)
+        if not job or job.get("job_type") != HAND_MESH_JOB_TYPE:
+            raise FileNotFoundError("Hand mesh job not found")
+
+        dataset = self.sql_store.get_dataset_by_id(str(job.get("dataset_id") or ""))
+        if not dataset:
+            raise FileNotFoundError("Dataset for hand mesh job was not found")
+
+        self.sql_store.assert_user_can_access_dataset(dataset, current_user)
+        return job
+
+    @staticmethod
+    def _extract_frame_id_from_filename(name: str) -> int | None:
+        stem = os.path.splitext(os.path.basename(str(name or "")))[0]
+        matches = re.findall(r"\d+", stem)
+        if not matches:
+            return None
+        try:
+            return int(matches[-1])
+        except ValueError:
+            return None
+
+    @staticmethod
+    def _slugify_filename_part(value: str, fallback: str = "mesh") -> str:
+        normalized = re.sub(r"[^a-zA-Z0-9._-]+", "-", str(value or "").strip()).strip("-._")
+        return normalized[:96].strip("-._") or fallback
+
+    def _validate_hand_mesh_route(
+        self,
+        *,
+        current_user: dict[str, Any],
+        route_path: str,
+    ) -> tuple[dict[str, Any], list[str], dict[str, Any]]:
+        dataset, extra_segments = self.sql_store.resolve_dataset_route(route_path, current_user)
+        self.sql_store.assert_user_can_access_dataset(dataset, current_user)
+
+        lower_segments = [segment.lower() for segment in extra_segments]
+        if "egos" not in lower_segments:
+            raise ValueError("Hand mesh generation is only available inside egos folders")
+        if "masks" in lower_segments:
+            raise ValueError("Hand mesh generation is unavailable inside mask folders")
+        if "occl_del" in lower_segments:
+            raise ValueError("Hand mesh generation is unavailable inside occlusion result folders")
+        if "hand_meshes" in lower_segments:
+            raise ValueError("Hand mesh generation is unavailable inside hand mesh result folders")
+
+        child_folders = [
+            item
+            for item in self.dataset_service.list_datasets(route_path, current_user)
+            if item.get("type") == "folder"
+        ]
+        if child_folders:
+            raise ValueError("Hand mesh generation is only available on leaf ego folders")
+
+        summary = self.sql_store.build_dataset_summary(dataset, current_user)
+        return dataset, extra_segments, summary
+
+    def _collect_hand_mesh_route_images(
+        self,
+        *,
+        current_user: dict[str, Any],
+        route_path: str,
+    ) -> list[dict[str, Any]]:
+        route_images = [
+            image
+            for image in self.dataset_service.get_dataset_images(route_path, current_user)
+            if image.get("type") == "image"
+        ]
+        route_images.sort(key=self._image_sort_key)
+        if not route_images:
+            raise ValueError("No source images were found in this folder")
+
+        invalid_images = [
+            str(image.get("name") or "")
+            for image in route_images
+            if str(((image.get("metadata") or {}).get("view") or "")).strip().lower()
+            not in HAND_MESH_ALLOWED_VIEWS
+        ]
+        if invalid_images:
+            raise ValueError("Hand mesh generation is only available for ego image folders")
+
+        return route_images
+
+    def _collect_hand_mesh_files(self, output_dir: str) -> list[dict[str, Any]]:
+        mesh_files: list[dict[str, Any]] = []
+        used_names: set[str] = set()
+
+        for root, _dirs, file_names in os.walk(output_dir):
+            for file_name in file_names:
+                if not file_name.lower().endswith(".obj"):
+                    continue
+
+                local_path = os.path.join(root, file_name)
+                relative_path = os.path.relpath(local_path, output_dir)
+                relative_dir = os.path.dirname(relative_path)
+                mesh_name = self._slugify_filename_part(os.path.basename(file_name), "mesh.obj")
+                if not mesh_name.lower().endswith(".obj"):
+                    mesh_name = f"{mesh_name}.obj"
+
+                if relative_dir:
+                    prefix = self._slugify_filename_part(relative_dir.replace(os.sep, "-"), "mesh")
+                    mesh_name = f"{prefix}-{mesh_name}"
+
+                base_name, extension = os.path.splitext(mesh_name)
+                candidate_name = mesh_name
+                duplicate_index = 2
+                while candidate_name.lower() in used_names:
+                    candidate_name = f"{base_name}-{duplicate_index}{extension}"
+                    duplicate_index += 1
+                used_names.add(candidate_name.lower())
+
+                frame_id = self._extract_frame_id_from_filename(candidate_name)
+                if frame_id is None:
+                    frame_id = self._extract_frame_id_from_filename(relative_path)
+
+                mesh_files.append(
+                    {
+                        "local_path": local_path,
+                        "file_name": candidate_name,
+                        "relative_path": relative_path.replace(os.sep, "/"),
+                        "frame_id": frame_id,
+                    }
+                )
+
+        mesh_files.sort(
+            key=lambda item: (
+                1 if item["frame_id"] is None else 0,
+                int(item["frame_id"] or 0),
+                str(item["file_name"]).lower(),
+            )
+        )
+        return mesh_files
+
+    def _collect_hand_mesh_video_files(self, output_dir: str) -> list[dict[str, Any]]:
+        video_files: list[dict[str, Any]] = []
+        used_names: set[str] = set()
+
+        for root, _dirs, file_names in os.walk(output_dir):
+            for file_name in file_names:
+                lower_name = file_name.lower()
+                if not lower_name.endswith((".mp4", ".mov", ".m4v", ".webm")):
+                    continue
+
+                local_path = os.path.join(root, file_name)
+                relative_path = os.path.relpath(local_path, output_dir)
+                relative_dir = os.path.dirname(relative_path)
+                extension = os.path.splitext(file_name)[1].lower() or ".mp4"
+                video_name = self._slugify_filename_part(os.path.splitext(os.path.basename(file_name))[0], "rendered-video")
+                candidate_name = f"{video_name}{extension}"
+
+                if relative_dir:
+                    prefix = self._slugify_filename_part(relative_dir.replace(os.sep, "-"), "video")
+                    candidate_name = f"{prefix}-{candidate_name}"
+
+                base_name, extension = os.path.splitext(candidate_name)
+                duplicate_index = 2
+                while candidate_name.lower() in used_names:
+                    candidate_name = f"{base_name}-{duplicate_index}{extension}"
+                    duplicate_index += 1
+                used_names.add(candidate_name.lower())
+
+                video_files.append(
+                    {
+                        "local_path": local_path,
+                        "file_name": candidate_name,
+                        "relative_path": relative_path.replace(os.sep, "/"),
+                    }
+                )
+
+        video_files.sort(key=lambda item: str(item["file_name"]).lower())
+        return video_files
+
+    def _upload_hand_meshes(
+        self,
+        *,
+        dataset: dict[str, Any],
+        output_prefix: str,
+        mesh_files: list[dict[str, Any]],
+        source_task: str,
+        source_image_count: int,
+        fps: float,
+    ) -> list[str]:
+        container_client = self.azure_service.get_container_client(dataset["storage_container"])
+        uploaded_blobs: list[str] = []
+
+        for mesh in mesh_files:
+            blob_name = f"{output_prefix.rstrip('/')}/{mesh['file_name']}"
+            with open(mesh["local_path"], "rb") as handle:
+                container_client.upload_blob(
+                    name=blob_name,
+                    data=handle,
+                    overwrite=True,
+                    content_settings=ContentSettings(content_type="model/obj"),
+                )
+
+            existing_doc = self.azure_service.get_cosmos_doc_for_blob(dataset["storage_container"], blob_name) or {}
+            self.azure_service.upsert_cosmos_item(
+                {
+                    "id": existing_doc.get("id", os.urandom(16).hex()),
+                    "docType": "mesh_annotation",
+                    "containerName": dataset["storage_container"],
+                    "datasetName": output_prefix.rstrip("/"),
+                    "datasetId": dataset["id"],
+                    "ownerUserId": dataset["owner_user_id"],
+                    "visibility": dataset["visibility"],
+                    "sourceDatasetId": dataset["id"],
+                    "view": "hand_meshes",
+                    "frameName": mesh["file_name"],
+                    "blobPath": blob_name,
+                    "date": existing_doc.get("date", ""),
+                    "frameId": mesh.get("frame_id"),
+                    "width": None,
+                    "height": None,
+                    "miscTags": [
+                        "hand_mesh",
+                        "generated_hand_mesh",
+                        "dyn_hamr",
+                        "3d",
+                        "obj",
+                    ],
+                    "task": source_task,
+                    "VLM_tags": existing_doc.get("VLM_tags", []),
+                    "VLM_tags_by_prompt": existing_doc.get("VLM_tags_by_prompt", {}),
+                    "VLM_effective_prompts": existing_doc.get("VLM_effective_prompts", {}),
+                    "VLM_last_prompt_label": existing_doc.get("VLM_last_prompt_label"),
+                    "vlm": existing_doc.get("vlm"),
+                    "sharpnessScore": None,
+                    "clear": None,
+                    "sourceType": "dyn_hamr_hand_mesh",
+                    "frameCount": source_image_count,
+                    "fps": fps,
+                    "sourceMeshPath": mesh["relative_path"],
+                }
+            )
+            uploaded_blobs.append(blob_name)
+
+        return uploaded_blobs
+
+    def _upload_hand_mesh_videos(
+        self,
+        *,
+        dataset: dict[str, Any],
+        output_prefix: str,
+        video_files: list[dict[str, Any]],
+        source_task: str,
+        source_image_count: int,
+        fps: float,
+    ) -> list[str]:
+        container_client = self.azure_service.get_container_client(dataset["storage_container"])
+        uploaded_blobs: list[str] = []
+
+        for video in video_files:
+            blob_name = f"{output_prefix.rstrip('/')}/{video['file_name']}"
+            with open(video["local_path"], "rb") as handle:
+                container_client.upload_blob(
+                    name=blob_name,
+                    data=handle,
+                    overwrite=True,
+                    content_settings=ContentSettings(content_type="video/mp4"),
+                )
+
+            existing_doc = self.azure_service.get_cosmos_doc_for_blob(dataset["storage_container"], blob_name) or {}
+            self.azure_service.upsert_cosmos_item(
+                {
+                    "id": existing_doc.get("id", os.urandom(16).hex()),
+                    "docType": "rendered_video",
+                    "containerName": dataset["storage_container"],
+                    "datasetName": output_prefix.rstrip("/"),
+                    "datasetId": dataset["id"],
+                    "ownerUserId": dataset["owner_user_id"],
+                    "visibility": dataset["visibility"],
+                    "sourceDatasetId": dataset["id"],
+                    "view": "videos",
+                    "frameName": video["file_name"],
+                    "blobPath": blob_name,
+                    "date": existing_doc.get("date", ""),
+                    "frameId": None,
+                    "width": None,
+                    "height": None,
+                    "miscTags": [
+                        "hand_motion_video",
+                        "generated_hand_motion_video",
+                        "dyn_hamr",
+                        "video",
+                        "mp4",
+                    ],
+                    "task": source_task,
+                    "VLM_tags": existing_doc.get("VLM_tags", []),
+                    "VLM_tags_by_prompt": existing_doc.get("VLM_tags_by_prompt", {}),
+                    "VLM_effective_prompts": existing_doc.get("VLM_effective_prompts", {}),
+                    "VLM_last_prompt_label": existing_doc.get("VLM_last_prompt_label"),
+                    "vlm": existing_doc.get("vlm"),
+                    "sharpnessScore": None,
+                    "clear": None,
+                    "sourceType": "dyn_hamr_hand_motion_video",
+                    "frameCount": source_image_count,
+                    "fps": fps,
+                    "sourceVideoPath": video["relative_path"],
+                }
+            )
+            uploaded_blobs.append(blob_name)
+
+        return uploaded_blobs
+
+    def _delete_generated_hand_mesh_videos(
+        self,
+        *,
+        dataset: dict[str, Any],
+        output_prefix: str,
+    ) -> None:
+        docs = self.azure_service.list_cosmos_docs_for_prefix(dataset["storage_container"], output_prefix)
+        generated_docs = [
+            doc
+            for doc in docs
+            if str(doc.get("sourceType") or "").strip() == "dyn_hamr_hand_motion_video"
+        ]
+        if not generated_docs:
+            return
+
+        cosmos_container = self.azure_service.get_cosmos_container_client()
+        partition_key_field = None
+        if cosmos_container:
+            try:
+                container_props = cosmos_container.read()
+                paths = container_props.get("partitionKey", {}).get("paths", [])
+                if paths:
+                    partition_key_field = paths[0].lstrip("/")
+            except Exception:
+                partition_key_field = None
+
+        for doc in generated_docs:
+            blob_path = str(doc.get("blobPath") or "").strip()
+            if blob_path:
+                self.azure_service.delete_blob(dataset["storage_container"], blob_path)
+            if not cosmos_container:
+                continue
+
+            partition_value = doc.get(partition_key_field) if partition_key_field else doc["id"]
+            try:
+                cosmos_container.delete_item(item=doc["id"], partition_key=partition_value)
+            except HttpResponseError as exc:
+                if getattr(exc, "status_code", None) == 404:
+                    continue
+                raise
+
+    def queue_hand_mesh_job(self, current_user: dict[str, Any], data: dict[str, Any]) -> tuple[dict[str, Any], int]:
+        route_path = str(data.get("route_path") or "").strip().strip("/")
+        if not route_path:
+            return {"error": "Missing route_path"}, 400
+
+        try:
+            dataset, _extra_segments, _summary = self._validate_hand_mesh_route(
+                current_user=current_user,
+                route_path=route_path,
+            )
+            self._collect_hand_mesh_route_images(current_user=current_user, route_path=route_path)
+
+            active_job = self.sql_store.get_active_processing_job(
+                job_type=HAND_MESH_JOB_TYPE,
+                route_path=route_path,
+            )
+            if active_job:
+                return self._serialize_hand_mesh_job(active_job), 202
+
+            job = self.sql_store.create_processing_job(
+                job_type=HAND_MESH_JOB_TYPE,
+                route_path=route_path,
+                dataset_id=dataset["id"],
+                owner_user_id=current_user["id"],
+                status="queued",
+                stage=HAND_MESH_STAGE_STAGING,
+            )
+            self._ensure_hand_mesh_worker()
+            self._hand_mesh_queue.put(str(job["id"]))
+            return self._serialize_hand_mesh_job(job), 202
+        except Exception as exc:
+            logger.error("Error queueing hand mesh job: %s", exc, exc_info=True)
+            if isinstance(exc, PermissionError):
+                return {"error": str(exc)}, 403
+            return {"error": str(exc)}, 400 if isinstance(exc, ValueError) else 500
+
+    def get_hand_mesh_job(self, current_user: dict[str, Any], job_id: str) -> tuple[dict[str, Any], int]:
+        try:
+            job = self._get_hand_mesh_job_for_user(current_user=current_user, job_id=job_id)
+            return self._serialize_hand_mesh_job(job), 200
+        except Exception as exc:
+            if isinstance(exc, FileNotFoundError):
+                return {"error": str(exc)}, 404
+            logger.error("Error loading hand mesh job %s: %s", job_id, exc, exc_info=True)
+            return {"error": str(exc)}, 403 if isinstance(exc, PermissionError) else 500
+
+    def get_latest_hand_mesh_job(
+        self,
+        current_user: dict[str, Any],
+        route_path: str,
+    ) -> tuple[dict[str, Any], int]:
+        route_path = str(route_path or "").strip().strip("/")
+        if not route_path:
+            return {"error": "Missing route_path"}, 400
+
+        try:
+            self._validate_hand_mesh_route(current_user=current_user, route_path=route_path)
+            job = self.sql_store.get_latest_processing_job(
+                job_type=HAND_MESH_JOB_TYPE,
+                route_path=route_path,
+            )
+            if not job:
+                return {"error": "Hand mesh job not found"}, 404
+            return self._serialize_hand_mesh_job(job), 200
+        except Exception as exc:
+            if isinstance(exc, FileNotFoundError):
+                return {"error": str(exc)}, 404
+            logger.error("Error loading latest hand mesh job for %s: %s", route_path, exc, exc_info=True)
+            if isinstance(exc, PermissionError):
+                return {"error": str(exc)}, 403
+            return {"error": str(exc)}, 400 if isinstance(exc, ValueError) else 500
+
+    def _run_hand_mesh_job(self, job_id: str) -> None:
+        job = self.sql_store.get_processing_job(job_id)
+        if not job or job.get("job_type") != HAND_MESH_JOB_TYPE:
+            return
+
+        dataset = self.sql_store.get_dataset_by_id(str(job.get("dataset_id") or ""))
+        if not dataset:
+            self.sql_store.update_processing_job(
+                job_id,
+                status="failed",
+                error_message="Dataset for hand mesh job was not found",
+                finished_at=datetime.now(timezone.utc).isoformat(),
+            )
+            return
+
+        synthetic_user = {"id": dataset["owner_user_id"], "role": "admin"}
+        route_path = str(job["route_path"])
+        fps = 30.0
+
+        self.sql_store.update_processing_job(
+            job_id,
+            status="running",
+            stage=HAND_MESH_STAGE_STAGING,
+            error_message=None,
+            result_json=None,
+            started_at=datetime.now(timezone.utc).isoformat(),
+            finished_at=None,
+        )
+
+        parsed_route = self.sql_store.parse_route_path(route_path)
+        dataset_root = str(parsed_route.get("dataset_root") or "").strip().strip("/")
+        if not dataset_root:
+            dataset_root = self.sql_store.route_path_for_dataset(dataset)
+        output_route_path = f"{dataset_root.rstrip('/')}/hand_meshes"
+        output_storage_prefix = f"{dataset['storage_prefix'].rstrip('/')}/hand_meshes"
+        output_video_route_path = f"{dataset_root.rstrip('/')}/videos"
+        output_video_storage_prefix = f"{dataset['storage_prefix'].rstrip('/')}/videos"
+        job_root = tempfile.mkdtemp(prefix="hand_mesh_job_", dir=DATASET_LIST_DIR)
+        staged_image_dir = os.path.join(job_root, "source_frames")
+        local_output_dir = os.path.join(job_root, "dynhamr_output")
+
+        try:
+            _dataset, _extra_segments, _summary = self._validate_hand_mesh_route(
+                current_user=synthetic_user,
+                route_path=route_path,
+            )
+            route_images = self._collect_hand_mesh_route_images(
+                current_user=synthetic_user,
+                route_path=route_path,
+            )
+
+            source_task = ""
+            for image in route_images:
+                metadata = image.get("metadata") if isinstance(image, dict) else None
+                candidate_task = str((metadata or {}).get("task") or "").strip()
+                if candidate_task:
+                    source_task = candidate_task
+                    break
+            source_task = source_task or str(dataset.get("task") or "")
+
+            self._download_route_images(
+                dataset=dataset,
+                images=route_images,
+                destination_dir=staged_image_dir,
+            )
+
+            from datara.services import call_lambda_vm
+
+            sequence_name = self._slugify_filename_part(route_path.replace("/", "_"), "sequence")
+            _output_dir, status_code, error_message = call_lambda_vm.generate_hand_meshes(
+                local_input_dir=staged_image_dir,
+                local_output_dir=local_output_dir,
+                seq=sequence_name,
+                fps=fps,
+                is_static=False,
+                stage_callback=lambda stage: self.sql_store.update_processing_job(
+                    job_id,
+                    status="running",
+                stage=stage,
+                ),
+            )
+            if status_code != 200:
+                raise RuntimeError(error_message or "Hand mesh generation failed")
+
+            mesh_files = self._collect_hand_mesh_files(local_output_dir)
+            if not mesh_files:
+                raise RuntimeError("No OBJ hand meshes were returned")
+            video_files = self._collect_hand_mesh_video_files(local_output_dir)
+
+            self.sql_store.update_processing_job(
+                job_id,
+                status="running",
+                stage=HAND_MESH_STAGE_UPLOAD_RESULTS,
+            )
+            self.azure_service.delete_blobs_with_prefix(dataset["storage_container"], output_storage_prefix)
+            self.azure_service.delete_cosmos_docs_for_prefix(dataset["storage_container"], output_storage_prefix)
+            self._delete_generated_hand_mesh_videos(
+                dataset=dataset,
+                output_prefix=output_video_storage_prefix,
+            )
+            uploaded_blobs = self._upload_hand_meshes(
+                dataset=dataset,
+                output_prefix=output_storage_prefix,
+                mesh_files=mesh_files,
+                source_task=source_task,
+                source_image_count=len(route_images),
+                fps=fps,
+            )
+            uploaded_videos = self._upload_hand_mesh_videos(
+                dataset=dataset,
+                output_prefix=output_video_storage_prefix,
+                video_files=video_files,
+                source_task=source_task,
+                source_image_count=len(route_images),
+                fps=fps,
+            )
+
+            result_payload = {
+                "mesh_count": len(uploaded_blobs),
+                "output_route_path": output_route_path,
+                "output_viewer_path": f"/viewer/{output_route_path}",
+                "video_count": len(uploaded_videos),
+                "output_video_route_path": output_video_route_path,
+                "output_video_viewer_path": f"/viewer/{output_video_route_path}",
+                "view": "hand_meshes",
+            }
+            self.sql_store.update_processing_job(
+                job_id,
+                status="succeeded",
+                stage=HAND_MESH_STAGE_UPLOAD_RESULTS,
+                error_message=None,
+                result_json=json.dumps(result_payload),
+                finished_at=datetime.now(timezone.utc).isoformat(),
+            )
+        except Exception as exc:
+            logger.error("Error generating hand meshes for job %s: %s", job_id, exc, exc_info=True)
+            self.sql_store.update_processing_job(
+                job_id,
+                status="failed",
+                error_message=self._trim_job_error(str(exc)),
+                finished_at=datetime.now(timezone.utc).isoformat(),
+            )
+        finally:
+            shutil.rmtree(job_root, ignore_errors=True)
 
     def generate_masks(self, current_user: dict[str, Any], data: dict[str, Any]) -> tuple[dict[str, Any], int]:
         prompt = str(data.get("prompt") or "").strip()
@@ -947,7 +1570,6 @@ class ProcessingService:
         width: int,
         height: int,
         fps: float,
-        max_duration_seconds: float | None = None,
     ) -> None:
         capture = cv2.VideoCapture(input_path)
         if not capture.isOpened():
@@ -972,10 +1594,6 @@ class ProcessingService:
                 "-y",
                 "-i",
                 input_path,
-            ]
-            if max_duration_seconds and max_duration_seconds > 0:
-                command.extend(["-t", f"{max_duration_seconds:.3f}"])
-            command.extend([
                 "-an",
                 "-c:v",
                 "libx264",
@@ -983,7 +1601,7 @@ class ProcessingService:
                 "yuv420p",
                 "-movflags",
                 "+faststart",
-            ])
+            ]
             if filter_parts:
                 command.extend(["-vf", ",".join(filter_parts)])
             command.append(output_path)
@@ -1017,21 +1635,13 @@ class ProcessingService:
             raise ValueError("Failed to create resized output video") from exc
 
         try:
-            source_fps = current_fps if current_fps > 0 else effective_fps
-            max_frames = None
-            if max_duration_seconds and max_duration_seconds > 0 and source_fps > 0:
-                max_frames = max(1, int(round(source_fps * max_duration_seconds)))
-            frames_written = 0
             while True:
-                if max_frames is not None and frames_written >= max_frames:
-                    break
                 success, frame = capture.read()
                 if not success:
                     break
                 if frame.shape[1] != width or frame.shape[0] != height:
                     frame = cv2.resize(frame, (width, height), interpolation=cv2.INTER_AREA)
                 writer.write(frame)
-                frames_written += 1
         finally:
             capture.release()
             writer.release()
@@ -1309,94 +1919,6 @@ class ProcessingService:
             "output_viewer_path": f"/viewer/{output_route_path}",
             "video_name": "rose_removed.mp4",
         }, 200
-
-    def generate_task_intelligence(self, current_user: dict[str, Any], data: dict[str, Any]) -> tuple[dict[str, Any], int]:
-        """
-        Generates sub-task annotations for a video asset.
-        Checks for cached results in Cosmos DB before invoking the remote model.
-        """
-        source = self._resolve_source_asset(current_user, str(data.get("asset_id") or ""))
-
-        # 1. Check for cache in existing Cosmos doc
-        if source["metadata"].get("taskIntelligence"):
-            logger.info("Found cached task intelligence for asset %s", data.get("asset_id"))
-            return {
-                "message": "Task intelligence retrieved from cache.",
-                "data": source["metadata"]["taskIntelligence"],
-                "cached": True,
-            }, 200
-
-        # 2. If not cached, generate it
-        source_dataset = source["dataset"]
-        source_blob = source["blob_name"]
-
-        if not any(source_blob.lower().endswith(ext) for ext in (".mp4", ".mov", ".m4v", ".webm")):
-            return {"error": "Task intelligence can only be generated for video assets."}, 400
-
-        video_url = self.azure_service.generate_sas_url(
-            source_dataset["storage_container"],
-            source_blob,
-            expiry_hours=2,
-        )
-
-        local_json_path = None
-        try:
-            from datara.services import call_lambda_vm
-
-            logger.info("Running subtask annotator on Lambda VM for: %s", video_url)
-            local_json_path, status_code = call_lambda_vm.generate_task_intelligence(video_url)
-
-            if status_code != 200 or not local_json_path:
-                return {"error": "Failed to generate task intelligence on the Lambda VM."}, status_code or 500
-
-            with open(local_json_path, "r") as f:
-                raw_subtasks = json.load(f)
-
-            # Format the output
-            formatted_subtasks = []
-            for st in raw_subtasks:
-                formatted_subtasks.append({
-                    "subtask_name": str(st.get("sub_task", "unknown")).title(),
-                    "start_time": f"Frame {st.get('start_frame', 0)}",
-                    "end_time": f"Frame {st.get('end_frame', 0)}",
-                    "description": f"Model detected: {st.get('sub_task', 'unknown')}",
-                })
-
-            task_name = str(source["metadata"].get("task") or "Automated Video Breakdown").strip()
-            dataset_summary = self.sql_store.build_dataset_summary(source_dataset, current_user)
-
-            generated_json = {
-                "tasks": [
-                    {
-                        "task_name": task_name,
-                        "description": f"Extracted from {dataset_summary['full_path']}",
-                        "start_time": f"Frame {raw_subtasks[0].get('start_frame', 0)}" if raw_subtasks else "Start",
-                        "end_time": f"Frame {raw_subtasks[-1].get('end_frame', 0)}" if raw_subtasks else "End",
-                        "subtasks": formatted_subtasks,
-                    }
-                ]
-            }
-
-            # 3. Store in Cosmos DB
-            cosmos_doc = source["metadata"]
-            cosmos_doc["taskIntelligence"] = generated_json
-            self.azure_service.upsert_cosmos_item(cosmos_doc)
-
-            return {
-                "message": "Task intelligence generated and stored successfully.",
-                "data": generated_json,
-                "cached": False,
-            }, 200
-
-        except Exception as e:
-            logger.error("generate_task_intelligence error: %s", e, exc_info=True)
-            return {"error": str(e)}, 500
-        finally:
-            if local_json_path and os.path.exists(local_json_path):
-                try:
-                    os.remove(local_json_path)
-                except OSError:
-                    pass
 
     def _resolve_source_asset(self, current_user: dict[str, Any], asset_id: str) -> dict[str, Any]:
         if not asset_id:

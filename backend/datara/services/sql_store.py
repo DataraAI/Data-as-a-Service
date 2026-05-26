@@ -40,7 +40,9 @@ from datara.logging import logger
 ALLOWED_VISIBILITY = {"private", "public"}
 ALLOWED_ROLES = {"customer", "analyst", "admin"}
 ALLOWED_APPROVAL_STATUSES = {"pending", "approved", "rejected"}
+ALLOWED_PROCESSING_JOB_STATUSES = {"queued", "running", "succeeded", "failed"}
 SLUG_PATTERN = re.compile(r"[^a-z0-9-]+")
+PROCESSING_JOB_UNSET = object()
 
 metadata = MetaData()
 
@@ -93,6 +95,30 @@ Index("idx_datasets_visibility", datasets_table.c.visibility)
 Index("idx_datasets_storage", datasets_table.c.storage_container, datasets_table.c.storage_prefix)
 Index("idx_datasets_route", datasets_table.c.category, datasets_table.c.brand, datasets_table.c.dataset_name)
 
+processing_jobs_table = Table(
+    "processing_jobs",
+    metadata,
+    Column("id", String(32), primary_key=True),
+    Column("job_type", String(64), nullable=False),
+    Column("route_path", Text, nullable=False),
+    Column("dataset_id", String(32), ForeignKey("datasets.id"), nullable=False),
+    Column("owner_user_id", Integer, ForeignKey("users.user_id"), nullable=False),
+    Column("status", String(16), nullable=False),
+    Column("stage", String(64), nullable=False),
+    Column("error_message", Text, nullable=True),
+    Column("result_json", Text, nullable=True),
+    Column("created_at", String(64), nullable=False),
+    Column("started_at", String(64), nullable=True),
+    Column("finished_at", String(64), nullable=True),
+    CheckConstraint(
+        "status IN ('queued', 'running', 'succeeded', 'failed')",
+        name="ck_processing_jobs_status",
+    ),
+)
+
+Index("idx_processing_jobs_dataset_type", processing_jobs_table.c.dataset_id, processing_jobs_table.c.job_type)
+Index("idx_processing_jobs_status", processing_jobs_table.c.status)
+
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -122,6 +148,7 @@ class SQLStore:
         self.session_factory = sessionmaker(bind=self.engine, future=True, expire_on_commit=False)
         self.users = users_table
         self.datasets = datasets_table
+        self.processing_jobs = processing_jobs_table
         self.initialize()
 
     @staticmethod
@@ -169,6 +196,13 @@ class SQLStore:
         normalized = str(status or "pending").strip().lower()
         if normalized not in ALLOWED_APPROVAL_STATUSES:
             raise ValueError(f"Unsupported approval status: {normalized}")
+        return normalized
+
+    @staticmethod
+    def _normalize_processing_job_status(status: str | None) -> str:
+        normalized = str(status or "").strip().lower()
+        if normalized not in ALLOWED_PROCESSING_JOB_STATUSES:
+            raise ValueError(f"Unsupported processing job status: {normalized}")
         return normalized
 
     def initialize(self) -> None:
@@ -811,6 +845,153 @@ class SQLStore:
             filters.append(self.datasets.c.owner_user_id == normalized_owner_id)
 
         return self._select_one(select(self.datasets).where(and_(*filters)))
+
+    def create_processing_job(
+        self,
+        *,
+        job_type: str,
+        route_path: str,
+        dataset_id: str,
+        owner_user_id: int | str,
+        status: str,
+        stage: str,
+        error_message: str | None = None,
+        result_json: str | None = None,
+        started_at: str | None = None,
+        finished_at: str | None = None,
+    ) -> dict[str, Any]:
+        normalized_owner_id = self._coerce_user_id(owner_user_id)
+        if normalized_owner_id is None:
+            raise ValueError("owner_user_id is required")
+
+        normalized_status = self._normalize_processing_job_status(status)
+        now = utc_now()
+        job_id = uuid.uuid4().hex
+
+        with self.session_factory.begin() as session:
+            session.execute(
+                insert(self.processing_jobs).values(
+                    id=job_id,
+                    job_type=str(job_type).strip(),
+                    route_path=str(route_path).strip().strip("/"),
+                    dataset_id=str(dataset_id).strip(),
+                    owner_user_id=normalized_owner_id,
+                    status=normalized_status,
+                    stage=str(stage or "").strip(),
+                    error_message=error_message,
+                    result_json=result_json,
+                    created_at=now,
+                    started_at=started_at,
+                    finished_at=finished_at,
+                )
+            )
+        return self.get_processing_job(job_id) or {
+            "id": job_id,
+            "job_type": job_type,
+            "route_path": route_path,
+            "dataset_id": dataset_id,
+            "owner_user_id": normalized_owner_id,
+            "status": normalized_status,
+            "stage": stage,
+            "error_message": error_message,
+            "result_json": result_json,
+            "created_at": now,
+            "started_at": started_at,
+            "finished_at": finished_at,
+        }
+
+    def get_processing_job(self, job_id: str) -> dict[str, Any] | None:
+        normalized_job_id = str(job_id or "").strip()
+        if not normalized_job_id:
+            return None
+        return self._select_one(
+            select(self.processing_jobs).where(self.processing_jobs.c.id == normalized_job_id)
+        )
+
+    def get_latest_processing_job(
+        self,
+        *,
+        job_type: str,
+        route_path: str,
+    ) -> dict[str, Any] | None:
+        normalized_route_path = str(route_path or "").strip().strip("/")
+        if not normalized_route_path:
+            return None
+        statement = (
+            select(self.processing_jobs)
+            .where(
+                and_(
+                    self.processing_jobs.c.job_type == str(job_type).strip(),
+                    self.processing_jobs.c.route_path == normalized_route_path,
+                )
+            )
+            .order_by(self.processing_jobs.c.created_at.desc(), self.processing_jobs.c.id.desc())
+            .limit(1)
+        )
+        return self._select_one(statement)
+
+    def get_active_processing_job(
+        self,
+        *,
+        job_type: str,
+        route_path: str,
+    ) -> dict[str, Any] | None:
+        normalized_route_path = str(route_path or "").strip().strip("/")
+        if not normalized_route_path:
+            return None
+        statement = (
+            select(self.processing_jobs)
+            .where(
+                and_(
+                    self.processing_jobs.c.job_type == str(job_type).strip(),
+                    self.processing_jobs.c.route_path == normalized_route_path,
+                    self.processing_jobs.c.status.in_(("queued", "running")),
+                )
+            )
+            .order_by(self.processing_jobs.c.created_at.desc(), self.processing_jobs.c.id.desc())
+            .limit(1)
+        )
+        return self._select_one(statement)
+
+    def update_processing_job(
+        self,
+        job_id: str,
+        *,
+        status: str | None = None,
+        stage: str | None = None,
+        error_message: Any = PROCESSING_JOB_UNSET,
+        result_json: Any = PROCESSING_JOB_UNSET,
+        started_at: Any = PROCESSING_JOB_UNSET,
+        finished_at: Any = PROCESSING_JOB_UNSET,
+    ) -> dict[str, Any] | None:
+        normalized_job_id = str(job_id or "").strip()
+        if not normalized_job_id:
+            raise ValueError("job_id is required")
+
+        values: dict[str, Any] = {}
+        if status is not None:
+            values["status"] = self._normalize_processing_job_status(status)
+        if stage is not None:
+            values["stage"] = str(stage or "").strip()
+        if error_message is not PROCESSING_JOB_UNSET:
+            values["error_message"] = error_message
+        if result_json is not PROCESSING_JOB_UNSET:
+            values["result_json"] = result_json
+        if started_at is not PROCESSING_JOB_UNSET:
+            values["started_at"] = started_at
+        if finished_at is not PROCESSING_JOB_UNSET:
+            values["finished_at"] = finished_at
+
+        if not values:
+            return self.get_processing_job(normalized_job_id)
+
+        with self.session_factory.begin() as session:
+            session.execute(
+                update(self.processing_jobs)
+                .where(self.processing_jobs.c.id == normalized_job_id)
+                .values(**values)
+            )
+        return self.get_processing_job(normalized_job_id)
 
     def update_dataset_storage(
         self,

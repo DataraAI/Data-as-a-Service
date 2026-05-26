@@ -5,6 +5,7 @@ import stat
 import uuid
 from contextlib import contextmanager
 from pathlib import Path
+from typing import Callable
 
 import paramiko
 
@@ -42,11 +43,11 @@ def _legacy_saas_attr(name, default=None):
 
 SAAS_HOST = os.getenv("SAAS_HOST") or _legacy_saas_attr("HOST")
 SAAS_USER = os.getenv("SAAS_USER") or _legacy_saas_attr("USER") or "ubuntu"
-
-def _resolve_key_path():
-    return os.path.expanduser("~/.ssh/azure_to_lambda")
-
-SAAS_KEY_PATH = _resolve_key_path()
+SAAS_KEY_PATH = (
+    os.getenv("SAAS_KEY_PATH")
+    or _legacy_saas_attr("KEY_PATH")
+    or os.path.expanduser("~/.ssh/azure_to_lambda")
+)
 SAAS_PYTHON_BIN = os.getenv("SAAS_PYTHON_BIN") or _legacy_saas_attr("PYTHON_BIN") or "python"
 SAAS_IMAGE_PYTHON_BIN = (
     os.getenv("SAAS_IMAGE_PYTHON_BIN")
@@ -74,6 +75,15 @@ SAAS_ROSE_PYTHON_BIN = (
     or _legacy_saas_attr("ROSE_PYTHON_BIN")
     or SAAS_PYTHON_BIN
 )
+SAAS_HAND_MOTION_PYTHON_BIN = (
+    os.getenv("SAAS_HAND_MOTION_PYTHON_BIN")
+    or _legacy_saas_attr("HAND_MOTION_PYTHON_BIN")
+    or SAAS_PYTHON_BIN
+)
+SAAS_VIPE_PYTHON_BIN = os.getenv("SAAS_VIPE_PYTHON_BIN") or _legacy_saas_attr("VIPE_PYTHON_BIN")
+SAAS_DYNHAMR_PYTHON_BIN = os.getenv("SAAS_DYNHAMR_PYTHON_BIN") or _legacy_saas_attr("DYNHAMR_PYTHON_BIN")
+SAAS_DYNHAMR_ROOT = os.getenv("SAAS_DYNHAMR_ROOT") or _legacy_saas_attr("DYNHAMR_ROOT")
+SAAS_VIPE_WORK_DIR = os.getenv("SAAS_VIPE_WORK_DIR") or _legacy_saas_attr("VIPE_WORK_DIR")
 
 REMOTE_USER_HOME = f"/home/{SAAS_USER}"
 REMOTE_SAAS_ROOT = os.getenv("SAAS_REMOTE_ROOT") or f"{REMOTE_USER_HOME}/Software-as-a-Service"
@@ -83,10 +93,13 @@ REMOTE_CORNER_CASE_OUTPUT_ROOT = "corner_images_controlnet"
 REMOTE_CORNER_CASE_LOCALIZATION_MODEL = "attention_points_sam"
 REMOTE_VLM_IMAGE_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "Post Annotation", "qwen_vlm_image.py")
 REMOTE_SEGMENTATION_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "DataraAI_segmentation.py")
-REMOTE_SUBTASK_ANNOTATOR_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "Post Annotation", "qwen_subtask_annotator.py")
 REMOTE_ROSE_RUNNER_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "DataraAI_rose_occlusion.py")
 REMOTE_ROSE_VERIFY_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "verify_rose_runtime.sh")
 REMOTE_ROSE_SETUP_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "setup_rose_runtime.sh")
+REMOTE_HAND_MESH_PIPELINE_SCRIPT = (
+    os.getenv("REMOTE_HAND_MESH_PIPELINE_SCRIPT")
+    or posixpath.join(REMOTE_SAAS_ROOT, "HandMotion", "hand_mesh_pipeline_runner.py")
+)
 REMOTE_SAM3_PACKAGE_ROOT = f"{REMOTE_USER_HOME}/packages/sam3"
 
 
@@ -106,23 +119,17 @@ def _ssh_session():
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     try:
-        client.connect(
-            hostname=hostname,
-            username=username,
-            key_filename=key_filename,
-            look_for_keys=False,
-            allow_agent=False,
-            timeout=15
-        )
+        key = paramiko.Ed25519Key.from_private_key_file(key_filename)
+        client.connect(hostname=hostname, username=username, pkey=key)
         yield client
-    except paramiko.AuthenticationException:
-        logger.error(f"Authentication failed for {username}@{hostname} using key {key_filename}")
-        raise
     except paramiko.SSHException as e:
         print(f"SSH connection error: {e}")
         raise
     except FileNotFoundError:
         print(f"Key file not found at: {key_filename}")
+        raise
+    except paramiko.AuthenticationException:
+        print("Authentication failed, please check your credentials.")
         raise
     finally:
         client.close()
@@ -148,6 +155,39 @@ def _run_command(client, command):
 def _run_bash_script(client, script_body):
     command = f'bash -lc "{_shell_escape(script_body)}"'
     return _run_command_with_status(client, command)
+
+
+def _run_bash_script_streaming(
+    client,
+    script_body,
+    *,
+    line_callback: Callable[[str], None] | None = None,
+):
+    command = f'bash -lc "{_shell_escape(script_body)}"'
+    stdin, stdout, stderr = client.exec_command(command, get_pty=True)
+    _ = stdin
+
+    stdout_lines: list[str] = []
+    while True:
+        line = stdout.readline() if stdout else ""
+        if line:
+            clean_line = line.rstrip("\r\n")
+            stdout_lines.append(clean_line)
+            if line_callback is not None:
+                try:
+                    line_callback(clean_line)
+                except Exception as exc:
+                    logger.warning("Streaming callback failed for command output '%s': %s", clean_line, exc)
+            continue
+
+        if not stdout or stdout.channel.exit_status_ready():
+            break
+
+    exit_status = stdout.channel.recv_exit_status() if stdout else 0
+    err = stderr.read().decode().strip() if stderr else ""
+    out = "\n".join(stdout_lines).strip()
+    logger.info("call_lambda_vm streaming command exit=%s stdout=%s stderr=%s", exit_status, out, err)
+    return out, err, exit_status
 
 
 def _sftp_mkdir_p(sftp, remote_dir):
@@ -200,6 +240,27 @@ def _rose_env_exports():
         exports.append(f'export ROSE_ROOT="{_shell_escape(SAAS_ROSE_ROOT)}"')
     if SAAS_ROSE_PYTHON_BIN:
         exports.append(f'export ROSE_PYTHON_BIN="{_shell_escape(SAAS_ROSE_PYTHON_BIN)}"')
+    exports.append("export PYTHONNOUSERSITE=1")
+    return "; ".join(exports)
+
+
+def _hand_motion_env_exports():
+    exports = []
+    exports.extend(
+        [
+            "unset VIPE_CMD",
+            "unset VIPE_BIN",
+            "unset DYNHAMR_PYTHON_CMD",
+        ]
+    )
+    if SAAS_VIPE_PYTHON_BIN:
+        exports.append(f'export VIPE_PYTHON_BIN="{_shell_escape(SAAS_VIPE_PYTHON_BIN)}"')
+    if SAAS_DYNHAMR_PYTHON_BIN:
+        exports.append(f'export DYNHAMR_PYTHON_BIN="{_shell_escape(SAAS_DYNHAMR_PYTHON_BIN)}"')
+    if SAAS_DYNHAMR_ROOT:
+        exports.append(f'export DYNHAMR_ROOT="{_shell_escape(SAAS_DYNHAMR_ROOT)}"')
+    if SAAS_VIPE_WORK_DIR:
+        exports.append(f'export VIPE_WORK_DIR="{_shell_escape(SAAS_VIPE_WORK_DIR)}"')
     exports.append("export PYTHONNOUSERSITE=1")
     return "; ".join(exports)
 
@@ -559,63 +620,130 @@ def remove_occlusion(
         return None, 500, str(exc)
 
 
-def generate_task_intelligence(video_url: str):
+def generate_hand_meshes(
+    *,
+    local_input_dir,
+    local_output_dir,
+    seq,
+    fps=30.0,
+    is_static=False,
+    stage_callback: Callable[[str], None] | None = None,
+):
     """
-    Run the subtask annotator script on the Lambda VM.
-    Fetches the output JSON file locally, then removes it from the VM.
-    Returns (local_json_path, status_code). On failure returns (None, status_code).
+    Upload a local frame folder to the Lambda VM, run the VM-side hand mesh
+    pipeline wrapper, fetch the generated OBJ bundle locally, and clean up the
+    remote job folder. Returns (local_output_dir, status_code, error_message).
     """
-    if not video_url:
-        return None, 400
+    if not local_input_dir or not local_output_dir:
+        return None, 400, "Missing input or output directory"
+    if not os.path.isdir(local_input_dir):
+        return None, 400, "Source image directory is missing"
 
-    safe_url = _shell_escape(video_url)
-    command = (
-        f'"{_shell_escape(SAAS_VLM_PYTHON_BIN)}" -s "{_shell_escape(REMOTE_SUBTASK_ANNOTATOR_SCRIPT)}" '
-        f'--asset_path "{safe_url}"'
-    )
-    logger.info("call_lambda_vm.generate_task_intelligence() command: %s", command)
+    os.makedirs(local_output_dir, exist_ok=True)
+
+    job_id = uuid.uuid4().hex[:12]
+    remote_root = f"/home/{SAAS_USER}/datara_dynhamr_jobs/{job_id}"
+    remote_input_dir = posixpath.join(remote_root, "input")
+    remote_output_dir = posixpath.join(remote_root, "output")
+    sequence_name = str(seq or f"sequence_{job_id}").strip() or f"sequence_{job_id}"
 
     try:
         with _ssh_session() as ssh_client:
-            # Check where the script exists on the remote VM
-            check_script_cmd = (
-                f'if [ -f "{_shell_escape(REMOTE_SUBTASK_ANNOTATOR_SCRIPT)}" ]; then echo "{_shell_escape(REMOTE_SUBTASK_ANNOTATOR_SCRIPT)}"; '
-                f'elif [ -f "{_shell_escape(posixpath.join(REMOTE_SAAS_ROOT, "Post Annotation", "qwen_subtask_annotator.py"))}" ]; then echo "{_shell_escape(posixpath.join(REMOTE_SAAS_ROOT, "Post Annotation", "qwen_subtask_annotator.py"))}"; '
-                f'elif [ -f "{_shell_escape(posixpath.join(REMOTE_SAAS_ROOT, "qwen_subtask_annotator.py"))}" ]; then echo "{_shell_escape(posixpath.join(REMOTE_SAAS_ROOT, "qwen_subtask_annotator.py"))}"; '
-                f'else echo "MISSING"; fi'
+            runner_found, runner_err = _run_command(
+                ssh_client,
+                f'test -f "{_shell_escape(REMOTE_HAND_MESH_PIPELINE_SCRIPT)}" && echo "__FOUND__"',
             )
-            script_path_out, _ = _run_command(ssh_client, check_script_cmd)
-            script_path_out = script_path_out.strip()
+            if "__FOUND__" not in runner_found:
+                message = f"Hand mesh pipeline runner script was not found at {REMOTE_HAND_MESH_PIPELINE_SCRIPT}"
+                logger.error("%s | stderr=%s", message, runner_err)
+                return None, 500, message
 
-            if script_path_out == "MISSING":
-                logger.error("qwen_subtask_annotator.py is missing from the Lambda VM. Ensure the SaaS repo is updated.")
-                return None, 404
-
-            command = (
-                f'"{_shell_escape(SAAS_VLM_PYTHON_BIN)}" -s "{script_path_out}" '
-                f'--asset_path "{safe_url}"'
-            )
-            stdout, stderr = _run_command(ssh_client, _remote_image_env_prefix() + command)
-            remote_json_path = (stdout.strip().split("\n")[-1].strip() if stdout else "") or ""
-
-            if not remote_json_path or not remote_json_path.endswith(".json"):
-                logger.error("Annotator script failed or returned invalid path: %s", stderr or stdout)
-                return None, 500
-
-            os.makedirs(DATASET_LIST_DIR, exist_ok=True)
-            local_json_path = os.path.join(DATASET_LIST_DIR, os.path.basename(remote_json_path))
+            if stage_callback is not None:
+                stage_callback("uploading_to_vm")
 
             sftp = ssh_client.open_sftp()
             try:
-                sftp.get(remote_json_path, local_json_path)
+                _sftp_put_tree(sftp, local_input_dir, remote_input_dir)
             finally:
                 sftp.close()
 
-            _run_command(ssh_client, f"rm -f '{_shell_escape(remote_json_path)}'")
+            _run_command(
+                ssh_client,
+                f'chmod +x "{_shell_escape(REMOTE_HAND_MESH_PIPELINE_SCRIPT)}"',
+            )
 
-            if os.path.exists(local_json_path):
-                return local_json_path, 200
-            return None, 500
-    except Exception as e:
-        logger.error("generate_task_intelligence error: %s", e)
-        return None, 500
+            def handle_stage_line(line: str) -> None:
+                marker = "__STAGE__:"
+                if not line.startswith(marker):
+                    return
+                stage_name = line[len(marker) :].strip()
+                if stage_name and stage_callback is not None:
+                    stage_callback(stage_name)
+
+            export_prefix = _hand_motion_env_exports()
+            runner_script = export_prefix + "; " if export_prefix else ""
+            runner_script += (
+                f'cd "{_shell_escape(REMOTE_SAAS_ROOT)}" && '
+                f'"{_shell_escape(SAAS_HAND_MOTION_PYTHON_BIN)}" -s '
+                f'"{_shell_escape(REMOTE_HAND_MESH_PIPELINE_SCRIPT)}" '
+                f'--image_dir "{_shell_escape(remote_input_dir)}" '
+                f'--output_dir "{_shell_escape(remote_output_dir)}" '
+                f'--seq "{_shell_escape(sequence_name)}" '
+                f'--fps "{float(fps):g}" '
+                f'--is_static "{"true" if is_static else "false"}"'
+            )
+            stdout, stderr, runner_status = _run_bash_script_streaming(
+                ssh_client,
+                runner_script,
+                line_callback=handle_stage_line,
+            )
+            if runner_status != 0:
+                logger.error("Hand mesh pipeline runner failed: %s", stderr or stdout)
+                debug_message = (
+                    (stderr or stdout or "Dyn-HaMR hand mesh generation failed").rstrip()
+                    + f"\n[remote_debug_root] {remote_root}"
+                    + f"\n[remote_output_dir] {remote_output_dir}"
+                    + f"\n[remote_dynhamr_log] {posixpath.join(remote_output_dir, 'logs', 'dynhamr.log')}"
+                )
+                return None, 500, debug_message
+
+            remote_result_dir = remote_output_dir
+            for line in reversed(stdout.splitlines()):
+                candidate = line.strip()
+                if candidate.startswith(remote_output_dir):
+                    remote_result_dir = candidate
+                    break
+
+            find_stdout, find_stderr, find_status = _run_bash_script(
+                ssh_client,
+                f'find "{_shell_escape(remote_result_dir)}" -type f -iname "*.obj" | head -n 1',
+            )
+            if find_status != 0 or not find_stdout.strip():
+                logger.error(
+                    "Hand mesh pipeline completed without OBJ meshes. stdout=%s stderr=%s find_stderr=%s",
+                    stdout,
+                    stderr,
+                    find_stderr,
+                )
+                return (
+                    None,
+                    500,
+                    "Hand mesh pipeline completed without returning OBJ meshes"
+                    + f"\n[remote_debug_root] {remote_root}"
+                    + f"\n[remote_output_dir] {remote_output_dir}"
+                    + f"\n[remote_dynhamr_log] {posixpath.join(remote_output_dir, 'logs', 'dynhamr.log')}",
+                )
+
+            sftp = ssh_client.open_sftp()
+            try:
+                _sftp_get_tree(sftp, remote_result_dir, local_output_dir)
+            finally:
+                sftp.close()
+
+            _run_command(ssh_client, f'rm -rf "{_shell_escape(remote_root)}"')
+            if os.path.isdir(local_output_dir):
+                return local_output_dir, 200, ""
+            return None, 500, "Hand mesh output folder could not be downloaded"
+    except Exception as exc:
+        logger.error("generate_hand_meshes error: %s", exc, exc_info=True)
+        return None, 500, str(exc)
