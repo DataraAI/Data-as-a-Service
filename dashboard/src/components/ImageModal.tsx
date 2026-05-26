@@ -1,6 +1,5 @@
-import { ChevronLeft, ChevronRight, Copy, Download, Film, Info, Loader2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import TaskIntelligencePanel from "./TaskIntelligencePanel";
+import { X, Loader2, Copy, ChevronLeft, ChevronRight, Info, Download, Film } from "lucide-react";
 import { ThreeDViewer } from "./ThreeDViewer";
 
 interface ImageModalProps {
@@ -202,7 +201,7 @@ export function ImageModal({
       <div className="relative flex flex-1 items-center justify-center overflow-hidden p-8">
         {image.type === "3d" ? (
           <div className="relative h-full w-full max-w-4xl rounded-lg border border-border bg-card/50">
-            <ThreeDViewer url={assetUrl} />
+            <ThreeDViewer url={assetUrl} fileName={image.name} />
           </div>
         ) : isVideo ? (
           <video
@@ -537,14 +536,6 @@ export function ImageModal({
                 </button>
               </form>
             </div>
-          )}
-
-          {isVideo && (
-            <TaskIntelligencePanel
-              videoID={image.asset_id}
-              videoURL={image.url}
-              datasetName={defaultDatasetName(image, "task")}
-            />
           )}
         </div>
       </div>

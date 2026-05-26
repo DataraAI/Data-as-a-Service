@@ -1,11 +1,12 @@
 import React, { Suspense } from 'react';
 import { Canvas, useLoader } from '@react-three/fiber';
 import { OrbitControls, Stage, Html } from '@react-three/drei';
-import { STLLoader, GLTFLoader } from 'three-stdlib';
+import { STLLoader, GLTFLoader, OBJLoader } from 'three-stdlib';
 import { Loader2, AlertTriangle } from 'lucide-react';
 
 interface ModelProps {
     url: string;
+    fileName?: string;
 }
 
 function STLModel({ url }: ModelProps) {
@@ -23,11 +24,21 @@ function GLBModel({ url }: ModelProps) {
     return <primitive object={gltf.scene} />;
 }
 
-function ModelSelector({ url }: ModelProps) {
-    const isGLB = url.toLowerCase().endsWith('.glb') || url.toLowerCase().endsWith('.gltf') || url.toLowerCase().includes('.glb?') || url.toLowerCase().includes('.gltf?');
+function OBJModel({ url }: ModelProps) {
+    const object = useLoader(OBJLoader, url);
+    return <primitive object={object} />;
+}
+
+function ModelSelector({ url, fileName }: ModelProps) {
+    const probe = (fileName || url).toLowerCase();
+    const isGLB = probe.endsWith('.glb') || probe.endsWith('.gltf') || probe.includes('.glb?') || probe.includes('.gltf?');
+    const isOBJ = probe.endsWith('.obj') || probe.includes('.obj?');
 
     if (isGLB) {
         return <GLBModel url={url} />;
+    }
+    if (isOBJ) {
+        return <OBJModel url={url} />;
     }
     return <STLModel url={url} />;
 }
@@ -48,16 +59,18 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, fallbac
 
 interface ThreeDViewerProps {
     url: string;
+    fileName?: string;
 }
 
-export function ThreeDViewer({ url }: ThreeDViewerProps) {
+export function ThreeDViewer({ url, fileName }: ThreeDViewerProps) {
     return (
         <div className="w-full h-full relative">
             <Canvas shadows gl={{ antialias: true }} camera={{ position: [0, 0, 150], fov: 50 }}>
                 <ErrorBoundary
+                    key={fileName || url}
                     fallback={
                         <Html center>
-                            <div className="flex flex-col items-center rounded border border-destructive/40 bg-card/90 p-4 text-destructive shadow-xl backdrop-blur-sm">
+                            <div className="flex flex-col items-center bg-slate-900/80 p-4 rounded border border-red-500 text-red-500">
                                 <AlertTriangle className="w-6 h-6 mb-2" />
                                 <span className="text-xs font-mono">Failed to load 3D model</span>
                             </div>
@@ -67,7 +80,7 @@ export function ThreeDViewer({ url }: ThreeDViewerProps) {
                     <Suspense
                         fallback={
                             <Html center>
-                                <div className="flex items-center space-x-2 rounded bg-card/90 p-2 text-primary shadow-xl backdrop-blur-sm">
+                                <div className="flex items-center space-x-2 text-orange-500 bg-slate-900/80 p-2 rounded">
                                     <Loader2 className="w-5 h-5 animate-spin" />
                                     <span className="text-xs font-mono">Loading Model...</span>
                                 </div>
@@ -75,7 +88,7 @@ export function ThreeDViewer({ url }: ThreeDViewerProps) {
                         }
                     >
                         <Stage environment="city" intensity={0.6}>
-                            <ModelSelector url={url} />
+                            <ModelSelector url={url} fileName={fileName} />
                         </Stage>
                     </Suspense>
                 </ErrorBoundary>
