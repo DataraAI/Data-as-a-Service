@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+﻿import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import axios from "axios";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -90,6 +90,8 @@ type StoragePreviewKey = "carAutomation" | "serverrack" | "humanoid" | "warehous
 interface CategoryConfig {
   routeKey: CategoryKey;
   previewKey: StoragePreviewKey;
+  publicSlug: string;
+  aliases: string[];
   label: string;
   description: string;
 }
@@ -118,6 +120,8 @@ const CATEGORIES: CategoryConfig[] = [
   {
     routeKey: "carAutomation",
     previewKey: "carAutomation",
+    publicSlug: "automotive",
+    aliases: ["carAutomation", "carautomation"],
     label: "Automotive",
     description:
       "Assembly, inspection, and vehicle-production data for robotics workflows across automotive environments.",
@@ -125,6 +129,8 @@ const CATEGORIES: CategoryConfig[] = [
   {
     routeKey: "serverrack",
     previewKey: "serverrack",
+    publicSlug: "data-center",
+    aliases: ["serverrack", "serverracks", "datacenter", "datacentre", "data-center"],
     label: "Data Center",
     description:
       "Data-center interaction, port-level operation, and maintenance-focused datasets for rack and cabling tasks.",
@@ -132,6 +138,8 @@ const CATEGORIES: CategoryConfig[] = [
   {
     routeKey: "dexterity",
     previewKey: "humanoid",
+    publicSlug: "dexterity",
+    aliases: ["dexterity", "humanoid"],
     label: "Dexterity",
     description:
       "Fine-motor manipulation and embodied task data for dexterous robotic systems operating across practical, object-centric scenarios.",
@@ -139,6 +147,8 @@ const CATEGORIES: CategoryConfig[] = [
   {
     routeKey: "warehouse",
     previewKey: "warehouse",
+    publicSlug: "warehouse",
+    aliases: ["warehouse"],
     label: "Warehouse",
     description:
       "Logistics, handling, and storage-operation data for robotic movement, picking, and material flow.",
@@ -289,10 +299,11 @@ function normalizeCategoryValue(value?: string | null) {
 
 function getCategoryByRouteKey(value?: string | null) {
   const normalizedValue = normalizeCategoryValue(value);
-  return (
-    CATEGORIES.find((category) => normalizeCategoryValue(category.routeKey) === normalizedValue) ??
-    null
-  );
+  return CATEGORIES.find((category) => {
+    if (normalizeCategoryValue(category.routeKey) === normalizedValue) return true;
+    if (normalizeCategoryValue(category.publicSlug) === normalizedValue) return true;
+    return category.aliases.some((alias) => normalizeCategoryValue(alias) === normalizedValue);
+  }) ?? null;
 }
 
 function pathBelongsToCategory(fullPath: string, routeKey: CategoryKey) {
@@ -300,7 +311,10 @@ function pathBelongsToCategory(fullPath: string, routeKey: CategoryKey) {
   if (segments.length === 0) return false;
   const categorySegment =
     segments[0] === "my" ? segments[1] : segments[0] === "admin" ? segments[2] : segments[0];
-  return normalizeCategoryValue(categorySegment) === normalizeCategoryValue(routeKey);
+  return (
+    getCategoryByRouteKey(categorySegment)?.routeKey === routeKey ||
+    normalizeCategoryValue(categorySegment) === normalizeCategoryValue(routeKey)
+  );
 }
 
 function buildCategoryHeroImagePaths(category: CategoryConfig) {
@@ -337,6 +351,11 @@ function buildViewerPath(fullPath: string, imageName?: string, basePath = "/view
 
 function withViewerBase(viewerPath: string, basePath: string) {
   return viewerPath.startsWith("/viewer") ? `${basePath}${viewerPath.slice("/viewer".length)}` : viewerPath;
+}
+
+function buildCategoryLandingPath(category: CategoryConfig, basePath: string) {
+  const segment = basePath.startsWith("/robodatahub") ? category.publicSlug : category.routeKey;
+  return `${basePath}/${segment}`;
 }
 
 function groupVlmPromptTags(tags: string[]) {
@@ -1518,121 +1537,160 @@ export default function DataViewer() {
 
   const renderRootLanding = () => (
     <div className="mx-auto w-full max-w-[1440px] px-4 py-12 sm:px-6 md:py-16">
-      <div className="min-w-0">
-        <div className="marketing-hero-data mb-8 overflow-hidden rounded-[34px] border border-slate-200 p-6 shadow-[0_28px_70px_rgba(15,23,42,0.1)] md:p-8">
-          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 font-sans-tech text-[11px] uppercase tracking-[0.22em] text-primary">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
-            RoboDataHub
-          </div>
-          <h1 className="mb-4 max-w-3xl font-sans-tech text-[clamp(2.3rem,4.8vw,4rem)] font-black tracking-[-0.05em] text-slate-950">
-            RoboDataHub
-          </h1>
-          <p className="max-w-3xl font-sans-tech text-base leading-8 text-slate-600">
-            Browse DataraAI&apos;s public physical-AI datasets by category, or search a known path
-            when you already know the folder you want.
-          </p>
-          <div className="mt-6 flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => navigate(`${viewerBasePath}/my`)}
-              className="inline-flex h-12 items-center gap-2 rounded-xl border border-primary/20 bg-primary px-5 font-sans-tech text-sm font-bold text-primary-foreground transition-colors hover:opacity-90"
-            >
-              My private data
-              <ArrowRight className="h-4 w-4" />
-            </button>
-            {user?.role === "admin" && (
-              <button
-                type="button"
-                onClick={() => navigate(`${viewerBasePath}/admin/${user.storageSlug}`)}
-                className="inline-flex h-12 items-center gap-2 rounded-xl border border-slate-300 bg-white px-5 font-sans-tech text-sm font-semibold text-slate-700 transition-colors hover:border-primary/20 hover:text-primary"
-              >
-                Admin access
-                <Shield className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-        </div>
+      <div className="overflow-hidden rounded-[34px] border border-slate-200 bg-white shadow-[0_28px_70px_rgba(15,23,42,0.1)]">
+        <div className="grid lg:grid-cols-[240px_minmax(0,1fr)]">
+          <aside className="border-b border-slate-200 bg-slate-50/90 p-6 lg:border-b-0 lg:border-r">
+            <div className="text-lg font-extrabold tracking-[0.04em] text-primary">DataraAI</div>
+            <div className="mt-2 text-base font-bold text-slate-950">Physical AI Data</div>
+            <p className="mt-4 text-sm leading-7 text-slate-600">
+              Start in a vertical, keep search inside RoboDataHub, and use the same live viewer
+              routes once you move into real endpoint folders.
+            </p>
 
-        <PathSearchPanel
-          title="Search the full library"
-          description="Use search to jump straight to a brand, endpoint folder, or deeper asset path anywhere in RoboDataHub."
-          value={pathSearchText}
-          loading={pathSearchLoading}
-          suggestions={pathSuggestions}
-          placeholder="Search any folder or path, e.g. BMW or carAutomation/BMW/frontGrille"
-          submitDisabled={pathSuggestions.length === 0}
-          onFocus={() => setPathSearchTouched(true)}
-          onChange={(value) => {
-            setPathSearchTouched(true);
-            setPathSearchText(value);
-          }}
-          onSubmit={handlePathSearchSubmit}
-          onSuggestionClick={handlePathSuggestionClick}
-          renderHighlightedPath={renderHighlightedPath}
-        />
+            <div className="mt-8">
+              <div className="px-1 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">
+                Verticals
+              </div>
+              <div className="mt-3 space-y-2">
+                {CATEGORIES.map((category) => (
+                  <button
+                    key={category.routeKey}
+                    type="button"
+                    onClick={() => navigate(buildCategoryLandingPath(category, viewerBasePath))}
+                    className="flex w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left transition-colors hover:border-primary/20 hover:bg-primary/5"
+                  >
+                    <span className={`h-3 w-3 shrink-0 rounded-[4px] ${getCategoryAccent(category.routeKey).dot}`} />
+                    <span>
+                      <span className="block text-sm font-bold text-slate-950">{category.label}</span>
+                      <span className="block text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                        {getCategoryNarrative(category).statValue}
+                      </span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </aside>
 
-        <div className="mt-10">
-          <div className="mb-6 flex items-center gap-3">
-            <div className="h-3 w-3 rounded-[4px] bg-primary shadow-[0_0_12px_rgba(13,148,136,0.35)]" />
-            <div className="text-2xl font-extrabold text-slate-950">Categories</div>
-          </div>
-          <p className="mb-8 max-w-3xl text-sm leading-7 text-slate-600">
-            Start with the four active DataraAI categories, then step into the endpoint folders
-            inside each one.
-          </p>
+          <div className="p-6 md:p-8">
+            <div className="marketing-hero-data overflow-hidden rounded-[30px] border border-slate-200 p-6 shadow-[0_18px_44px_rgba(15,23,42,0.06)] md:p-8">
+              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 font-sans-tech text-[11px] uppercase tracking-[0.22em] text-primary">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
+                RoboDataHub
+              </div>
+              <h1 className="mb-4 max-w-3xl font-sans-tech text-[clamp(2.5rem,5vw,4.3rem)] font-black tracking-[-0.06em] text-slate-950">
+                Browse live physical-AI datasets by vertical.
+              </h1>
+              <p className="max-w-3xl font-sans-tech text-base leading-8 text-slate-600">
+                The public RoboDataHub shell now follows the new-ui-changes structure, while the
+                actual folder traversal, auth-aware access, and dataset previews still come from the
+                current main platform.
+              </p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                {isAuthenticated && isApproved ? (
+                  <button
+                    type="button"
+                    onClick={() => navigate(`${viewerBasePath}/my`)}
+                    className="inline-flex h-12 items-center gap-2 rounded-xl border border-primary/20 bg-primary px-5 font-sans-tech text-sm font-bold text-primary-foreground transition-colors hover:opacity-90"
+                  >
+                    My private data
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
+                ) : (
+                  <Link
+                    to={buildAuthPath("register", viewerBasePath)}
+                    className="inline-flex h-12 items-center gap-2 rounded-xl border border-primary/20 bg-primary px-5 font-sans-tech text-sm font-bold text-primary-foreground transition-colors hover:opacity-90"
+                  >
+                    Get Access
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                )}
+                {user?.role === "admin" && (
+                  <button
+                    type="button"
+                    onClick={() => navigate(`${viewerBasePath}/admin/${user.storageSlug}`)}
+                    className="inline-flex h-12 items-center gap-2 rounded-xl border border-slate-300 bg-white px-5 font-sans-tech text-sm font-semibold text-slate-700 transition-colors hover:border-primary/20 hover:text-primary"
+                  >
+                    Admin access
+                    <Shield className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            </div>
 
-          <div className="grid gap-6 lg:grid-cols-2">
-            {CATEGORIES.map((category) => (
-              <section
-                key={category.routeKey}
-                className="grid gap-6 overflow-hidden rounded-[30px] border border-slate-200 bg-white p-5 shadow-[0_24px_60px_rgba(15,23,42,0.08)] lg:grid-cols-[minmax(0,1fr)_320px]"
-              >
-                <div className="flex flex-col justify-between">
-                  <div>
-                    <div className={`mb-4 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${getCategoryAccent(category.routeKey).chip}`}>
-                      <span className={`h-2 w-2 rounded-full ${getCategoryAccent(category.routeKey).dot}`} />
+            <div className="mt-8">
+              <PathSearchPanel
+                title="Search the full library"
+                description="Jump straight to a brand, endpoint folder, or deeper asset path anywhere in RoboDataHub."
+                value={pathSearchText}
+                loading={pathSearchLoading}
+                suggestions={pathSuggestions}
+                placeholder="Search any folder or path, e.g. BMW or carAutomation/BMW/frontGrille"
+                submitDisabled={pathSuggestions.length === 0}
+                onFocus={() => setPathSearchTouched(true)}
+                onChange={(value) => {
+                  setPathSearchTouched(true);
+                  setPathSearchText(value);
+                }}
+                onSubmit={handlePathSearchSubmit}
+                onSuggestionClick={handlePathSuggestionClick}
+                renderHighlightedPath={renderHighlightedPath}
+              />
+            </div>
+
+            <div className="mt-10 grid gap-6 xl:grid-cols-2">
+              {CATEGORIES.map((category) => (
+                <section
+                  key={category.routeKey}
+                  className="grid gap-6 overflow-hidden rounded-[30px] border border-slate-200 bg-white p-5 shadow-[0_18px_44px_rgba(15,23,42,0.06)] lg:grid-cols-[minmax(0,1fr)_300px]"
+                >
+                  <div className="flex flex-col justify-between">
+                    <div>
+                      <div className={`mb-4 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${getCategoryAccent(category.routeKey).chip}`}>
+                        <span className={`h-2 w-2 rounded-full ${getCategoryAccent(category.routeKey).dot}`} />
                       {getCategoryStory(category).eyebrow}
-                    </div>
-                    <div className="text-2xl font-extrabold tracking-[-0.03em] text-slate-950">
-                      {category.label}
-                    </div>
-                    <p className="mt-4 max-w-xl text-sm leading-7 text-slate-600">
+                      </div>
+                      <div className="text-2xl font-extrabold tracking-[-0.03em] text-slate-950">
+                        {category.label}
+                      </div>
+                      <p className="mt-4 max-w-xl text-sm leading-7 text-slate-600">
                       {getCategoryStory(category).summary}
-                    </p>
-                  </div>
-                  <div className="mt-6 flex flex-wrap items-center gap-3">
-                    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-slate-500">
-                      Browse endpoint folders
-                    </span>
-                    <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-slate-500">
+                      </p>
+                    </div>
+                    <div className="mt-6 flex flex-wrap items-center gap-3">
+                      <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-slate-500">
+                        Live viewer + hover previews
+                      </span>
+                      <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-slate-500">
                       {getCategoryStory(category).statLabel}: {getCategoryStory(category).statValue}
-                    </span>
+                      </span>
+                    </div>
+                    <div className="mt-6">
+                      <button
+                        type="button"
+                        onClick={() => navigate(buildCategoryLandingPath(category, viewerBasePath))}
+                        className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 font-sans-tech text-sm font-bold text-primary-foreground transition-colors hover:opacity-90"
+                      >
+                        Enter Category
+                        <ArrowRight className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
-                  <div className="mt-6">
-                    <button
-                      type="button"
-                      onClick={() => navigate(`${viewerBasePath}/${category.routeKey}`)}
-                      className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 font-sans-tech text-sm font-bold text-primary-foreground transition-colors hover:opacity-90"
-                    >
-                      Enter Category
-                      <ArrowRight className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  {buildCategoryHeroImagePaths(category)
-                    .slice(0, 4)
-                    .map((blobPath, index) => (
-                      <CategoryHeroImage
-                        key={`${category.routeKey}-${blobPath}`}
-                        blobPath={blobPath}
-                        alt={`${category.label} preview ${index + 1}`}
-                      />
-                    ))}
-                </div>
-              </section>
-            ))}
+                  <div className="grid grid-cols-2 gap-3">
+                    {buildCategoryHeroImagePaths(category)
+                      .slice(0, 4)
+                      .map((blobPath, index) => (
+                        <CategoryHeroImage
+                          key={`${category.routeKey}-${blobPath}`}
+                          blobPath={blobPath}
+                          alt={`${category.label} preview ${index + 1}`}
+                        />
+                      ))}
+                  </div>
+                </section>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -1641,40 +1699,47 @@ export default function DataViewer() {
 
   const renderCategoryLanding = (category: CategoryConfig) => (
     <div className="mx-auto w-full max-w-[1440px] px-4 py-12 sm:px-6 md:py-16">
-      <div className="min-w-0">
-        <div className="overflow-hidden rounded-[34px] border border-slate-200 bg-white shadow-[0_28px_70px_rgba(15,23,42,0.1)]">
-          <div className="marketing-hero-data grid gap-8 border-b border-slate-200 p-6 md:grid-cols-[minmax(0,1.1fr)_300px] md:p-8">
-            <div className="max-w-3xl">
-              <div className={`mb-5 inline-flex items-center gap-2 rounded-full border px-4 py-2 font-sans-tech text-[11px] uppercase tracking-[0.22em] ${getCategoryAccent(category.routeKey).chip}`}>
-                {getCategoryStory(category).eyebrow}
-              </div>
-              <h1 className="text-[clamp(2.3rem,4.8vw,4rem)] font-black tracking-[-0.05em] text-slate-950">
-                RoboDataHub {category.label}
-              </h1>
-              <p className="mt-5 max-w-2xl text-base leading-8 text-slate-600 md:text-lg">
-                {getCategoryStory(category).summary}
-              </p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-slate-500">
-                  {categoryPreviews.length} public endpoint folders
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-slate-500">
-                  {getCategoryStory(category).statLabel}: {getCategoryStory(category).statValue}
-                </span>
-              </div>
+      <div className="overflow-hidden rounded-[34px] border border-slate-200 bg-white shadow-[0_28px_70px_rgba(15,23,42,0.1)]">
+        <div className="grid lg:grid-cols-[250px_minmax(0,1fr)]">
+          <aside className="border-b border-slate-200 bg-slate-50/90 p-6 lg:border-b-0 lg:border-r">
+            <button
+              type="button"
+              onClick={() => navigate(viewerBasePath)}
+              className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
+            >
+              <ArrowRight className="h-4 w-4 rotate-180" />
+              All verticals
+            </button>
+
+            <div className="mt-6 text-lg font-extrabold tracking-[0.04em] text-primary">RoboDataHub</div>
+            <div className="mt-2 text-base font-bold text-slate-950">{category.label}</div>
+            <p className="mt-4 text-sm leading-7 text-slate-600">{category.description}</p>
+
+            <div className="mt-8 space-y-2">
+              {CATEGORIES.map((item) => {
+                const isActive = item.routeKey === category.routeKey;
+                return (
+                  <button
+                    key={item.routeKey}
+                    type="button"
+                    onClick={() => navigate(buildCategoryLandingPath(item, viewerBasePath))}
+                    className={`flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-colors ${
+                      isActive
+                        ? `${getCategoryAccent(item.routeKey).chip} border-current/20`
+                        : "border-slate-200 bg-white hover:border-primary/20 hover:bg-primary/5"
+                    }`}
+                  >
+                    <span className={`h-3 w-3 shrink-0 rounded-[4px] ${getCategoryAccent(item.routeKey).dot}`} />
+                    <span className="text-sm font-bold">{item.label}</span>
+                  </button>
+                );
+              })}
             </div>
 
-            <CategoryHeroImage
-              blobPath={buildCategoryHeroImagePaths(category)[0]}
-              alt={`${category.label} hero`}
-            />
-          </div>
-
-          <div className="p-6 md:p-8">
-            <div className="mb-8">
+            <div className="mt-8">
               <PathSearchPanel
-                title={`Search inside ${category.label}`}
-                description={`Jump to a brand, endpoint folder, or deeper asset path within the ${category.label.toLowerCase()} catalog while keeping the current viewer access rules intact.`}
+                title={`Search ${category.label}`}
+                description={`Jump to a brand, endpoint folder, or deeper asset path within the ${category.label.toLowerCase()} catalog.`}
                 value={pathSearchText}
                 loading={pathSearchLoading}
                 suggestions={pathSuggestions}
@@ -1690,29 +1755,100 @@ export default function DataViewer() {
                 renderHighlightedPath={renderHighlightedPath}
               />
             </div>
+          </aside>
 
-            {categoryPreviewsLoading ? (
-              <div className="flex min-h-[220px] items-center justify-center rounded-[24px] border border-slate-200 bg-slate-50">
-                <div className="flex items-center gap-3 text-sm text-slate-500">
-                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                  Loading folder previews...
+          <div className="min-w-0">
+            <div className="marketing-hero-data grid gap-8 border-b border-slate-200 p-6 md:grid-cols-[minmax(0,1.1fr)_300px] md:p-8">
+              <div className="max-w-3xl">
+                <div className={`mb-5 inline-flex items-center gap-2 rounded-full border px-4 py-2 font-sans-tech text-[11px] uppercase tracking-[0.22em] ${getCategoryAccent(category.routeKey).chip}`}>
+                {getCategoryStory(category).eyebrow}
+                </div>
+                <h1 className="text-[clamp(2.5rem,5vw,4.2rem)] font-black tracking-[-0.06em] text-slate-950">
+                  RoboDataHub {category.label}
+                </h1>
+                <p className="mt-5 max-w-2xl text-base leading-8 text-slate-600 md:text-lg">
+                {getCategoryStory(category).summary}
+                </p>
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-slate-500">
+                    {categoryPreviews.length} public endpoint folders
+                  </span>
+                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-slate-500">
+                    {getCategoryStory(category).statLabel}: {getCategoryStory(category).statValue}
+                  </span>
                 </div>
               </div>
-            ) : categoryPreviews.length > 0 ? (
-              <div className="grid gap-5 lg:grid-cols-2">
-                {categoryPreviews.map((item) => (
-                  <CategoryDatasetPreviewCard
-                    key={item.full_path}
-                    item={item}
-                    onClick={() => handleCategoryPreviewClick(item)}
-                  />
-                ))}
+
+              <CategoryHeroImage
+                blobPath={buildCategoryHeroImagePaths(category)[0]}
+                alt={`${category.label} hero`}
+              />
+            </div>
+
+            <div className="border-b border-slate-200 bg-slate-50/70 px-6 py-5 md:px-8">
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="rounded-[20px] border border-slate-200 bg-white px-5 py-4">
+                  <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+                    Public folders
+                  </div>
+                  <div className="mt-2 text-2xl font-black tracking-[-0.05em] text-slate-950">
+                    {categoryPreviews.length}
+                  </div>
+                </div>
+                <div className="rounded-[20px] border border-slate-200 bg-white px-5 py-4">
+                  <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+                    Preview mode
+                  </div>
+                  <div className="mt-2 text-2xl font-black tracking-[-0.05em] text-slate-950">
+                    Hover video
+                  </div>
+                </div>
+                <div className="rounded-[20px] border border-slate-200 bg-white px-5 py-4">
+                  <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+                    Search scope
+                  </div>
+                  <div className="mt-2 text-2xl font-black tracking-[-0.05em] text-slate-950">
+                    {category.label}
+                  </div>
+                </div>
               </div>
-            ) : (
-              <div className="rounded-[24px] border border-dashed border-slate-300 bg-slate-50 p-6 text-sm leading-7 text-slate-500">
-                No public endpoint folders are available in this category yet.
+            </div>
+
+            <div className="p-6 md:p-8">
+              <div className="mb-8">
+                <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-primary">
+                  Live folder previews
+                </div>
+                <p className="max-w-3xl text-sm leading-7 text-slate-600">
+                  Real accessible endpoint folders stay backend-driven here. The large preview tile
+                  keeps the current hover-video behavior, while search and folder traversal continue
+                  into the existing viewer.
+                </p>
               </div>
-            )}
+
+              {categoryPreviewsLoading ? (
+                <div className="flex min-h-[220px] items-center justify-center rounded-[24px] border border-slate-200 bg-slate-50">
+                  <div className="flex items-center gap-3 text-sm text-slate-500">
+                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                    Loading folder previews...
+                  </div>
+                </div>
+              ) : categoryPreviews.length > 0 ? (
+                <div className="grid gap-5 lg:grid-cols-2">
+                  {categoryPreviews.map((item) => (
+                    <CategoryDatasetPreviewCard
+                      key={item.full_path}
+                      item={item}
+                      onClick={() => handleCategoryPreviewClick(item)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-[24px] border border-dashed border-slate-300 bg-slate-50 p-6 text-sm leading-7 text-slate-500">
+                  No public endpoint folders are available in this category yet.
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
