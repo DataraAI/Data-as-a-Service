@@ -13,6 +13,7 @@ export interface CatalogCard {
   hours: string;
   pathLabel: string;
   images: CatalogImageSet;
+  livePathHints?: string[];
 }
 
 export interface CatalogSection {
@@ -66,6 +67,7 @@ export const ROOT_SHOWCASE_SECTIONS: RootShowcaseSection[] = [
         hours: "1,200 hrs",
         pathLabel: "dataCtr/cabling/rackPatch",
         images: imageSet("serverrack/serverrack1.png", "serverrack/serverrack3.png", "serverrack/serverrack2.png", "serverrack/serverrack4.png"),
+        livePathHints: ["ethernetCable"],
       },
       {
         title: "Loop Cable Installation",
@@ -76,6 +78,7 @@ export const ROOT_SHOWCASE_SECTIONS: RootShowcaseSection[] = [
         hours: "600 hrs",
         pathLabel: "dataCtr/cabling/loopCable",
         images: imageSet("serverrack/serverrack4.png", "serverrack/serverrack1.png", "serverrack/serverrack2.png", "serverrack/serverrack3.png"),
+        livePathHints: ["AD-Plugging-Cable"],
       },
       {
         title: "Server Rack Inspection",
@@ -86,6 +89,7 @@ export const ROOT_SHOWCASE_SECTIONS: RootShowcaseSection[] = [
         hours: "840 hrs",
         pathLabel: "dataCtr/server/rackInspect",
         images: imageSet("serverrack/serverrack2.png", "serverrack/serverrack1.png", "serverrack/serverrack4.png", "serverrack/serverrack3.png"),
+        livePathHints: ["datacenterRack"],
       },
       {
         title: "Hardware Swap & Replacement",
@@ -96,6 +100,7 @@ export const ROOT_SHOWCASE_SECTIONS: RootShowcaseSection[] = [
         hours: "720 hrs",
         pathLabel: "dataCtr/hardware/hwSwap",
         images: imageSet("serverrack/serverrack3.png", "serverrack/serverrack1.png", "serverrack/serverrack2.png", "serverrack/serverrack4.png"),
+        livePathHints: ["switchTray"],
       },
     ],
   },
@@ -114,6 +119,7 @@ export const ROOT_SHOWCASE_SECTIONS: RootShowcaseSection[] = [
         hours: "1,200 hrs",
         pathLabel: "warehouse/pick/shelfInteract",
         images: imageSet("warehouse/warehouse2.png", "warehouse/warehouse4.png", "warehouse/warehouse3.png", "warehouse/warehouse1.png"),
+        livePathHints: ["AVnavigation"],
       },
       {
         title: "Pallet Stacking & Transport",
@@ -162,6 +168,7 @@ export const ROOT_SHOWCASE_SECTIONS: RootShowcaseSection[] = [
         hours: "600 hrs",
         pathLabel: "humanoid/kitchen/dishwashing",
         images: imageSet("humanoid/humanoid3.png", "humanoid/humanoid5.png", "humanoid/humanoid4.png", "humanoid/humanoid1.png"),
+        livePathHints: ["dishWasherUnloading"],
       },
       {
         title: "Surface Cleaning & Wiping",
@@ -210,6 +217,7 @@ export const ROOT_SHOWCASE_SECTIONS: RootShowcaseSection[] = [
         hours: "2,100 hrs",
         pathLabel: "carAuto/BMW/frontGrille",
         images: imageSet("carAutomation/carAutomation2.png", "carAutomation/carAutomation5.png", "carAutomation/carAutomation3.png", "carAutomation/carAutomation4.png"),
+        livePathHints: ["frontGrille"],
       },
       {
         title: "Front Seat Installation",
@@ -220,6 +228,7 @@ export const ROOT_SHOWCASE_SECTIONS: RootShowcaseSection[] = [
         hours: "1,400 hrs",
         pathLabel: "carAuto/Porsche/frontSeat",
         images: imageSet("carAutomation/carAutomation3.png", "carAutomation/carAutomation4.png", "carAutomation/carAutomation2.png", "carAutomation/carAutomation5.png"),
+        livePathHints: ["frontSeat"],
       },
       {
         title: "Passenger Seat QC Inspection",
@@ -230,6 +239,7 @@ export const ROOT_SHOWCASE_SECTIONS: RootShowcaseSection[] = [
         hours: "900 hrs",
         pathLabel: "carAuto/hyundai/passengerSeat",
         images: imageSet("carAutomation/carAutomation4.png", "carAutomation/carAutomation3.png", "carAutomation/carAutomation5.png", "carAutomation/carAutomation2.png"),
+        livePathHints: ["passengerSeat"],
       },
       {
         title: "Rear Bumper Assembly",
@@ -240,6 +250,7 @@ export const ROOT_SHOWCASE_SECTIONS: RootShowcaseSection[] = [
         hours: "1,100 hrs",
         pathLabel: "carAuto/bmw/rearBumper",
         images: imageSet("carAutomation/carAutomation5.png", "carAutomation/carAutomation2.png", "carAutomation/carAutomation4.png", "carAutomation/carAutomation3.png"),
+        livePathHints: ["rearBumper"],
       },
     ],
   },
