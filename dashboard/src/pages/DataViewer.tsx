@@ -438,22 +438,83 @@ function getCategoryBadge(card: CatalogCard) {
   };
 }
 
+function matchesLivePreviewHint(card: CatalogCard, item: CategoryDatasetPreview) {
+  if (!card.livePathHints || card.livePathHints.length === 0) return false;
+  const normalizedPath = normalizePathSearchValue(item.full_path);
+  return card.livePathHints.some((hint) => normalizedPath.includes(normalizePathSearchValue(hint)));
+}
+
+function buildFallbackLiveCard(item: CategoryDatasetPreview): CatalogCard {
+  const label = item.title?.trim() || item.full_path.split("/").filter(Boolean).pop() || item.full_path;
+  const tags = ["Live Preview"];
+  if (item.brand?.trim()) tags.push(item.brand.trim());
+  if (item.preview_video) tags.push("Hover Video");
+
+  return {
+    title: label,
+    description: `Live dataset preview for ${label}. Open the folder to browse orig, egos, masks, and related assets in the viewer.`,
+    tags,
+    availability: "In Library",
+    hours: "Live dataset",
+    pathLabel: item.full_path,
+    images: { main: "", thumbs: [] },
+  };
+}
+
+function getLivePreviewSectionId(routeKey: CategoryKey, item: CategoryDatasetPreview) {
+  const normalizedPath = normalizePathSearchValue(item.full_path);
+
+  switch (routeKey) {
+    case "serverrack":
+      if (normalizedPath.includes("ethernetcable") || normalizedPath.includes("adpluggingcable")) {
+        return "cable";
+      }
+      if (normalizedPath.includes("switchtray") || normalizedPath.includes("datarackinstall")) {
+        return "hardware";
+      }
+      return "server";
+    case "warehouse":
+      return "pick";
+    case "dexterity":
+      if (normalizedPath.includes("dishwasherunloading") || normalizedPath.includes("peelingpeas")) {
+        return "kitchen";
+      }
+      if (normalizedPath.includes("washingmachine")) {
+        return "household";
+      }
+      return "cleaning";
+    case "carAutomation":
+      if (normalizedPath.includes("passengerseat")) return "inspection";
+      if (normalizedPath.includes("frontgrille") || normalizedPath.includes("frontseat") || normalizedPath.includes("rearbumber") || normalizedPath.includes("rearbumper")) {
+        return "assembly";
+      }
+      return "cars";
+    default:
+      return null;
+  }
+}
+
 function CuratedCatalogCard({
   card,
+  liveItem,
   buttonLabel,
   columns = 3,
   onOpen,
 }: {
   card: CatalogCard;
+  liveItem?: CategoryDatasetPreview | null;
   buttonLabel: string;
   columns?: 2 | 3;
   onOpen: () => void;
 }) {
+  const [previewVideoActive, setPreviewVideoActive] = useState(false);
   const badge = getCategoryBadge(card);
   const badgeClasses =
-    card.availability === "In Library"
+    liveItem || card.availability === "In Library"
       ? "border-emerald-200 bg-emerald-50 text-emerald-700"
       : "border-amber-200 bg-amber-50 text-amber-700";
+  const footerLabel = liveItem ? liveItem.full_path : card.pathLabel;
+  const footerMetric = liveItem ? "Live dataset" : card.hours;
 
   return (
     <button
@@ -466,26 +527,52 @@ function CuratedCatalogCard({
       <div className={`p-4 ${columns === 2 ? "xl:w-[54%] xl:p-5" : ""}`}>
         <div className="grid grid-cols-[minmax(0,1fr)_86px] grid-rows-[176px_84px] gap-1.5">
           <div className="row-span-2 overflow-hidden rounded-[12px] bg-slate-100">
-            <img
-              src={frontPageImageUrl(card.images.main) ?? undefined}
-              alt={card.title}
-              loading="lazy"
-              decoding="async"
-              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.06]"
-            />
+            {liveItem ? (
+              <DatasetPreviewPrimaryMedia
+                imageAsset={liveItem.main_image}
+                videoAsset={liveItem.preview_video}
+                alt={card.title}
+                isVideoActive={previewVideoActive}
+                onVideoEnter={() => setPreviewVideoActive(true)}
+                onVideoLeave={() => setPreviewVideoActive(false)}
+              />
+            ) : (
+              <img
+                src={frontPageImageUrl(card.images.main) ?? undefined}
+                alt={card.title}
+                loading="lazy"
+                decoding="async"
+                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.06]"
+              />
+            )}
           </div>
           <div className="row-span-2 grid grid-rows-3 gap-1.5">
-            {card.images.thumbs.slice(0, 3).map((thumbPath, index) => (
-              <div key={`${card.title}-${thumbPath}-${index}`} className="overflow-hidden rounded-[8px] bg-slate-100">
-                <img
-                  src={frontPageImageUrl(thumbPath) ?? undefined}
-                  alt={`${card.title} preview ${index + 1}`}
-                  loading="lazy"
-                  decoding="async"
-                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.08]"
-                />
-              </div>
-            ))}
+            {liveItem
+              ? (liveItem.thumbnails.length > 0
+                  ? liveItem.thumbnails.slice(0, 3)
+                  : [null, null, null]
+                ).map((thumbnail, index) => (
+                  <DatasetPreviewImage
+                    key={`${card.title}-${thumbnail?.asset_id ?? "thumb"}-${index}`}
+                    asset={thumbnail}
+                    alt={`${card.title} preview ${index + 1}`}
+                    className="rounded-[8px]"
+                  />
+                ))
+              : card.images.thumbs.slice(0, 3).map((thumbPath, index) => (
+                  <div
+                    key={`${card.title}-${thumbPath}-${index}`}
+                    className="overflow-hidden rounded-[8px] bg-slate-100"
+                  >
+                    <img
+                      src={frontPageImageUrl(thumbPath) ?? undefined}
+                      alt={`${card.title} preview ${index + 1}`}
+                      loading="lazy"
+                      decoding="async"
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.08]"
+                    />
+                  </div>
+                ))}
           </div>
         </div>
       </div>
@@ -496,7 +583,7 @@ function CuratedCatalogCard({
             {card.title}
           </h3>
           <span className={`inline-flex shrink-0 rounded-full border px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em] ${badgeClasses}`}>
-            {card.availability}
+            {liveItem ? "In Library" : card.availability}
           </span>
         </div>
 
@@ -523,9 +610,9 @@ function CuratedCatalogCard({
         <div className="mt-auto flex items-center justify-between gap-3 border-t border-slate-200 px-4 py-4 md:px-5">
           <div>
             <div className="text-[13px] font-extrabold tracking-[-0.02em] text-primary">
-              {card.hours}
+              {footerMetric}
             </div>
-            <div className="mt-1 font-mono-tech text-[10px] text-slate-400">{card.pathLabel}</div>
+            <div className="mt-1 font-mono-tech text-[10px] text-slate-400">{footerLabel}</div>
           </div>
           <span className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.12em] text-primary">
             {buttonLabel}
@@ -796,77 +883,6 @@ function DatasetPreviewPrimaryMedia({
   );
 }
 
-function CategoryDatasetPreviewCard({
-  item,
-  onClick,
-}: {
-  item: CategoryDatasetPreview;
-  onClick: () => void;
-}) {
-  const [isPreviewVideoActive, setIsPreviewVideoActive] = useState(false);
-  const thumbnailItems = Array.from({ length: 4 }, (_, index) => item.thumbnails[index] ?? item.main_image);
-  const activatePreviewVideo = () => setIsPreviewVideoActive(true);
-  const deactivatePreviewVideo = () => setIsPreviewVideoActive(false);
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      onFocusCapture={item.preview_video ? activatePreviewVideo : undefined}
-      onBlurCapture={item.preview_video ? deactivatePreviewVideo : undefined}
-      className="group flex h-full flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white p-5 text-left shadow-[0_22px_54px_rgba(15,23,42,0.08)] transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-[0_28px_70px_rgba(15,23,42,0.12)]"
-    >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">
-            {item.brand || "DataraAI"}
-          </div>
-          <h3 className="mt-2 text-xl font-extrabold text-slate-950">{item.title}</h3>
-        </div>
-        <span
-          className={`rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
-            item.visibility === "public"
-              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-              : "border-slate-200 bg-slate-100 text-slate-500"
-          }`}
-        >
-          {item.visibility === "public" ? "Public" : "Private"}
-        </span>
-      </div>
-
-      <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1.08fr)_220px]">
-        <DatasetPreviewPrimaryMedia
-          imageAsset={item.main_image}
-          videoAsset={item.preview_video}
-          alt={`${item.title} primary preview`}
-          isVideoActive={isPreviewVideoActive}
-          onVideoEnter={activatePreviewVideo}
-          onVideoLeave={deactivatePreviewVideo}
-        />
-
-        <div className="grid grid-cols-2 gap-3">
-          {thumbnailItems.map((thumbnail, index) => (
-            <DatasetPreviewImage
-              key={`${item.full_path}-${thumbnail?.asset_id ?? "empty"}-${index}`}
-              asset={thumbnail}
-              alt={`${item.title} preview ${index + 1}`}
-              className="aspect-square"
-            />
-          ))}
-        </div>
-      </div>
-
-      <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-200 pt-4">
-        <span className="truncate text-xs text-slate-500">{item.full_path}</span>
-        <span className="inline-flex shrink-0 items-center gap-2 text-xs font-bold text-primary">
-          Open folder
-          <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
-        </span>
-      </div>
-    </button>
-  );
-}
-
 export default function DataViewer() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -923,6 +939,59 @@ export default function DataViewer() {
     () => (activeCategory ? CATEGORY_LANDING_CONTENT[activeCategory.routeKey] : null),
     [activeCategory],
   );
+  const resolvedCategorySections = useMemo(() => {
+    if (!activeCategory || !activeLandingContent) return [];
+
+    const usedPaths = new Set<string>();
+    const matchedBySection = new Map<
+      string,
+      { card: CatalogCard; liveItem: CategoryDatasetPreview | null }[]
+    >();
+
+    activeLandingContent.sections.forEach((section) => {
+      const sectionEntries: { card: CatalogCard; liveItem: CategoryDatasetPreview | null }[] = [];
+
+      section.cards.forEach((card) => {
+        const matchedItem =
+          categoryPreviews.find(
+            (item) => !usedPaths.has(item.full_path) && matchesLivePreviewHint(card, item),
+          ) ?? null;
+
+        if (matchedItem) {
+          usedPaths.add(matchedItem.full_path);
+        }
+
+        sectionEntries.push({ card, liveItem: matchedItem });
+      });
+
+      matchedBySection.set(section.id, sectionEntries);
+    });
+
+    const unmatchedLiveItems = categoryPreviews.filter((item) => !usedPaths.has(item.full_path));
+    const groupedExtras = new Map<string, CategoryDatasetPreview[]>();
+
+    unmatchedLiveItems.forEach((item) => {
+      const sectionId = getLivePreviewSectionId(activeCategory.routeKey, item);
+      if (!sectionId) return;
+      const current = groupedExtras.get(sectionId) ?? [];
+      current.push(item);
+      groupedExtras.set(sectionId, current);
+    });
+
+    return activeLandingContent.sections.map((section) => {
+      const resolvedCards = matchedBySection.get(section.id) ?? [];
+      const liveCards = resolvedCards.filter((entry) => entry.liveItem);
+      const marketingCards = resolvedCards.filter((entry) => !entry.liveItem);
+      const extraLiveCards = (groupedExtras.get(section.id) ?? [])
+        .sort((a, b) => a.title.localeCompare(b.title))
+        .map((item) => ({ card: buildFallbackLiveCard(item), liveItem: item }));
+
+      return {
+        ...section,
+        cards: [...liveCards, ...extraLiveCards, ...marketingCards],
+      };
+    });
+  }, [activeCategory, activeLandingContent, categoryPreviews]);
   const pathSearchScopeKey = activeCategory?.routeKey ?? "global";
 
   const isRootLanding = pathSegments.length === 0;
@@ -1747,7 +1816,7 @@ export default function DataViewer() {
 
             <div className="min-w-0 p-6 md:p-8">
               <div className="space-y-9">
-                {landing.sections.map((section) => (
+                {resolvedCategorySections.map((section) => (
                   <section key={`${landing.routeKey}-${section.id}`}>
                     <div className="mb-4 flex items-center gap-3 border-l-[3px] border-primary pl-3">
                       <span className="text-[15px] font-extrabold text-slate-950">{section.title}</span>
@@ -1756,56 +1825,22 @@ export default function DataViewer() {
                     </div>
 
                     <div className="grid gap-4 xl:grid-cols-3">
-                      {section.cards.map((card) => (
+                      {section.cards.map((entry) => (
                         <CuratedCatalogCard
-                          key={`${section.id}-${card.title}`}
-                          card={card}
+                          key={`${section.id}-${entry.card.title}-${entry.liveItem?.full_path ?? "marketing"}`}
+                          card={entry.card}
+                          liveItem={entry.liveItem}
                           buttonLabel="Open folder"
-                          onOpen={() => handleCuratedCardOpen(card.pathLabel, category)}
+                          onOpen={() =>
+                            entry.liveItem
+                              ? handleCategoryPreviewClick(entry.liveItem)
+                              : handleCuratedCardOpen(entry.card.pathLabel, category)
+                          }
                         />
                       ))}
                     </div>
                   </section>
                 ))}
-
-                <section>
-                  <div className="mb-4 flex items-center gap-3 border-l-[3px] border-primary pl-3">
-                    <span className="text-[15px] font-extrabold text-slate-950">Live library endpoints</span>
-                    <div className="h-px flex-1 bg-gradient-to-r from-primary/20 to-transparent" />
-                    <span className="text-[11px] font-semibold text-slate-400">
-                      {categoryPreviews.length} public folders
-                    </span>
-                  </div>
-
-                  <div className="mb-6 rounded-[18px] border border-slate-200 bg-slate-50/80 p-4 text-sm leading-7 text-slate-600">
-                    Real accessible endpoint folders stay backend-driven here. These cards preserve
-                    the current hover-video preview behavior and remain connected to search and
-                    folder traversal.
-                  </div>
-
-                  {categoryPreviewsLoading ? (
-                    <div className="flex min-h-[220px] items-center justify-center rounded-[24px] border border-slate-200 bg-slate-50">
-                      <div className="flex items-center gap-3 text-sm text-slate-500">
-                        <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                        Loading folder previews...
-                      </div>
-                    </div>
-                  ) : categoryPreviews.length > 0 ? (
-                    <div className="grid gap-5 lg:grid-cols-2">
-                      {categoryPreviews.map((item) => (
-                        <CategoryDatasetPreviewCard
-                          key={item.full_path}
-                          item={item}
-                          onClick={() => handleCategoryPreviewClick(item)}
-                        />
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="rounded-[24px] border border-dashed border-slate-300 bg-slate-50 p-6 text-sm leading-7 text-slate-500">
-                      No public endpoint folders are available in this category yet.
-                    </div>
-                  )}
-                </section>
 
                 <section className="rounded-[20px] border border-primary/15 bg-[linear-gradient(128deg,rgba(13,148,136,0.05),rgba(15,23,42,0.02)_55%,transparent)] p-8">
                   <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
