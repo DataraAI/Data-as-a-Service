@@ -17,7 +17,7 @@ const MARKETING_NAV_ITEMS: NavItem[] = [
   { key: "products", label: "Products", subtitle: "AI Data", href: "/#products" },
   { key: "solutions", label: "Solutions", subtitle: "Use Cases", href: "/#solutions" },
   { key: "customers", label: "Customers", subtitle: "Case Studies", href: "/#customers" },
-  { key: "company", label: "Company", subtitle: "Team / Mission", href: "/company" },
+  { key: "company", label: "Company", subtitle: "Team · Mission", href: "/company" },
 ];
 
 const PRODUCT_NAV_ITEMS: NavItem[] = [
