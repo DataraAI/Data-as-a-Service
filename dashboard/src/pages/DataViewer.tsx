@@ -118,15 +118,6 @@ interface CategoryDatasetPreview {
 
 const CATEGORIES: CategoryConfig[] = [
   {
-    routeKey: "carAutomation",
-    previewKey: "carAutomation",
-    publicSlug: "automotive",
-    aliases: ["carAutomation", "carautomation"],
-    label: "Automotive",
-    description:
-      "Assembly, inspection, and vehicle-production data for robotics workflows across automotive environments.",
-  },
-  {
     routeKey: "serverrack",
     previewKey: "serverrack",
     publicSlug: "data-center",
@@ -140,7 +131,7 @@ const CATEGORIES: CategoryConfig[] = [
     previewKey: "humanoid",
     publicSlug: "dexterity",
     aliases: ["dexterity", "humanoid"],
-    label: "Dexterity",
+    label: "Humanoid",
     description:
       "Fine-motor manipulation and embodied task data for dexterous robotic systems operating across practical, object-centric scenarios.",
   },
@@ -152,6 +143,15 @@ const CATEGORIES: CategoryConfig[] = [
     label: "Warehouse",
     description:
       "Logistics, handling, and storage-operation data for robotic movement, picking, and material flow.",
+  },
+  {
+    routeKey: "carAutomation",
+    previewKey: "carAutomation",
+    publicSlug: "automotive",
+    aliases: ["carAutomation", "carautomation"],
+    label: "Automotive",
+    description:
+      "Assembly, inspection, and vehicle-production data for robotics workflows across automotive environments.",
   },
 ];
 
@@ -938,58 +938,6 @@ function PathSearchPanel({
   );
 }
 
-function LoggedOutHub({ viewerBasePath }: { viewerBasePath: string }) {
-  return (
-    <div className="mx-auto w-full max-w-[1440px] px-4 py-12 sm:px-6 md:py-16">
-      <div className="marketing-hero-data overflow-hidden rounded-[34px] border border-slate-200 p-6 shadow-[0_28px_70px_rgba(15,23,42,0.1)] md:p-8">
-        <div className="max-w-3xl">
-          <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-[11px] uppercase tracking-[0.22em] text-primary">
-            RoboDataHub
-          </div>
-          <h1 className="mt-6 text-[clamp(2.3rem,4.8vw,4rem)] font-black tracking-[-0.05em] text-slate-950">
-            Sign in to browse the full data library.
-          </h1>
-          <p className="mt-5 max-w-2xl text-base leading-8 text-slate-600">
-            Keep the public-facing design visible, but preserve the current access model:
-            dataset contents stay behind account approval.
-          </p>
-          <div className="mt-8 flex flex-col gap-4 sm:flex-row">
-            <Link
-              to={buildAuthPath("login", viewerBasePath)}
-              className="inline-flex h-12 items-center justify-center rounded-xl border border-slate-300 bg-white px-6 text-sm font-semibold text-slate-600 transition-colors hover:border-primary/20 hover:text-primary"
-            >
-              Sign In
-            </Link>
-            <Link
-              to={buildAuthPath("register", viewerBasePath)}
-              className="inline-flex h-12 items-center justify-center rounded-xl bg-primary px-6 text-sm font-bold text-primary-foreground"
-            >
-              Get Access
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-8 grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
-        {CATEGORIES.map((category) => (
-          <div
-            key={category.routeKey}
-            className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_20px_46px_rgba(15,23,42,0.08)]"
-          >
-            <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
-              <Database className="h-5 w-5 text-primary" />
-            </div>
-            <div className="font-sans-tech text-xl font-bold text-slate-950">{category.label}</div>
-            <p className="mt-3 text-sm leading-relaxed text-slate-600">
-              {category.description}
-            </p>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 export default function DataViewer() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -1119,7 +1067,7 @@ export default function DataViewer() {
   }, [currentDisplayPath, isAuthenticated, isApproved, isRootLanding, isCategoryLanding, reloadTick]);
 
   useEffect(() => {
-    if (!isAuthenticated || !isApproved || !isCategoryLanding || !activeCategory) {
+    if (!isCategoryLanding || !activeCategory) {
       setCategoryPreviews([]);
       setCategoryPreviewsLoading(false);
       return;
@@ -1152,15 +1100,9 @@ export default function DataViewer() {
     return () => {
       cancelled = true;
     };
-  }, [activeCategory, isAuthenticated, isApproved, isCategoryLanding, reloadTick]);
+  }, [activeCategory, isCategoryLanding, reloadTick]);
 
   useEffect(() => {
-    if (!isAuthenticated || !isApproved) {
-      setAllFolderPaths([]);
-      setPathSearchLoaded(false);
-      return;
-    }
-
     const shouldLoadPaths = isRootLanding || isCategoryLanding || pathSearchTouched;
     if (!shouldLoadPaths || pathSearchLoaded) return;
 
@@ -1203,15 +1145,7 @@ export default function DataViewer() {
     return () => {
       cancelled = true;
     };
-  }, [
-    isAuthenticated,
-    isApproved,
-    isRootLanding,
-    isCategoryLanding,
-    activeCategory,
-    pathSearchTouched,
-    pathSearchLoaded,
-  ]);
+  }, [isRootLanding, isCategoryLanding, activeCategory, pathSearchTouched, pathSearchLoaded]);
 
   useEffect(() => {
     setAllFolderPaths([]);
@@ -1315,7 +1249,7 @@ export default function DataViewer() {
   const filteredFolders = useMemo(() => folders, [folders]);
 
   const pathSuggestions = useMemo(() => {
-    if (!isAuthenticated || !isApproved || !pathSearchText.trim()) return [];
+    if (!pathSearchText.trim()) return [];
 
     const scopedPrefix = activeCategory ? activeCategory.routeKey : null;
 
@@ -1332,7 +1266,7 @@ export default function DataViewer() {
       .sort((a, b) => a.score - b.score || a.item.full_path.localeCompare(b.item.full_path))
       .slice(0, 8)
       .map((entry) => entry.item);
-  }, [activeCategory, allFolderPaths, isAuthenticated, isApproved, isRootLanding, pathSearchText]);
+  }, [activeCategory, allFolderPaths, isRootLanding, pathSearchText]);
 
   const itemCount = isCategoryLanding
     ? categoryPreviews.length
@@ -1364,7 +1298,12 @@ export default function DataViewer() {
 
   function handlePathSuggestionClick(fullPath: string) {
     setPathSearchText("");
-    navigate(buildViewerPath(fullPath, undefined, viewerBasePath));
+    const nextPath = buildViewerPath(fullPath, undefined, viewerBasePath);
+    if (!isAuthenticated || !isApproved) {
+      navigate(buildAuthPath("login", nextPath));
+      return;
+    }
+    navigate(nextPath);
   }
 
   function handlePathSearchSubmit() {
@@ -1373,11 +1312,16 @@ export default function DataViewer() {
   }
 
   function handleCategoryPreviewClick(item: CategoryDatasetPreview) {
-    navigate(
-      item.viewer_path
-        ? withViewerBase(item.viewer_path, viewerBasePath)
-        : buildViewerPath(item.full_path, undefined, viewerBasePath),
-    );
+    const nextPath = item.viewer_path
+      ? withViewerBase(item.viewer_path, viewerBasePath)
+      : buildViewerPath(item.full_path, undefined, viewerBasePath);
+
+    if (!isAuthenticated || !isApproved) {
+      navigate(buildAuthPath("login", nextPath));
+      return;
+    }
+
+    navigate(nextPath);
   }
 
   async function handleDeleteFolder() {
@@ -1543,8 +1487,8 @@ export default function DataViewer() {
             <div className="text-lg font-extrabold tracking-[0.04em] text-primary">DataraAI</div>
             <div className="mt-2 text-base font-bold text-slate-950">Physical AI Data</div>
             <p className="mt-4 text-sm leading-7 text-slate-600">
-              Start in a vertical, keep search inside RoboDataHub, and use the same live viewer
-              routes once you move into real endpoint folders.
+              Start in a vertical, keep search inside RoboDataHub, and move from the public catalog
+              into live endpoint folders whenever you want to inspect real dataset surfaces.
             </p>
 
             <div className="mt-8">
@@ -1578,13 +1522,14 @@ export default function DataViewer() {
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
                 RoboDataHub
               </div>
-              <h1 className="mb-4 max-w-3xl font-sans-tech text-[clamp(2.5rem,5vw,4.3rem)] font-black tracking-[-0.06em] text-slate-950">
-                Browse live physical-AI datasets by vertical.
+              <h1 className="mb-2 max-w-3xl font-sans-tech text-[clamp(2.5rem,5vw,4.3rem)] font-black tracking-[-0.06em] text-slate-950">
+                RoboDataHub
               </h1>
-              <p className="max-w-3xl font-sans-tech text-base leading-8 text-slate-600">
-                The public RoboDataHub shell now follows the new-ui-changes structure, while the
-                actual folder traversal, auth-aware access, and dataset previews still come from the
-                current main platform.
+              <p className="font-sans-tech text-[13px] text-slate-500">100+ datasets · Physical AI training data</p>
+              <p className="mt-5 max-w-3xl font-sans-tech text-base leading-8 text-slate-600">
+                Browse live physical-AI datasets by vertical. Search stays inside RoboDataHub, live
+                preview cards stay connected to the backend, and hover video remains available where
+                real endpoint folders exist.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 {isAuthenticated && isApproved ? (
@@ -1894,16 +1839,24 @@ export default function DataViewer() {
           </div>
         ) : !isAuthenticated ? (
           isRootLanding ? (
-            <LoggedOutHub viewerBasePath={viewerBasePath} />
+            renderRootLanding()
+          ) : isCategoryLanding && activeCategory ? (
+            renderCategoryLanding(activeCategory)
           ) : (
             <div className="mx-auto flex-1 w-full max-w-[1440px] px-4 py-10 sm:px-6">
-              <AuthRequiredState description="Sign in before viewing dataset contents. Public datasets stay available to signed-in users only." />
+              <AuthRequiredState description="Sign in before viewing dataset contents. Public catalog pages stay visible, but deeper folder contents remain behind account approval." />
             </div>
           )
         ) : !isApproved ? (
-          <div className="mx-auto flex-1 w-full max-w-[1440px] px-4 py-10 sm:px-6">
-            <AuthRequiredState />
-          </div>
+          isRootLanding ? (
+            renderRootLanding()
+          ) : isCategoryLanding && activeCategory ? (
+            renderCategoryLanding(activeCategory)
+          ) : (
+            <div className="mx-auto flex-1 w-full max-w-[1440px] px-4 py-10 sm:px-6">
+              <AuthRequiredState />
+            </div>
+          )
         ) : (
           <div className="flex flex-1 flex-col overflow-hidden xl:flex-row">
             {isLeaf && (

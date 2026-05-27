@@ -1,16 +1,6 @@
-﻿import { useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
-import {
-  ArrowRight,
-  Clock3,
-  Database,
-  Eye,
-  Hand,
-  Layers3,
-  Users,
-  Workflow,
-  type LucideIcon,
-} from "lucide-react";
+import { ArrowRight, Database, Eye, Hand, Workflow, type LucideIcon } from "lucide-react";
 import Navigation from "@/components/Navigation";
 import FooterSection from "@/components/FooterSection";
 import { buildAuthPath } from "@/lib/authLinks";
@@ -23,195 +13,179 @@ type ProductCard = {
   badge: string;
   tagline: string;
   pills: string[];
-  cta: string;
+  linkLabel: string;
   to: string;
   icon: LucideIcon;
-  surfaceClassName: string;
-  iconClassName: string;
-  linkClassName: string;
+  tone: string;
+  pillTone: string;
+  linkTone: string;
 };
 
-type MissionCard = {
-  title: string;
-  description: string;
-  icon: LucideIcon;
-  iconClassName: string;
-};
-
-type SolutionStory = {
-  eyebrow: string;
+type SolutionCard = {
+  kicker: string;
   title: string;
   description: string;
   bullets: string[];
+  metrics: { value: string; label: string }[];
   beforeLabel: string;
   afterLabel: string;
   beforeImage: string;
   afterImage: string;
-  accentClassName: string;
+  accent: string;
+  beforeTone: string;
+  afterTone: string;
 };
 
-type CustomerResult = {
-  metric: string;
+type CustomerCard = {
+  value: string;
   company: string;
   detail: string;
   label: string;
-  chipClassName: string;
-  metricClassName: string;
+  valueTone: string;
+  chipTone: string;
 };
 
 const PRODUCT_CARDS: ProductCard[] = [
   {
     name: "RoboDataHub",
-    badge: "Dataset Library",
-    tagline: "Access EGO + EXO datasets across automotive, warehouse, data center, and dexterity.",
-    pills: ["Dataset Access", "Multi-Vertical", "Production Data"],
-    cta: "Browse datasets",
+    badge: "Core Platform",
+    tagline: "Central intelligence layer for Physical AI training data",
+    pills: ["EGO + EXO labelled datasets", "4 industry verticals", "500K+ annotated sequences"],
+    linkLabel: "Browse datasets",
     to: "/robodatahub",
     icon: Database,
-    surfaceClassName: "border-teal-200/80 border-t-4 border-t-primary bg-white",
-    iconClassName: "border-teal-200 bg-teal-50 text-primary",
-    linkClassName: "text-primary",
+    tone: "border-teal-200/80 border-t-4 border-t-primary",
+    pillTone: "border-teal-200 bg-teal-50 text-teal-700",
+    linkTone: "text-primary",
   },
   {
-    name: "RoboEyeView",
+    name: "RoboAnnotator",
     badge: "Patented IP",
-    tagline: "Convert EXO footage into robot-eye datasets that are ready for model training.",
-    pills: ["EXO to EGO", "Visual Intelligence", "Patented"],
-    cta: "Learn more",
+    tagline: "AI-assisted annotation platform for robot training data",
+    pills: ["EXO to EGO view synthesis", "85% to 95%+ accuracy", "60% labelling cost cut"],
+    linkLabel: "Learn more",
     to: "/roboeyeview",
     icon: Eye,
-    surfaceClassName: "border-blue-200/80 border-t-4 border-t-sky-700 bg-white",
-    iconClassName: "border-blue-200 bg-blue-50 text-sky-700",
-    linkClassName: "text-sky-700",
+    tone: "border-blue-200/80 border-t-4 border-t-blue-700",
+    pillTone: "border-blue-200 bg-blue-50 text-blue-700",
+    linkTone: "text-blue-700",
   },
   {
     name: "RoboHandMotion",
     badge: "Patented IP",
-    tagline: "Hand, tool, and object interaction signals for dexterous and humanoid training.",
-    pills: ["Hand Pose", "Tool Contact", "Dexterous Tasks"],
-    cta: "Learn more",
+    tagline: "Precision hand & tool interaction data for dexterous robots",
+    pills: ["Finger-level motion capture", "Tool + object interaction", "Humanoid-ready format"],
+    linkLabel: "Learn more",
     to: "/robohandmotion",
     icon: Hand,
-    surfaceClassName: "border-violet-200/80 border-t-4 border-t-violet-700 bg-white",
-    iconClassName: "border-violet-200 bg-violet-50 text-violet-700",
-    linkClassName: "text-violet-700",
+    tone: "border-violet-200/80 border-t-4 border-t-violet-700",
+    pillTone: "border-violet-200 bg-violet-50 text-violet-700",
+    linkTone: "text-violet-700",
   },
   {
     name: "RoboTaskManipulator",
     badge: "Task Intelligence",
-    tagline: "Step-segmented workflow datasets for assembly, pick-place, and cabling execution.",
-    pills: ["Task Graphs", "Workflow Labels", "Execution Ready"],
-    cta: "See case study",
+    tagline: "Full task workflows for assembly, pick-place & cabling",
+    pills: ["Assembly & pick-place data", "95% precision - Peer Robotics", "Multi-step task sequences"],
+    linkLabel: "See case study",
     to: "/robotaskmanipulator",
     icon: Workflow,
-    surfaceClassName: "border-amber-200/80 border-t-4 border-t-amber-700 bg-white",
-    iconClassName: "border-amber-200 bg-amber-50 text-amber-700",
-    linkClassName: "text-amber-700",
+    tone: "border-amber-200/80 border-t-4 border-t-amber-700",
+    pillTone: "border-amber-200 bg-amber-50 text-amber-700",
+    linkTone: "text-amber-700",
   },
 ];
 
-const MISSION_CARDS: MissionCard[] = [
+const SOLUTION_CARDS: SolutionCard[] = [
   {
-    title: "Real-World First",
+    kicker: "Data Center - NVL72 Infrastructure",
+    title: "Rack Cable Installation",
     description:
-      "Authentic multi-modal datasets captured in operating environments instead of simulation-only proxies.",
-    icon: Clock3,
-    iconClassName: "border-primary/25 bg-primary/10 text-primary",
-  },
-  {
-    title: "Data Infrastructure",
-    description:
-      "End-to-end pipelines from capture to policy-ready training data across four robotics verticals.",
-    icon: Layers3,
-    iconClassName: "border-sky-200 bg-blue-50 text-sky-700",
-  },
-  {
-    title: "Partnership-Driven",
-    description:
-      "Co-developed with production teams so the product reflects real deployment constraints and priorities.",
-    icon: Users,
-    iconClassName: "border-violet-200 bg-violet-50 text-violet-700",
-  },
-];
-
-const SOLUTION_STORIES: SolutionStory[] = [
-  {
-    eyebrow: "Rack Cable Installation",
-    title: "Show stakeholders the workflow before and after automation.",
-    description:
-      "Frame the conversation around a real operating task first, then show how the same workflow becomes robot-ready training data instead of a static pitch deck promise.",
+      "Training data for robots handling dense NVL72 GPU cluster cabling - power, network, and management cables across OEM/ODM rack production lines.",
     bullets: [
-      "Explain the manual workflow in a way operators and robotics teams both recognize.",
-      "Turn the same task into the data surface needed for training and evaluation.",
-      "Make the operational value visible before the full deployment lands.",
+      "Identify correct cable type and port",
+      "Align connector and insert with full seating",
+      "Route and dress cables without cross-over",
+      "Detect mis-seats and anomalies in real time",
     ],
-    beforeLabel: "Before · Manual workflow",
-    afterLabel: "After · Robot-ready data",
+    metrics: [
+      { value: "60%", label: "Less rework" },
+      { value: "3x", label: "Faster cycle" },
+      { value: "99.1%", label: "Accuracy" },
+    ],
+    beforeLabel: "Before - Manual",
+    afterLabel: "After - Automated",
     beforeImage: rackManual,
     afterImage: rackRobot,
-    accentClassName: "border-primary/20 bg-primary/10 text-primary",
+    accent: "text-primary",
+    beforeTone: "border-red-200 bg-red-50/80 text-red-700",
+    afterTone: "border-primary/20 bg-primary/10 text-primary",
   },
   {
-    eyebrow: "Pilot Roadmap",
-    title: "Anchor the commercial and technical story inside a six-month pilot.",
+    kicker: "Manufacturing Automation - Rack Assembly",
+    title: "Server Rack Integration",
     description:
-      "Keep the commercial and technical conversation grounded in a concrete rollout path that teams can evaluate, budget, and execute against.",
+      "End-to-end training data for robots that pick, align, and insert server sleds into rack rails - replacing a 2-person manual process with a single robot arm operating 24/7.",
     bullets: [
-      "Real-world capture plan aligned to deployment constraints.",
-      "Dataset structure that maps cleanly into training and evaluation.",
-      "EXO-to-EGO synthesis when robot-eye views are missing.",
+      "Pick sled, carry and align to rack rail",
+      "Force-controlled insertion and latch verification",
+      "Handle varying sled weights and positions",
+      "Post-install barcode scan and QC sign-off",
     ],
-    beforeLabel: "Roadmap",
-    afterLabel: "Pilot",
-    beforeImage: pilotRoadmap,
-    afterImage: pilotRoadmap,
-    accentClassName: "border-sky-200 bg-blue-50 text-sky-700",
+    metrics: [
+      { value: "2 to 1", label: "Workers replaced" },
+      { value: "3x", label: "Faster insertion" },
+      { value: "24/7", label: "Operation" },
+    ],
+    beforeLabel: "Before - 2 Workers",
+    afterLabel: "After - Robot Arm",
+    beforeImage: rackManual,
+    afterImage: rackRobot,
+    accent: "text-blue-700",
+    beforeTone: "border-red-200 bg-red-50/80 text-red-700",
+    afterTone: "border-primary/20 bg-primary/10 text-primary",
   },
 ];
 
-const CUSTOMER_RESULTS: CustomerResult[] = [
+const CUSTOMER_CARDS: CustomerCard[] = [
   {
-    metric: "3.8x",
+    value: "3.8x",
     company: "Figure AI",
     detail:
-      "Faster model convergence on manipulation tasks using RoboDataHub dexterous sequences versus in-house collection.",
+      "Faster model convergence on manipulation tasks using RoboDataHub dexterous sequences vs. in-house collection.",
     label: "Humanoid",
-    chipClassName: "border-teal-200 bg-teal-50 text-primary",
-    metricClassName: "text-primary",
+    valueTone: "text-primary",
+    chipTone: "border-teal-200 bg-teal-50 text-primary",
   },
   {
-    metric: "60%",
+    value: "60%",
     company: "BMW Robotics",
     detail:
       "Reduction in labeling cost for production-line vision models using RoboEyeView EGO synthesis pipeline.",
     label: "Automotive",
-    chipClassName: "border-blue-200 bg-blue-50 text-sky-700",
-    metricClassName: "text-sky-700",
+    valueTone: "text-violet-700",
+    chipTone: "border-violet-200 bg-violet-50 text-violet-700",
   },
   {
-    metric: "99.1%",
+    value: "99.1%",
     company: "Foxconn Smart Factory",
     detail:
-      "Label accuracy on rack-navigation sequences, outperforming the previous internal baseline by 4.7 points.",
+      "Label accuracy on rack-navigation sequences, exceeding internal baseline by 4.7 percentage points.",
     label: "Data Center",
-    chipClassName: "border-violet-200 bg-violet-50 text-violet-700",
-    metricClassName: "text-violet-700",
+    valueTone: "text-blue-700",
+    chipTone: "border-blue-200 bg-blue-50 text-blue-700",
   },
 ];
 
-const TRUSTED_BY = ["NVIDIA", "BMW Group", "Figure AI", "Foxconn", "Peer Robotics", "Apptronik"];
-
-function GradientDivider() {
-  return (
-    <div className="mx-auto flex max-w-[1300px] items-center gap-5 px-4 sm:px-6">
-      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
-      <div className="rounded-full border border-primary/15 bg-primary/6 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.18em] text-primary">
-        Physical AI
-      </div>
-      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-sky-500/20 to-transparent" />
-    </div>
-  );
-}
+const TRUSTED_BY = [
+  "NVIDIA",
+  "BMW Group",
+  "Figure AI",
+  "Boston Dynamics",
+  "Foxconn",
+  "Waymo",
+  "1X Technologies",
+];
 
 function ProductTile({ card }: { card: ProductCard }) {
   const Icon = card.icon;
@@ -219,33 +193,49 @@ function ProductTile({ card }: { card: ProductCard }) {
   return (
     <Link
       to={card.to}
-      className={`group flex h-full flex-col rounded-[26px] border px-6 pb-7 pt-8 shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_20px_48px_rgba(15,23,42,0.08)] ${card.surfaceClassName}`}
+      className={`group flex h-full flex-col rounded-[22px] border bg-white px-6 pb-8 pt-8 text-center shadow-[0_2px_8px_rgba(0,0,0,0.05)] transition-all duration-200 hover:-translate-y-1 ${card.tone}`}
     >
-      <div className={`mx-auto flex h-[72px] w-[72px] items-center justify-center rounded-[22px] border ${card.iconClassName}`}>
+      <div className={`mx-auto flex h-[72px] w-[72px] items-center justify-center rounded-[20px] border ${card.pillTone}`}>
         <Icon className="h-8 w-8" />
       </div>
-      <div className="mt-5 text-center">
-        <div className="inline-flex rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.14em] text-slate-600">
-          {card.badge}
-        </div>
-        <div className="mt-4 text-[28px] font-black tracking-[-0.04em] text-slate-950">{card.name}</div>
-        <p className="mt-3 text-sm leading-6 text-slate-600">{card.tagline}</p>
+      <div className="mt-5 inline-flex self-center rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.14em] text-slate-600">
+        {card.badge}
       </div>
+      <h3 className="mt-4 text-[28px] font-black tracking-[-0.05em] text-slate-950">{card.name}</h3>
+      <p className="mt-3 text-[15px] leading-6 text-slate-500">{card.tagline}</p>
       <div className="mt-6 flex flex-col gap-2">
         {card.pills.map((pill) => (
           <span
             key={pill}
-            className="inline-flex justify-center rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-[12px] font-semibold text-slate-600"
+            className={`inline-flex justify-center rounded-full border px-3 py-2 text-[13px] font-semibold ${card.pillTone}`}
           >
             {pill}
           </span>
         ))}
       </div>
-      <span className={`mt-6 inline-flex items-center justify-center gap-2 text-sm font-bold ${card.linkClassName}`}>
-        {card.cta}
-        <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
+      <span className={`mt-6 inline-flex items-center justify-center gap-2 text-[12.5px] font-extrabold ${card.linkTone}`}>
+        {card.linkLabel}
+        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
       </span>
     </Link>
+  );
+}
+
+function MetricRow({ metrics }: { metrics: SolutionCard["metrics"] }) {
+  return (
+    <div className="flex overflow-hidden rounded-[14px] border border-slate-200 bg-slate-50">
+      {metrics.map((metric, index) => (
+        <div key={metric.label} className="flex flex-1 items-center justify-center">
+          <div className="px-5 py-4 text-center">
+            <div className="text-2xl font-black tracking-[-0.04em] text-slate-950">{metric.value}</div>
+            <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+              {metric.label}
+            </div>
+          </div>
+          {index < metrics.length - 1 && <div className="h-10 w-px bg-slate-200" />}
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -269,7 +259,7 @@ export default function Home() {
 
     window.setTimeout(() => {
       target.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 50);
+    }, 40);
   }, [location.hash]);
 
   return (
@@ -277,92 +267,69 @@ export default function Home() {
       <Navigation />
 
       <main className="pt-[88px]">
-        <section className="marketing-hero-home overflow-hidden border-b border-slate-200 px-4 py-18 text-center sm:px-6 md:py-24">
-          <div className="mx-auto max-w-5xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/6 px-5 py-2 text-[12px] font-bold uppercase tracking-[0.22em] text-primary">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-              NVIDIA Inception Member
+        <section className="marketing-hero-home overflow-hidden px-4 py-12 text-center sm:px-6 md:min-h-[calc(100vh-88px)] md:py-16">
+          <div className="mx-auto max-w-[860px]">
+            <div className="inline-flex items-center gap-2 rounded-full border border-teal-200 bg-teal-50 px-6 py-2.5 text-[13px] font-semibold text-primary">
+              <span className="h-[7px] w-[7px] rounded-full bg-primary" />
+              NVIDIA Inception Member - 2025
             </div>
 
-            <h1 className="mt-8 text-[clamp(2.8rem,7vw,5.4rem)] font-black leading-[0.92] tracking-[-0.07em] text-slate-950">
+            <h1 className="mt-7 text-[clamp(38px,5.5vw,64px)] font-black leading-[1] tracking-[-0.08em] text-slate-950">
               The Sim-to-Real Gap
               <br />
-              is <span className="bg-gradient-to-r from-primary to-sky-700 bg-clip-text text-transparent">Costing You.</span>
+              is <span className="bg-gradient-to-r from-primary to-blue-700 bg-clip-text text-transparent">Costing You.</span>
             </h1>
 
-            <p className="mx-auto mt-7 max-w-3xl text-lg leading-9 text-slate-500">
-              Robots fail in production because training data doesn&apos;t match the real world.
-              Simulation gets you part of the way. DataraAI closes the gap with real-world
-              dataset infrastructure for physical AI.
+            <p className="mx-auto mt-6 max-w-[680px] text-[22px] leading-[1.55] text-slate-500">
+              Robots fail in production because training data does not match the real world.
             </p>
 
-            <div className="mt-20">
-              <div className="text-[clamp(2.7rem,6vw,5.1rem)] font-black leading-[0.95] tracking-[-0.07em] text-slate-950">
-                We Resolve <span className="text-primary">This.</span>
-              </div>
-              <p className="mx-auto mt-6 max-w-2xl text-base leading-8 text-slate-500 sm:text-lg">
-                Physical AI models need data from the world they will actually operate in. We help
-                teams move from raw workflow capture to robot-ready datasets, synthesis, and task
-                intelligence that can ship.
-              </p>
+            <div className="mt-24 text-[clamp(38px,5.5vw,64px)] font-black leading-[1] tracking-[-0.08em] text-slate-950">
+              DataraAI <span className="text-primary">closes the gap.</span>
             </div>
+            <p className="mx-auto mt-7 max-w-[560px] text-[17px] leading-[1.7] text-slate-500">
+              The complete data stack for Physical AI. Humanoid. Automotive. Warehouse. Data Center.
+            </p>
 
-            <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+            <div className="mt-11 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <button
                 type="button"
                 onClick={() => productsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                className="inline-flex h-13 items-center justify-center rounded-full bg-primary px-8 text-sm font-extrabold text-primary-foreground shadow-[0_16px_34px_rgba(13,148,136,0.18)] transition-opacity hover:opacity-90"
+                className="inline-flex h-14 items-center justify-center rounded-full bg-primary px-8 text-[15px] font-extrabold text-primary-foreground shadow-[0_6px_20px_rgba(13,148,136,0.2)] transition-all hover:-translate-y-0.5 hover:opacity-90"
               >
-                See Product Suite
+                See How It Works
               </button>
               <Link
-                to={buildAuthPath("register", "/robodatahub")}
-                className="inline-flex h-13 items-center justify-center rounded-full border border-slate-200 bg-white px-8 text-sm font-semibold text-slate-600 shadow-[0_14px_28px_rgba(15,23,42,0.05)] transition-colors hover:border-primary/25 hover:text-primary"
+                to={buildAuthPath("register", "/")}
+                className="inline-flex h-14 items-center justify-center rounded-full border border-slate-200 bg-white px-8 text-[15px] font-bold text-slate-700 transition-colors hover:bg-slate-50"
               >
-                Get Access
+                Request a Demo
               </Link>
             </div>
           </div>
         </section>
 
-        <section className="border-y border-slate-200 bg-slate-100/80 px-4 py-6 sm:px-6">
-          <div className="mx-auto flex max-w-[1300px] flex-wrap items-center justify-center gap-x-10 gap-y-3">
-            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
-              Trusted by teams at
-            </div>
-            {TRUSTED_BY.map((item) => (
-              <span key={item} className="text-sm font-bold text-slate-500">
-                {item}
-              </span>
-            ))}
-          </div>
-        </section>
+        <div className="mx-auto flex max-w-[1300px] items-center gap-5 px-4 py-10 sm:px-6">
+          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
+          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
+        </div>
 
-        <section className="py-12">
-          <GradientDivider />
-        </section>
-
-        <section
-          id="products"
-          ref={productsRef}
-          className="bg-slate-50/80 px-4 py-18 sm:px-6 md:py-20"
-        >
+        <section id="products" ref={productsRef} className="bg-slate-50 px-4 py-20 sm:px-6">
           <div className="mx-auto max-w-[1300px]">
-            <div className="mb-12 text-center">
-              <div className="inline-flex items-center gap-3 rounded-full border border-primary/20 bg-white px-6 py-3 text-base font-extrabold uppercase tracking-[0.1em] text-primary shadow-[0_12px_28px_rgba(15,23,42,0.05)]">
+            <div className="mb-10 text-center">
+              <div className="inline-flex items-center gap-3 rounded-full border border-teal-200 bg-teal-50 px-8 py-3 text-xl font-extrabold uppercase tracking-[0.08em] text-primary">
                 <span className="h-2 w-2 rounded-full bg-primary" />
                 Products
               </div>
-              <h2 className="mt-6 text-[clamp(2rem,3vw,3rem)] font-black tracking-[-0.05em] text-slate-950">
-                Four products built for production-grade robot training.
+              <h2 className="mt-6 text-[36px] font-black tracking-[-0.05em] text-slate-950">
+                The Full Physical AI Data Stack
               </h2>
-              <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-slate-500 sm:text-base">
-                Capture, synthesize, structure, and serve the real-world robotics data needed to
-                move from proof of concept to production deployment.
+              <p className="mx-auto mt-3 max-w-[480px] text-[15px] leading-7 text-slate-500">
+                Four products built for production-grade robot training.
               </p>
             </div>
 
-            <div className="grid gap-5 xl:grid-cols-4">
+            <div className="grid gap-4 xl:grid-cols-4">
               {PRODUCT_CARDS.map((card) => (
                 <ProductTile key={card.name} card={card} />
               ))}
@@ -370,123 +337,126 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="border-y border-slate-200 bg-white px-4 py-14 sm:px-6">
-          <div className="mx-auto grid max-w-[1300px] gap-5 md:grid-cols-3">
-            {MISSION_CARDS.map((card) => {
-              const Icon = card.icon;
-
-              return (
-                <article key={card.title} className="marketing-surface rounded-[22px] p-6">
-                  <div className={`mb-4 inline-flex h-11 w-11 items-center justify-center rounded-2xl border ${card.iconClassName}`}>
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <div className="text-base font-extrabold text-slate-950">{card.title}</div>
-                  <p className="mt-3 text-sm leading-6 text-slate-600">{card.description}</p>
-                </article>
-              );
-            })}
-          </div>
-        </section>
-
-        <section
-          id="solutions"
-          ref={solutionsRef}
-          className="bg-slate-50/70 px-4 py-18 sm:px-6 md:py-20"
-        >
+        <section id="solutions" ref={solutionsRef} className="bg-white px-4 py-20 sm:px-6">
           <div className="mx-auto max-w-[1300px]">
-            <div className="mb-12 text-center">
-              <div className="inline-flex items-center gap-3 rounded-full border border-primary/20 bg-white px-6 py-3 text-base font-extrabold uppercase tracking-[0.1em] text-primary shadow-[0_12px_28px_rgba(15,23,42,0.05)]">
+            <div className="mb-10 text-center">
+              <div className="inline-flex items-center gap-3 rounded-full border border-teal-200 bg-teal-50 px-8 py-3 text-xl font-extrabold uppercase tracking-[0.08em] text-primary">
                 <span className="h-2 w-2 rounded-full bg-primary" />
                 Solutions
               </div>
-              <h2 className="mt-6 text-[clamp(2rem,3vw,3rem)] font-black tracking-[-0.05em] text-slate-950">
-                Workflow-first storytelling for real deployment programs.
+              <h2 className="mt-6 text-[36px] font-black tracking-[-0.05em] text-slate-950">
+                Real-World Automation, Ready to Deploy
               </h2>
+              <p className="mx-auto mt-3 max-w-[480px] text-[15px] leading-7 text-slate-500">
+                See the same task - done manually today, automated by robots tomorrow.
+              </p>
             </div>
 
             <div className="space-y-6">
-              {SOLUTION_STORIES.map((story, index) => (
+              {SOLUTION_CARDS.map((card, index) => (
                 <article
-                  key={story.title}
-                  className="relative overflow-hidden rounded-[30px] border border-slate-200 bg-white shadow-[0_20px_48px_rgba(15,23,42,0.05)]"
+                  key={card.title}
+                  className="relative overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.04)]"
                 >
-                  <div className="pointer-events-none absolute right-8 top-6 text-[84px] font-black tracking-[-0.08em] text-slate-100">
-                    {index + 1}
+                  <div className="pointer-events-none absolute right-11 top-7 text-[96px] font-black tracking-[-0.08em] text-black/[0.03]">
+                    {String(index + 1).padStart(2, "0")}
                   </div>
-                  <div className="border-b border-slate-200 px-6 py-8 md:px-10">
-                    <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                  <div className="border-b border-slate-200 px-8 py-10 md:px-12">
+                    <div className={`mb-5 text-[10px] font-extrabold uppercase tracking-[0.22em] ${card.accent}`}>
+                      {card.kicker}
+                    </div>
+                    <div className="grid gap-8 xl:grid-cols-2">
                       <div>
-                        <div className={`inline-flex rounded-full border px-4 py-2 text-[10px] font-bold uppercase tracking-[0.18em] ${story.accentClassName}`}>
-                          {story.eyebrow}
-                        </div>
-                        <h3 className="mt-5 text-[clamp(1.9rem,3vw,3rem)] font-black tracking-[-0.05em] text-slate-950">
-                          {story.title}
+                        <h3 className="text-[38px] font-black leading-[1.08] tracking-[-0.05em] text-slate-950">
+                          {card.title}
                         </h3>
                       </div>
-
-                      <div className="border-l-0 border-primary/20 pl-0 text-sm leading-7 text-slate-600 xl:border-l xl:pl-6">
-                        <p>{story.description}</p>
-                        <ul className="mt-5 space-y-3">
-                          {story.bullets.map((bullet) => (
-                            <li key={bullet} className="flex items-start gap-3">
-                              <span className="mt-2 h-2.5 w-2.5 rounded-full bg-primary" />
-                              <span>{bullet}</span>
-                            </li>
-                          ))}
-                        </ul>
+                      <div className={`border-l-2 pl-4 text-[14.5px] leading-7 text-slate-500 ${card.accent === "text-blue-700" ? "border-blue-300" : "border-teal-300"}`}>
+                        {card.description}
                       </div>
+                    </div>
+                    <div className="mt-7 grid gap-6 xl:grid-cols-2">
+                      <ul className="space-y-3">
+                        {card.bullets.map((bullet) => (
+                          <li key={bullet} className="flex items-center gap-3 text-sm text-slate-700">
+                            <span className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${card.accent === "text-blue-700" ? "border-blue-300 bg-blue-50" : "border-teal-300 bg-teal-50"}`}>
+                              <span className={`h-2 w-2 rounded-full ${card.accent === "text-blue-700" ? "bg-blue-700" : "bg-primary"}`} />
+                            </span>
+                            {bullet}
+                          </li>
+                        ))}
+                      </ul>
+                      <MetricRow metrics={card.metrics} />
                     </div>
                   </div>
 
-                  <div className="grid gap-4 px-6 py-6 md:px-10 lg:grid-cols-[minmax(0,1fr)_56px_minmax(0,1fr)] lg:items-center">
-                    <div className="overflow-hidden rounded-[24px] border border-slate-200 bg-slate-50 shadow-[0_16px_36px_rgba(15,23,42,0.06)]">
-                      <img src={story.beforeImage} alt={story.beforeLabel} className="h-full w-full object-cover" />
-                      <div className="border-t border-slate-200 px-4 py-3 text-center text-sm font-semibold text-slate-700">
-                        {story.beforeLabel}
+                  <div className="grid gap-4 px-6 py-6 lg:grid-cols-[minmax(0,1fr)_48px_minmax(0,1fr)] lg:items-center lg:px-10">
+                    <div className="relative overflow-hidden rounded-[24px]">
+                      <img src={card.beforeImage} alt={card.beforeLabel} className="h-full w-full object-cover brightness-[0.88]" />
+                      <div className={`absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full border px-4 py-2 text-xs font-bold whitespace-nowrap backdrop-blur-md ${card.beforeTone}`}>
+                        {card.beforeLabel}
                       </div>
                     </div>
                     <div className="flex justify-center text-slate-400">
-                      <ArrowRight className="h-8 w-8" />
+                      <ArrowRight className="h-6 w-6" />
                     </div>
-                    <div className="overflow-hidden rounded-[24px] border border-slate-200 bg-slate-50 shadow-[0_16px_36px_rgba(15,23,42,0.06)]">
-                      <img src={story.afterImage} alt={story.afterLabel} className="h-full w-full object-cover" />
-                      <div className="border-t border-slate-200 px-4 py-3 text-center text-sm font-semibold text-slate-700">
-                        {story.afterLabel}
+                    <div className="relative overflow-hidden rounded-[24px]">
+                      <img src={card.afterImage} alt={card.afterLabel} className="h-full w-full object-cover brightness-[0.92]" />
+                      <div className={`absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full border px-4 py-2 text-xs font-bold whitespace-nowrap backdrop-blur-md ${card.afterTone}`}>
+                        {card.afterLabel}
                       </div>
                     </div>
                   </div>
                 </article>
               ))}
+
+              <article className="overflow-hidden rounded-[28px] border border-slate-200 bg-slate-50">
+                <div className="px-8 py-10 text-center md:px-12">
+                  <div className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-primary">
+                    From Use Case to Production
+                  </div>
+                  <h3 className="mt-4 text-[32px] font-black tracking-[-0.05em] text-slate-950">
+                    How We Work With Data Centers
+                  </h3>
+                  <p className="mx-auto mt-3 max-w-[560px] text-[15px] leading-7 text-slate-500">
+                    From target use case to production robot deployment in a 6-month pilot.
+                  </p>
+                </div>
+                <div className="px-6 pb-10 md:px-10">
+                  <img
+                    src={pilotRoadmap}
+                    alt="6-month pilot roadmap"
+                    className="mx-auto block w-full max-w-[1100px] rounded-2xl border border-slate-200"
+                  />
+                </div>
+              </article>
             </div>
           </div>
         </section>
 
-        <section
-          id="customers"
-          ref={customersRef}
-          className="border-y border-slate-200 bg-white px-4 py-18 sm:px-6 md:py-20"
-        >
+        <section id="customers" ref={customersRef} className="border-y border-slate-200 bg-slate-50 px-4 py-16 sm:px-6">
           <div className="mx-auto max-w-[1300px]">
-            <div className="mb-12 text-center">
-              <div className="inline-flex items-center gap-3 rounded-full border border-sky-200 bg-blue-50 px-6 py-3 text-base font-extrabold uppercase tracking-[0.1em] text-sky-700 shadow-[0_12px_28px_rgba(15,23,42,0.05)]">
-                <span className="h-2 w-2 rounded-full bg-sky-700" />
+            <div className="text-center">
+              <div className="inline-flex items-center gap-3 rounded-full border border-blue-200 bg-blue-50 px-8 py-3 text-xl font-extrabold uppercase tracking-[0.08em] text-blue-700">
+                <span className="h-2 w-2 rounded-full bg-blue-700" />
                 Customers
               </div>
-              <h2 className="mt-6 text-[clamp(2rem,3vw,3rem)] font-black tracking-[-0.05em] text-slate-950">
-                Real outcomes across robotics domains.
+              <h2 className="mt-6 text-[36px] font-black tracking-[-0.05em] text-slate-950">
+                Real Results in Production
               </h2>
+              <p className="mx-auto mt-3 max-w-[480px] text-[15px] leading-7 text-slate-500">
+                Measurable outcomes from live deployments across robotics verticals.
+              </p>
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-3">
-              {CUSTOMER_RESULTS.map((result) => (
-                <article key={result.company} className="marketing-surface rounded-[24px] p-6">
-                  <div className={`text-[46px] font-black tracking-[-0.08em] ${result.metricClassName}`}>
-                    {result.metric}
-                  </div>
-                  <div className="mt-3 text-base font-bold text-slate-950">{result.company}</div>
-                  <p className="mt-3 text-sm leading-6 text-slate-600">{result.detail}</p>
-                  <div className={`mt-5 inline-flex rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${result.chipClassName}`}>
-                    {result.label}
+            <div className="mt-8 grid gap-4 lg:grid-cols-3">
+              {CUSTOMER_CARDS.map((card) => (
+                <article key={card.company} className="rounded-[14px] border border-slate-200 bg-white p-7 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+                  <div className={`text-[44px] font-black leading-none tracking-[-0.06em] ${card.valueTone}`}>{card.value}</div>
+                  <div className="mt-2 text-sm font-bold text-slate-950">{card.company}</div>
+                  <p className="mt-3 text-[13px] leading-6 text-slate-500">{card.detail}</p>
+                  <div className={`mt-4 inline-flex rounded-sm border px-3 py-1 text-[9px] font-bold uppercase tracking-[0.1em] ${card.chipTone}`}>
+                    {card.label}
                   </div>
                 </article>
               ))}
@@ -494,14 +464,16 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="border-b border-slate-200 bg-slate-50/90 px-4 py-8 text-center sm:px-6">
-          <div className="mx-auto max-w-[1300px]">
-            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
-              Recognized and backed by
+        <section className="marketing-logo-strip px-4 py-6 sm:px-6">
+          <div className="mx-auto flex max-w-[1300px] flex-col items-center gap-4">
+            <div className="marketing-logo-label text-[10px] font-bold uppercase tracking-[0.14em]">
+              Trusted by teams at
             </div>
-            <div className="mt-5 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm font-bold text-slate-500">
-              {TRUSTED_BY.map((item) => (
-                <span key={item}>{item}</span>
+            <div className="flex flex-wrap items-center justify-center gap-x-9 gap-y-3">
+              {TRUSTED_BY.map((name) => (
+                <span key={name} className="marketing-logo-item text-[13px] font-bold tracking-[-0.01em]">
+                  {name}
+                </span>
               ))}
             </div>
           </div>
@@ -509,23 +481,22 @@ export default function Home() {
 
         <section className="marketing-cta-shared px-4 py-16 text-center sm:px-6">
           <div className="mx-auto max-w-4xl">
-            <h2 className="text-[clamp(1.9rem,2.9vw,2.5rem)] font-extrabold tracking-tight text-slate-950">
+            <h2 className="text-[clamp(24px,2.8vw,36px)] font-black tracking-[-0.04em] text-slate-950">
               Ready to close the Sim-to-Real gap?
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-slate-600">
-              Join robotics teams using DataraAI&apos;s real-world data to move faster from capture
-              to deployment.
+              Join leading robotics companies using DataraAI&apos;s real-world data to achieve 95%+ precision.
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <Link
-                to={buildAuthPath("register", "/robodatahub")}
-                className="inline-flex h-12 items-center justify-center rounded-xl bg-primary px-6 text-sm font-bold text-primary-foreground shadow-[0_14px_28px_rgba(13,148,136,0.16)]"
+                to={buildAuthPath("register", "/")}
+                className="inline-flex h-12 items-center justify-center rounded-xl bg-primary px-8 text-sm font-extrabold text-primary-foreground shadow-[0_14px_28px_rgba(13,148,136,0.16)]"
               >
-                Get Access
+                Request a Demo
               </Link>
               <Link
                 to="/robodatahub"
-                className="inline-flex h-12 items-center justify-center rounded-xl border border-slate-200 bg-white px-6 text-sm font-semibold text-slate-600 transition-colors hover:border-primary/30 hover:text-primary"
+                className="inline-flex h-12 items-center justify-center rounded-xl border border-slate-200 bg-white px-8 text-sm font-semibold text-slate-600 transition-colors hover:border-primary/30 hover:text-primary"
               >
                 Explore RoboDataHub
               </Link>
@@ -538,4 +509,3 @@ export default function Home() {
     </div>
   );
 }
-
