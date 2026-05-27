@@ -4,6 +4,8 @@ import Home from "./pages/Home";
 import Product from "./pages/Product";
 import DataViewer from "./pages/DataViewer";
 import RoboEyeView from "./pages/RoboEyeView";
+import RoboHandMotion from "./pages/RoboHandMotion";
+import RoboTaskManipulator from "./pages/RoboTaskManipulator";
 import AuthPage from "./pages/AuthPage";
 import AdminUsers from "./pages/AdminUsers";
 import Company from "./pages/Company";
@@ -16,8 +18,8 @@ const App = () => (
         <Route path="/" element={<Home />} />
         <Route path="/company" element={<Company />} />
         <Route path="/product" element={<Product />} />
-        <Route path="/robohandmotion" element={<Product />} />
-        <Route path="/robotaskmanipulator" element={<Product />} />
+        <Route path="/robohandmotion" element={<RoboHandMotion />} />
+        <Route path="/robotaskmanipulator" element={<RoboTaskManipulator />} />
         <Route path="/explore" element={<ExploreDatasets />} />
         <Route path="/roboeyeview" element={<RoboEyeView />} />
         <Route path="/auth" element={<AuthPage />} />
