@@ -27,6 +27,12 @@ import AuthRequiredState from "@/components/AuthRequiredState";
 import { useAuth } from "@/auth/useAuth";
 import { buildAuthPath } from "@/lib/authLinks";
 import { folderPreviewMediaUrl, frontPageImageUrl } from "@/lib/datasetFolderCover";
+import {
+  CATEGORY_LANDING_CONTENT,
+  ROOT_SHOWCASE_SECTIONS,
+  type CatalogCard,
+  type CategoryLandingContent,
+} from "@/lib/roboDataHubCatalog";
 
 interface FolderItem {
   name: string;
@@ -317,22 +323,6 @@ function pathBelongsToCategory(fullPath: string, routeKey: CategoryKey) {
   );
 }
 
-function buildCategoryHeroImagePaths(category: CategoryConfig) {
-  if (category.routeKey === "serverrack") {
-    return [
-      "serverrack/serverrack (1).png",
-      "serverrack/serverrack1.png",
-      "serverrack/serverrack2.png",
-      "serverrack/serverrack3.png",
-    ];
-  }
-
-  return [0, 1, 2, 3].map(
-    (index) =>
-      `${category.previewKey}/${category.previewKey}${index === 0 ? "" : index}.png`,
-  );
-}
-
 function buildViewerPath(fullPath: string, imageName?: string, basePath = "/viewer") {
   const encodedPath = fullPath
     .split("/")
@@ -409,90 +399,6 @@ function isDatasetRoutePath(path: string) {
   return parts.length === 3;
 }
 
-function ShowcasePreviewImage({
-  blobPath,
-  alt,
-  onClick,
-}: {
-  blobPath: string;
-  alt: string;
-  onClick: () => void;
-}) {
-  const [failed, setFailed] = useState(false);
-  const src = frontPageImageUrl(blobPath);
-
-  if (!src || failed) {
-    return (
-      <button
-        type="button"
-        onClick={onClick}
-        className="group relative flex aspect-[5/4] w-full items-center justify-center overflow-hidden rounded-[20px] border border-slate-200 bg-slate-100 transition-all duration-300 hover:border-primary/30 hover:shadow-[0_0_0_2px_rgba(13,148,136,0.12)]"
-      >
-        <Database className="h-9 w-9 text-primary/60" />
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-background via-background/80 to-transparent px-4 py-3 text-left">
-          <span className="font-sans-tech text-[11px] uppercase tracking-[0.18em] text-primary">
-            Open in viewer
-          </span>
-        </div>
-      </button>
-    );
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="group relative w-full overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-[0_18px_40px_rgba(15,23,42,0.08)] transition-all duration-300 hover:border-primary/30 hover:shadow-[0_0_0_2px_rgba(13,148,136,0.12)] focus:border-primary focus:outline-none focus:shadow-[0_0_0_2px_rgba(13,148,136,0.12)]"
-    >
-      <div className="aspect-[5/4] overflow-hidden">
-        <img
-          src={src}
-          alt={alt}
-          loading="lazy"
-          decoding="async"
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-          onError={() => setFailed(true)}
-        />
-      </div>
-      <div className="absolute inset-0 bg-gradient-to-t from-background/75 via-background/10 to-transparent opacity-80 transition-opacity group-hover:opacity-100" />
-      <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-3 px-4 py-3">
-        <span className="font-sans-tech text-[11px] uppercase tracking-[0.18em] text-primary">
-          Open in viewer
-        </span>
-        <ArrowRight className="h-4 w-4 text-primary transition-transform group-hover:translate-x-1" />
-      </div>
-    </button>
-  );
-}
-
-function CategoryHeroImage({ blobPath, alt }: { blobPath: string; alt: string }) {
-  const [failed, setFailed] = useState(false);
-  const src = frontPageImageUrl(blobPath);
-
-  if (!src || failed) {
-    return (
-      <div className="flex aspect-[4/3] w-full items-center justify-center rounded-[20px] border border-slate-200 bg-slate-100">
-        <Database className="h-8 w-8 text-primary/60" />
-      </div>
-    );
-  }
-
-  return (
-    <div className="w-full overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-[0_16px_36px_rgba(15,23,42,0.08)]">
-      <div className="aspect-[4/3] overflow-hidden">
-        <img
-          src={src}
-          alt={alt}
-          loading="lazy"
-          decoding="async"
-          className="h-full w-full object-cover transition-transform duration-500 hover:scale-[1.03]"
-          onError={() => setFailed(true)}
-        />
-      </div>
-    </div>
-  );
-}
-
 function getCategoryAccent(routeKey: CategoryKey) {
   switch (routeKey) {
     case "serverrack":
@@ -522,41 +428,158 @@ function getCategoryAccent(routeKey: CategoryKey) {
   }
 }
 
-function getCategoryStory(category: CategoryConfig) {
-  switch (category.routeKey) {
-    case "serverrack":
-      return {
-        eyebrow: "Data Center · Robotics AI",
-        summary:
-          "High-fidelity server-room captures built for port-level manipulation, rack maintenance, and robotics automation workflows.",
-        statLabel: "Operational focus",
-        statValue: "Rack + cabling",
-      };
-    case "warehouse":
-      return {
-        eyebrow: "Warehouse · Material Flow",
-        summary:
-          "Warehouse movement, handling, and storage-operation data shaped for logistics robotics and live facility workflows.",
-        statLabel: "Operational focus",
-        statValue: "Picking + transport",
-      };
-    case "dexterity":
-      return {
-        eyebrow: "Dexterity · Embodied Control",
-        summary:
-          "Fine-motor manipulation data for embodied systems working across close-range object interaction and practical task execution.",
-        statLabel: "Operational focus",
-        statValue: "Fine manipulation",
-      };
-    default:
-      return {
-        eyebrow: "Automotive · Physical AI",
-        summary:
-          "Assembly, inspection, and service-oriented captures for vehicle-production robotics and automation training pipelines.",
-        statLabel: "Operational focus",
-        statValue: "Assembly + inspection",
-      };
-  }
+function getCategoryBadge(card: CatalogCard) {
+  const isEgo = card.tags.some((tag) => tag.toLowerCase().includes("ego-centric"));
+  return {
+    label: isEgo ? "EGO" : "EXO",
+    className: isEgo
+      ? "border-teal-200 bg-teal-50 text-teal-700"
+      : "border-blue-200 bg-blue-50 text-blue-700",
+  };
+}
+
+function CuratedCatalogCard({
+  card,
+  buttonLabel,
+  columns = 3,
+  onOpen,
+}: {
+  card: CatalogCard;
+  buttonLabel: string;
+  columns?: 2 | 3;
+  onOpen: () => void;
+}) {
+  const badge = getCategoryBadge(card);
+  const badgeClasses =
+    card.availability === "In Library"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+      : "border-amber-200 bg-amber-50 text-amber-700";
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className={`group flex h-full flex-col overflow-hidden rounded-[18px] border border-slate-200 bg-white text-left shadow-[0_14px_34px_rgba(15,23,42,0.06)] transition-all duration-300 hover:-translate-y-1 hover:border-primary/25 hover:shadow-[0_24px_56px_rgba(15,23,42,0.12)] ${
+        columns === 2 ? "xl:flex-row" : ""
+      }`}
+    >
+      <div className={`p-4 ${columns === 2 ? "xl:w-[54%] xl:p-5" : ""}`}>
+        <div className="grid grid-cols-[minmax(0,1fr)_86px] grid-rows-[176px_84px] gap-1.5">
+          <div className="row-span-2 overflow-hidden rounded-[12px] bg-slate-100">
+            <img
+              src={frontPageImageUrl(card.images.main) ?? undefined}
+              alt={card.title}
+              loading="lazy"
+              decoding="async"
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.06]"
+            />
+          </div>
+          <div className="row-span-2 grid grid-rows-3 gap-1.5">
+            {card.images.thumbs.slice(0, 3).map((thumbPath, index) => (
+              <div key={`${card.title}-${thumbPath}-${index}`} className="overflow-hidden rounded-[8px] bg-slate-100">
+                <img
+                  src={frontPageImageUrl(thumbPath) ?? undefined}
+                  alt={`${card.title} preview ${index + 1}`}
+                  loading="lazy"
+                  decoding="async"
+                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.08]"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className={`flex flex-1 flex-col ${columns === 2 ? "xl:w-[46%]" : ""}`}>
+        <div className="flex items-start justify-between gap-3 px-4 pt-4 md:px-5">
+          <h3 className="text-[14px] font-bold leading-6 text-slate-950 md:text-[15px]">
+            {card.title}
+          </h3>
+          <span className={`inline-flex shrink-0 rounded-full border px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em] ${badgeClasses}`}>
+            {card.availability}
+          </span>
+        </div>
+
+        <div className="mt-3 px-4 md:px-5">
+          <p className="text-[11px] leading-6 text-slate-500 md:text-[12px]">
+            {card.description}
+          </p>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2 px-4 md:px-5">
+          <span className={`inline-flex rounded-[6px] border px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] ${badge.className}`}>
+            {badge.label}
+          </span>
+          {card.tags.map((tag) => (
+            <span
+              key={`${card.title}-${tag}`}
+              className="inline-flex rounded-[6px] border border-slate-200 bg-slate-50 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-500"
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
+
+        <div className="mt-auto flex items-center justify-between gap-3 border-t border-slate-200 px-4 py-4 md:px-5">
+          <div>
+            <div className="text-[13px] font-extrabold tracking-[-0.02em] text-primary">
+              {card.hours}
+            </div>
+            <div className="mt-1 font-mono-tech text-[10px] text-slate-400">{card.pathLabel}</div>
+          </div>
+          <span className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.12em] text-primary">
+            {buttonLabel}
+            <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+          </span>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function CategorySidebarSection({
+  title,
+  items,
+  activeItemId,
+  onSelect,
+}: {
+  title: string;
+  items: { id: string; label: string; dotClassName: string; badge?: string }[];
+  activeItemId?: string;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <div className="mb-5">
+      <div className="mb-3 px-2 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+        {title}
+      </div>
+      <div className="space-y-1.5">
+        {items.map((item) => {
+          const isActive = item.id === activeItemId;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onSelect(item.id)}
+              className={`flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors ${
+                isActive
+                  ? "border-primary/20 bg-primary/6 text-primary"
+                  : "border-transparent text-slate-600 hover:bg-slate-100"
+              }`}
+            >
+              <span className={`h-2 w-2 shrink-0 rounded-full ${item.dotClassName}`} />
+              <span className="flex-1 text-[13px] font-semibold">{item.label}</span>
+              {item.badge ? (
+                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+                  {item.badge}
+                </span>
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 function CompactPathSearch({
@@ -844,100 +867,6 @@ function CategoryDatasetPreviewCard({
   );
 }
 
-function PathSearchPanel({
-  title,
-  description,
-  value,
-  loading,
-  suggestions,
-  placeholder,
-  submitDisabled,
-  onFocus,
-  onChange,
-  onSubmit,
-  onSuggestionClick,
-  renderHighlightedPath,
-}: {
-  title: string;
-  description: string;
-  value: string;
-  loading: boolean;
-  suggestions: FolderItem[];
-  placeholder: string;
-  submitDisabled: boolean;
-  onFocus: () => void;
-  onChange: (value: string) => void;
-  onSubmit: () => void;
-  onSuggestionClick: (fullPath: string) => void;
-  renderHighlightedPath: (fullPath: string) => ReactNode;
-}) {
-  return (
-    <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_24px_60px_rgba(15,23,42,0.08)] md:p-8">
-      <div className="max-w-3xl">
-        <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Path Search</div>
-        <h3 className="mt-3 mb-2 font-sans-tech text-2xl font-bold text-slate-950">{title}</h3>
-        <p className="font-sans-tech text-sm leading-7 text-slate-600">
-          {description}
-        </p>
-      </div>
-      <div className="relative mt-6 w-full">
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            onSubmit();
-          }}
-          className="flex flex-col gap-3 sm:flex-row"
-        >
-          <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
-            <input
-              type="text"
-              value={value}
-              onFocus={onFocus}
-              onChange={(event) => onChange(event.target.value)}
-              placeholder={placeholder}
-            className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50/80 pl-11 pr-10 font-sans-tech text-sm text-slate-900 shadow-[0_10px_24px_rgba(15,23,42,0.05)] placeholder:text-slate-400 focus:border-primary focus:outline-none"
-          />
-            {loading && (
-              <Loader2 className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-primary" />
-            )}
-          </div>
-          <button
-            type="submit"
-            disabled={submitDisabled}
-            className="inline-flex h-12 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary px-5 font-sans-tech text-sm font-bold text-primary-foreground transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Open path
-          </button>
-        </form>
-
-        {value.trim() !== "" && (
-          <div className="mt-3 overflow-hidden rounded-[20px] border border-slate-200 bg-white/96 text-left shadow-[0_24px_60px_rgba(15,23,42,0.12)] backdrop-blur-sm dark:bg-card/95 dark:shadow-[0_24px_60px_rgba(0,0,0,0.3)]">
-            {suggestions.length > 0 ? (
-              <div className="divide-y divide-border">
-                {suggestions.map((suggestion) => (
-                  <button
-                    key={suggestion.full_path}
-                    type="button"
-                    onClick={() => onSuggestionClick(suggestion.full_path)}
-                    className="w-full px-4 py-3 text-left transition-colors hover:bg-primary/8"
-                  >
-                    {renderHighlightedPath(suggestion.full_path)}
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div className="px-4 py-3 font-sans-tech text-sm text-muted-foreground">
-                {loading ? "Loading paths..." : "No matching paths found"}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 export default function DataViewer() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -971,6 +900,7 @@ export default function DataViewer() {
   const [pathSearchLoading, setPathSearchLoading] = useState(false);
   const [pathSearchLoaded, setPathSearchLoaded] = useState(false);
   const [pathSearchTouched, setPathSearchTouched] = useState(false);
+  const [rootLayoutMode, setRootLayoutMode] = useState<2 | 4>(4);
   const [reloadTick, setReloadTick] = useState(0);
 
   const pathSegments = useMemo(
@@ -988,6 +918,10 @@ export default function DataViewer() {
         ? getCategoryByRouteKey(pathSegments[0])
         : null,
     [pathSegments],
+  );
+  const activeLandingContent = useMemo<CategoryLandingContent | null>(
+    () => (activeCategory ? CATEGORY_LANDING_CONTENT[activeCategory.routeKey] : null),
+    [activeCategory],
   );
   const pathSearchScopeKey = activeCategory?.routeKey ?? "global";
 
@@ -1324,6 +1258,23 @@ export default function DataViewer() {
     navigate(nextPath);
   }
 
+  function handleCuratedCardOpen(pathLabel: string, category?: CategoryConfig | null) {
+    const normalizedTarget = normalizePathSearchValue(pathLabel);
+    const match = allFolderPaths.find((item) => {
+      const normalizedPath = normalizePathSearchValue(item.full_path);
+      return normalizedPath === normalizedTarget || normalizedPath.includes(normalizedTarget);
+    });
+
+    if (match) {
+      handlePathSuggestionClick(match.full_path);
+      return;
+    }
+
+    if (category) {
+      navigate(buildCategoryLandingPath(category, viewerBasePath));
+    }
+  }
+
   async function handleDeleteFolder() {
     if (!deleteModalFolder) return;
 
@@ -1480,325 +1431,416 @@ export default function DataViewer() {
   }
 
   const renderRootLanding = () => (
-    <div className="mx-auto w-full max-w-[1440px] px-4 py-12 sm:px-6 md:py-16">
-      <div className="overflow-hidden rounded-[34px] border border-slate-200 bg-white shadow-[0_28px_70px_rgba(15,23,42,0.1)]">
-        <div className="grid lg:grid-cols-[240px_minmax(0,1fr)]">
-          <aside className="border-b border-slate-200 bg-slate-50/90 p-6 lg:border-b-0 lg:border-r">
-            <div className="text-lg font-extrabold tracking-[0.04em] text-primary">DataraAI</div>
-            <div className="mt-2 text-base font-bold text-slate-950">Physical AI Data</div>
-            <p className="mt-4 text-sm leading-7 text-slate-600">
-              Start in a vertical, keep search inside RoboDataHub, and move from the public catalog
-              into live endpoint folders whenever you want to inspect real dataset surfaces.
-            </p>
+    <div className="mx-auto w-full max-w-[1440px] px-4 py-10 sm:px-6 md:py-14">
+      <div className="overflow-hidden rounded-[30px] border border-slate-200 bg-white shadow-[0_30px_70px_rgba(15,23,42,0.1)]">
+        <div className="grid lg:grid-cols-[220px_minmax(0,1fr)]">
+          <aside className="border-b border-slate-200 bg-slate-50/90 p-5 lg:border-b-0 lg:border-r lg:p-6">
+            <div className="border-b border-slate-200 pb-5">
+              <div className="text-lg font-extrabold tracking-[0.04em] text-primary">DataraAI</div>
+              <div className="mt-1 text-base font-bold text-slate-950">Physical AI Data</div>
+            </div>
 
-            <div className="mt-8">
-              <div className="px-1 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">
+            <div className="pt-4">
+              <div className="mb-3 px-2 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
                 Verticals
               </div>
-              <div className="mt-3 space-y-2">
-                {CATEGORIES.map((category) => (
-                  <button
-                    key={category.routeKey}
-                    type="button"
-                    onClick={() => navigate(buildCategoryLandingPath(category, viewerBasePath))}
-                    className="flex w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left transition-colors hover:border-primary/20 hover:bg-primary/5"
-                  >
-                    <span className={`h-3 w-3 shrink-0 rounded-[4px] ${getCategoryAccent(category.routeKey).dot}`} />
-                    <span>
-                      <span className="block text-sm font-bold text-slate-950">{category.label}</span>
-                      <span className="block text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                        {getCategoryNarrative(category).statValue}
-                      </span>
-                    </span>
-                  </button>
-                ))}
+              <div className="space-y-1.5">
+                {ROOT_SHOWCASE_SECTIONS.map((section) => {
+                  const category = CATEGORIES.find((item) => item.routeKey === section.routeKey);
+                  if (!category) return null;
+
+                  return (
+                    <button
+                      key={section.routeKey}
+                      type="button"
+                      onClick={() => navigate(buildCategoryLandingPath(category, viewerBasePath))}
+                      className="flex w-full items-center gap-3 rounded-xl border border-transparent px-3 py-2.5 text-left text-slate-600 transition-colors hover:bg-slate-100"
+                    >
+                      <span className={`h-2.5 w-2.5 shrink-0 rounded-[3px] ${getCategoryAccent(category.routeKey).dot}`} />
+                      <span className="text-[14px] font-extrabold text-slate-950">{section.title}</span>
+                    </button>
+                  );
+                })}
               </div>
+            </div>
+
+            <div className="mt-auto border-t border-slate-200 pt-4">
+              {isAuthenticated && isApproved ? (
+                <button
+                  type="button"
+                  onClick={() => navigate(`${viewerBasePath}/my`)}
+                  className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
+                >
+                  My private data
+                </button>
+              ) : (
+                <Link
+                  to={buildAuthPath("register", viewerBasePath)}
+                  className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
+                >
+                  Get Access
+                </Link>
+              )}
             </div>
           </aside>
 
-          <div className="p-6 md:p-8">
-            <div className="marketing-hero-data overflow-hidden rounded-[30px] border border-slate-200 p-6 shadow-[0_18px_44px_rgba(15,23,42,0.06)] md:p-8">
-              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 font-sans-tech text-[11px] uppercase tracking-[0.22em] text-primary">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
-                RoboDataHub
+          <div className="min-w-0 p-6 md:p-8">
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-6">
+              <div>
+                <h1 className="text-[24px] font-extrabold tracking-[-0.03em] text-slate-950">
+                  RoboDataHub
+                </h1>
+                <p className="mt-1 text-[13px] text-slate-500">
+                  100+ datasets · Physical AI training data
+                </p>
               </div>
-              <h1 className="mb-2 max-w-3xl font-sans-tech text-[clamp(2.5rem,5vw,4.3rem)] font-black tracking-[-0.06em] text-slate-950">
-                RoboDataHub
-              </h1>
-              <p className="font-sans-tech text-[13px] text-slate-500">100+ datasets · Physical AI training data</p>
-              <p className="mt-5 max-w-3xl font-sans-tech text-base leading-8 text-slate-600">
-                Browse live physical-AI datasets by vertical. Search stays inside RoboDataHub, live
-                preview cards stay connected to the backend, and hover video remains available where
-                real endpoint folders exist.
-              </p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                {isAuthenticated && isApproved ? (
+
+              <div className="flex flex-wrap items-center gap-3">
+                <CompactPathSearch
+                  value={pathSearchText}
+                  loading={pathSearchLoading}
+                  suggestions={pathSuggestions}
+                  placeholder="Search datasets..."
+                  submitDisabled={pathSuggestions.length === 0}
+                  onFocus={() => setPathSearchTouched(true)}
+                  onChange={(value) => {
+                    setPathSearchTouched(true);
+                    setPathSearchText(value);
+                  }}
+                  onSubmit={handlePathSearchSubmit}
+                  onSuggestionClick={handlePathSuggestionClick}
+                  renderHighlightedPath={renderHighlightedPath}
+                />
+
+                <div className="inline-flex rounded-xl border border-slate-200 bg-slate-100 p-1">
                   <button
                     type="button"
-                    onClick={() => navigate(`${viewerBasePath}/my`)}
-                    className="inline-flex h-12 items-center gap-2 rounded-xl border border-primary/20 bg-primary px-5 font-sans-tech text-sm font-bold text-primary-foreground transition-colors hover:opacity-90"
+                    onClick={() => setRootLayoutMode(4)}
+                    className={`rounded-lg px-3 py-2 text-[11px] font-bold transition-colors ${
+                      rootLayoutMode === 4 ? "bg-primary text-primary-foreground" : "text-slate-500"
+                    }`}
                   >
-                    My private data
-                    <ArrowRight className="h-4 w-4" />
+                    4
                   </button>
-                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setRootLayoutMode(2)}
+                    className={`rounded-lg px-3 py-2 text-[11px] font-bold transition-colors ${
+                      rootLayoutMode === 2 ? "bg-primary text-primary-foreground" : "text-slate-500"
+                    }`}
+                  >
+                    2
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-8 space-y-9">
+              {ROOT_SHOWCASE_SECTIONS.map((section) => {
+                const category = CATEGORIES.find((item) => item.routeKey === section.routeKey);
+                if (!category) return null;
+
+                return (
+                  <section key={section.routeKey}>
+                    <div className="mb-4 flex items-center gap-3">
+                      <span className={`h-3 w-3 shrink-0 rounded-[3px] ${section.dotClassName}`} />
+                      <span className="text-[16px] font-extrabold text-slate-950">{section.title}</span>
+                      <div className={`h-px flex-1 bg-gradient-to-r ${section.lineClassName} to-transparent`} />
+                    </div>
+
+                    <div
+                      className={`grid gap-4 ${
+                        rootLayoutMode === 2 ? "xl:grid-cols-2" : "md:grid-cols-2 xl:grid-cols-4"
+                      }`}
+                    >
+                      {section.cards.map((card) => (
+                        <CuratedCatalogCard
+                          key={`${section.routeKey}-${card.title}`}
+                          card={card}
+                          columns={rootLayoutMode === 2 ? 2 : 3}
+                          buttonLabel="Open vertical"
+                          onOpen={() => navigate(buildCategoryLandingPath(category, viewerBasePath))}
+                        />
+                      ))}
+                    </div>
+                  </section>
+                );
+              })}
+
+              <section className="rounded-[20px] border border-primary/15 bg-[linear-gradient(135deg,rgba(13,148,136,0.05),rgba(29,78,216,0.03))] p-8">
+                <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="max-w-3xl">
+                    <h2 className="text-2xl font-black tracking-[-0.03em] text-slate-950">
+                      Request a Custom Dataset
+                    </h2>
+                    <p className="mt-3 text-sm leading-7 text-slate-600">
+                      Don&apos;t see what you need? Our team captures any task, environment, or
+                      robot workflow on demand.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    {CATEGORIES.map((category) => (
+                      <span
+                        key={`${category.routeKey}-pill`}
+                        className={`inline-flex rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${getCategoryAccent(category.routeKey).chip}`}
+                      >
+                        {category.label}
+                      </span>
+                    ))}
+                    <Link
+                      to={buildAuthPath("register", viewerBasePath)}
+                      className="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-5 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
+                    >
+                      Submit Request
+                    </Link>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderCategoryLanding = (category: CategoryConfig) => {
+    const landing = activeLandingContent;
+    if (!landing) return null;
+
+    const heroStats = landing.stats.slice(0, 4);
+
+    return (
+      <div className="mx-auto w-full max-w-[1440px] px-4 py-10 sm:px-6 md:py-14">
+        <div className="overflow-hidden rounded-[30px] border border-slate-200 bg-white shadow-[0_30px_70px_rgba(15,23,42,0.1)]">
+          <section className="relative overflow-hidden border-b border-slate-200">
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(13,148,136,0.06),transparent_52%),radial-gradient(ellipse_at_bottom_left,rgba(15,23,42,0.03),transparent_46%)]" />
+            <div className="relative grid gap-10 p-6 md:p-8 lg:grid-cols-2 lg:items-center">
+              <div>
+                <div className={`mb-5 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] ${getCategoryAccent(category.routeKey).chip}`}>
+                  <span className={`h-2 w-2 rounded-full ${getCategoryAccent(category.routeKey).dot}`} />
+                  {landing.heroEyebrow}
+                </div>
+                <h1 className="text-[clamp(2.4rem,4.8vw,4.5rem)] font-black tracking-[-0.06em] text-slate-950">
+                  {landing.heroTitle}
+                </h1>
+                <p className="mt-5 max-w-2xl text-sm leading-8 text-slate-600 md:text-base">
+                  {landing.heroDescription}
+                </p>
+
+                <div className="mt-8 grid gap-px overflow-hidden rounded-[14px] border border-slate-300 bg-slate-200 sm:grid-cols-4">
+                  {heroStats.map((stat) => (
+                    <div key={`${landing.routeKey}-${stat.label}`} className="bg-slate-50 px-4 py-4">
+                      <div className="text-[22px] font-extrabold tracking-[-0.03em] text-slate-950">
+                        {stat.value}
+                      </div>
+                      <div className="mt-1 text-[9px] font-bold uppercase tracking-[0.16em] text-slate-400">
+                        {stat.label}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="relative overflow-hidden rounded-[20px] border border-slate-300 shadow-[0_28px_64px_rgba(15,23,42,0.12)]">
+                <img
+                  src={frontPageImageUrl(landing.heroImagePath) ?? undefined}
+                  alt={`${landing.heroTitle} hero`}
+                  className="h-[390px] w-full object-cover"
+                />
+                <div className="absolute inset-0 bg-[linear-gradient(160deg,rgba(255,255,255,0.15),transparent_45%,rgba(15,23,42,0.06))]" />
+                <div className="absolute bottom-5 left-5 rounded-[12px] border border-slate-200 bg-white/90 px-4 py-3 backdrop-blur-sm">
+                  <div className="text-[8px] font-black uppercase tracking-[0.18em] text-primary">
+                    {landing.heroBadge}
+                  </div>
+                  <div className="mt-1 text-[13px] font-bold text-slate-950">{landing.heroTitle}</div>
+                </div>
+                <div className="absolute right-4 top-4 rounded-[8px] border border-slate-200 bg-white/90 px-3 py-1.5 text-[11px] font-semibold text-slate-500 backdrop-blur-sm">
+                  <strong className="text-primary">{landing.heroPill}</strong>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="border-b border-slate-200 bg-slate-50/80 px-6 py-5 md:px-8">
+            <div className="grid gap-px overflow-hidden rounded-[16px] border border-slate-300 bg-slate-200 md:grid-cols-5">
+              {landing.stats.map((stat) => (
+                <div key={`${landing.routeKey}-band-${stat.label}`} className="bg-slate-50 px-5 py-4">
+                  <div className="text-[26px] font-black tracking-[-0.04em] text-slate-950">
+                    {stat.value}
+                  </div>
+                  <div className="mt-1 text-[9px] font-bold uppercase tracking-[0.16em] text-slate-400">
+                    {stat.label}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <div className="grid lg:grid-cols-[240px_minmax(0,1fr)]">
+            <aside className="border-b border-slate-200 bg-slate-50/90 p-5 lg:border-b-0 lg:border-r lg:p-6">
+              <CategorySidebarSection
+                title="Verticals"
+                items={CATEGORIES.map((item) => ({
+                  id: item.routeKey,
+                  label: item.label,
+                  dotClassName: getCategoryAccent(item.routeKey).dot,
+                }))}
+                activeItemId={category.routeKey}
+                onSelect={(routeKey) => {
+                  const nextCategory = CATEGORIES.find((item) => item.routeKey === routeKey);
+                  if (nextCategory) {
+                    navigate(buildCategoryLandingPath(nextCategory, viewerBasePath));
+                  }
+                }}
+              />
+
+              <CategorySidebarSection
+                title="Filters"
+                items={landing.filters}
+                activeItemId={landing.filters[0]?.id}
+                onSelect={() => undefined}
+              />
+
+              <div className="mt-5 rounded-[18px] border border-slate-200 bg-white p-4 shadow-[0_14px_32px_rgba(15,23,42,0.06)]">
+                <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+                  Search library
+                </div>
+                <div className="mt-3">
+                  <CompactPathSearch
+                    value={pathSearchText}
+                    loading={pathSearchLoading}
+                    suggestions={pathSuggestions}
+                    placeholder={`Search ${category.label.toLowerCase()} datasets...`}
+                    submitDisabled={pathSuggestions.length === 0}
+                    onFocus={() => setPathSearchTouched(true)}
+                    onChange={(value) => {
+                      setPathSearchTouched(true);
+                      setPathSearchText(value);
+                    }}
+                    onSubmit={handlePathSearchSubmit}
+                    onSuggestionClick={handlePathSuggestionClick}
+                    renderHighlightedPath={renderHighlightedPath}
+                  />
+                </div>
+              </div>
+
+              <div className="mt-5 border-t border-slate-200 pt-4">
+                {!isAuthenticated || !isApproved ? (
                   <Link
                     to={buildAuthPath("register", viewerBasePath)}
-                    className="inline-flex h-12 items-center gap-2 rounded-xl border border-primary/20 bg-primary px-5 font-sans-tech text-sm font-bold text-primary-foreground transition-colors hover:opacity-90"
+                    className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
                   >
                     Get Access
-                    <ArrowRight className="h-4 w-4" />
                   </Link>
-                )}
-                {user?.role === "admin" && (
+                ) : user?.role === "admin" ? (
                   <button
                     type="button"
                     onClick={() => navigate(`${viewerBasePath}/admin/${user.storageSlug}`)}
-                    className="inline-flex h-12 items-center gap-2 rounded-xl border border-slate-300 bg-white px-5 font-sans-tech text-sm font-semibold text-slate-700 transition-colors hover:border-primary/20 hover:text-primary"
+                    className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/8 px-4 text-sm font-bold text-primary transition-colors hover:bg-primary/12"
                   >
                     Admin access
                     <Shield className="h-4 w-4" />
                   </button>
-                )}
+                ) : null}
               </div>
-            </div>
+            </aside>
 
-            <div className="mt-8">
-              <PathSearchPanel
-                title="Search the full library"
-                description="Jump straight to a brand, endpoint folder, or deeper asset path anywhere in RoboDataHub."
-                value={pathSearchText}
-                loading={pathSearchLoading}
-                suggestions={pathSuggestions}
-                placeholder="Search any folder or path, e.g. BMW or carAutomation/BMW/frontGrille"
-                submitDisabled={pathSuggestions.length === 0}
-                onFocus={() => setPathSearchTouched(true)}
-                onChange={(value) => {
-                  setPathSearchTouched(true);
-                  setPathSearchText(value);
-                }}
-                onSubmit={handlePathSearchSubmit}
-                onSuggestionClick={handlePathSuggestionClick}
-                renderHighlightedPath={renderHighlightedPath}
-              />
-            </div>
+            <div className="min-w-0 p-6 md:p-8">
+              <div className="space-y-9">
+                {landing.sections.map((section) => (
+                  <section key={`${landing.routeKey}-${section.id}`}>
+                    <div className="mb-4 flex items-center gap-3 border-l-[3px] border-primary pl-3">
+                      <span className="text-[15px] font-extrabold text-slate-950">{section.title}</span>
+                      <div className="h-px flex-1 bg-gradient-to-r from-primary/20 to-transparent" />
+                      <span className="text-[11px] font-semibold text-slate-400">{section.countLabel}</span>
+                    </div>
 
-            <div className="mt-10 grid gap-6 xl:grid-cols-2">
-              {CATEGORIES.map((category) => (
-                <section
-                  key={category.routeKey}
-                  className="grid gap-6 overflow-hidden rounded-[30px] border border-slate-200 bg-white p-5 shadow-[0_18px_44px_rgba(15,23,42,0.06)] lg:grid-cols-[minmax(0,1fr)_300px]"
-                >
-                  <div className="flex flex-col justify-between">
-                    <div>
-                      <div className={`mb-4 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${getCategoryAccent(category.routeKey).chip}`}>
-                        <span className={`h-2 w-2 rounded-full ${getCategoryAccent(category.routeKey).dot}`} />
-                      {getCategoryStory(category).eyebrow}
+                    <div className="grid gap-4 xl:grid-cols-3">
+                      {section.cards.map((card) => (
+                        <CuratedCatalogCard
+                          key={`${section.id}-${card.title}`}
+                          card={card}
+                          buttonLabel="Open folder"
+                          onOpen={() => handleCuratedCardOpen(card.pathLabel, category)}
+                        />
+                      ))}
+                    </div>
+                  </section>
+                ))}
+
+                <section>
+                  <div className="mb-4 flex items-center gap-3 border-l-[3px] border-primary pl-3">
+                    <span className="text-[15px] font-extrabold text-slate-950">Live library endpoints</span>
+                    <div className="h-px flex-1 bg-gradient-to-r from-primary/20 to-transparent" />
+                    <span className="text-[11px] font-semibold text-slate-400">
+                      {categoryPreviews.length} public folders
+                    </span>
+                  </div>
+
+                  <div className="mb-6 rounded-[18px] border border-slate-200 bg-slate-50/80 p-4 text-sm leading-7 text-slate-600">
+                    Real accessible endpoint folders stay backend-driven here. These cards preserve
+                    the current hover-video preview behavior and remain connected to search and
+                    folder traversal.
+                  </div>
+
+                  {categoryPreviewsLoading ? (
+                    <div className="flex min-h-[220px] items-center justify-center rounded-[24px] border border-slate-200 bg-slate-50">
+                      <div className="flex items-center gap-3 text-sm text-slate-500">
+                        <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                        Loading folder previews...
                       </div>
-                      <div className="text-2xl font-extrabold tracking-[-0.03em] text-slate-950">
-                        {category.label}
-                      </div>
-                      <p className="mt-4 max-w-xl text-sm leading-7 text-slate-600">
-                      {getCategoryStory(category).summary}
+                    </div>
+                  ) : categoryPreviews.length > 0 ? (
+                    <div className="grid gap-5 lg:grid-cols-2">
+                      {categoryPreviews.map((item) => (
+                        <CategoryDatasetPreviewCard
+                          key={item.full_path}
+                          item={item}
+                          onClick={() => handleCategoryPreviewClick(item)}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-[24px] border border-dashed border-slate-300 bg-slate-50 p-6 text-sm leading-7 text-slate-500">
+                      No public endpoint folders are available in this category yet.
+                    </div>
+                  )}
+                </section>
+
+                <section className="rounded-[20px] border border-primary/15 bg-[linear-gradient(128deg,rgba(13,148,136,0.05),rgba(15,23,42,0.02)_55%,transparent)] p-8">
+                  <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="max-w-3xl">
+                      <h2 className="text-[28px] font-black tracking-[-0.04em] text-slate-950">
+                        {landing.ctaTitle}
+                      </h2>
+                      <p className="mt-3 text-sm leading-7 text-slate-600">
+                        {landing.ctaDescription}
                       </p>
                     </div>
-                    <div className="mt-6 flex flex-wrap items-center gap-3">
-                      <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-slate-500">
-                        Live viewer + hover previews
-                      </span>
-                      <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-slate-500">
-                      {getCategoryStory(category).statLabel}: {getCategoryStory(category).statValue}
-                      </span>
-                    </div>
-                    <div className="mt-6">
+                    <div className="flex flex-wrap gap-3">
+                      <Link
+                        to={buildAuthPath("register", viewerBasePath)}
+                        className="inline-flex h-12 items-center justify-center rounded-xl bg-primary px-5 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
+                      >
+                        Request access
+                      </Link>
                       <button
                         type="button"
-                        onClick={() => navigate(buildCategoryLandingPath(category, viewerBasePath))}
-                        className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 font-sans-tech text-sm font-bold text-primary-foreground transition-colors hover:opacity-90"
+                        onClick={() => navigate(viewerBasePath)}
+                        className="inline-flex h-12 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-700 transition-colors hover:border-primary/20 hover:text-primary"
                       >
-                        Enter Category
-                        <ArrowRight className="h-4 w-4" />
+                        Back to RoboDataHub
                       </button>
                     </div>
                   </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    {buildCategoryHeroImagePaths(category)
-                      .slice(0, 4)
-                      .map((blobPath, index) => (
-                        <CategoryHeroImage
-                          key={`${category.routeKey}-${blobPath}`}
-                          blobPath={blobPath}
-                          alt={`${category.label} preview ${index + 1}`}
-                        />
-                      ))}
-                  </div>
                 </section>
-              ))}
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
-  );
-
-  const renderCategoryLanding = (category: CategoryConfig) => (
-    <div className="mx-auto w-full max-w-[1440px] px-4 py-12 sm:px-6 md:py-16">
-      <div className="overflow-hidden rounded-[34px] border border-slate-200 bg-white shadow-[0_28px_70px_rgba(15,23,42,0.1)]">
-        <div className="grid lg:grid-cols-[250px_minmax(0,1fr)]">
-          <aside className="border-b border-slate-200 bg-slate-50/90 p-6 lg:border-b-0 lg:border-r">
-            <button
-              type="button"
-              onClick={() => navigate(viewerBasePath)}
-              className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
-            >
-              <ArrowRight className="h-4 w-4 rotate-180" />
-              All verticals
-            </button>
-
-            <div className="mt-6 text-lg font-extrabold tracking-[0.04em] text-primary">RoboDataHub</div>
-            <div className="mt-2 text-base font-bold text-slate-950">{category.label}</div>
-            <p className="mt-4 text-sm leading-7 text-slate-600">{category.description}</p>
-
-            <div className="mt-8 space-y-2">
-              {CATEGORIES.map((item) => {
-                const isActive = item.routeKey === category.routeKey;
-                return (
-                  <button
-                    key={item.routeKey}
-                    type="button"
-                    onClick={() => navigate(buildCategoryLandingPath(item, viewerBasePath))}
-                    className={`flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-colors ${
-                      isActive
-                        ? `${getCategoryAccent(item.routeKey).chip} border-current/20`
-                        : "border-slate-200 bg-white hover:border-primary/20 hover:bg-primary/5"
-                    }`}
-                  >
-                    <span className={`h-3 w-3 shrink-0 rounded-[4px] ${getCategoryAccent(item.routeKey).dot}`} />
-                    <span className="text-sm font-bold">{item.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="mt-8">
-              <PathSearchPanel
-                title={`Search ${category.label}`}
-                description={`Jump to a brand, endpoint folder, or deeper asset path within the ${category.label.toLowerCase()} catalog.`}
-                value={pathSearchText}
-                loading={pathSearchLoading}
-                suggestions={pathSuggestions}
-                placeholder={`Search ${category.label.toLowerCase()} paths`}
-                submitDisabled={pathSuggestions.length === 0}
-                onFocus={() => setPathSearchTouched(true)}
-                onChange={(value) => {
-                  setPathSearchTouched(true);
-                  setPathSearchText(value);
-                }}
-                onSubmit={handlePathSearchSubmit}
-                onSuggestionClick={handlePathSuggestionClick}
-                renderHighlightedPath={renderHighlightedPath}
-              />
-            </div>
-          </aside>
-
-          <div className="min-w-0">
-            <div className="marketing-hero-data grid gap-8 border-b border-slate-200 p-6 md:grid-cols-[minmax(0,1.1fr)_300px] md:p-8">
-              <div className="max-w-3xl">
-                <div className={`mb-5 inline-flex items-center gap-2 rounded-full border px-4 py-2 font-sans-tech text-[11px] uppercase tracking-[0.22em] ${getCategoryAccent(category.routeKey).chip}`}>
-                {getCategoryStory(category).eyebrow}
-                </div>
-                <h1 className="text-[clamp(2.5rem,5vw,4.2rem)] font-black tracking-[-0.06em] text-slate-950">
-                  RoboDataHub {category.label}
-                </h1>
-                <p className="mt-5 max-w-2xl text-base leading-8 text-slate-600 md:text-lg">
-                {getCategoryStory(category).summary}
-                </p>
-                <div className="mt-6 flex flex-wrap gap-3">
-                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-slate-500">
-                    {categoryPreviews.length} public endpoint folders
-                  </span>
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-slate-500">
-                    {getCategoryStory(category).statLabel}: {getCategoryStory(category).statValue}
-                  </span>
-                </div>
-              </div>
-
-              <CategoryHeroImage
-                blobPath={buildCategoryHeroImagePaths(category)[0]}
-                alt={`${category.label} hero`}
-              />
-            </div>
-
-            <div className="border-b border-slate-200 bg-slate-50/70 px-6 py-5 md:px-8">
-              <div className="grid gap-4 md:grid-cols-3">
-                <div className="rounded-[20px] border border-slate-200 bg-white px-5 py-4">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
-                    Public folders
-                  </div>
-                  <div className="mt-2 text-2xl font-black tracking-[-0.05em] text-slate-950">
-                    {categoryPreviews.length}
-                  </div>
-                </div>
-                <div className="rounded-[20px] border border-slate-200 bg-white px-5 py-4">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
-                    Preview mode
-                  </div>
-                  <div className="mt-2 text-2xl font-black tracking-[-0.05em] text-slate-950">
-                    Hover video
-                  </div>
-                </div>
-                <div className="rounded-[20px] border border-slate-200 bg-white px-5 py-4">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
-                    Search scope
-                  </div>
-                  <div className="mt-2 text-2xl font-black tracking-[-0.05em] text-slate-950">
-                    {category.label}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-6 md:p-8">
-              <div className="mb-8">
-                <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-primary">
-                  Live folder previews
-                </div>
-                <p className="max-w-3xl text-sm leading-7 text-slate-600">
-                  Real accessible endpoint folders stay backend-driven here. The large preview tile
-                  keeps the current hover-video behavior, while search and folder traversal continue
-                  into the existing viewer.
-                </p>
-              </div>
-
-              {categoryPreviewsLoading ? (
-                <div className="flex min-h-[220px] items-center justify-center rounded-[24px] border border-slate-200 bg-slate-50">
-                  <div className="flex items-center gap-3 text-sm text-slate-500">
-                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                    Loading folder previews...
-                  </div>
-                </div>
-              ) : categoryPreviews.length > 0 ? (
-                <div className="grid gap-5 lg:grid-cols-2">
-                  {categoryPreviews.map((item) => (
-                    <CategoryDatasetPreviewCard
-                      key={item.full_path}
-                      item={item}
-                      onClick={() => handleCategoryPreviewClick(item)}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className="rounded-[24px] border border-dashed border-slate-300 bg-slate-50 p-6 text-sm leading-7 text-slate-500">
-                  No public endpoint folders are available in this category yet.
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="relative flex min-h-screen flex-col bg-background font-sans-tech text-foreground md:h-screen md:overflow-hidden">

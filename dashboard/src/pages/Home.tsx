@@ -115,8 +115,10 @@ const SOLUTION_CARDS: SolutionCard[] = [
     ],
     beforeLabel: "Before - Manual",
     afterLabel: "After - Automated",
-    beforeImage: rackManual,
-    afterImage: rackRobot,
+    beforeImage:
+      "https://plus.unsplash.com/premium_photo-1683134238579-a7575f7eba35?w=1200&q=88",
+    afterImage:
+      "https://images.unsplash.com/photo-1682559736721-c2e77ff4c650?w=1200&q=88",
     accent: "text-primary",
     beforeTone: "border-red-200 bg-red-50/80 text-red-700",
     afterTone: "border-primary/20 bg-primary/10 text-primary",
