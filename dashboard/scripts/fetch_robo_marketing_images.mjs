@@ -373,35 +373,16 @@ export async function buildPoolForRoute(
   return [...pool.values()];
 }
 
-function chooseUniqueMain(card, pool, usedMainSources) {
-  const scored = pool
-    .map((item) => ({ item, score: scoreCandidate(card, item) }))
-    .filter((entry) => Number.isFinite(entry.score))
-    .sort((left, right) => right.score - left.score);
-
-  const unused = scored.find((entry) => !usedMainSources.has(entry.item.sourceUrl));
-  if (unused) return unused.item;
-  return scored[0]?.item ?? null;
-}
-
-function chooseThumbs(card, pool, mainItem) {
-  const scored = pool
-    .filter((item) => item.sourceUrl !== mainItem.sourceUrl)
+function getRankedCandidates(card, pool) {
+  return pool
     .map((item) => ({ item, score: scoreCandidate(card, item) }))
     .filter((entry) => Number.isFinite(entry.score))
     .sort((left, right) => right.score - left.score)
-    .slice(0, 3)
     .map((entry) => entry.item);
-
-  if (scored.length === 0) return [mainItem, mainItem, mainItem];
-  while (scored.length < 3) {
-    scored.push(scored[scored.length - 1] ?? mainItem);
-  }
-  return scored;
 }
 
 async function downloadFile(url, targetPath) {
-  const attempts = [0, 1500, 3000, 5000];
+  const attempts = [0, 4000, 10000, 20000];
 
   for (let attempt = 0; attempt < attempts.length; attempt += 1) {
     if (attempts[attempt] > 0) {
@@ -430,6 +411,7 @@ async function downloadFile(url, targetPath) {
       }
 
       await fs.rename(tempPath, targetPath);
+      await sleep(500);
       return;
     } catch (error) {
       await fs.rm(tempPath, { force: true }).catch(() => {});
@@ -437,6 +419,45 @@ async function downloadFile(url, targetPath) {
         throw new Error(`Download failed after retries for ${url}: ${error.message}`);
       }
     }
+  }
+}
+
+async function ensureDownloadedAsset({
+  item,
+  poolKey,
+  card,
+  downloadedAssets,
+  failedSources,
+}) {
+  if (failedSources.has(item.sourceUrl)) return null;
+
+  const fileSlug = slugify(item.pageTitle || item.title || card.title) || "image";
+  const ext = extensionFromUrl(item.downloadUrl);
+  const fileName = `${fileSlug}${ext}`;
+  const relativePath = `marketing/${poolKey}/${fileName}`.replace(/\\/g, "/");
+  const targetPath = path.join(OUTPUT_ROOT, poolKey, fileName);
+  const cached = downloadedAssets.get(item.sourceUrl);
+  if (cached) return cached;
+
+  try {
+    const existingPayload = await fs.readFile(targetPath);
+    if (bufferHasSupportedImageSignature(existingPayload)) {
+      downloadedAssets.set(item.sourceUrl, relativePath);
+      return relativePath;
+    }
+    await fs.rm(targetPath, { force: true }).catch(() => {});
+  } catch {
+    // file does not exist or is unreadable; continue with a fresh download
+  }
+
+  try {
+    await downloadFile(item.downloadUrl, targetPath);
+    downloadedAssets.set(item.sourceUrl, relativePath);
+    return relativePath;
+  } catch (error) {
+    failedSources.add(item.sourceUrl);
+    console.warn(`Skipping asset for ${card.pathLabel}: ${error.message}`);
+    return null;
   }
 }
 
@@ -489,6 +510,7 @@ async function main() {
   const overrideEntries = [];
   const attribution = [];
   const usedMainSources = new Set();
+  const failedSources = new Set();
 
   for (const [poolKey, groupedCards] of cardsByPool.entries()) {
     const pool = routePools.get(poolKey) ?? [];
@@ -498,31 +520,63 @@ async function main() {
     }
 
     for (const card of groupedCards) {
-      const mainItem = chooseUniqueMain(card, pool, usedMainSources);
-      if (!mainItem) {
+      const rankedItems = getRankedCandidates(card, pool);
+      if (rankedItems.length === 0) {
         console.warn(`No Commons candidates found for ${card.pathLabel}`);
         continue;
       }
+
+      const prioritizedMainCandidates = [
+        ...rankedItems.filter((item) => !usedMainSources.has(item.sourceUrl)),
+        ...rankedItems.filter((item) => usedMainSources.has(item.sourceUrl)),
+      ];
+
+      let mainItem = null;
+      let mainLocalPath = null;
+      for (const item of prioritizedMainCandidates) {
+        const relativePath = await ensureDownloadedAsset({
+          item,
+          poolKey,
+          card,
+          downloadedAssets,
+          failedSources,
+        });
+        if (!relativePath) continue;
+        mainItem = item;
+        mainLocalPath = relativePath;
+        break;
+      }
+
+      if (!mainItem || !mainLocalPath) {
+        console.warn(`No downloadable Commons assets found for ${card.pathLabel}`);
+        continue;
+      }
+
       usedMainSources.add(mainItem.sourceUrl);
 
-      const thumbItems = chooseThumbs(card, pool, mainItem);
-      const selection = [mainItem, ...thumbItems];
-      const localPaths = [];
+      const thumbSelections = [];
+      for (const item of rankedItems) {
+        if (item.sourceUrl === mainItem.sourceUrl) continue;
 
-      for (const item of selection) {
-        let relativePath = downloadedAssets.get(item.sourceUrl);
-        if (!relativePath) {
-          const fileSlug = slugify(item.pageTitle || item.title || card.title) || "image";
-          const ext = extensionFromUrl(item.downloadUrl);
-          const fileName = `${fileSlug}${ext}`;
-          const relative = `marketing/${poolKey}/${fileName}`.replace(/\\/g, "/");
-          const targetPath = path.join(OUTPUT_ROOT, poolKey, fileName);
-          await downloadFile(item.downloadUrl, targetPath);
-          downloadedAssets.set(item.sourceUrl, relative);
-          relativePath = relative;
-        }
-        localPaths.push(relativePath);
+        const relativePath = await ensureDownloadedAsset({
+          item,
+          poolKey,
+          card,
+          downloadedAssets,
+          failedSources,
+        });
+        if (!relativePath) continue;
+
+        thumbSelections.push({ item, localPath: relativePath });
+        if (thumbSelections.length === 3) break;
       }
+
+      while (thumbSelections.length < 3) {
+        thumbSelections.push({ item: mainItem, localPath: mainLocalPath });
+      }
+
+      const selection = [mainItem, ...thumbSelections.map((entry) => entry.item)];
+      const localPaths = [mainLocalPath, ...thumbSelections.map((entry) => entry.localPath)];
 
       overrideEntries.push({
         pathLabel: card.pathLabel,
