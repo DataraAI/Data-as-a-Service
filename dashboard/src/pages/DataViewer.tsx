@@ -675,6 +675,7 @@ function CompactPathSearch({
   suggestions,
   placeholder,
   submitDisabled,
+  className,
   onFocus,
   onChange,
   onSubmit,
@@ -686,6 +687,7 @@ function CompactPathSearch({
   suggestions: FolderItem[];
   placeholder: string;
   submitDisabled: boolean;
+  className?: string;
   onFocus: () => void;
   onChange: (value: string) => void;
   onSubmit: () => void;
@@ -693,7 +695,7 @@ function CompactPathSearch({
   renderHighlightedPath: (fullPath: string) => ReactNode;
 }) {
   return (
-    <div className="relative w-full max-w-xl">
+    <div className={`relative w-full ${className ?? "max-w-xl"}`}>
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -980,15 +982,15 @@ export default function DataViewer() {
 
     return activeLandingContent.sections.map((section) => {
       const resolvedCards = matchedBySection.get(section.id) ?? [];
-      const liveCards = resolvedCards.filter((entry) => entry.liveItem);
-      const marketingCards = resolvedCards.filter((entry) => !entry.liveItem);
+      const liveBackedCards = resolvedCards.filter((entry) => entry.card.livePathHints?.length);
+      const marketingCards = resolvedCards.filter((entry) => !entry.card.livePathHints?.length);
       const extraLiveCards = (groupedExtras.get(section.id) ?? [])
         .sort((a, b) => a.title.localeCompare(b.title))
         .map((item) => ({ card: buildFallbackLiveCard(item), liveItem: item }));
 
       return {
         ...section,
-        cards: [...liveCards, ...extraLiveCards, ...marketingCards],
+        cards: [...liveBackedCards, ...extraLiveCards, ...marketingCards],
       };
     });
   }, [activeCategory, activeLandingContent, categoryPreviews]);
@@ -996,6 +998,7 @@ export default function DataViewer() {
 
   const isRootLanding = pathSegments.length === 0;
   const isCategoryLanding = Boolean(activeCategory) && pathSegments.length === 1;
+  const isCatalogLanding = isRootLanding || isCategoryLanding;
 
   useEffect(() => {
     if (!isAuthenticated || !isApproved || isRootLanding || isCategoryLanding) {
@@ -1503,7 +1506,7 @@ export default function DataViewer() {
     <div className="mx-auto w-full max-w-[1440px] px-4 py-10 sm:px-6 md:py-14">
       <div className="overflow-hidden rounded-[30px] border border-slate-200 bg-white shadow-[0_30px_70px_rgba(15,23,42,0.1)]">
         <div className="grid lg:grid-cols-[220px_minmax(0,1fr)]">
-          <aside className="border-b border-slate-200 bg-slate-50/90 p-5 lg:border-b-0 lg:border-r lg:p-6">
+          <aside className="flex flex-col border-b border-slate-200 bg-slate-50/90 p-5 lg:border-b-0 lg:border-r lg:p-6">
             <div className="border-b border-slate-200 pb-5">
               <div className="text-lg font-extrabold tracking-[0.04em] text-primary">DataraAI</div>
               <div className="mt-1 text-base font-bold text-slate-950">Physical AI Data</div>
@@ -1535,13 +1538,22 @@ export default function DataViewer() {
 
             <div className="mt-auto border-t border-slate-200 pt-4">
               {isAuthenticated && isApproved ? (
-                <button
-                  type="button"
-                  onClick={() => navigate(`${viewerBasePath}/my`)}
-                  className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
-                >
-                  My private data
-                </button>
+                <div className="space-y-3">
+                  <button
+                    type="button"
+                    onClick={() => navigate(`${viewerBasePath}/my`)}
+                    className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
+                  >
+                    My private data
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsUploadModalOpen(true)}
+                    className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
+                  >
+                    Import data
+                  </button>
+                </div>
               ) : (
                 <Link
                   to={buildAuthPath("register", viewerBasePath)}
@@ -1571,6 +1583,7 @@ export default function DataViewer() {
                   suggestions={pathSuggestions}
                   placeholder="Search datasets..."
                   submitDisabled={pathSuggestions.length === 0}
+                  className="max-w-[760px]"
                   onFocus={() => setPathSearchTouched(true)}
                   onChange={(value) => {
                     setPathSearchTouched(true);
@@ -1746,7 +1759,7 @@ export default function DataViewer() {
           </section>
 
           <div className="grid lg:grid-cols-[240px_minmax(0,1fr)]">
-            <aside className="border-b border-slate-200 bg-slate-50/90 p-5 lg:border-b-0 lg:border-r lg:p-6">
+            <aside className="flex flex-col border-b border-slate-200 bg-slate-50/90 p-5 lg:border-b-0 lg:border-r lg:p-6">
               <CategorySidebarSection
                 title="Verticals"
                 items={CATEGORIES.map((item) => ({
@@ -1770,30 +1783,7 @@ export default function DataViewer() {
                 onSelect={() => undefined}
               />
 
-              <div className="mt-5 rounded-[18px] border border-slate-200 bg-white p-4 shadow-[0_14px_32px_rgba(15,23,42,0.06)]">
-                <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
-                  Search library
-                </div>
-                <div className="mt-3">
-                  <CompactPathSearch
-                    value={pathSearchText}
-                    loading={pathSearchLoading}
-                    suggestions={pathSuggestions}
-                    placeholder={`Search ${category.label.toLowerCase()} datasets...`}
-                    submitDisabled={pathSuggestions.length === 0}
-                    onFocus={() => setPathSearchTouched(true)}
-                    onChange={(value) => {
-                      setPathSearchTouched(true);
-                      setPathSearchText(value);
-                    }}
-                    onSubmit={handlePathSearchSubmit}
-                    onSuggestionClick={handlePathSuggestionClick}
-                    renderHighlightedPath={renderHighlightedPath}
-                  />
-                </div>
-              </div>
-
-              <div className="mt-5 border-t border-slate-200 pt-4">
+              <div className="mt-auto border-t border-slate-200 pt-4">
                 {!isAuthenticated || !isApproved ? (
                   <Link
                     to={buildAuthPath("register", viewerBasePath)}
@@ -1801,21 +1791,71 @@ export default function DataViewer() {
                   >
                     Get Access
                   </Link>
-                ) : user?.role === "admin" ? (
-                  <button
-                    type="button"
-                    onClick={() => navigate(`${viewerBasePath}/admin/${user.storageSlug}`)}
-                    className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/8 px-4 text-sm font-bold text-primary transition-colors hover:bg-primary/12"
-                  >
-                    Admin access
-                    <Shield className="h-4 w-4" />
-                  </button>
-                ) : null}
+                ) : (
+                  <div className="space-y-3">
+                    <button
+                      type="button"
+                      onClick={() => navigate(`${viewerBasePath}/my`)}
+                      className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
+                    >
+                      My private data
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsUploadModalOpen(true)}
+                      className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
+                    >
+                      Import data
+                    </button>
+                    {user?.role === "admin" ? (
+                      <button
+                        type="button"
+                        onClick={() => navigate(`${viewerBasePath}/admin/${user.storageSlug}`)}
+                        className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/8 px-4 text-sm font-bold text-primary transition-colors hover:bg-primary/12"
+                      >
+                        Admin access
+                        <Shield className="h-4 w-4" />
+                      </button>
+                    ) : null}
+                  </div>
+                )}
               </div>
             </aside>
 
             <div className="min-w-0 p-6 md:p-8">
               <div className="space-y-9">
+                <section className="rounded-[22px] border border-slate-200 bg-slate-50/70 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.05)]">
+                  <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                    <div className="max-w-2xl">
+                      <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                        Search library
+                      </div>
+                      <h2 className="mt-2 text-[18px] font-extrabold tracking-[-0.03em] text-slate-950">
+                        Search real {category.label.toLowerCase()} datasets
+                      </h2>
+                      <p className="mt-1 text-sm leading-6 text-slate-500">
+                        Search by dataset, task, or brand and jump straight into the live folder structure.
+                      </p>
+                    </div>
+                    <CompactPathSearch
+                      value={pathSearchText}
+                      loading={pathSearchLoading}
+                      suggestions={pathSuggestions}
+                      placeholder={`Search ${category.label.toLowerCase()} datasets...`}
+                      submitDisabled={pathSuggestions.length === 0}
+                      className="max-w-none xl:w-[640px]"
+                      onFocus={() => setPathSearchTouched(true)}
+                      onChange={(value) => {
+                        setPathSearchTouched(true);
+                        setPathSearchText(value);
+                      }}
+                      onSubmit={handlePathSearchSubmit}
+                      onSuggestionClick={handlePathSuggestionClick}
+                      renderHighlightedPath={renderHighlightedPath}
+                    />
+                  </div>
+                </section>
+
                 {resolvedCategorySections.map((section) => (
                   <section key={`${landing.routeKey}-${section.id}`}>
                     <div className="mb-4 flex items-center gap-3 border-l-[3px] border-primary pl-3">
@@ -1954,34 +1994,36 @@ export default function DataViewer() {
             )}
 
             <div className="flex min-w-0 flex-1 flex-col bg-background/50">
-              <div className="flex min-h-10 flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50/70 px-4 py-2 sm:flex-nowrap sm:py-0">
-                <div className="flex items-center space-x-4">
-                  <div className="flex items-center rounded-sm border border-slate-200 bg-white px-2 py-1 text-xs shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
-                    <span className="mr-2 font-sans-tech text-slate-500">Items:</span>
-                    <span className="font-sans-tech text-slate-900">{itemCount}</span>
+              {!isCatalogLanding && (
+                <div className="flex min-h-10 flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50/70 px-4 py-2 sm:flex-nowrap sm:py-0">
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center rounded-sm border border-slate-200 bg-white px-2 py-1 text-xs shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                      <span className="mr-2 font-sans-tech text-slate-500">Items:</span>
+                      <span className="font-sans-tech text-slate-900">{itemCount}</span>
+                    </div>
+                    <div className="h-4 w-px bg-slate-200" />
+                    <button
+                      onClick={() => setReloadTick((value) => value + 1)}
+                      className="flex items-center gap-1 font-sans-tech text-xs text-slate-500 transition-colors hover:text-slate-900"
+                    >
+                      <RefreshCw
+                        className={`h-3.5 w-3.5 ${loading || categoryPreviewsLoading ? "animate-spin" : ""}`}
+                      />
+                      <span>Refresh</span>
+                    </button>
                   </div>
-                  <div className="h-4 w-px bg-slate-200" />
-                  <button
-                    onClick={() => setReloadTick((value) => value + 1)}
-                    className="flex items-center gap-1 font-sans-tech text-xs text-slate-500 transition-colors hover:text-slate-900"
-                  >
-                    <RefreshCw
-                      className={`h-3.5 w-3.5 ${loading || categoryPreviewsLoading ? "animate-spin" : ""}`}
-                    />
-                    <span>Refresh</span>
-                  </button>
-                </div>
 
-                {!isLeaf && (
-                  <button
-                    onClick={() => setIsUploadModalOpen(true)}
-                    className="flex items-center gap-2 rounded-sm border border-primary/25 bg-primary/10 px-3 py-1 font-sans-tech text-xs font-medium text-primary transition-colors hover:bg-primary/15"
-                  >
-                    <Terminal className="h-3 w-3" />
-                    Import Data
-                  </button>
-                )}
-              </div>
+                  {!isLeaf && (
+                    <button
+                      onClick={() => setIsUploadModalOpen(true)}
+                      className="flex items-center gap-2 rounded-sm border border-primary/25 bg-primary/10 px-3 py-1 font-sans-tech text-xs font-medium text-primary transition-colors hover:bg-primary/15"
+                    >
+                      <Terminal className="h-3 w-3" />
+                      Import Data
+                    </button>
+                  )}
+                </div>
+              )}
 
               <div className="custom-scrollbar relative flex-1 overflow-y-auto bg-background/40 p-0">
                 {loading && (

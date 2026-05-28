@@ -269,7 +269,7 @@ export default function Home() {
       <Navigation />
 
       <main className="pt-[88px]">
-        <section className="marketing-hero-home overflow-hidden px-4 py-12 text-center sm:px-6 md:min-h-[calc(100vh-88px)] md:py-16">
+        <section className="marketing-hero-home overflow-hidden px-4 py-10 text-center sm:px-6 md:min-h-[calc(88vh-88px)] md:py-12 lg:py-14">
           <div className="mx-auto max-w-[860px]">
             <div className="inline-flex items-center gap-2 rounded-full border border-teal-200 bg-teal-50 px-6 py-2.5 text-[13px] font-semibold text-primary">
               <span className="h-[7px] w-[7px] rounded-full bg-primary" />
@@ -286,14 +286,14 @@ export default function Home() {
               Robots fail in production because training data does not match the real world.
             </p>
 
-            <div className="mt-24 text-[clamp(38px,5.5vw,64px)] font-black leading-[1] tracking-[-0.08em] text-slate-950">
+            <div className="mt-16 text-[clamp(38px,5.5vw,64px)] font-black leading-[1] tracking-[-0.08em] text-slate-950 md:mt-20">
               DataraAI <span className="text-primary">closes the gap.</span>
             </div>
             <p className="mx-auto mt-7 max-w-[560px] text-[17px] leading-[1.7] text-slate-500">
               The complete data stack for Physical AI. Humanoid. Automotive. Warehouse. Data Center.
             </p>
 
-            <div className="mt-11 flex flex-col items-center justify-center gap-4 sm:flex-row">
+            <div className="mt-9 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <button
                 type="button"
                 onClick={() => productsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
@@ -311,12 +311,12 @@ export default function Home() {
           </div>
         </section>
 
-        <div className="mx-auto flex max-w-[1300px] items-center gap-5 px-4 py-10 sm:px-6">
+        <div className="mx-auto flex max-w-[1300px] items-center gap-5 px-4 py-7 sm:px-6 md:py-8">
           <div className="h-px flex-1 bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
           <div className="h-px flex-1 bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
         </div>
 
-        <section id="products" ref={productsRef} className="bg-slate-50 px-4 py-20 sm:px-6">
+        <section id="products" ref={productsRef} className="bg-slate-50 px-4 py-16 sm:px-6">
           <div className="mx-auto max-w-[1300px]">
             <div className="mb-10 text-center">
               <div className="inline-flex items-center gap-3 rounded-full border border-teal-200 bg-teal-50 px-8 py-3 text-xl font-extrabold uppercase tracking-[0.08em] text-primary">
@@ -339,7 +339,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="solutions" ref={solutionsRef} className="bg-white px-4 py-20 sm:px-6">
+        <section id="solutions" ref={solutionsRef} className="bg-white px-4 py-16 sm:px-6">
           <div className="mx-auto max-w-[1300px]">
             <div className="mb-10 text-center">
               <div className="inline-flex items-center gap-3 rounded-full border border-teal-200 bg-teal-50 px-8 py-3 text-xl font-extrabold uppercase tracking-[0.08em] text-primary">
