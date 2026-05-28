@@ -38,6 +38,7 @@ import {
   type CatalogCard,
   type CategoryLandingContent,
 } from "@/lib/roboDataHubCatalog";
+import { getRoboDataHubMarketingImageSet } from "@/lib/roboDataHubMarketingImages";
 
 interface FolderItem {
   name: string;
@@ -552,6 +553,7 @@ function CuratedCatalogCard({
   const [previewVideoActive, setPreviewVideoActive] = useState(false);
   const badge = getCategoryBadge(card);
   const previewItem = liveItem ?? placeholderItem ?? null;
+  const displayImages = getRoboDataHubMarketingImageSet(card.pathLabel) ?? card.images;
   const badgeClasses =
     previewItem || card.availability === "In Library"
       ? "border-emerald-200 bg-emerald-50 text-emerald-700"
@@ -581,7 +583,7 @@ function CuratedCatalogCard({
               />
             ) : (
               <img
-                src={frontPageImageUrl(card.images.main) ?? undefined}
+                src={frontPageImageUrl(displayImages.main) ?? undefined}
                 alt={card.title}
                 loading="lazy"
                 decoding="async"
@@ -602,7 +604,7 @@ function CuratedCatalogCard({
                     className="rounded-[8px]"
                   />
                 ))
-              : card.images.thumbs.slice(0, 3).map((thumbPath, index) => (
+              : displayImages.thumbs.slice(0, 3).map((thumbPath, index) => (
                   <div
                     key={`${card.title}-${thumbPath}-${index}`}
                     className="overflow-hidden rounded-[8px] bg-slate-100"
