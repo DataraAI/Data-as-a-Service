@@ -119,6 +119,48 @@ function extensionFromUrl(url) {
   return ".jpg";
 }
 
+export function bufferHasSupportedImageSignature(buffer) {
+  if (!buffer || buffer.length < 12) return false;
+
+  if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return true; // jpeg
+  if (
+    buffer[0] === 0x89 &&
+    buffer[1] === 0x50 &&
+    buffer[2] === 0x4e &&
+    buffer[3] === 0x47 &&
+    buffer[4] === 0x0d &&
+    buffer[5] === 0x0a &&
+    buffer[6] === 0x1a &&
+    buffer[7] === 0x0a
+  )
+    return true; // png
+
+  if (
+    buffer.slice(0, 4).toString("ascii") === "RIFF" &&
+    buffer.slice(8, 12).toString("ascii") === "WEBP"
+  )
+    return true; // webp
+
+  const hasFtyp = buffer.slice(4, 8).toString("ascii") === "ftyp";
+  if (hasFtyp) {
+    const brand = buffer.slice(8, 16).toString("ascii");
+    if (brand.includes("avif")) return true;
+  }
+
+  return false;
+}
+
+export function bufferLooksLikeHtml(buffer) {
+  const text = buffer.slice(0, 512).toString("utf8").toLowerCase();
+  return (
+    text.includes("<!doctype html") ||
+    text.includes("<html") ||
+    text.includes("wikimedia error") ||
+    text.includes("too many requests") ||
+    text.includes("you are making too many requests")
+  );
+}
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -366,18 +408,31 @@ async function downloadFile(url, targetPath) {
       await sleep(attempts[attempt]);
     }
 
+    const tempPath = `${targetPath}.tmp`;
     try {
       await fs.mkdir(path.dirname(targetPath), { recursive: true });
       await execFileAsync("curl", [
         "-L",
+        "--fail-with-body",
         "-H",
         `User-Agent: ${USER_AGENT}`,
         url,
         "-o",
-        targetPath,
+        tempPath,
       ]);
+
+      const payload = await fs.readFile(tempPath);
+      if (!bufferHasSupportedImageSignature(payload)) {
+        if (bufferLooksLikeHtml(payload)) {
+          throw new Error("downloaded payload is HTML/rate-limit content, not an image");
+        }
+        throw new Error("downloaded payload does not match a supported image signature");
+      }
+
+      await fs.rename(tempPath, targetPath);
       return;
     } catch (error) {
+      await fs.rm(tempPath, { force: true }).catch(() => {});
       if (attempt === attempts.length - 1) {
         throw new Error(`Download failed after retries for ${url}: ${error.message}`);
       }
