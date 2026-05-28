@@ -837,6 +837,63 @@ function resolvePreviewMediaUrl(asset: CategoryPreviewAsset | null | undefined):
   return asset.proxy_url || null;
 }
 
+function normalizeCatalogMatchText(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/&/g, " ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getCatalogFilterTargetSectionId(
+  landing: CategoryLandingContent,
+  filterId: string,
+): string | null {
+  if (filterId === "all") return null;
+
+  const exactSection = landing.sections.find((section) => section.id === filterId);
+  if (exactSection) return exactSection.id;
+
+  const filter = landing.filters.find((item) => item.id === filterId);
+  if (!filter) return landing.sections[0]?.id ?? null;
+
+  const filterTerms = Array.from(
+    new Set(
+      normalizeCatalogMatchText(`${filter.id} ${filter.label}`)
+        .split(" ")
+        .filter((term) => term && term !== "all" && term !== "task" && term !== "tasks" && term !== "ops"),
+    ),
+  );
+
+  let bestSectionId: string | null = null;
+  let bestScore = 0;
+
+  landing.sections.forEach((section) => {
+    const haystack = normalizeCatalogMatchText(
+      [
+        section.id,
+        section.title,
+        ...section.cards.flatMap((card) => [card.title, card.description, card.pathLabel, ...card.tags]),
+      ].join(" "),
+    );
+
+    const score = filterTerms.reduce((total, term) => {
+      if (!term || !haystack.includes(term)) return total;
+      const isHeadingMatch =
+        section.id === term || normalizeCatalogMatchText(section.title).includes(term);
+      return total + (isHeadingMatch ? 3 : 1);
+    }, 0);
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestSectionId = section.id;
+    }
+  });
+
+  return bestSectionId ?? landing.sections[0]?.id ?? null;
+}
+
 function DatasetPreviewPrimaryMedia({
   imageAsset,
   videoAsset,
@@ -964,6 +1021,9 @@ export default function DataViewer() {
   const [pathSearchTouched, setPathSearchTouched] = useState(false);
   const [rootLayoutMode, setRootLayoutMode] = useState<2 | 4>(4);
   const [reloadTick, setReloadTick] = useState(0);
+  const [activeLandingFilterId, setActiveLandingFilterId] = useState("all");
+  const sectionAnchorRefs = useRef<Record<string, HTMLElement | null>>({});
+  const landingTopRef = useRef<HTMLDivElement | null>(null);
 
   const pathSegments = useMemo(
     () => location.pathname.split("/").filter((part) => part && part !== "viewer" && part !== "robodatahub"),
@@ -1098,6 +1158,27 @@ export default function DataViewer() {
   const isRootLanding = pathSegments.length === 0;
   const isCategoryLanding = Boolean(activeCategory) && pathSegments.length === 1;
   const isCatalogLanding = isRootLanding || isCategoryLanding;
+
+  useEffect(() => {
+    setActiveLandingFilterId(activeLandingContent?.filters[0]?.id ?? "all");
+    sectionAnchorRefs.current = {};
+  }, [activeLandingContent]);
+
+  const handleLandingFilterSelect = (filterId: string) => {
+    setActiveLandingFilterId(filterId);
+
+    if (!activeLandingContent || typeof window === "undefined") return;
+
+    const targetSectionId = getCatalogFilterTargetSectionId(activeLandingContent, filterId);
+    const targetElement = targetSectionId
+      ? sectionAnchorRefs.current[targetSectionId]
+      : landingTopRef.current;
+
+    if (!targetElement) return;
+
+    const top = targetElement.getBoundingClientRect().top + window.scrollY - 112;
+    window.scrollTo({ top: Math.max(top, 0), behavior: "smooth" });
+  };
 
   useEffect(() => {
     if (!isAuthenticated || !isApproved || isRootLanding || isCategoryLanding) {
@@ -1882,8 +1963,8 @@ export default function DataViewer() {
               <CategorySidebarSection
                 title="Filters"
                 items={landing.filters}
-                activeItemId={landing.filters[0]?.id}
-                onSelect={() => undefined}
+                activeItemId={activeLandingFilterId}
+                onSelect={handleLandingFilterSelect}
               />
 
               <div className="mt-5 border-t border-slate-200 pt-4">
@@ -1926,6 +2007,7 @@ export default function DataViewer() {
             </aside>
 
             <div className="min-w-0 p-6 md:p-8">
+              <div ref={landingTopRef} className="scroll-mt-32" />
               <div className="space-y-9">
                 <section className="rounded-[22px] border border-slate-200 bg-slate-50/70 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.05)]">
                   <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
@@ -1960,7 +2042,13 @@ export default function DataViewer() {
                 </section>
 
                 {resolvedCategorySections.map((section) => (
-                  <section key={`${landing.routeKey}-${section.id}`}>
+                  <section
+                    key={`${landing.routeKey}-${section.id}`}
+                    ref={(node) => {
+                      sectionAnchorRefs.current[section.id] = node;
+                    }}
+                    className="scroll-mt-32"
+                  >
                     <div className="mb-4 flex items-center gap-3 border-l-[3px] border-primary pl-3">
                       <span className="text-[15px] font-extrabold text-slate-950">{section.title}</span>
                       <div className="h-px flex-1 bg-gradient-to-r from-primary/20 to-transparent" />
