@@ -65,11 +65,10 @@ const ROUTE_CONTEXT = {
   humanoid: {
     slug: "dexterity",
     queries: [
-      "dishwashing hands kitchen",
+      "dishwasher kitchen",
       "laundry folding",
-      "cleaning kitchen hands",
-      "washing machine loading",
       "household cleaning",
+      "washing machine",
     ],
   },
   carAuto: {
@@ -176,7 +175,7 @@ function buildCardTerms(card) {
 }
 
 async function commonsSearch(query) {
-  const attempts = [0, 1000, 2200, 4000];
+  const attempts = [0, 2000, 6000, 12000];
 
   for (let attempt = 0; attempt < attempts.length; attempt += 1) {
     if (attempts[attempt] > 0) {
@@ -300,18 +299,33 @@ function scoreCandidate(card, item) {
   return score;
 }
 
-async function buildPoolForRoute(routeMeta) {
+export async function buildPoolForRoute(
+  routeMeta,
+  {
+    search = commonsSearch,
+    wait = sleep,
+    logger = console,
+    maxPoolSize = 48,
+  } = {},
+) {
   const pool = new Map();
 
   for (const query of routeMeta.queries) {
-    const pages = await commonsSearch(query);
-    for (const page of pages) {
-      const mapped = mapCommonsPage(page, query);
-      if (!mapped) continue;
-      if (pool.has(mapped.sourceUrl)) continue;
-      pool.set(mapped.sourceUrl, mapped);
+    try {
+      const pages = await search(query);
+      for (const page of pages) {
+        const mapped = mapCommonsPage(page, query);
+        if (!mapped) continue;
+        if (pool.has(mapped.sourceUrl)) continue;
+        pool.set(mapped.sourceUrl, mapped);
+      }
+    } catch (error) {
+      logger.warn?.(`Skipping Commons query "${query}" after fetch failure: ${error.message}`);
     }
-    await sleep(500);
+    if (pool.size >= maxPoolSize) {
+      break;
+    }
+    await wait(1500);
   }
 
   return [...pool.values()];
@@ -492,7 +506,13 @@ async function main() {
   console.log(`Downloaded ${downloadedAssets.size} shared Wikimedia Commons assets.`);
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+const isDirectRun =
+  Boolean(process.argv[1]) &&
+  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+
+if (isDirectRun) {
+  main().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
+}
