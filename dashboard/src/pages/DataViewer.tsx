@@ -1024,6 +1024,7 @@ export default function DataViewer() {
   const [activeLandingFilterId, setActiveLandingFilterId] = useState("all");
   const sectionAnchorRefs = useRef<Record<string, HTMLElement | null>>({});
   const landingTopRef = useRef<HTMLDivElement | null>(null);
+  const contentScrollRef = useRef<HTMLDivElement | null>(null);
 
   const pathSegments = useMemo(
     () => location.pathname.split("/").filter((part) => part && part !== "viewer" && part !== "robodatahub"),
@@ -1175,6 +1176,17 @@ export default function DataViewer() {
       : landingTopRef.current;
 
     if (!targetElement) return;
+    const scrollContainer = contentScrollRef.current;
+
+    if (scrollContainer) {
+      const containerRect = scrollContainer.getBoundingClientRect();
+      const targetRect = targetElement.getBoundingClientRect();
+      const nextTop =
+        scrollContainer.scrollTop + (targetRect.top - containerRect.top) - 24;
+
+      scrollContainer.scrollTo({ top: Math.max(nextTop, 0), behavior: "smooth" });
+      return;
+    }
 
     const top = targetElement.getBoundingClientRect().top + window.scrollY - 112;
     window.scrollTo({ top: Math.max(top, 0), behavior: "smooth" });
@@ -2217,7 +2229,10 @@ export default function DataViewer() {
                 </div>
               )}
 
-              <div className="custom-scrollbar relative flex-1 overflow-y-auto bg-background/40 p-0">
+              <div
+                ref={contentScrollRef}
+                className="custom-scrollbar relative flex-1 overflow-y-auto bg-background/40 p-0"
+              >
                 {loading && (
                   <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/70 backdrop-blur-sm">
                     <div className="flex flex-col items-center gap-4">
