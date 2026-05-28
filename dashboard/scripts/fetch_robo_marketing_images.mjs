@@ -12,8 +12,10 @@ const OUTPUT_ROOT = path.join(ROOT, "src", "assets", "images", "marketing");
 const ATTRIBUTION_PATH = path.join(OUTPUT_ROOT, "attributions.json");
 const OVERRIDE_TS_PATH = path.join(ROOT, "src", "lib", "roboDataHubMarketingImages.ts");
 
-const OPENVERSE_API = "https://api.openverse.org/v1/images/";
-const MAX_RESULTS = 24;
+const COMMONS_API = "https://commons.wikimedia.org/w/api.php";
+const COMMONS_LIMIT = 24;
+const COMMONS_THUMB_WIDTH = 1600;
+const USER_AGENT = "Codex-Datara-Marketing-Images/1.0";
 
 const EXCLUDED_TITLE_TERMS = [
   "svg",
@@ -22,23 +24,64 @@ const EXCLUDED_TITLE_TERMS = [
   "icon",
   "map",
   "flag",
-  "coat of arms",
   "dimensions",
   "schematic",
-  "wiktionary",
-  "wikipedia logo",
   "clipart",
   "vector",
   "illustration",
+  "rendering",
+  "drawing",
+  "poster",
+  "chart",
+  "seal",
+  "coat of arms",
+  "wiktionary",
+  "wikipedia",
+  "plan",
+  "plans",
 ];
 
-const ALLOWED_LICENSES = new Set(["cc0", "pdm", "by", "by-sa"]);
-
 const ROUTE_CONTEXT = {
-  dataCtr: "data center server rack infrastructure",
-  warehouse: "warehouse logistics operations",
-  humanoid: "household task kitchen cleaning laundry",
-  carAuto: "automotive manufacturing assembly line factory",
+  dataCtr: {
+    slug: "serverrack",
+    queries: [
+      "server rack",
+      "server room",
+      "network equipment rack",
+      "ethernet cables rack",
+      "data center hardware",
+    ],
+  },
+  warehouse: {
+    slug: "warehouse",
+    queries: [
+      "warehouse shelves boxes",
+      "warehouse picking",
+      "distribution center",
+      "warehouse conveyor",
+      "warehouse pallet",
+    ],
+  },
+  humanoid: {
+    slug: "dexterity",
+    queries: [
+      "dishwashing hands kitchen",
+      "laundry folding",
+      "cleaning kitchen hands",
+      "washing machine loading",
+      "household cleaning",
+    ],
+  },
+  carAuto: {
+    slug: "car-automation",
+    queries: [
+      "car assembly line",
+      "automotive factory",
+      "car seat installation",
+      "vehicle inspection factory",
+      "car dashboard assembly",
+    ],
+  },
 };
 
 function normalizeText(value) {
@@ -69,8 +112,12 @@ function htmlToText(value) {
 }
 
 function extensionFromUrl(url) {
-  const match = new URL(url).pathname.match(/\.(jpg|jpeg|png|webp)$/i);
-  return match ? `.${match[1].toLowerCase()}` : ".jpg";
+  const pathname = new URL(url).pathname.toLowerCase();
+  if (pathname.endsWith(".jpeg")) return ".jpeg";
+  if (pathname.endsWith(".jpg")) return ".jpg";
+  if (pathname.endsWith(".png")) return ".png";
+  if (pathname.endsWith(".webp")) return ".webp";
+  return ".jpg";
 }
 
 function sleep(ms) {
@@ -78,7 +125,11 @@ function sleep(ms) {
 }
 
 function extractCards(catalogText) {
-  const matches = [...catalogText.matchAll(/\{\s*title:\s*"([^"]+)",\s*description:\s*"([\s\S]*?)",\s*tags:\s*\[[\s\S]*?\]\s*,\s*availability:\s*"([^"]+)",\s*hours:\s*"([^"]+)",\s*pathLabel:\s*"([^"]+)"/g)];
+  const matches = [
+    ...catalogText.matchAll(
+      /\{\s*title:\s*"([^"]+)",\s*description:\s*"([\s\S]*?)",\s*tags:\s*\[[\s\S]*?\]\s*,\s*availability:\s*"([^"]+)",\s*hours:\s*"([^"]+)",\s*pathLabel:\s*"([^"]+)"/g,
+    ),
+  ];
 
   const cards = matches.map((match) => ({
     title: match[1],
@@ -95,44 +146,60 @@ function extractCards(catalogText) {
   return [...byPath.values()];
 }
 
-function buildSearchQueries(card) {
+function getRouteMeta(card) {
   const [root] = card.pathLabel.split("/");
-  const routeBase = ROUTE_CONTEXT[root] ?? "";
+  return ROUTE_CONTEXT[root] ?? null;
+}
+
+function getCardPoolKey(card) {
+  const meta = getRouteMeta(card);
+  if (!meta) return "misc";
+  return meta.slug;
+}
+
+function buildCardTerms(card) {
+  const routeMeta = getRouteMeta(card);
+  const contextTerms = routeMeta?.queries.join(" ") ?? "";
   const normalizedTitle = card.title
     .replace(/\bQC\b/g, "quality control")
     .replace(/\bOps\b/g, "operations")
     .replace(/\b3-Series\b/g, "3 Series")
-    .replace(/\bEGO-centric\b/gi, "")
-    .replace(/\bEXO-centric\b/gi, "")
     .replace(/[–—-]/g, " ");
-  const leaf = card.pathLabel.split("/").at(-1)?.replace(/([a-z])([A-Z])/g, "$1 $2") ?? "";
+  const leaf = card.pathLabel
+    .split("/")
+    .at(-1)
+    ?.replace(/([a-z])([A-Z])/g, "$1 $2") ?? "";
 
-  const queries = [
-    `${routeBase} ${normalizedTitle}`,
-    `${routeBase} ${leaf}`,
-    normalizedTitle,
-  ];
-
-  return [...new Set(queries.map((value) => value.replace(/\s+/g, " ").trim()).filter(Boolean))];
+  return normalizeText(`${contextTerms} ${normalizedTitle} ${card.description} ${leaf}`)
+    .split(" ")
+    .filter((term) => term.length > 2);
 }
 
-async function openverseSearch(query) {
-  const attempts = [0, 1200, 2800, 5000];
+async function commonsSearch(query) {
+  const attempts = [0, 1000, 2200, 4000];
 
   for (let attempt = 0; attempt < attempts.length; attempt += 1) {
     if (attempts[attempt] > 0) {
       await sleep(attempts[attempt]);
     }
 
-    const url = new URL(OPENVERSE_API);
-    url.searchParams.set("q", query);
-    url.searchParams.set("page_size", String(MAX_RESULTS));
+    const url = new URL(COMMONS_API);
+    url.searchParams.set("action", "query");
+    url.searchParams.set("generator", "search");
+    url.searchParams.set("gsrsearch", query);
+    url.searchParams.set("gsrnamespace", "6");
+    url.searchParams.set("gsrlimit", String(COMMONS_LIMIT));
+    url.searchParams.set("prop", "imageinfo");
+    url.searchParams.set("iiprop", "url|size|extmetadata");
+    url.searchParams.set("iiurlwidth", String(COMMONS_THUMB_WIDTH));
+    url.searchParams.set("format", "json");
+    url.searchParams.set("origin", "*");
 
     try {
-      const { stdout } = await execFileAsync("curl.exe", [
+      const { stdout } = await execFileAsync("curl", [
         "-L",
         "-H",
-        "User-Agent: Codex-Datara-Marketing-Images/1.0",
+        `User-Agent: ${USER_AGENT}`,
         "-H",
         "Accept: application/json",
         url.toString(),
@@ -141,97 +208,144 @@ async function openverseSearch(query) {
       });
 
       const json = JSON.parse(stdout);
-      return json?.results ?? [];
+      return Object.values(json?.query?.pages ?? {});
     } catch (error) {
       if (attempt === attempts.length - 1) {
-        throw new Error(`Openverse search failed after retries for query: ${query}: ${error.message}`);
+        throw new Error(`Commons search failed after retries for query: ${query}: ${error.message}`);
       }
     }
   }
+
   return [];
 }
 
-function scoreCandidate(card, item, query) {
-  if (!item?.url) return -Infinity;
+function getCommonsLicenseToken(info = {}) {
+  const ext = info.extmetadata ?? {};
+  const shortName = htmlToText(ext.LicenseShortName?.value ?? "");
+  const usageTerms = htmlToText(ext.UsageTerms?.value ?? "");
+  const permission = htmlToText(ext.Permission?.value ?? "");
+  const combined = normalizeText(`${shortName} ${usageTerms} ${permission}`);
 
-  const title = String(item.title ?? "");
+  if (combined.includes("public domain") || combined.includes("pd self")) return "pd";
+  if (combined.includes("cc0") || combined.includes("zero")) return "cc0";
+  if (combined.includes("cc by sa")) return "by-sa";
+  if (combined.includes("cc by")) return "by";
+  return null;
+}
+
+function mapCommonsPage(page, query) {
+  const info = page?.imageinfo?.[0];
+  if (!info?.thumburl && !info?.url) return null;
+
+  const title = String(page.title ?? "");
   const titleLower = title.toLowerCase();
-  if (EXCLUDED_TITLE_TERMS.some((term) => titleLower.includes(term))) return -Infinity;
-  const sourceExtension = extensionFromUrl(item.url ?? "").replace(".", "");
-  if (!["jpg", "jpeg", "png", "webp"].includes(sourceExtension)) return -Infinity;
-  if (!ALLOWED_LICENSES.has(String(item.license ?? "").toLowerCase())) return -Infinity;
-  if (item.mature) return -Infinity;
+  if (EXCLUDED_TITLE_TERMS.some((term) => titleLower.includes(term))) return null;
+  if (titleLower.endsWith(".svg") || titleLower.endsWith(".pdf")) return null;
 
-  const width = Number(item.width ?? 0);
-  const height = Number(item.height ?? 0);
-  if (width < 700 || height < 450) return -Infinity;
+  const description = htmlToText(info.extmetadata?.ImageDescription?.value ?? "");
+  const descriptionLower = description.toLowerCase();
+  if (EXCLUDED_TITLE_TERMS.some((term) => descriptionLower.includes(term))) return null;
 
-  const license = String(item.license ?? "");
-  const description = htmlToText(item.title ?? "");
-  const haystack = normalizeText(`${title} ${description}`);
-  const terms = normalizeText(`${query} ${card.title} ${card.description}`)
-    .split(" ")
-    .filter((term) => term.length > 2);
+  const licenseToken = getCommonsLicenseToken(info);
+  if (!licenseToken) return null;
+
+  const width = Number(info.thumbwidth ?? info.width ?? 0);
+  const height = Number(info.thumbheight ?? info.height ?? 0);
+  if (width < 700 || height < 450) return null;
+
+  const downloadUrl = info.thumburl ?? info.url;
+  const sourceUrl = info.url ?? info.thumburl;
+  if (!downloadUrl || !sourceUrl) return null;
+
+  return {
+    title,
+    query,
+    pageTitle: htmlToText(info.extmetadata?.ObjectName?.value ?? title.replace(/^File:/, "")),
+    description,
+    descriptionUrl: info.descriptionurl ?? "",
+    sourceUrl,
+    downloadUrl,
+    width,
+    height,
+    artist: htmlToText(info.extmetadata?.Artist?.value ?? ""),
+    license: htmlToText(info.extmetadata?.LicenseShortName?.value ?? "Unknown"),
+    provider: "wikimedia-commons",
+    attributionText: htmlToText(info.extmetadata?.Credit?.value ?? ""),
+    licenseToken,
+  };
+}
+
+function scoreCandidate(card, item) {
+  if (!item?.downloadUrl) return -Infinity;
+
+  const haystack = normalizeText(
+    `${item.pageTitle} ${item.description} ${item.title} ${item.query}`,
+  );
+  const terms = buildCardTerms(card);
 
   let score = 0;
   for (const term of new Set(terms)) {
     if (haystack.includes(term)) score += 2;
   }
 
-  const aspect = width / height;
-  if (aspect >= 0.8 && aspect <= 2.2) score += 4;
-  if (aspect >= 1.1 && aspect <= 1.8) score += 2;
+  const aspect = item.width / item.height;
+  if (aspect >= 0.9 && aspect <= 2.1) score += 4;
+  if (aspect >= 1.15 && aspect <= 1.8) score += 2;
 
-  if (/cc0|pdm/i.test(license)) score += 8;
-  else if (/by-sa/i.test(license)) score += 4;
-  else if (/by/i.test(license)) score += 5;
+  if (item.licenseToken === "pd" || item.licenseToken === "cc0") score += 8;
+  else if (item.licenseToken === "by") score += 5;
+  else if (item.licenseToken === "by-sa") score += 4;
 
-  if ((item.source ?? "") === "wikimedia") score += 2;
-
-  score += Math.min(width, height) / 400;
+  score += Math.min(item.width, item.height) / 400;
   return score;
 }
 
-async function gatherCandidates(card) {
-  const found = new Map();
-  const queries = buildSearchQueries(card);
+async function buildPoolForRoute(routeMeta) {
+  const pool = new Map();
 
-  for (const query of queries) {
-    const results = await openverseSearch(query);
-    for (const item of results) {
-      const descriptionUrl = item.foreign_landing_url ?? item.url;
-      if (found.has(descriptionUrl)) continue;
-
-      const score = scoreCandidate(card, item, query);
-      if (!Number.isFinite(score)) continue;
-
-      found.set(descriptionUrl, {
-        title: card.title,
-        pathLabel: card.pathLabel,
-        query,
-        pageTitle: item.title,
-        descriptionUrl,
-        sourceUrl: item.url,
-        downloadUrl: item.thumbnail || item.url,
-        width: Number(item.width ?? 0),
-        height: Number(item.height ?? 0),
-        artist: htmlToText(item.creator ?? ""),
-        license: item.license_url ? `${item.license} ${item.license_version ?? ""}`.trim() : item.license ?? "Unknown",
-        provider: item.provider ?? item.source ?? "unknown",
-        attributionText: item.attribution ?? "",
-        score,
-      });
+  for (const query of routeMeta.queries) {
+    const pages = await commonsSearch(query);
+    for (const page of pages) {
+      const mapped = mapCommonsPage(page, query);
+      if (!mapped) continue;
+      if (pool.has(mapped.sourceUrl)) continue;
+      pool.set(mapped.sourceUrl, mapped);
     }
-    if (found.size >= 8) break;
+    await sleep(500);
   }
 
-  return [...found.values()]
+  return [...pool.values()];
+}
+
+function chooseUniqueMain(card, pool, usedMainSources) {
+  const scored = pool
+    .map((item) => ({ item, score: scoreCandidate(card, item) }))
+    .filter((entry) => Number.isFinite(entry.score))
+    .sort((left, right) => right.score - left.score);
+
+  const unused = scored.find((entry) => !usedMainSources.has(entry.item.sourceUrl));
+  if (unused) return unused.item;
+  return scored[0]?.item ?? null;
+}
+
+function chooseThumbs(card, pool, mainItem) {
+  const scored = pool
+    .filter((item) => item.sourceUrl !== mainItem.sourceUrl)
+    .map((item) => ({ item, score: scoreCandidate(card, item) }))
+    .filter((entry) => Number.isFinite(entry.score))
     .sort((left, right) => right.score - left.score)
-    .slice(0, 4);
+    .slice(0, 3)
+    .map((entry) => entry.item);
+
+  if (scored.length === 0) return [mainItem, mainItem, mainItem];
+  while (scored.length < 3) {
+    scored.push(scored[scored.length - 1] ?? mainItem);
+  }
+  return scored;
 }
 
 async function downloadFile(url, targetPath) {
-  const attempts = [0, 1500, 3500, 6500];
+  const attempts = [0, 1500, 3000, 5000];
 
   for (let attempt = 0; attempt < attempts.length; attempt += 1) {
     if (attempts[attempt] > 0) {
@@ -240,10 +354,10 @@ async function downloadFile(url, targetPath) {
 
     try {
       await fs.mkdir(path.dirname(targetPath), { recursive: true });
-      await execFileAsync("curl.exe", [
+      await execFileAsync("curl", [
         "-L",
         "-H",
-        "User-Agent: Codex-Datara-Marketing-Images/1.0",
+        `User-Agent: ${USER_AGENT}`,
         url,
         "-o",
         targetPath,
@@ -288,75 +402,83 @@ async function main() {
   const catalogText = await fs.readFile(CATALOG_PATH, "utf8");
   const cards = extractCards(catalogText);
 
+  const cardsByPool = new Map();
+  for (const card of cards) {
+    const poolKey = getCardPoolKey(card);
+    if (!cardsByPool.has(poolKey)) cardsByPool.set(poolKey, []);
+    cardsByPool.get(poolKey).push(card);
+  }
+
+  const routePools = new Map();
+  for (const [sourceRoot, routeMeta] of Object.entries(ROUTE_CONTEXT)) {
+    console.log(`Building pool for ${sourceRoot} from Wikimedia Commons...`);
+    routePools.set(routeMeta.slug, await buildPoolForRoute(routeMeta));
+    console.log(`Collected ${routePools.get(routeMeta.slug).length} candidates for ${routeMeta.slug}.`);
+  }
+
+  const downloadedAssets = new Map();
   const overrideEntries = [];
   const attribution = [];
+  const usedMainSources = new Set();
 
-  for (const card of cards) {
-    const slug = slugify(card.pathLabel);
-    const cardDir = path.join(OUTPUT_ROOT, slug);
-
-    console.log(`Searching images for ${card.pathLabel} -> ${card.title}`);
-    const candidates = await gatherCandidates(card);
-    if (candidates.length === 0) {
-      console.warn(`No Openverse candidates found for ${card.pathLabel}`);
+  for (const [poolKey, groupedCards] of cardsByPool.entries()) {
+    const pool = routePools.get(poolKey) ?? [];
+    if (pool.length === 0) {
+      console.warn(`No media pool found for ${poolKey}. Skipping ${groupedCards.length} card(s).`);
       continue;
     }
 
-    const selected = [];
-    for (let index = 0; index < Math.min(4, candidates.length); index += 1) {
-      const candidate = candidates[index];
-      const ext = extensionFromUrl(candidate.downloadUrl);
-      const fileName = index === 0 ? `main${ext}` : `thumb-${index}${ext}`;
-      const targetPath = path.join(cardDir, fileName);
-      await downloadFile(candidate.downloadUrl, targetPath);
-      selected.push({
-        ...candidate,
-        fileName,
-        relativePath: `marketing/${slug}/${fileName}`.replace(/\\/g, "/"),
+    for (const card of groupedCards) {
+      const mainItem = chooseUniqueMain(card, pool, usedMainSources);
+      if (!mainItem) {
+        console.warn(`No Commons candidates found for ${card.pathLabel}`);
+        continue;
+      }
+      usedMainSources.add(mainItem.sourceUrl);
+
+      const thumbItems = chooseThumbs(card, pool, mainItem);
+      const selection = [mainItem, ...thumbItems];
+      const localPaths = [];
+
+      for (const item of selection) {
+        let relativePath = downloadedAssets.get(item.sourceUrl);
+        if (!relativePath) {
+          const fileSlug = slugify(item.pageTitle || item.title || card.title) || "image";
+          const ext = extensionFromUrl(item.downloadUrl);
+          const fileName = `${fileSlug}${ext}`;
+          const relative = `marketing/${poolKey}/${fileName}`.replace(/\\/g, "/");
+          const targetPath = path.join(OUTPUT_ROOT, poolKey, fileName);
+          await downloadFile(item.downloadUrl, targetPath);
+          downloadedAssets.set(item.sourceUrl, relative);
+          relativePath = relative;
+        }
+        localPaths.push(relativePath);
+      }
+
+      overrideEntries.push({
+        pathLabel: card.pathLabel,
+        main: localPaths[0],
+        thumbs: localPaths.slice(1, 4),
+      });
+
+      attribution.push({
+        pathLabel: card.pathLabel,
+        title: card.title,
+        description: card.description,
+        assets: selection.map((item, index) => ({
+          role: index === 0 ? "main" : `thumb-${index}`,
+          localPath: localPaths[index],
+          pageTitle: item.pageTitle,
+          sourceUrl: item.sourceUrl,
+          descriptionUrl: item.descriptionUrl,
+          artist: item.artist,
+          license: item.license,
+          provider: item.provider,
+          attributionText: item.attributionText,
+          query: item.query,
+        })),
       });
     }
-
-    while (selected.length < 4) {
-      const cloneFrom = selected[selected.length - 1] ?? selected[0];
-      if (!cloneFrom) break;
-      const ext = extensionFromUrl(cloneFrom.downloadUrl);
-      const fileName = selected.length === 0 ? `main${ext}` : `thumb-${selected.length}${ext}`;
-      const targetPath = path.join(cardDir, fileName);
-      await fs.copyFile(path.join(cardDir, cloneFrom.fileName), targetPath);
-      selected.push({
-        ...cloneFrom,
-        fileName,
-        relativePath: `marketing/${slug}/${fileName}`.replace(/\\/g, "/"),
-        clonedFrom: cloneFrom.fileName,
-      });
-    }
-
-    overrideEntries.push({
-      pathLabel: card.pathLabel,
-      main: selected[0].relativePath,
-      thumbs: selected.slice(1, 4).map((item) => item.relativePath),
-    });
-
-    attribution.push({
-      pathLabel: card.pathLabel,
-      title: card.title,
-      description: card.description,
-      queryTrail: [...new Set(selected.map((item) => item.query))],
-      assets: selected.map((item) => ({
-        localPath: item.relativePath,
-        pageTitle: item.pageTitle,
-        sourceUrl: item.sourceUrl,
-        descriptionUrl: item.descriptionUrl,
-        artist: item.artist,
-        license: item.license,
-        provider: item.provider,
-        attributionText: item.attributionText,
-        downloadUrl: item.downloadUrl,
-        clonedFrom: item.clonedFrom ?? null,
-      })),
-    });
-
-    await sleep(400);
   }
 
   overrideEntries.sort((left, right) => left.pathLabel.localeCompare(right.pathLabel));
@@ -367,6 +489,7 @@ async function main() {
   await fs.writeFile(ATTRIBUTION_PATH, JSON.stringify(attribution, null, 2), "utf8");
 
   console.log(`Saved ${overrideEntries.length} marketing image overrides.`);
+  console.log(`Downloaded ${downloadedAssets.size} shared Wikimedia Commons assets.`);
 }
 
 main().catch((error) => {
