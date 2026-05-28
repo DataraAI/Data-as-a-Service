@@ -26,7 +26,12 @@ import { DatasetFolderCover } from "../components/DatasetFolderCover";
 import AuthRequiredState from "@/components/AuthRequiredState";
 import { useAuth } from "@/auth/useAuth";
 import { buildAuthPath } from "@/lib/authLinks";
-import { folderPreviewMediaUrl, frontPageImageUrl } from "@/lib/datasetFolderCover";
+import {
+  blobProxyUrl,
+  folderPreviewMediaUrl,
+  frontPageImageUrl,
+  getLocalFolderPreviewSnapshots,
+} from "@/lib/datasetFolderCover";
 import {
   CATEGORY_LANDING_CONTENT,
   ROOT_SHOWCASE_SECTIONS,
@@ -461,6 +466,41 @@ function buildFallbackLiveCard(item: CategoryDatasetPreview): CatalogCard {
   };
 }
 
+function buildLocalPreviewAsset(blobPath: string, label: string, index: number): CategoryPreviewAsset {
+  const fileName = blobPath.split("/").filter(Boolean).pop() ?? label;
+  return {
+    asset_id: `local:${blobPath}:${index}`,
+    blob_path: blobPath,
+    name: fileName,
+    label,
+    proxy_url: blobProxyUrl(blobPath),
+  };
+}
+
+function buildLocalPlaceholderPreview(
+  snapshot: ReturnType<typeof getLocalFolderPreviewSnapshots>[number],
+  basePath: string,
+): CategoryDatasetPreview | null {
+  const usableImages = snapshot.imageBlobPaths.slice(0, 4);
+  if (usableImages.length === 0) return null;
+
+  return {
+    title: snapshot.dataset,
+    brand: snapshot.brand,
+    full_path: snapshot.fullPath,
+    viewer_path: buildViewerPath(snapshot.fullPath, undefined, basePath),
+    visibility: "public",
+    owner_slug: "roboteyeview",
+    main_image: buildLocalPreviewAsset(usableImages[0], `${snapshot.dataset} cover`, 0),
+    thumbnails: usableImages
+      .slice(1, 4)
+      .map((blobPath, index) =>
+        buildLocalPreviewAsset(blobPath, `${snapshot.dataset} preview ${index + 1}`, index + 1),
+      ),
+    preview_video: null,
+  };
+}
+
 function getLivePreviewSectionId(routeKey: CategoryKey, item: CategoryDatasetPreview) {
   const normalizedPath = normalizePathSearchValue(item.full_path);
 
@@ -497,24 +537,27 @@ function getLivePreviewSectionId(routeKey: CategoryKey, item: CategoryDatasetPre
 function CuratedCatalogCard({
   card,
   liveItem,
+  placeholderItem,
   buttonLabel,
   columns = 3,
   onOpen,
 }: {
   card: CatalogCard;
   liveItem?: CategoryDatasetPreview | null;
+  placeholderItem?: CategoryDatasetPreview | null;
   buttonLabel: string;
   columns?: 2 | 3;
   onOpen: () => void;
 }) {
   const [previewVideoActive, setPreviewVideoActive] = useState(false);
   const badge = getCategoryBadge(card);
+  const previewItem = liveItem ?? placeholderItem ?? null;
   const badgeClasses =
-    liveItem || card.availability === "In Library"
+    previewItem || card.availability === "In Library"
       ? "border-emerald-200 bg-emerald-50 text-emerald-700"
       : "border-amber-200 bg-amber-50 text-amber-700";
-  const footerLabel = liveItem ? liveItem.full_path : card.pathLabel;
-  const footerMetric = liveItem ? "Live dataset" : card.hours;
+  const footerLabel = previewItem ? previewItem.full_path : card.pathLabel;
+  const footerMetric = previewItem ? "Live dataset" : card.hours;
 
   return (
     <button
@@ -527,14 +570,14 @@ function CuratedCatalogCard({
       <div className={`p-4 ${columns === 2 ? "xl:w-[54%] xl:p-5" : ""}`}>
         <div className="grid grid-cols-[minmax(0,1fr)_86px] grid-rows-[176px_84px] gap-1.5">
           <div className="row-span-2 overflow-hidden rounded-[12px] bg-slate-100">
-            {liveItem ? (
+            {previewItem ? (
               <DatasetPreviewPrimaryMedia
-                imageAsset={liveItem.main_image}
-                videoAsset={liveItem.preview_video}
+                imageAsset={previewItem.main_image}
+                videoAsset={liveItem?.preview_video}
                 alt={card.title}
                 isVideoActive={previewVideoActive}
-                onVideoEnter={() => setPreviewVideoActive(true)}
-                onVideoLeave={() => setPreviewVideoActive(false)}
+                onVideoEnter={() => liveItem?.preview_video && setPreviewVideoActive(true)}
+                onVideoLeave={() => liveItem?.preview_video && setPreviewVideoActive(false)}
               />
             ) : (
               <img
@@ -547,9 +590,9 @@ function CuratedCatalogCard({
             )}
           </div>
           <div className="row-span-2 grid grid-rows-3 gap-1.5">
-            {liveItem
-              ? (liveItem.thumbnails.length > 0
-                  ? liveItem.thumbnails.slice(0, 3)
+            {previewItem
+              ? (previewItem.thumbnails.length > 0
+                  ? previewItem.thumbnails.slice(0, 3)
                   : [null, null, null]
                 ).map((thumbnail, index) => (
                   <DatasetPreviewImage
@@ -583,7 +626,7 @@ function CuratedCatalogCard({
             {card.title}
           </h3>
           <span className={`inline-flex shrink-0 rounded-full border px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em] ${badgeClasses}`}>
-            {liveItem ? "In Library" : card.availability}
+            {previewItem ? "In Library" : card.availability}
           </span>
         </div>
 
@@ -941,35 +984,80 @@ export default function DataViewer() {
     () => (activeCategory ? CATEGORY_LANDING_CONTENT[activeCategory.routeKey] : null),
     [activeCategory],
   );
+  const localCategoryPreviewPlaceholders = useMemo(() => {
+    if (!activeCategory) return [];
+
+    return getLocalFolderPreviewSnapshots()
+      .filter(
+        (snapshot) =>
+          normalizeCategoryValue(snapshot.category) ===
+          normalizeCategoryValue(activeCategory.previewKey),
+      )
+      .map((snapshot) => buildLocalPlaceholderPreview(snapshot, viewerBasePath))
+      .filter((item): item is CategoryDatasetPreview => Boolean(item));
+  }, [activeCategory, viewerBasePath]);
   const resolvedCategorySections = useMemo(() => {
     if (!activeCategory || !activeLandingContent) return [];
 
-    const usedPaths = new Set<string>();
+    const usedLivePaths = new Set<string>();
+    const usedPlaceholderPaths = new Set<string>();
     const matchedBySection = new Map<
       string,
-      { card: CatalogCard; liveItem: CategoryDatasetPreview | null }[]
+      {
+        card: CatalogCard;
+        liveItem: CategoryDatasetPreview | null;
+        placeholderItem: CategoryDatasetPreview | null;
+      }[]
     >();
 
     activeLandingContent.sections.forEach((section) => {
-      const sectionEntries: { card: CatalogCard; liveItem: CategoryDatasetPreview | null }[] = [];
+      const sectionEntries: {
+        card: CatalogCard;
+        liveItem: CategoryDatasetPreview | null;
+        placeholderItem: CategoryDatasetPreview | null;
+      }[] = [];
 
       section.cards.forEach((card) => {
+        const placeholderItem =
+          localCategoryPreviewPlaceholders.find((item) => {
+            const normalizedPath = normalizePathSearchValue(item.full_path);
+            return !usedPlaceholderPaths.has(normalizedPath) && matchesLivePreviewHint(card, item);
+          }) ?? null;
+
+        if (placeholderItem) {
+          usedPlaceholderPaths.add(normalizePathSearchValue(placeholderItem.full_path));
+        }
+
         const matchedItem =
+          (placeholderItem
+            ? categoryPreviews.find((item) => {
+                const normalizedPath = normalizePathSearchValue(item.full_path);
+                return (
+                  !usedLivePaths.has(normalizedPath) &&
+                  normalizedPath === normalizePathSearchValue(placeholderItem.full_path)
+                );
+              })
+            : null) ??
           categoryPreviews.find(
-            (item) => !usedPaths.has(item.full_path) && matchesLivePreviewHint(card, item),
+            (item) => {
+              const normalizedPath = normalizePathSearchValue(item.full_path);
+              return !usedLivePaths.has(normalizedPath) && matchesLivePreviewHint(card, item);
+            },
           ) ?? null;
 
         if (matchedItem) {
-          usedPaths.add(matchedItem.full_path);
+          usedLivePaths.add(normalizePathSearchValue(matchedItem.full_path));
         }
 
-        sectionEntries.push({ card, liveItem: matchedItem });
+        sectionEntries.push({ card, liveItem: matchedItem, placeholderItem });
       });
 
       matchedBySection.set(section.id, sectionEntries);
     });
 
-    const unmatchedLiveItems = categoryPreviews.filter((item) => !usedPaths.has(item.full_path));
+    const unmatchedLiveItems = categoryPreviews.filter(
+      (item) => !usedLivePaths.has(normalizePathSearchValue(item.full_path)),
+    );
     const groupedExtras = new Map<string, CategoryDatasetPreview[]>();
 
     unmatchedLiveItems.forEach((item) => {
@@ -982,18 +1070,24 @@ export default function DataViewer() {
 
     return activeLandingContent.sections.map((section) => {
       const resolvedCards = matchedBySection.get(section.id) ?? [];
-      const liveBackedCards = resolvedCards.filter((entry) => entry.card.livePathHints?.length);
+      const liveBackedCards = resolvedCards.filter(
+        (entry) => entry.card.livePathHints?.length || entry.liveItem || entry.placeholderItem,
+      );
       const marketingCards = resolvedCards.filter((entry) => !entry.card.livePathHints?.length);
       const extraLiveCards = (groupedExtras.get(section.id) ?? [])
         .sort((a, b) => a.title.localeCompare(b.title))
-        .map((item) => ({ card: buildFallbackLiveCard(item), liveItem: item }));
+        .map((item) => ({
+          card: buildFallbackLiveCard(item),
+          liveItem: item,
+          placeholderItem: item,
+        }));
 
       return {
         ...section,
         cards: [...liveBackedCards, ...extraLiveCards, ...marketingCards],
       };
     });
-  }, [activeCategory, activeLandingContent, categoryPreviews]);
+  }, [activeCategory, activeLandingContent, categoryPreviews, localCategoryPreviewPlaceholders]);
   const pathSearchScopeKey = activeCategory?.routeKey ?? "global";
 
   const isRootLanding = pathSegments.length === 0;
@@ -1536,7 +1630,7 @@ export default function DataViewer() {
               </div>
             </div>
 
-            <div className="mt-auto border-t border-slate-200 pt-4">
+            <div className="mt-5 border-t border-slate-200 pt-4">
               {isAuthenticated && isApproved ? (
                 <div className="space-y-3">
                   <button
@@ -1783,7 +1877,7 @@ export default function DataViewer() {
                 onSelect={() => undefined}
               />
 
-              <div className="mt-auto border-t border-slate-200 pt-4">
+              <div className="mt-5 border-t border-slate-200 pt-4">
                 {!isAuthenticated || !isApproved ? (
                   <Link
                     to={buildAuthPath("register", viewerBasePath)}
@@ -1867,13 +1961,14 @@ export default function DataViewer() {
                     <div className="grid gap-4 xl:grid-cols-3">
                       {section.cards.map((entry) => (
                         <CuratedCatalogCard
-                          key={`${section.id}-${entry.card.title}-${entry.liveItem?.full_path ?? "marketing"}`}
+                          key={`${section.id}-${entry.card.title}-${entry.liveItem?.full_path ?? entry.placeholderItem?.full_path ?? "marketing"}`}
                           card={entry.card}
                           liveItem={entry.liveItem}
+                          placeholderItem={entry.placeholderItem}
                           buttonLabel="Open folder"
                           onOpen={() =>
-                            entry.liveItem
-                              ? handleCategoryPreviewClick(entry.liveItem)
+                            entry.liveItem || entry.placeholderItem
+                              ? handleCategoryPreviewClick(entry.liveItem ?? entry.placeholderItem!)
                               : handleCuratedCardOpen(entry.card.pathLabel, category)
                           }
                         />
