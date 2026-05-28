@@ -939,6 +939,7 @@ export default function DataViewer() {
 
   const [folders, setFolders] = useState<FolderItem[]>([]);
   const [categoryPreviews, setCategoryPreviews] = useState<CategoryDatasetPreview[]>([]);
+  const [loadedCategoryPreviewKey, setLoadedCategoryPreviewKey] = useState<CategoryKey | null>(null);
   const [categoryPreviewsLoading, setCategoryPreviewsLoading] = useState(false);
   const [images, setImages] = useState<ImageItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -996,6 +997,10 @@ export default function DataViewer() {
       .map((snapshot) => buildLocalPlaceholderPreview(snapshot, viewerBasePath))
       .filter((item): item is CategoryDatasetPreview => Boolean(item));
   }, [activeCategory, viewerBasePath]);
+  const activeCategoryPreviews = useMemo(() => {
+    if (!activeCategory || loadedCategoryPreviewKey !== activeCategory.routeKey) return [];
+    return categoryPreviews;
+  }, [activeCategory, categoryPreviews, loadedCategoryPreviewKey]);
   const resolvedCategorySections = useMemo(() => {
     if (!activeCategory || !activeLandingContent) return [];
 
@@ -1030,7 +1035,7 @@ export default function DataViewer() {
 
         const matchedItem =
           (placeholderItem
-            ? categoryPreviews.find((item) => {
+            ? activeCategoryPreviews.find((item) => {
                 const normalizedPath = normalizePathSearchValue(item.full_path);
                 return (
                   !usedLivePaths.has(normalizedPath) &&
@@ -1038,7 +1043,7 @@ export default function DataViewer() {
                 );
               })
             : null) ??
-          categoryPreviews.find(
+          activeCategoryPreviews.find(
             (item) => {
               const normalizedPath = normalizePathSearchValue(item.full_path);
               return !usedLivePaths.has(normalizedPath) && matchesLivePreviewHint(card, item);
@@ -1055,7 +1060,7 @@ export default function DataViewer() {
       matchedBySection.set(section.id, sectionEntries);
     });
 
-    const unmatchedLiveItems = categoryPreviews.filter(
+    const unmatchedLiveItems = activeCategoryPreviews.filter(
       (item) => !usedLivePaths.has(normalizePathSearchValue(item.full_path)),
     );
     const groupedExtras = new Map<string, CategoryDatasetPreview[]>();
@@ -1087,7 +1092,7 @@ export default function DataViewer() {
         cards: [...liveBackedCards, ...extraLiveCards, ...marketingCards],
       };
     });
-  }, [activeCategory, activeLandingContent, categoryPreviews, localCategoryPreviewPlaceholders]);
+  }, [activeCategory, activeLandingContent, activeCategoryPreviews, localCategoryPreviewPlaceholders]);
   const pathSearchScopeKey = activeCategory?.routeKey ?? "global";
 
   const isRootLanding = pathSegments.length === 0;
@@ -1169,6 +1174,7 @@ export default function DataViewer() {
   useEffect(() => {
     if (!isCategoryLanding || !activeCategory) {
       setCategoryPreviews([]);
+      setLoadedCategoryPreviewKey(null);
       setCategoryPreviewsLoading(false);
       return;
     }
@@ -1176,6 +1182,7 @@ export default function DataViewer() {
     let cancelled = false;
 
     async function loadCategoryPreviews() {
+      setLoadedCategoryPreviewKey(null);
       setCategoryPreviewsLoading(true);
       try {
         const response = await axios.get<CategoryDatasetPreview[]>("/api/dataset-category-previews", {
@@ -1183,10 +1190,12 @@ export default function DataViewer() {
         });
         if (cancelled) return;
         setCategoryPreviews(Array.isArray(response.data) ? response.data : []);
+        setLoadedCategoryPreviewKey(activeCategory.routeKey);
       } catch (error) {
         if (!cancelled) {
           console.error("Failed to load category dataset previews", error);
           setCategoryPreviews([]);
+          setLoadedCategoryPreviewKey(null);
         }
       } finally {
         if (!cancelled) {
@@ -1369,7 +1378,7 @@ export default function DataViewer() {
   }, [activeCategory, allFolderPaths, isRootLanding, pathSearchText]);
 
   const itemCount = isCategoryLanding
-    ? categoryPreviews.length
+    ? activeCategoryPreviews.length
     : isLeaf
       ? filteredImages.length
       : filteredFolders.length;
