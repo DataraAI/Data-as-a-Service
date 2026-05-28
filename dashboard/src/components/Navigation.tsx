@@ -64,6 +64,14 @@ export default function Navigation() {
     () => (isMarketingNav ? MARKETING_NAV_ITEMS : PRODUCT_NAV_ITEMS),
     [isMarketingNav],
   );
+  const desktopNavShellClass = isMarketingNav
+    ? "min-[1230px]:flex min-[1230px]:items-stretch min-[1230px]:justify-center"
+    : "min-[1400px]:flex min-[1400px]:items-stretch min-[1400px]:justify-center";
+  const desktopActionsClass = isMarketingNav ? "min-[1230px]:flex" : "min-[1400px]:flex";
+  const mobileControlsClass = isMarketingNav ? "min-[1230px]:hidden" : "min-[1400px]:hidden";
+  const productTabWidthClass = isMarketingNav
+    ? "min-w-[126px] xl:min-w-[138px] px-5"
+    : "min-w-[112px] xl:min-w-[122px] px-4 xl:px-5";
 
   const activeNavKey = useMemo(() => {
     if (isMarketingNav) {
@@ -111,7 +119,7 @@ export default function Navigation() {
             </div>
           </Link>
 
-          <div className="pointer-events-none absolute inset-y-0 left-1/2 hidden -translate-x-1/2 min-[1320px]:flex min-[1320px]:items-stretch min-[1320px]:justify-center">
+          <div className={`pointer-events-none absolute inset-y-0 left-1/2 hidden -translate-x-1/2 ${desktopNavShellClass}`}>
             <div className="pointer-events-auto flex items-stretch justify-center">
               {navItems.map((item) => {
                 const isActive = activeNavKey === item.key;
@@ -119,7 +127,7 @@ export default function Navigation() {
                   <Link
                     key={item.href}
                     to={item.href}
-                    className={`relative flex min-w-[126px] xl:min-w-[138px] flex-col items-center justify-center border-x border-slate-200/80 px-5 text-center transition-colors ${
+                    className={`relative flex ${productTabWidthClass} flex-col items-center justify-center border-x border-slate-200/80 text-center transition-colors ${
                       isActive
                         ? "bg-primary/5 text-primary"
                         : "text-slate-500 hover:bg-slate-50 hover:text-foreground"
@@ -142,7 +150,7 @@ export default function Navigation() {
             </div>
           </div>
 
-          <div className="relative z-10 hidden items-center gap-3 min-[1320px]:flex">
+          <div className={`relative z-10 hidden items-center gap-3 ${desktopActionsClass}`}>
             <Button
               type="button"
               variant="ghost"
@@ -198,7 +206,7 @@ export default function Navigation() {
             )}
           </div>
 
-          <div className="flex items-center gap-2 min-[1320px]:hidden">
+          <div className={`flex items-center gap-2 ${mobileControlsClass}`}>
             <Button
               type="button"
               variant="ghost"
@@ -225,7 +233,7 @@ export default function Navigation() {
         </div>
 
         {isMenuOpen && (
-          <div className="border-t border-slate-200 pb-5 pt-4 min-[1320px]:hidden">
+          <div className={`border-t border-slate-200 pb-5 pt-4 ${mobileControlsClass}`}>
             <div className="space-y-2">
               {navItems.map((item) => {
                 const isActive = activeNavKey === item.key;
