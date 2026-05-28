@@ -553,7 +553,24 @@ function CuratedCatalogCard({
   const [previewVideoActive, setPreviewVideoActive] = useState(false);
   const badge = getCategoryBadge(card);
   const previewItem = liveItem ?? placeholderItem ?? null;
-  const displayImages = getRoboDataHubMarketingImageSet(card.pathLabel) ?? card.images;
+  const marketingOverride = getRoboDataHubMarketingImageSet(card.pathLabel);
+  const displayImages = useMemo(() => {
+    const fallbackImages = card.images;
+    if (!marketingOverride) return fallbackImages;
+
+    const main =
+      marketingOverride.main && frontPageImageUrl(marketingOverride.main)
+        ? marketingOverride.main
+        : fallbackImages.main;
+
+    const thumbs = Array.from({ length: 3 }, (_, index) => {
+      const overrideThumb = marketingOverride.thumbs[index];
+      if (overrideThumb && frontPageImageUrl(overrideThumb)) return overrideThumb;
+      return fallbackImages.thumbs[index] ?? fallbackImages.main;
+    });
+
+    return { main, thumbs };
+  }, [card.images, marketingOverride]);
   const badgeClasses =
     previewItem || card.availability === "In Library"
       ? "border-emerald-200 bg-emerald-50 text-emerald-700"
