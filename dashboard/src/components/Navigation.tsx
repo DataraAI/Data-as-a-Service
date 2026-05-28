@@ -92,10 +92,10 @@ export default function Navigation() {
   return (
     <nav className="fixed inset-x-0 top-0 z-50 border-b border-slate-200/80 bg-white/92 text-foreground backdrop-blur-xl">
       <div className="mx-auto max-w-[1440px] px-4 sm:px-6">
-        <div className="flex h-[88px] items-center justify-between gap-4">
+        <div className="relative flex h-[88px] items-center justify-between gap-4">
           <Link
             to="/"
-            className="flex min-w-0 items-center gap-3"
+            className="relative z-10 flex min-w-0 items-center gap-3"
             onClick={() => setIsMenuOpen(false)}
           >
             <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-primary/20 bg-primary text-[15px] font-black text-primary-foreground shadow-[0_14px_30px_rgba(13,148,136,0.18)]">
@@ -111,36 +111,38 @@ export default function Navigation() {
             </div>
           </Link>
 
-          <div className="hidden flex-1 items-stretch justify-center lg:flex">
-            {navItems.map((item) => {
-              const isActive = activeNavKey === item.key;
-              return (
-                <Link
-                  key={item.href}
-                  to={item.href}
-                  className={`relative flex min-w-[124px] flex-col items-center justify-center border-x border-slate-200/80 px-5 text-center transition-colors ${
-                    isActive
-                      ? "bg-primary/5 text-primary"
-                      : "text-slate-500 hover:bg-slate-50 hover:text-foreground"
-                  }`}
-                >
-                  <span className="text-[14px] font-bold leading-none">{item.label}</span>
-                  <span className="mt-1 text-[10px] uppercase tracking-[0.18em] opacity-70">
-                    {item.subtitle}
-                  </span>
-                  <span
-                    className={`absolute inset-x-[20%] bottom-0 h-0.5 rounded-t-full ${
+          <div className="pointer-events-none absolute inset-y-0 left-1/2 hidden -translate-x-1/2 lg:flex lg:items-stretch lg:justify-center">
+            <div className="pointer-events-auto flex items-stretch justify-center">
+              {navItems.map((item) => {
+                const isActive = activeNavKey === item.key;
+                return (
+                  <Link
+                    key={item.href}
+                    to={item.href}
+                    className={`relative flex min-w-[126px] xl:min-w-[138px] flex-col items-center justify-center border-x border-slate-200/80 px-5 text-center transition-colors ${
                       isActive
-                        ? "bg-primary shadow-[0_0_14px_rgba(13,148,136,0.3)]"
-                        : "bg-transparent"
+                        ? "bg-primary/5 text-primary"
+                        : "text-slate-500 hover:bg-slate-50 hover:text-foreground"
                     }`}
-                  />
-                </Link>
-              );
-            })}
+                  >
+                    <span className="text-[14px] font-bold leading-none">{item.label}</span>
+                    <span className="mt-1 text-[10px] uppercase tracking-[0.18em] opacity-70">
+                      {item.subtitle}
+                    </span>
+                    <span
+                      className={`absolute inset-x-[20%] bottom-0 h-0.5 rounded-t-full ${
+                        isActive
+                          ? "bg-primary shadow-[0_0_14px_rgba(13,148,136,0.3)]"
+                          : "bg-transparent"
+                      }`}
+                    />
+                  </Link>
+                );
+              })}
+            </div>
           </div>
 
-          <div className="hidden items-center gap-3 lg:flex">
+          <div className="relative z-10 hidden items-center gap-3 lg:flex">
             <Button
               type="button"
               variant="ghost"
