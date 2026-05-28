@@ -64,14 +64,11 @@ export default function Navigation() {
     () => (isMarketingNav ? MARKETING_NAV_ITEMS : PRODUCT_NAV_ITEMS),
     [isMarketingNav],
   );
-  const desktopNavShellClass = isMarketingNav
-    ? "min-[1230px]:flex min-[1230px]:items-stretch min-[1230px]:justify-center"
-    : "min-[1400px]:flex min-[1400px]:items-stretch min-[1400px]:justify-center";
-  const desktopActionsClass = isMarketingNav ? "min-[1230px]:flex" : "min-[1400px]:flex";
-  const mobileControlsClass = isMarketingNav ? "min-[1230px]:hidden" : "min-[1400px]:hidden";
-  const productTabWidthClass = isMarketingNav
-    ? "min-w-[126px] xl:min-w-[138px] px-5"
-    : "min-w-[112px] xl:min-w-[122px] px-4 xl:px-5";
+  const desktopNavDisplayClass = isMarketingNav ? "min-[1120px]:flex" : "min-[1220px]:flex";
+  const desktopActionsClass = isMarketingNav ? "min-[1120px]:flex" : "min-[1220px]:flex";
+  const mobileControlsClass = isMarketingNav ? "min-[1120px]:hidden" : "min-[1220px]:hidden";
+  const tabSpacingClass = isMarketingNav ? "px-4 xl:px-5" : "px-3 xl:px-4";
+  const tabLabelClass = isMarketingNav ? "text-[14px]" : "text-[13px] xl:text-[14px]";
 
   const activeNavKey = useMemo(() => {
     if (isMarketingNav) {
@@ -119,21 +116,21 @@ export default function Navigation() {
             </div>
           </Link>
 
-          <div className={`pointer-events-none absolute inset-y-0 left-1/2 hidden -translate-x-1/2 ${desktopNavShellClass}`}>
-            <div className="pointer-events-auto flex items-stretch justify-center">
+          <div className={`hidden min-w-0 flex-1 items-stretch px-4 ${desktopNavDisplayClass}`}>
+            <div className="flex min-w-0 flex-1 items-stretch">
               {navItems.map((item) => {
                 const isActive = activeNavKey === item.key;
                 return (
                   <Link
                     key={item.href}
                     to={item.href}
-                    className={`relative flex ${productTabWidthClass} flex-col items-center justify-center border-x border-slate-200/80 text-center transition-colors ${
+                    className={`relative flex min-w-0 flex-1 ${tabSpacingClass} flex-col items-center justify-center border-x border-slate-200/80 text-center transition-colors ${
                       isActive
                         ? "bg-primary/5 text-primary"
                         : "text-slate-500 hover:bg-slate-50 hover:text-foreground"
                     }`}
                   >
-                    <span className="text-[14px] font-bold leading-none">{item.label}</span>
+                    <span className={`truncate font-bold leading-none ${tabLabelClass}`}>{item.label}</span>
                     <span className="mt-1 text-[10px] uppercase tracking-[0.18em] opacity-70">
                       {item.subtitle}
                     </span>
