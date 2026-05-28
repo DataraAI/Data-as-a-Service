@@ -111,7 +111,7 @@ export default function Navigation() {
             </div>
           </Link>
 
-          <div className="pointer-events-none absolute inset-y-0 left-1/2 hidden -translate-x-1/2 lg:flex lg:items-stretch lg:justify-center">
+          <div className="pointer-events-none absolute inset-y-0 left-1/2 hidden -translate-x-1/2 min-[1320px]:flex min-[1320px]:items-stretch min-[1320px]:justify-center">
             <div className="pointer-events-auto flex items-stretch justify-center">
               {navItems.map((item) => {
                 const isActive = activeNavKey === item.key;
@@ -142,7 +142,7 @@ export default function Navigation() {
             </div>
           </div>
 
-          <div className="relative z-10 hidden items-center gap-3 lg:flex">
+          <div className="relative z-10 hidden items-center gap-3 min-[1320px]:flex">
             <Button
               type="button"
               variant="ghost"
@@ -198,7 +198,7 @@ export default function Navigation() {
             )}
           </div>
 
-          <div className="flex items-center gap-2 lg:hidden">
+          <div className="flex items-center gap-2 min-[1320px]:hidden">
             <Button
               type="button"
               variant="ghost"
@@ -225,7 +225,7 @@ export default function Navigation() {
         </div>
 
         {isMenuOpen && (
-          <div className="border-t border-slate-200 pb-5 pt-4 lg:hidden">
+          <div className="border-t border-slate-200 pb-5 pt-4 min-[1320px]:hidden">
             <div className="space-y-2">
               {navItems.map((item) => {
                 const isActive = activeNavKey === item.key;
