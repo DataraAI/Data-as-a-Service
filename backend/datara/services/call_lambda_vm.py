@@ -88,6 +88,9 @@ REMOTE_ROSE_RUNNER_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "DataraAI_rose_occl
 REMOTE_ROSE_VERIFY_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "verify_rose_runtime.sh")
 REMOTE_ROSE_SETUP_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "setup_rose_runtime.sh")
 REMOTE_SAM3_PACKAGE_ROOT = f"{REMOTE_USER_HOME}/packages/sam3"
+REMOTE_LYRA_PACKAGE_ROOT = f"{REMOTE_USER_HOME}/packages/lyra/Lyra-1"
+SAAS_MINICONDA_ROOT = os.getenv("SAAS_MINICONDA_ROOT") or f"/home/{SAAS_USER}/miniconda3"
+SAAS_LYRA_V2V_CONDA_ENV = os.getenv("SAAS_LYRA_V2V_CONDA_ENV") or "lyra-v2v"
 
 
 @contextmanager
@@ -618,4 +621,76 @@ def generate_task_intelligence(video_url: str):
             return None, 500
     except Exception as e:
         logger.error("generate_task_intelligence error: %s", e)
+        return None, 500
+    
+def generate_video_to_video(*, local_input_video: str, local_output_video: str):
+    """
+    Upload a local video to the Lambda VM, run Lyra Gen3C in the lyra-v2v conda
+    environment, download the generated output video, and clean up remote files.
+    Returns (local_output_video, status_code).
+    """
+    if not os.path.isfile(local_input_video):
+        return None, 400
+
+    os.makedirs(os.path.dirname(os.path.abspath(local_output_video)), exist_ok=True)
+
+    job_id = uuid.uuid4().hex[:12]
+    remote_root = f"/home/{SAAS_USER}/datara_lyra_jobs/{job_id}"
+    remote_input_video = posixpath.join(remote_root, "input.mp4")
+    remote_output_dir = posixpath.join(remote_root, "output")
+    lyra_conda_prefix = f"{SAAS_MINICONDA_ROOT}/envs/{SAAS_LYRA_V2V_CONDA_ENV}"
+
+    try:
+        with _ssh_session() as ssh_client:
+            sftp = ssh_client.open_sftp()
+            try:
+                _sftp_put_tree(sftp, local_input_video, remote_input_video)
+            finally:
+                sftp.close()
+
+            run_script = (
+                f"source {SAAS_MINICONDA_ROOT}/etc/profile.d/conda.sh && "
+                f"conda activate {SAAS_LYRA_V2V_CONDA_ENV} && "
+                f"cd {REMOTE_LYRA_PACKAGE_ROOT} && "
+                f"mkdir -p {remote_output_dir} && "
+                f"CUDA_HOME={lyra_conda_prefix} PYTHONPATH={REMOTE_LYRA_PACKAGE_ROOT} "
+                f"torchrun --nproc_per_node=1 cosmos_predict1/diffusion/inference/gen3c_dynamic_sdg.py "
+                f"--checkpoint_dir checkpoints "
+                f"--vipe_path {remote_input_video} "
+                f"--video_save_folder {remote_output_dir} "
+                f"--disable_prompt_upsampler "
+                f"--num_gpus 1 "
+                f"--foreground_masking "
+                f"--multi_trajectory"
+            )
+            stdout, stderr, status = _run_bash_script(ssh_client, run_script)
+            if status != 0:
+                logger.error("Lyra v2v failed: %s", stderr or stdout)
+                _run_command(ssh_client, f"rm -rf {remote_root}")
+                return None, 500
+
+            find_stdout, _find_stderr, _find_status = _run_bash_script(
+                ssh_client,
+                f'find {remote_output_dir} -maxdepth 2 -type f -name "*.mp4" | head -n 1',
+            )
+            remote_output_path = (find_stdout.strip().splitlines()[-1].strip() if find_stdout else "") or ""
+
+            if not remote_output_path:
+                logger.error("Lyra v2v produced no output video. stdout=%s stderr=%s", stdout, stderr)
+                _run_command(ssh_client, f"rm -rf {remote_root}")
+                return None, 500
+
+            sftp = ssh_client.open_sftp()
+            try:
+                sftp.get(remote_output_path, local_output_video)
+            finally:
+                sftp.close()
+
+            _run_command(ssh_client, f"rm -rf {remote_root}")
+
+            if os.path.isfile(local_output_video):
+                return local_output_video, 200
+            return None, 500
+    except Exception as exc:
+        logger.error("generate_video_to_video error: %s", exc, exc_info=True)
         return None, 500

@@ -1398,6 +1398,83 @@ class ProcessingService:
                 except OSError:
                     pass
 
+    def generate_video_to_video_views(self, current_user: dict[str, Any], data: dict[str, Any]) -> tuple[dict[str, Any], int]:
+        """
+        Generates a new video view for a video asset using Lyra Gen3C on the Lambda VM.
+        Checks for cached results in Cosmos DB before invoking the remote model.
+        """
+        source = self._resolve_source_asset(current_user, str(data.get("asset_id") or ""))
+
+        # Check Cache in Cosmos DB
+        if source["metadata"].get("videoToVideoViews"):
+            logger.info("Found cached video-to-video views for asset %s", data.get("asset_id"))
+            return {
+                "message": "Video-to-video views retrieved from cache.",
+                "data": source["metadata"]["videoToVideoViews"],
+                "cached": True,
+            }, 200
+
+        source_dataset = source["dataset"]
+        source_blob = source["blob_name"]
+        
+        if not any(source_blob.lower().endswith(ext) for ext in (".mp4", ".mov", ".m4v", ".webm")):
+            return {"error": "Video-to-Video views can only be generated for video assets."}, 400
+
+        job_root = tempfile.mkdtemp(prefix="lyra_v2v_job_", dir=DATASET_LIST_DIR)
+        local_input_video = os.path.join(job_root, "source.mp4")
+        local_output_video = os.path.join(job_root, "lyra_generated.mp4")
+
+        try:
+            blob_bytes = self.azure_service.download_blob(
+                source_dataset["storage_container"], source_blob
+            ).readall()
+            with open(local_input_video, "wb") as fh:
+                fh.write(blob_bytes)
+
+            from datara.services import call_lambda_vm
+
+            logger.info("Running Lyra v2v on Lambda VM for asset: %s", source_blob)
+            result_path, status_code = call_lambda_vm.generate_video_to_video(
+                local_input_video=local_input_video,
+                local_output_video=local_output_video,
+            )
+
+            if status_code != 200 or not result_path:
+                return {"error": "Failed to generate video-to-video views on the Lambda VM."}, status_code or 500
+
+            output_blob_name = f"{source_dataset['storage_prefix'].rstrip('/')}/lyra_v2v/lyra_generated.mp4"
+            container_client = self.azure_service.get_container_client(source_dataset["storage_container"])
+            with open(local_output_video, "rb") as fh:
+                container_client.upload_blob(
+                    name=output_blob_name,
+                    data=fh,
+                    overwrite=True,
+                    content_settings=ContentSettings(content_type="video/mp4"),
+                )
+
+            v2v_result = {
+                "blob_name": output_blob_name,
+                "container": source_dataset["storage_container"],
+                "generated_at": datetime.now(timezone.utc).isoformat(),
+            }
+
+            cosmos_doc = source["metadata"]
+            cosmos_doc["videoToVideoViews"] = v2v_result
+            self.azure_service.upsert_cosmos_item(cosmos_doc)
+
+            return {
+                "message": "Video-to-video generation completed successfully.",
+                "data": v2v_result,
+                "cached": False,
+            }, 200
+
+        except Exception as e:
+            logger.error("generate_video_to_video_views error: %s", e, exc_info=True)
+            return {"error": str(e)}, 500
+        finally:
+            shutil.rmtree(job_root, ignore_errors=True)
+
+
     def _resolve_source_asset(self, current_user: dict[str, Any], asset_id: str) -> dict[str, Any]:
         if not asset_id:
             raise ValueError("Missing asset_id")
