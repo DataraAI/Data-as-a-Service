@@ -128,6 +128,22 @@ interface CategoryDatasetPreview {
   preview_video?: CategoryPreviewAsset | null;
 }
 
+interface ResolvedCatalogCardEntry {
+  card: CatalogCard;
+  liveItem: CategoryDatasetPreview | null;
+  placeholderItem: CategoryDatasetPreview | null;
+}
+
+function cloneEntryWithTitle(entry: ResolvedCatalogCardEntry, title: string): ResolvedCatalogCardEntry {
+  return {
+    ...entry,
+    card: {
+      ...entry.card,
+      title,
+    },
+  };
+}
+
 const CATEGORIES: CategoryConfig[] = [
   {
     routeKey: "serverrack",
@@ -502,6 +518,118 @@ function buildLocalPlaceholderPreview(
   };
 }
 
+function resolveCatalogSectionsForCategory(
+  routeKey: CategoryKey,
+  landingContent: CategoryLandingContent,
+  activeCategoryPreviews: CategoryDatasetPreview[],
+  localCategoryPreviewPlaceholders: CategoryDatasetPreview[],
+) {
+  const usedLivePaths = new Set<string>();
+  const usedPlaceholderPaths = new Set<string>();
+  const matchedBySection = new Map<string, ResolvedCatalogCardEntry[]>();
+
+  landingContent.sections.forEach((section) => {
+    const sectionEntries: ResolvedCatalogCardEntry[] = [];
+
+    section.cards.forEach((card) => {
+      const placeholderItem =
+        localCategoryPreviewPlaceholders.find((item) => {
+          const normalizedPath = normalizePathSearchValue(item.full_path);
+          return !usedPlaceholderPaths.has(normalizedPath) && matchesLivePreviewHint(card, item);
+        }) ?? null;
+
+      if (placeholderItem) {
+        usedPlaceholderPaths.add(normalizePathSearchValue(placeholderItem.full_path));
+      }
+
+      const matchedItem =
+        (placeholderItem
+          ? activeCategoryPreviews.find((item) => {
+              const normalizedPath = normalizePathSearchValue(item.full_path);
+              return (
+                !usedLivePaths.has(normalizedPath) &&
+                normalizedPath === normalizePathSearchValue(placeholderItem.full_path)
+              );
+            })
+          : null) ??
+        activeCategoryPreviews.find((item) => {
+          const normalizedPath = normalizePathSearchValue(item.full_path);
+          return !usedLivePaths.has(normalizedPath) && matchesLivePreviewHint(card, item);
+        }) ??
+        null;
+
+      if (matchedItem) {
+        usedLivePaths.add(normalizePathSearchValue(matchedItem.full_path));
+      }
+
+      sectionEntries.push({ card, liveItem: matchedItem, placeholderItem });
+    });
+
+    matchedBySection.set(section.id, sectionEntries);
+  });
+
+  const unmatchedLiveItems = activeCategoryPreviews.filter(
+    (item) => !usedLivePaths.has(normalizePathSearchValue(item.full_path)),
+  );
+  const groupedExtras = new Map<string, CategoryDatasetPreview[]>();
+
+  unmatchedLiveItems.forEach((item) => {
+    const sectionId = getLivePreviewSectionId(routeKey, item);
+    if (!sectionId) return;
+    const current = groupedExtras.get(sectionId) ?? [];
+    current.push(item);
+    groupedExtras.set(sectionId, current);
+  });
+
+  const seenEntryKeys = new Set<string>();
+  const titleCounts = new Map<string, number>();
+
+  return landingContent.sections.map((section) => {
+    const resolvedCards = matchedBySection.get(section.id) ?? [];
+    const liveBackedCards = resolvedCards.filter(
+      (entry) => entry.card.livePathHints?.length || entry.liveItem || entry.placeholderItem,
+    );
+    const marketingCards = resolvedCards.filter((entry) => !entry.card.livePathHints?.length);
+    const extraLiveCards = (groupedExtras.get(section.id) ?? [])
+      .sort((a, b) => a.title.localeCompare(b.title))
+      .map((item) => ({
+        card: buildFallbackLiveCard(item),
+        liveItem: item,
+        placeholderItem: item,
+      }));
+
+    const uniqueCards = [...liveBackedCards, ...extraLiveCards, ...marketingCards]
+      .filter((entry) => {
+        const entryKey =
+          entry.liveItem?.full_path ??
+          entry.placeholderItem?.full_path ??
+          entry.card.pathLabel;
+        const normalizedKey = normalizePathSearchValue(entryKey);
+        if (seenEntryKeys.has(normalizedKey)) {
+          return false;
+        }
+        seenEntryKeys.add(normalizedKey);
+        return true;
+      })
+      .map((entry) => {
+        const normalizedTitle = entry.card.title.trim().toLowerCase();
+        const seenCount = titleCounts.get(normalizedTitle) ?? 0;
+        titleCounts.set(normalizedTitle, seenCount + 1);
+
+        if (seenCount === 0) {
+          return entry;
+        }
+
+        return cloneEntryWithTitle(entry, `${entry.card.title} ${seenCount + 1}`);
+      });
+
+    return {
+      ...section,
+      cards: uniqueCards,
+    };
+  });
+}
+
 function getLivePreviewSectionId(routeKey: CategoryKey, item: CategoryDatasetPreview) {
   const normalizedPath = normalizePathSearchValue(item.full_path);
 
@@ -510,23 +638,45 @@ function getLivePreviewSectionId(routeKey: CategoryKey, item: CategoryDatasetPre
       if (normalizedPath.includes("ethernetcable") || normalizedPath.includes("adpluggingcable")) {
         return "cable";
       }
-      if (normalizedPath.includes("switchtray") || normalizedPath.includes("datarackinstall")) {
+      if (
+        normalizedPath.includes("switchtray") ||
+        normalizedPath.includes("datarackinstall") ||
+        normalizedPath.includes("pduinstallation") ||
+        normalizedPath.includes("networkcardinstall") ||
+        normalizedPath.includes("x3690x5hotswap")
+      ) {
         return "hardware";
       }
       return "server";
     case "warehouse":
+      if (normalizedPath.includes("loadingpellets") || normalizedPath.includes("steelpallets")) {
+        return "material";
+      }
       return "pick";
     case "dexterity":
       if (normalizedPath.includes("dishwasherunloading") || normalizedPath.includes("peelingpeas")) {
         return "kitchen";
       }
-      if (normalizedPath.includes("washingmachine")) {
+      if (normalizedPath.includes("washingmachine") || normalizedPath.includes("towel") || normalizedPath.includes("crockery")) {
         return "household";
       }
       return "cleaning";
     case "carAutomation":
-      if (normalizedPath.includes("passengerseat")) return "inspection";
-      if (normalizedPath.includes("frontgrille") || normalizedPath.includes("frontseat") || normalizedPath.includes("rearbumber") || normalizedPath.includes("rearbumper")) {
+      if (
+        normalizedPath.includes("passengerseat") ||
+        normalizedPath.includes("dooralignment") ||
+        normalizedPath.includes("wheelbolts")
+      ) {
+        return "inspection";
+      }
+      if (
+        normalizedPath.includes("frontgrille") ||
+        normalizedPath.includes("frontseat") ||
+        normalizedPath.includes("rearbumber") ||
+        normalizedPath.includes("rearbumper") ||
+        normalizedPath.includes("windshieldreplacement") ||
+        normalizedPath.includes("doorpanelassembly")
+      ) {
         return "assembly";
       }
       return "cars";
@@ -1130,6 +1280,7 @@ export default function DataViewer() {
   const [categoryPreviews, setCategoryPreviews] = useState<CategoryDatasetPreview[]>([]);
   const [loadedCategoryPreviewKey, setLoadedCategoryPreviewKey] = useState<CategoryKey | null>(null);
   const [categoryPreviewsLoading, setCategoryPreviewsLoading] = useState(false);
+  const [rootCategoryPreviews, setRootCategoryPreviews] = useState<Partial<Record<CategoryKey, CategoryDatasetPreview[]>>>({});
   const [images, setImages] = useState<ImageItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedImage, setSelectedImage] = useState<ImageItem | null>(null);
@@ -1177,140 +1328,68 @@ export default function DataViewer() {
     () => (activeCategory ? CATEGORY_LANDING_CONTENT[activeCategory.routeKey] : null),
     [activeCategory],
   );
-  const localCategoryPreviewPlaceholders = useMemo(() => {
-    if (!activeCategory) return [];
-
-    return getLocalFolderPreviewSnapshots()
-      .filter(
-        (snapshot) =>
-          normalizeCategoryValue(snapshot.category) ===
-          normalizeCategoryValue(activeCategory.previewKey),
-      )
-      .map((snapshot) => buildLocalPlaceholderPreview(snapshot, viewerBasePath))
-      .filter((item): item is CategoryDatasetPreview => Boolean(item));
-  }, [activeCategory, viewerBasePath]);
-  const rootLandingPreviewMap = useMemo(() => {
-    const entries = new Map<string, CategoryDatasetPreview>();
-
-    ROOT_SHOWCASE_SECTIONS.forEach((section) => {
-      const category = CATEGORIES.find((item) => item.routeKey === section.routeKey);
-      if (!category) return;
-
-      const placeholders = getLocalFolderPreviewSnapshots()
-        .filter(
-          (snapshot) =>
-            normalizeCategoryValue(snapshot.category) ===
-            normalizeCategoryValue(category.previewKey),
-        )
-        .map((snapshot) => buildLocalPlaceholderPreview(snapshot, viewerBasePath))
-        .filter((item): item is CategoryDatasetPreview => Boolean(item));
-
-      section.cards.forEach((card) => {
-        const match = placeholders.find((item) => matchesLivePreviewHint(card, item));
-        if (match) {
-          entries.set(card.pathLabel, match);
-        }
-      });
-    });
-
-    return entries;
+  const localCategoryPreviewPlaceholdersByRoute = useMemo(() => {
+    const snapshots = getLocalFolderPreviewSnapshots();
+    return CATEGORIES.reduce(
+      (acc, category) => {
+        acc[category.routeKey] = snapshots
+          .filter(
+            (snapshot) =>
+              normalizeCategoryValue(snapshot.category) ===
+              normalizeCategoryValue(category.previewKey),
+          )
+          .map((snapshot) => buildLocalPlaceholderPreview(snapshot, viewerBasePath))
+          .filter((item): item is CategoryDatasetPreview => Boolean(item));
+        return acc;
+      },
+      {} as Record<CategoryKey, CategoryDatasetPreview[]>,
+    );
   }, [viewerBasePath]);
+  const localCategoryPreviewPlaceholders = activeCategory
+    ? localCategoryPreviewPlaceholdersByRoute[activeCategory.routeKey] ?? []
+    : [];
   const activeCategoryPreviews = useMemo(() => {
     if (!activeCategory || loadedCategoryPreviewKey !== activeCategory.routeKey) return [];
     return categoryPreviews;
   }, [activeCategory, categoryPreviews, loadedCategoryPreviewKey]);
   const resolvedCategorySections = useMemo(() => {
     if (!activeCategory || !activeLandingContent) return [];
-
-    const usedLivePaths = new Set<string>();
-    const usedPlaceholderPaths = new Set<string>();
-    const matchedBySection = new Map<
-      string,
-      {
-        card: CatalogCard;
-        liveItem: CategoryDatasetPreview | null;
-        placeholderItem: CategoryDatasetPreview | null;
-      }[]
-    >();
-
-    activeLandingContent.sections.forEach((section) => {
-      const sectionEntries: {
-        card: CatalogCard;
-        liveItem: CategoryDatasetPreview | null;
-        placeholderItem: CategoryDatasetPreview | null;
-      }[] = [];
-
-      section.cards.forEach((card) => {
-        const placeholderItem =
-          localCategoryPreviewPlaceholders.find((item) => {
-            const normalizedPath = normalizePathSearchValue(item.full_path);
-            return !usedPlaceholderPaths.has(normalizedPath) && matchesLivePreviewHint(card, item);
-          }) ?? null;
-
-        if (placeholderItem) {
-          usedPlaceholderPaths.add(normalizePathSearchValue(placeholderItem.full_path));
-        }
-
-        const matchedItem =
-          (placeholderItem
-            ? activeCategoryPreviews.find((item) => {
-                const normalizedPath = normalizePathSearchValue(item.full_path);
-                return (
-                  !usedLivePaths.has(normalizedPath) &&
-                  normalizedPath === normalizePathSearchValue(placeholderItem.full_path)
-                );
-              })
-            : null) ??
-          activeCategoryPreviews.find(
-            (item) => {
-              const normalizedPath = normalizePathSearchValue(item.full_path);
-              return !usedLivePaths.has(normalizedPath) && matchesLivePreviewHint(card, item);
-            },
-          ) ?? null;
-
-        if (matchedItem) {
-          usedLivePaths.add(normalizePathSearchValue(matchedItem.full_path));
-        }
-
-        sectionEntries.push({ card, liveItem: matchedItem, placeholderItem });
-      });
-
-      matchedBySection.set(section.id, sectionEntries);
-    });
-
-    const unmatchedLiveItems = activeCategoryPreviews.filter(
-      (item) => !usedLivePaths.has(normalizePathSearchValue(item.full_path)),
+    return resolveCatalogSectionsForCategory(
+      activeCategory.routeKey,
+      activeLandingContent,
+      activeCategoryPreviews,
+      localCategoryPreviewPlaceholders,
     );
-    const groupedExtras = new Map<string, CategoryDatasetPreview[]>();
-
-    unmatchedLiveItems.forEach((item) => {
-      const sectionId = getLivePreviewSectionId(activeCategory.routeKey, item);
-      if (!sectionId) return;
-      const current = groupedExtras.get(sectionId) ?? [];
-      current.push(item);
-      groupedExtras.set(sectionId, current);
-    });
-
-    return activeLandingContent.sections.map((section) => {
-      const resolvedCards = matchedBySection.get(section.id) ?? [];
-      const liveBackedCards = resolvedCards.filter(
-        (entry) => entry.card.livePathHints?.length || entry.liveItem || entry.placeholderItem,
+  }, [activeCategory, activeLandingContent, activeCategoryPreviews, localCategoryPreviewPlaceholders]);
+  const rootResolvedShowcaseSections = useMemo(() => {
+    return ROOT_SHOWCASE_SECTIONS.map((section) => {
+      const landingContent = CATEGORY_LANDING_CONTENT[section.routeKey];
+      const categoryPreviewsForRoute = rootCategoryPreviews[section.routeKey] ?? [];
+      const placeholdersForRoute = localCategoryPreviewPlaceholdersByRoute[section.routeKey] ?? [];
+      const resolvedSections = resolveCatalogSectionsForCategory(
+        section.routeKey,
+        landingContent,
+        categoryPreviewsForRoute,
+        placeholdersForRoute,
       );
-      const marketingCards = resolvedCards.filter((entry) => !entry.card.livePathHints?.length);
-      const extraLiveCards = (groupedExtras.get(section.id) ?? [])
-        .sort((a, b) => a.title.localeCompare(b.title))
-        .map((item) => ({
-          card: buildFallbackLiveCard(item),
-          liveItem: item,
-          placeholderItem: item,
-        }));
+      const flattenedEntries = resolvedSections.flatMap((resolvedSection) => resolvedSection.cards);
+      const realBackedEntries = flattenedEntries.filter(
+        (entry) => entry.liveItem || entry.placeholderItem,
+      );
+      const marketingEntries = flattenedEntries.filter(
+        (entry) => !entry.liveItem && !entry.placeholderItem,
+      );
+      const cards =
+        realBackedEntries.length >= 4
+          ? realBackedEntries.slice(0, 4)
+          : [...realBackedEntries, ...marketingEntries.slice(0, 4 - realBackedEntries.length)];
 
       return {
         ...section,
-        cards: [...liveBackedCards, ...extraLiveCards, ...marketingCards],
+        cards,
       };
     });
-  }, [activeCategory, activeLandingContent, activeCategoryPreviews, localCategoryPreviewPlaceholders]);
+  }, [localCategoryPreviewPlaceholdersByRoute, rootCategoryPreviews]);
   const pathSearchScopeKey = activeCategory?.routeKey ?? "global";
 
   const isRootLanding = pathSegments.length === 0;
@@ -1460,6 +1539,50 @@ export default function DataViewer() {
       cancelled = true;
     };
   }, [activeCategory, isCategoryLanding, reloadTick]);
+
+  useEffect(() => {
+    if (!isRootLanding) {
+      setRootCategoryPreviews({});
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadRootCategoryPreviews() {
+      const results = await Promise.allSettled(
+        CATEGORIES.map(async (category) => {
+          const response = await axios.get<CategoryDatasetPreview[]>("/api/dataset-category-previews", {
+            params: { category: category.routeKey, public_only: "true" },
+          });
+          return [
+            category.routeKey,
+            Array.isArray(response.data) ? response.data : [],
+          ] as const;
+        }),
+      );
+
+      if (cancelled) return;
+
+      const nextPreviews: Partial<Record<CategoryKey, CategoryDatasetPreview[]>> = {};
+      results.forEach((result, index) => {
+        const routeKey = CATEGORIES[index].routeKey;
+        if (result.status === "fulfilled") {
+          nextPreviews[routeKey] = result.value[1];
+        } else {
+          console.error(`Failed to load root dataset previews for ${routeKey}`, result.reason);
+          nextPreviews[routeKey] = [];
+        }
+      });
+
+      setRootCategoryPreviews(nextPreviews);
+    }
+
+    void loadRootCategoryPreviews();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isRootLanding, reloadTick]);
 
   useEffect(() => {
     const shouldLoadPaths = isRootLanding || isCategoryLanding || pathSearchTouched;
@@ -1950,7 +2073,7 @@ export default function DataViewer() {
             </div>
 
             <div className="mt-8 space-y-9">
-              {ROOT_SHOWCASE_SECTIONS.map((section) => {
+              {rootResolvedShowcaseSections.map((section) => {
                 const category = CATEGORIES.find((item) => item.routeKey === section.routeKey);
                 if (!category) return null;
 
@@ -1963,21 +2086,23 @@ export default function DataViewer() {
                     </div>
 
                     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                      {section.cards.map((card) => (
+                      {section.cards.map((entry) => {
+                        const previewItem = entry.liveItem ?? entry.placeholderItem ?? null;
+                        return (
                         <RootShowcaseCatalogCard
-                          key={`${section.routeKey}-${card.title}`}
-                          card={card}
-                          previewItem={rootLandingPreviewMap.get(card.pathLabel) ?? null}
+                          key={`${section.routeKey}-${entry.card.title}-${previewItem?.full_path ?? entry.card.pathLabel}`}
+                          card={entry.card}
+                          previewItem={previewItem}
                           onOpen={() => {
-                            const rootPreviewItem = rootLandingPreviewMap.get(card.pathLabel) ?? null;
-                            if (rootPreviewItem) {
-                              handleCategoryPreviewClick(rootPreviewItem);
+                            if (previewItem) {
+                              handleCategoryPreviewClick(previewItem);
                               return;
                             }
                             navigate(buildCategoryLandingPath(category, viewerBasePath));
                           }}
                         />
-                      ))}
+                        );
+                      })}
                     </div>
                   </section>
                 );

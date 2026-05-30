@@ -392,8 +392,8 @@ export default function Home() {
                     </div>
                   </div>
 
-                  <div className="grid gap-4 px-6 py-6 lg:grid-cols-[minmax(0,1fr)_48px_minmax(0,1fr)] lg:items-center lg:px-10">
-                    <div className="relative overflow-hidden rounded-[24px]">
+                  <div className="grid gap-4 px-6 py-6 lg:h-[420px] lg:grid-cols-[minmax(0,1fr)_48px_minmax(0,1fr)] lg:gap-0 lg:items-center lg:px-10">
+                    <div className="relative aspect-[16/10] overflow-hidden rounded-[24px] lg:aspect-auto lg:h-full">
                       <img src={card.beforeImage} alt={card.beforeLabel} className="h-full w-full object-cover brightness-[0.88]" />
                       <div className={`absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full border px-4 py-2 text-xs font-bold whitespace-nowrap backdrop-blur-md ${card.beforeTone}`}>
                         {card.beforeLabel}
@@ -402,12 +402,12 @@ export default function Home() {
                     <div className="flex justify-center text-slate-400">
                       <ArrowRight className="h-6 w-6" />
                     </div>
-                    <div className="relative overflow-hidden rounded-[24px]">
+                    <div className="relative aspect-[16/10] overflow-hidden rounded-[24px] lg:aspect-auto lg:h-full">
                       <img
                         src={card.afterImage}
                         alt={card.afterLabel}
                         className={`h-full w-full object-cover brightness-[0.92] ${
-                          index === 0 ? "scale-[1.08]" : ""
+                          index === 0 ? "scale-[1.04]" : ""
                         }`}
                       />
                       <div className={`absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full border px-4 py-2 text-xs font-bold whitespace-nowrap backdrop-blur-md ${card.afterTone}`}>
