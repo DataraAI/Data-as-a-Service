@@ -403,7 +403,13 @@ export default function Home() {
                       <ArrowRight className="h-6 w-6" />
                     </div>
                     <div className="relative overflow-hidden rounded-[24px]">
-                      <img src={card.afterImage} alt={card.afterLabel} className="h-full w-full object-cover brightness-[0.92]" />
+                      <img
+                        src={card.afterImage}
+                        alt={card.afterLabel}
+                        className={`h-full w-full object-cover brightness-[0.92] ${
+                          index === 0 ? "scale-[1.08]" : ""
+                        }`}
+                      />
                       <div className={`absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full border px-4 py-2 text-xs font-bold whitespace-nowrap backdrop-blur-md ${card.afterTone}`}>
                         {card.afterLabel}
                       </div>

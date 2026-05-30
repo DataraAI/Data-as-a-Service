@@ -576,19 +576,20 @@ function CuratedCatalogCard({
       ? "border-emerald-200 bg-emerald-50 text-emerald-700"
       : "border-amber-200 bg-amber-50 text-amber-700";
   const footerLabel = previewItem ? previewItem.full_path : card.pathLabel;
-  const footerMetric = previewItem ? "Live dataset" : card.hours;
 
   return (
     <button
       type="button"
       onClick={onOpen}
-      className={`group flex h-full flex-col overflow-hidden rounded-[18px] border border-slate-200 bg-white text-left shadow-[0_14px_34px_rgba(15,23,42,0.06)] transition-all duration-300 hover:-translate-y-1 hover:border-primary/25 hover:shadow-[0_24px_56px_rgba(15,23,42,0.12)] ${
-        columns === 2 ? "xl:flex-row" : ""
-      }`}
+      className="group flex h-full flex-col overflow-hidden rounded-[18px] border border-slate-200 bg-white text-left shadow-[0_14px_34px_rgba(15,23,42,0.06)] transition-all duration-300 hover:-translate-y-1 hover:border-primary/25 hover:shadow-[0_24px_56px_rgba(15,23,42,0.12)] sm:flex-row"
     >
-      <div className={`p-4 ${columns === 2 ? "xl:w-[54%] xl:p-5" : ""}`}>
-        <div className="grid grid-cols-[minmax(0,1fr)_86px] grid-rows-[176px_84px] gap-1.5">
-          <div className="row-span-2 overflow-hidden rounded-[12px] bg-slate-100">
+      <div
+        className={`p-4 sm:min-w-0 sm:flex-[0_0_52%] sm:p-5 ${
+          columns === 2 ? "xl:flex-[0_0_60%]" : "xl:flex-[0_0_50%]"
+        }`}
+      >
+        <div className="flex h-full min-h-[228px] gap-1.5 sm:min-h-[246px]">
+          <div className="min-w-0 flex-1 overflow-hidden rounded-[12px] bg-slate-100">
             {previewItem ? (
               <DatasetPreviewPrimaryMedia
                 imageAsset={previewItem.main_image}
@@ -597,6 +598,7 @@ function CuratedCatalogCard({
                 isVideoActive={previewVideoActive}
                 onVideoEnter={() => liveItem?.preview_video && setPreviewVideoActive(true)}
                 onVideoLeave={() => liveItem?.preview_video && setPreviewVideoActive(false)}
+                className="rounded-[12px] border-0"
               />
             ) : (
               <img
@@ -608,7 +610,7 @@ function CuratedCatalogCard({
               />
             )}
           </div>
-          <div className="row-span-2 grid grid-rows-3 gap-1.5">
+          <div className="flex w-[86px] shrink-0 flex-col gap-1.5">
             {previewItem
               ? (previewItem.thumbnails.length > 0
                   ? previewItem.thumbnails.slice(0, 3)
@@ -618,13 +620,13 @@ function CuratedCatalogCard({
                     key={`${card.title}-${thumbnail?.asset_id ?? "thumb"}-${index}`}
                     asset={thumbnail}
                     alt={`${card.title} preview ${index + 1}`}
-                    className="rounded-[8px]"
+                    className="min-h-0 flex-1 rounded-[8px] border-0"
                   />
                 ))
               : displayImages.thumbs.slice(0, 3).map((thumbPath, index) => (
                   <div
                     key={`${card.title}-${thumbPath}-${index}`}
-                    className="overflow-hidden rounded-[8px] bg-slate-100"
+                    className="min-h-0 flex-1 overflow-hidden rounded-[8px] bg-slate-100"
                   >
                     <img
                       src={frontPageImageUrl(thumbPath) ?? undefined}
@@ -639,7 +641,7 @@ function CuratedCatalogCard({
         </div>
       </div>
 
-      <div className={`flex flex-1 flex-col ${columns === 2 ? "xl:w-[46%]" : ""}`}>
+      <div className="flex min-w-0 flex-1 flex-col border-t border-slate-200 sm:border-l sm:border-t-0">
         <div className="flex items-start justify-between gap-3 px-4 pt-4 md:px-5">
           <h3 className="text-[14px] font-bold leading-6 text-slate-950 md:text-[15px]">
             {card.title}
@@ -669,16 +671,125 @@ function CuratedCatalogCard({
           ))}
         </div>
 
-        <div className="mt-auto flex items-center justify-between gap-3 border-t border-slate-200 px-4 py-4 md:px-5">
-          <div>
-            <div className="text-[13px] font-extrabold tracking-[-0.02em] text-primary">
-              {footerMetric}
-            </div>
-            <div className="mt-1 font-mono-tech text-[10px] text-slate-400">{footerLabel}</div>
+        <div className="mt-3 px-4 md:px-5">
+          <div className="truncate font-mono-tech text-[10px] leading-5 text-slate-400 sm:text-[11px]">
+            {footerLabel}
           </div>
-          <span className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.12em] text-primary">
+        </div>
+
+        <div className="mt-auto flex justify-end border-t border-slate-200 px-4 py-4 md:px-5">
+          <span className="inline-flex min-w-[144px] items-center justify-center gap-2 rounded-full border border-primary/20 bg-primary/6 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.1em] text-primary md:text-[11px]">
             {buttonLabel}
             <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+          </span>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function getCatalogViewBadge(card: CatalogCard) {
+  const isEgo = card.tags.some((tag) => tag.toLowerCase().includes("ego-centric"));
+  if (isEgo) {
+    return {
+      label: "EGO",
+      className: "border border-primary/30 bg-primary/10 text-primary",
+    };
+  }
+  return {
+    label: "EXO",
+    className: "border border-blue-300 bg-blue-50 text-blue-700",
+  };
+}
+
+function getCatalogAvailabilityClasses(availability: CatalogCard["availability"]) {
+  return availability === "In Library"
+    ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
+    : "border border-amber-200 bg-amber-50 text-amber-700";
+}
+
+function RootShowcaseCatalogCard({
+  card,
+  previewItem,
+  onOpen,
+}: {
+  card: CatalogCard;
+  previewItem?: CategoryDatasetPreview | null;
+  onOpen: () => void;
+}) {
+  const marketingOverride = getRoboDataHubMarketingImageSet(card.pathLabel);
+  const fallbackMain = card.images.main;
+  const overrideMain =
+    marketingOverride?.main && frontPageImageUrl(marketingOverride.main)
+      ? marketingOverride.main
+      : null;
+  const imageSrc = previewItem?.main_image
+    ? resolvePreviewMediaUrl(previewItem.main_image)
+    : frontPageImageUrl(overrideMain ?? fallbackMain);
+  const badge = getCatalogViewBadge(card);
+  const availabilityClasses = getCatalogAvailabilityClasses(
+    previewItem ? "In Library" : card.availability,
+  );
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="group flex h-full flex-col overflow-hidden rounded-[12px] border border-slate-200 bg-white text-left shadow-[0_1px_4px_rgba(0,0,0,0.04)] transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_8px_24px_rgba(13,148,136,0.10)]"
+    >
+      <div className="relative h-[120px] overflow-hidden">
+        {imageSrc ? (
+          <img
+            src={imageSrc}
+            alt={card.title}
+            loading="lazy"
+            decoding="async"
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-slate-100">
+            <Database className="h-8 w-8 text-primary/55" />
+          </div>
+        )}
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_top,#ffffff_0%,transparent_55%)]" />
+        <span
+          className={`absolute right-2 top-2 inline-flex rounded-[3px] px-1.5 py-0.5 text-[9px] font-extrabold tracking-[0.08em] ${badge.className}`}
+        >
+          {badge.label}
+        </span>
+      </div>
+
+      <div className="flex flex-1 flex-col p-3">
+        <h3 className="text-[13px] font-bold text-slate-950">{card.title}</h3>
+        <p className="mt-1 text-[11px] leading-[1.5] text-slate-500">{card.description}</p>
+        <div className="mt-2.5 flex flex-wrap gap-1">
+          {card.tags.map((tag) => {
+            const tone = tag.toLowerCase().includes("ego-centric")
+              ? "border-primary/20 bg-primary/10 text-primary"
+              : tag.toLowerCase().includes("exo-centric")
+                ? "border-blue-200 bg-blue-50 text-blue-700"
+                : tag.toLowerCase().includes("edge")
+                  ? "border-orange-200 bg-orange-50 text-orange-600"
+                  : tag.toLowerCase().includes("seg")
+                    ? "border-violet-200 bg-violet-50 text-violet-700"
+                    : "border-teal-200 bg-teal-50 text-teal-700";
+
+            return (
+              <span
+                key={`${card.pathLabel}-${tag}`}
+                className={`inline-flex rounded-[3px] border px-1.5 py-0.5 text-[9px] font-semibold ${tone}`}
+              >
+                {tag}
+              </span>
+            );
+          })}
+        </div>
+        <div className="mt-auto flex items-center justify-between pt-3">
+          <p className="text-[13px] font-bold text-primary">{previewItem ? card.hours : card.hours}</p>
+          <span
+            className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${availabilityClasses}`}
+          >
+            {previewItem ? "In Library" : card.availability}
           </span>
         </div>
       </div>
@@ -828,7 +939,7 @@ function DatasetPreviewImage({
 
   return (
     <div
-      className={`relative overflow-hidden rounded-[18px] border border-slate-200 bg-slate-100 ${className ?? ""}`}
+      className={`relative h-full min-h-0 overflow-hidden rounded-[18px] border border-slate-200 bg-slate-100 ${className ?? ""}`}
     >
       {src ? (
         <img
@@ -840,7 +951,7 @@ function DatasetPreviewImage({
           onError={() => setFailed(true)}
         />
       ) : (
-        <div className="flex h-full min-h-[120px] items-center justify-center bg-slate-100">
+        <div className="flex h-full min-h-0 items-center justify-center bg-slate-100">
           <Database className="h-8 w-8 text-primary/55" />
         </div>
       )}
@@ -920,6 +1031,7 @@ function DatasetPreviewPrimaryMedia({
   isVideoActive,
   onVideoEnter,
   onVideoLeave,
+  className,
 }: {
   imageAsset: CategoryPreviewAsset | null | undefined;
   videoAsset: CategoryPreviewAsset | null | undefined;
@@ -927,6 +1039,7 @@ function DatasetPreviewPrimaryMedia({
   isVideoActive: boolean;
   onVideoEnter: () => void;
   onVideoLeave: () => void;
+  className?: string;
 }) {
   const [imageFailed, setImageFailed] = useState(false);
   const [videoFailed, setVideoFailed] = useState(false);
@@ -965,7 +1078,7 @@ function DatasetPreviewPrimaryMedia({
 
   return (
     <div
-      className="relative aspect-[1.08/1] overflow-hidden rounded-[18px] border border-slate-200 bg-slate-100"
+      className={`relative h-full min-h-0 overflow-hidden rounded-[18px] border border-slate-200 bg-slate-100 ${className ?? ""}`}
       onMouseEnter={videoSrc ? onVideoEnter : undefined}
       onMouseLeave={videoSrc ? onVideoLeave : undefined}
     >
@@ -979,7 +1092,7 @@ function DatasetPreviewPrimaryMedia({
           onError={() => setImageFailed(true)}
         />
       ) : (
-        <div className="flex h-full min-h-[160px] items-center justify-center bg-slate-100">
+        <div className="flex h-full min-h-0 items-center justify-center bg-slate-100">
           <Database className="h-8 w-8 text-primary/55" />
         </div>
       )}
@@ -1038,7 +1151,6 @@ export default function DataViewer() {
   const [pathSearchLoading, setPathSearchLoading] = useState(false);
   const [pathSearchLoaded, setPathSearchLoaded] = useState(false);
   const [pathSearchTouched, setPathSearchTouched] = useState(false);
-  const [rootLayoutMode, setRootLayoutMode] = useState<2 | 4>(4);
   const [reloadTick, setReloadTick] = useState(0);
   const [activeLandingFilterId, setActiveLandingFilterId] = useState("all");
   const sectionAnchorRefs = useRef<Record<string, HTMLElement | null>>({});
@@ -1077,6 +1189,32 @@ export default function DataViewer() {
       .map((snapshot) => buildLocalPlaceholderPreview(snapshot, viewerBasePath))
       .filter((item): item is CategoryDatasetPreview => Boolean(item));
   }, [activeCategory, viewerBasePath]);
+  const rootLandingPreviewMap = useMemo(() => {
+    const entries = new Map<string, CategoryDatasetPreview>();
+
+    ROOT_SHOWCASE_SECTIONS.forEach((section) => {
+      const category = CATEGORIES.find((item) => item.routeKey === section.routeKey);
+      if (!category) return;
+
+      const placeholders = getLocalFolderPreviewSnapshots()
+        .filter(
+          (snapshot) =>
+            normalizeCategoryValue(snapshot.category) ===
+            normalizeCategoryValue(category.previewKey),
+        )
+        .map((snapshot) => buildLocalPlaceholderPreview(snapshot, viewerBasePath))
+        .filter((item): item is CategoryDatasetPreview => Boolean(item));
+
+      section.cards.forEach((card) => {
+        const match = placeholders.find((item) => matchesLivePreviewHint(card, item));
+        if (match) {
+          entries.set(card.pathLabel, match);
+        }
+      });
+    });
+
+    return entries;
+  }, [viewerBasePath]);
   const activeCategoryPreviews = useMemo(() => {
     if (!activeCategory || loadedCategoryPreviewKey !== activeCategory.routeKey) return [];
     return categoryPreviews;
@@ -1808,27 +1946,6 @@ export default function DataViewer() {
                   onSuggestionClick={handlePathSuggestionClick}
                   renderHighlightedPath={renderHighlightedPath}
                 />
-
-                <div className="inline-flex rounded-xl border border-slate-200 bg-slate-100 p-1">
-                  <button
-                    type="button"
-                    onClick={() => setRootLayoutMode(4)}
-                    className={`rounded-lg px-3 py-2 text-[11px] font-bold transition-colors ${
-                      rootLayoutMode === 4 ? "bg-primary text-primary-foreground" : "text-slate-500"
-                    }`}
-                  >
-                    4
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setRootLayoutMode(2)}
-                    className={`rounded-lg px-3 py-2 text-[11px] font-bold transition-colors ${
-                      rootLayoutMode === 2 ? "bg-primary text-primary-foreground" : "text-slate-500"
-                    }`}
-                  >
-                    2
-                  </button>
-                </div>
               </div>
             </div>
 
@@ -1845,18 +1962,20 @@ export default function DataViewer() {
                       <div className={`h-px flex-1 bg-gradient-to-r ${section.lineClassName} to-transparent`} />
                     </div>
 
-                    <div
-                      className={`grid gap-4 ${
-                        rootLayoutMode === 2 ? "xl:grid-cols-2" : "md:grid-cols-2 xl:grid-cols-4"
-                      }`}
-                    >
+                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                       {section.cards.map((card) => (
-                        <CuratedCatalogCard
+                        <RootShowcaseCatalogCard
                           key={`${section.routeKey}-${card.title}`}
                           card={card}
-                          columns={rootLayoutMode === 2 ? 2 : 3}
-                          buttonLabel="Open vertical"
-                          onOpen={() => navigate(buildCategoryLandingPath(category, viewerBasePath))}
+                          previewItem={rootLandingPreviewMap.get(card.pathLabel) ?? null}
+                          onOpen={() => {
+                            const rootPreviewItem = rootLandingPreviewMap.get(card.pathLabel) ?? null;
+                            if (rootPreviewItem) {
+                              handleCategoryPreviewClick(rootPreviewItem);
+                              return;
+                            }
+                            navigate(buildCategoryLandingPath(category, viewerBasePath));
+                          }}
                         />
                       ))}
                     </div>
@@ -2086,14 +2205,19 @@ export default function DataViewer() {
                       <span className="text-[11px] font-semibold text-slate-400">{section.countLabel}</span>
                     </div>
 
-                    <div className="grid gap-4 xl:grid-cols-3">
+                    <div className="grid gap-4 md:grid-cols-2">
                       {section.cards.map((entry) => (
                         <CuratedCatalogCard
                           key={`${section.id}-${entry.card.title}-${entry.liveItem?.full_path ?? entry.placeholderItem?.full_path ?? "marketing"}`}
                           card={entry.card}
                           liveItem={entry.liveItem}
                           placeholderItem={entry.placeholderItem}
-                          buttonLabel="Open folder"
+                          columns={2}
+                          buttonLabel={
+                            entry.liveItem || entry.placeholderItem
+                              ? "Enter dataset"
+                              : "Explore dataset"
+                          }
                           onOpen={() =>
                             entry.liveItem || entry.placeholderItem
                               ? handleCategoryPreviewClick(entry.liveItem ?? entry.placeholderItem!)
