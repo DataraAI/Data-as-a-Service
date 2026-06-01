@@ -38,7 +38,6 @@ import {
   type CatalogCard,
   type CategoryLandingContent,
 } from "@/lib/roboDataHubCatalog";
-import { getRoboDataHubMarketingImageSet } from "@/lib/roboDataHubMarketingImages";
 
 interface FolderItem {
   name: string;
@@ -709,24 +708,7 @@ function CuratedCatalogCard({
 }) {
   const badge = getCategoryBadge(card);
   const previewItem = liveItem ?? placeholderItem ?? null;
-  const marketingOverride = getRoboDataHubMarketingImageSet(card.pathLabel);
-  const displayImages = useMemo(() => {
-    const fallbackImages = card.images;
-    if (!marketingOverride) return fallbackImages;
-
-    const main =
-      marketingOverride.main && frontPageImageUrl(marketingOverride.main)
-        ? marketingOverride.main
-        : fallbackImages.main;
-
-    const thumbs = Array.from({ length: 3 }, (_, index) => {
-      const overrideThumb = marketingOverride.thumbs[index];
-      if (overrideThumb && frontPageImageUrl(overrideThumb)) return overrideThumb;
-      return fallbackImages.thumbs[index] ?? fallbackImages.main;
-    });
-
-    return { main, thumbs };
-  }, [card.images, marketingOverride]);
+  const displayImages = card.images;
   const badgeClasses =
     previewItem || card.availability === "In Library"
       ? "border-emerald-200 bg-emerald-50 text-emerald-700"
@@ -867,14 +849,9 @@ function RootShowcaseCatalogCard({
   const [imageFailed, setImageFailed] = useState(false);
   const [videoFailed, setVideoFailed] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const marketingOverride = getRoboDataHubMarketingImageSet(card.pathLabel);
   const fallbackMain = card.images.main;
-  const overrideMain =
-    marketingOverride?.main && frontPageImageUrl(marketingOverride.main)
-      ? marketingOverride.main
-      : null;
   const displayItem = placeholderItem ?? liveItem ?? null;
-  const fallbackImageSrc = frontPageImageUrl(overrideMain ?? fallbackMain);
+  const fallbackImageSrc = frontPageImageUrl(fallbackMain);
   const previewImageSrc = displayItem?.main_image ? resolvePreviewMediaUrl(displayItem.main_image) : null;
   const imageSrc = imageFailed ? fallbackImageSrc : previewImageSrc ?? fallbackImageSrc;
   const videoSrc = videoFailed ? null : resolvePreviewMediaUrl(liveItem?.preview_video);
