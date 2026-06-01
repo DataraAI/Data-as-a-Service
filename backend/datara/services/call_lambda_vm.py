@@ -4,6 +4,7 @@ import posixpath
 import stat
 import uuid
 from contextlib import contextmanager
+from datetime import datetime, timezone
 from pathlib import Path
 
 import paramiko
@@ -623,100 +624,143 @@ def generate_task_intelligence(video_url: str):
     except Exception as e:
         logger.error("generate_task_intelligence error: %s", e)
         return None, 500
-    
-def generate_video_to_video(*, local_input_video: str, local_output_video: str):
+
+# Rename to Create Video Angle Adjustment, or something similar; v2v is entire pipeline not this specific component
+def generate_video_to_video(*, video_url: str, video_name: str, local_output_video: str, vipe_zip_url: str | None = None):
     """
-    Upload a local video to the Lambda VM, run it through VIPE to produce structured
-    scene output, then feed that into Lyra Gen3C (lyra-v2v conda env) to generate the
-    final output video. Downloads the result and cleans up remote files.
+    Given an Azure SAS URL, instruct the Lambda VM to download the video directly,
+    run it through VIPE, then feed that into Lyra Gen3C (lyra-v2v conda env) to generate
+    the final output video. Downloads the result locally and cleans up remote files.
+    If vipe_zip_url is provided, the VM restores VIPE output from that cached zip instead
+    of re-running inference, falling back to fresh VIPE if the download or unzip fails.
     Returns (local_output_video, status_code).
     """
-    if not os.path.isfile(local_input_video):
+    if not video_url:
         return None, 400
 
     os.makedirs(os.path.dirname(os.path.abspath(local_output_video)), exist_ok=True)
 
-    job_id = uuid.uuid4().hex[:12]
+    job_id = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S") # Please note that other methods use uuid4(), so might want to change others
     remote_root = f"/home/{SAAS_USER}/datara_lyra_jobs/{job_id}"
     remote_input_video = posixpath.join(remote_root, "input.mp4")
     remote_vipe_output_dir = posixpath.join(remote_root, "vipe_output")
-    remote_lyra_output_dir = posixpath.join(remote_root, "lyra_output")
-    lyra_conda_prefix = f"{SAAS_MINICONDA_ROOT}/envs/{SAAS_LYRA_V2V_CONDA_ENV}"
-    conda_init = f"source {SAAS_MINICONDA_ROOT}/etc/profile.d/conda.sh && conda activate {SAAS_LYRA_V2V_CONDA_ENV}"
+    remote_gen3c_output_dir = posixpath.join(remote_root, "gen3c_output")
+    # lyra_conda_prefix = f"{SAAS_MINICONDA_ROOT}/envs/{SAAS_LYRA_V2V_CONDA_ENV}"
+    conda_init = f"conda activate vipe"
 
     try:
         with _ssh_session() as ssh_client:
-            # 1. Upload the source video to the VM
-            sftp = ssh_client.open_sftp()
-            try:
-                _sftp_put_tree(sftp, local_input_video, remote_input_video)
-            finally:
-                sftp.close()
-
-            # 2. Run VIPE on the input video
-            vipe_script = (
-                f"{conda_init} && "
-                f"mkdir -p {remote_vipe_output_dir} && "
-                f"PYTHONPATH={REMOTE_VIPE_PACKAGE_ROOT} "
-                f"vipe infer {remote_input_video} --output {remote_vipe_output_dir}"
+            # 1. Create the remote job directory and download the video directly from Azure
+            setup_script = (
+                f"mkdir -p {remote_root} && "
+                f'wget --quiet --output-document {remote_input_video} "{video_url}"'
             )
-            vipe_stdout, vipe_stderr, vipe_status = _run_bash_script(ssh_client, vipe_script)
-            if vipe_status != 0:
-                logger.error("VIPE inference failed: %s", vipe_stderr or vipe_stdout)
+            _setup_stdout, setup_stderr, setup_status = _run_bash_script(ssh_client, setup_script)
+            if setup_status != 0:
+                logger.error("Failed to download input video on VM: %s", setup_stderr)
                 _run_command(ssh_client, f"rm -rf {remote_root}")
                 return None, 500
+
+            # 2. Restore VIPE output from cached zip, or run VIPE fresh if no cache available.
+            vipe_from_cache = False
+            if vipe_zip_url:
+                cache_script = (
+                    f'wget --quiet --output-document {remote_root}/vipe_output.zip "{vipe_zip_url}" && '
+                    f"cd {remote_root} && unzip -q vipe_output.zip"
+                )
+                _cache_stdout, cache_stderr, cache_status = _run_bash_script(ssh_client, cache_script)
+                if cache_status == 0:
+                    logger.info("VIPE output restored from cached zip")
+                    vipe_from_cache = True
+                else:
+                    logger.warning("VIPE cache restore failed (%s); falling back to fresh inference", cache_stderr)
+
+            if not vipe_from_cache:
+                vipe_script = (
+                    f"{conda_init} && "
+                    f"cd {REMOTE_VIPE_PACKAGE_ROOT} && "
+                    f"vipe infer {remote_input_video} --output {remote_vipe_output_dir} --pipeline lyra && "
+                    f"conda deactivate"
+                )
+                vipe_stdout, vipe_stderr, vipe_status = _run_bash_script(ssh_client, vipe_script)
+                if vipe_status != 0:
+                    logger.error("VIPE inference failed: %s", vipe_stderr or vipe_stdout)
+                    _run_command(ssh_client, f"rm -rf {remote_root}")
+                    return None, 500
 
             # 3. Find the VIPE output file to pass to Lyra
-            find_vipe_stdout, _find_vipe_stderr, _find_vipe_status = _run_bash_script(
-                ssh_client,
-                f'find {remote_vipe_output_dir} -maxdepth 2 -type f -name "*.mp4" | head -n 1',
-            )
-            remote_vipe_output_path = (find_vipe_stdout.strip().splitlines()[-1].strip() if find_vipe_stdout else "") or ""
+            # find_vipe_stdout, _, _ = _run_bash_script(
+            #     ssh_client,
+            #     f'{remote_vipe_output_dir}/rgb/input.mp4',
+                
+            # )
+            # ^ only looking for output video. No idea whether I need to pass the entire folder or just the video
+            # According to docs, only output video needed for Gen3C
+            # If VIPE output structure changes or if we need to pass additional files later, we can modify this part to find the correct file(s) and pass the appropriate path to Lyra.
 
-            if not remote_vipe_output_path:
-                logger.error("VIPE produced no output file. stdout=%s stderr=%s", vipe_stdout, vipe_stderr)
-                _run_command(ssh_client, f"rm -rf {remote_root}")
-                return None, 500
+            remote_vipe_output_path = f'{remote_vipe_output_dir}/rgb/input.mp4'
+
+            # if not remote_vipe_output_path:
+            #     logger.error("VIPE produced no output file. stdout=%s stderr=%s", vipe_stdout, vipe_stderr)
+            #     _run_command(ssh_client, f"rm -rf {remote_root}")
+            #     return None, 500
 
             logger.info("VIPE output located at: %s", remote_vipe_output_path)
 
             # 4. Run Lyra Gen3C using the VIPE output as --vipe_path
-            lyra_script = (
-                f"{conda_init} && "
+            gen3c_script = (
+                f"conda activate lyra-v2v && "
                 f"cd {REMOTE_LYRA_PACKAGE_ROOT} && "
-                f"mkdir -p {remote_lyra_output_dir} && "
-                f"CUDA_HOME={lyra_conda_prefix} PYTHONPATH={REMOTE_LYRA_PACKAGE_ROOT} "
+                f"CUDA_HOME=$CONDA_PREFIX PYTHONPATH=$(pwd) "
                 f"torchrun --nproc_per_node=1 cosmos_predict1/diffusion/inference/gen3c_dynamic_sdg.py "
                 f"--checkpoint_dir checkpoints "
                 f"--vipe_path {remote_vipe_output_path} "
-                f"--video_save_folder {remote_lyra_output_dir} "
+                f"--video_save_folder {remote_gen3c_output_dir} "
                 f"--disable_prompt_upsampler "
                 f"--num_gpus 1 "
                 f"--foreground_masking "
-                f"--multi_trajectory"
+                f"--multi_trajectory && " # <- multi_trajectory flag generates the 6 presets. Can change to our custom presets later when we have them ready.
+                f"conda deactivate"
             )
-            lyra_stdout, lyra_stderr, lyra_status = _run_bash_script(ssh_client, lyra_script)
-            if lyra_status != 0:
-                logger.error("Lyra Gen3C failed: %s", lyra_stderr or lyra_stdout)
+
+            gen3c_stdout, gen3c_stderr, gen3c_status = _run_bash_script(ssh_client, gen3c_script)
+            if gen3c_status != 0:
+                logger.error("Gen3C failed: %s", gen3c_stderr or gen3c_stdout)
                 _run_command(ssh_client, f"rm -rf {remote_root}")
                 return None, 500
 
-            # 5. Find the Lyra output video
-            find_lyra_stdout, _find_lyra_stderr, _find_lyra_status = _run_bash_script(
-                ssh_client,
-                f'find {remote_lyra_output_dir} -maxdepth 2 -type f -name "*.mp4" | head -n 1',
+            # 5. Find the Gen3C output video; Currently we are finding the most recent .mp4 file under the output directory; can specify directory struture later.
+            # find_gen3c_stdout, _find_gen3c_stderr, _find_gen3c_status = _run_bash_script(
+            #     ssh_client,
+            #     f'find {remote_gen3c_output_dir} -maxdepth 2 -type f -name "*.mp4" | head -n 1',
+            # )
+            # remote_gen3c_output_path = (find_gen3c_stdout.strip().splitlines()[-1].strip() if find_gen3c_stdout else "") or ""
+            remote_gen3c_output_path = f'{remote_gen3c_output_dir}/0/rgb/input.mp4' # It's called "input.mp4" but it's actually the output video from Gen3C.
+
+            # if not remote_gen3c_output_path:
+            #     logger.error("Gen3C produced no output video. stdout=%s stderr=%s", gen3c_stdout, gen3c_stderr)
+            #     _run_command(ssh_client, f"rm -rf {remote_root}")
+            #     return None, 500
+
+            # 6. Zip VIPE and Gen3C result directories on the VM, then SFTP everything locally.
+            zip_script = (
+                f"cd {remote_root} && "
+                f"zip -r vipe_output.zip vipe_output && "
+                f"zip -r new_views_output.zip gen3c_output"
             )
-            remote_lyra_output_path = (find_lyra_stdout.strip().splitlines()[-1].strip() if find_lyra_stdout else "") or ""
+            _zip_stdout, zip_stderr, zip_status = _run_bash_script(ssh_client, zip_script)
+            # if zip_status != 0:
+            #     logger.error("Zipping outputs failed: %s", zip_stderr)
+            #     _run_command(ssh_client, f"rm -rf {remote_root}")
+            #     return None, 500
 
-            if not remote_lyra_output_path:
-                logger.error("Lyra produced no output video. stdout=%s stderr=%s", lyra_stdout, lyra_stderr)
-                _run_command(ssh_client, f"rm -rf {remote_root}")
-                return None, 500
+            output_dir = os.path.dirname(os.path.abspath(local_output_video))
 
-            # 6. Download the final video and clean up
             sftp = ssh_client.open_sftp()
             try:
-                sftp.get(remote_lyra_output_path, local_output_video)
+                sftp.get(remote_gen3c_output_path, local_output_video)
+                sftp.get(f"{remote_root}/vipe_output.zip", f"{output_dir}/vipe_output.zip")
+                sftp.get(f"{remote_root}/new_views_output.zip", f"{output_dir}/new_views_output.zip")
             finally:
                 sftp.close()
 

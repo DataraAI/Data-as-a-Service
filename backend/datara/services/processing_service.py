@@ -1318,13 +1318,13 @@ class ProcessingService:
         source = self._resolve_source_asset(current_user, str(data.get("asset_id") or ""))
 
         # 1. Check for cache in existing Cosmos doc
-        if source["metadata"].get("taskIntelligence"):
-            logger.info("Found cached task intelligence for asset %s", data.get("asset_id"))
-            return {
-                "message": "Task intelligence retrieved from cache.",
-                "data": source["metadata"]["taskIntelligence"],
-                "cached": True,
-            }, 200
+        # if source["metadata"].get("taskIntelligence"):
+        #     logger.info("Found cached task intelligence for asset %s", data.get("asset_id"))
+        #     return {
+        #         "message": "Task intelligence retrieved from cache.",
+        #         "data": source["metadata"]["taskIntelligence"],
+        #         "cached": True,
+        #     }, 200
 
         # 2. If not cached, generate it
         source_dataset = source["dataset"]
@@ -1405,44 +1405,70 @@ class ProcessingService:
         """
         source = self._resolve_source_asset(current_user, str(data.get("asset_id") or ""))
 
-        # Check Cache in Cosmos DB
-        if source["metadata"].get("videoToVideoViews"):
-            logger.info("Found cached video-to-video views for asset %s", data.get("asset_id"))
-            return {
-                "message": "Video-to-video views retrieved from cache.",
-                "data": source["metadata"]["videoToVideoViews"],
-                "cached": True,
-            }, 200
+        # Check Cache in Cosmos DB <- Remove, we have a database
+        # if source["metadata"].get("videoToVideoViews"):
+        #     logger.info("Found cached video-to-video views for asset %s", data.get("asset_id"))
+        #     cached = source["metadata"]["videoToVideoViews"]
+        #     # Rebuild proxy_url in case it was stored before this field existed
+        #     if "proxy_url" not in cached and "blob_name" in cached:
+        #         source_dataset_cached = source["dataset"]
+        #         cached["proxy_url"] = f"/api/proxy/{self.dataset_service.encode_asset_id(source_dataset_cached['id'], cached['blob_name'])}"
+        #     return {
+        #         "message": "Video-to-video views retrieved from cache.",
+        #         "data": cached,
+        #         "cached": True,
+        #     }, 200
 
         source_dataset = source["dataset"]
         source_blob = source["blob_name"]
-        
+
         if not any(source_blob.lower().endswith(ext) for ext in (".mp4", ".mov", ".m4v", ".webm")):
             return {"error": "Video-to-Video views can only be generated for video assets."}, 400
 
+        # Generate a SAS URL so the Lambda VM can download the video directly from Azure.
+        # Expiry is set generously to cover the full VIPE + Gen3C runtime.
+        video_url = self.azure_service.generate_sas_url(
+            source_dataset["storage_container"],
+            source_blob,
+            expiry_hours=3,
+        )
+        video_name = os.path.splitext(os.path.basename(source_blob))[0]
+
+        # Check whether a cached VIPE zip already exists in blob storage for this asset.
+        # If found, pass its SAS URL to the lambda so VIPE can be skipped.
+        vipe_zip_blob = f"{source_dataset['storage_prefix'].rstrip('/')}/lyra_v2v/{video_name}_vipe_output.zip"
+        vipe_zip_url = None
+        try:
+            self.azure_service.get_container_client(
+                source_dataset["storage_container"]
+            ).get_blob_client(vipe_zip_blob).get_blob_properties()
+            vipe_zip_url = self.azure_service.generate_sas_url(
+                source_dataset["storage_container"],
+                vipe_zip_blob,
+                expiry_hours=3,
+            )
+            logger.info("Found cached VIPE zip for asset: %s", source_blob)
+        except Exception:
+            logger.info("No cached VIPE zip found for asset: %s — will run VIPE fresh", source_blob)
+
         job_root = tempfile.mkdtemp(prefix="lyra_v2v_job_", dir=DATASET_LIST_DIR)
-        local_input_video = os.path.join(job_root, "source.mp4")
-        local_output_video = os.path.join(job_root, "lyra_generated.mp4")
+        local_output_video = os.path.join(job_root, f"{video_name}_direction_range.mp4") # later change form {direction} and {range} as custom script is not yet ready
 
         try:
-            blob_bytes = self.azure_service.download_blob(
-                source_dataset["storage_container"], source_blob
-            ).readall()
-            with open(local_input_video, "wb") as fh:
-                fh.write(blob_bytes)
-
             from datara.services import call_lambda_vm
 
             logger.info("Running Lyra v2v on Lambda VM for asset: %s", source_blob)
             result_path, status_code = call_lambda_vm.generate_video_to_video(
-                local_input_video=local_input_video,
+                video_url=video_url,
+                video_name=video_name,
                 local_output_video=local_output_video,
+                vipe_zip_url=vipe_zip_url,
             )
 
             if status_code != 200 or not result_path:
                 return {"error": "Failed to generate video-to-video views on the Lambda VM."}, status_code or 500
 
-            output_blob_name = f"{source_dataset['storage_prefix'].rstrip('/')}/lyra_v2v/lyra_generated.mp4"
+            output_blob_name = f"{source_dataset['storage_prefix'].rstrip('/')}/lyra_v2v/{video_name}_gen3c_output.mp4"
             container_client = self.azure_service.get_container_client(source_dataset["storage_container"])
             with open(local_output_video, "rb") as fh:
                 container_client.upload_blob(
@@ -1452,10 +1478,24 @@ class ProcessingService:
                     content_settings=ContentSettings(content_type="video/mp4"),
                 )
 
+            # Upload the VIPE zip so it can be reused on future runs.
+            local_vipe_zip = os.path.join(job_root, "vipe_output.zip")
+            if os.path.isfile(local_vipe_zip):
+                with open(local_vipe_zip, "rb") as fh:
+                    container_client.upload_blob(
+                        name=vipe_zip_blob,
+                        data=fh,
+                        overwrite=True,
+                        content_settings=ContentSettings(content_type="application/zip"),
+                    )
+                logger.info("Uploaded VIPE zip to blob: %s", vipe_zip_blob)
+
+            output_asset_id = self.dataset_service.encode_asset_id(source_dataset["id"], output_blob_name)
             v2v_result = {
                 "blob_name": output_blob_name,
                 "container": source_dataset["storage_container"],
                 "generated_at": datetime.now(timezone.utc).isoformat(),
+                "proxy_url": f"/api/proxy/{output_asset_id}",
             }
 
             cosmos_doc = source["metadata"]
