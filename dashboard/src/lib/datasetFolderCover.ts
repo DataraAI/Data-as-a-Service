@@ -23,6 +23,15 @@ const FOLDER_PREVIEW_MEDIA_MODULES = import.meta.glob(
   },
 ) as Record<string, string>;
 
+export interface LocalFolderPreviewSnapshot {
+  category: string;
+  fullPath: string;
+  brand: string;
+  dataset: string;
+  imageBlobPaths: string[];
+  previewVideoBlobPath: string | null;
+}
+
 function uniqueNonEmpty(values: string[]): string[] {
   return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
 }
@@ -134,4 +143,151 @@ export function blobProxyUrl(blobPath: string): string {
 
 export function folderPreviewMediaUrl(blobPath: string): string | null {
   return resolveLocalAssetUrl(FOLDER_PREVIEW_MEDIA_MODULES, "folder-previews", blobPath);
+}
+
+const PREVIEW_DATASET_DIRECTORIES = new Set([
+  "orig",
+  "egos",
+  "corner_images_controlnet",
+  "occl_del",
+  "preview",
+  "masks",
+]);
+
+function mediaSortRank(blobPath: string) {
+  const normalized = normalizeImagePath(blobPath);
+  const segments = normalized.split("/").filter(Boolean);
+  const directory = segments.find((segment) => PREVIEW_DATASET_DIRECTORIES.has(segment)) ?? "";
+
+  switch (directory) {
+    case "orig":
+      return 0;
+    case "egos":
+      return 1;
+    case "corner_images_controlnet":
+      return 2;
+    case "occl_del":
+      return 3;
+    default:
+      return 4;
+  }
+}
+
+function getPreviewDirectory(blobPath: string) {
+  const normalized = normalizeImagePath(blobPath);
+  const segments = normalized.split("/").filter(Boolean);
+  return segments.find((segment) => PREVIEW_DATASET_DIRECTORIES.has(segment)) ?? "";
+}
+
+function naturalCompare(left: string, right: string) {
+  return left.localeCompare(right, undefined, { numeric: true, sensitivity: "base" });
+}
+
+function selectPreviewImageBlobPaths(imageBlobPaths: string[]) {
+  const groupedByDirectory = imageBlobPaths.reduce<Record<string, string[]>>((acc, blobPath) => {
+    const directory = getPreviewDirectory(blobPath);
+    if (!directory) return acc;
+    if (!acc[directory]) {
+      acc[directory] = [];
+    }
+    acc[directory].push(blobPath);
+    return acc;
+  }, {});
+
+  const preferredDirectories = ["orig", "egos", "corner_images_controlnet", "occl_del"];
+  const selectedDirectory =
+    preferredDirectories.find((directory) => (groupedByDirectory[directory]?.length ?? 0) > 0) ?? null;
+
+  const selectedImages = selectedDirectory
+    ? groupedByDirectory[selectedDirectory]
+    : imageBlobPaths;
+
+  const sortedImages = [...selectedImages].sort((left, right) => {
+    const rankDiff = mediaSortRank(left) - mediaSortRank(right);
+    return rankDiff !== 0 ? rankDiff : naturalCompare(left, right);
+  });
+
+  if (sortedImages.length === 0) return [];
+
+  const result =
+    sortedImages.length >= 4
+      ? Array.from({ length: 4 }, (_, index) => {
+          const imageIndex = Math.round((index * (sortedImages.length - 1)) / 3);
+          return sortedImages[imageIndex];
+        })
+      : [...sortedImages];
+
+  let nextIndex = 0;
+  while (result.length < 4) {
+    result.push(sortedImages[nextIndex % sortedImages.length]);
+    nextIndex += 1;
+  }
+
+  return result;
+}
+
+const LOCAL_FOLDER_PREVIEW_SNAPSHOTS: LocalFolderPreviewSnapshot[] = (() => {
+  const grouped = new Map<
+    string,
+    {
+      category: string;
+      brand: string;
+      dataset: string;
+      images: string[];
+      previewVideoBlobPath: string | null;
+    }
+  >();
+
+  Object.keys(FOLDER_PREVIEW_MEDIA_MODULES).forEach((modulePath) => {
+    const relative = modulePath.replace("../assets/folder-previews/", "");
+    const blobPath = normalizeImagePath(relative);
+    const segments = blobPath.split("/").filter(Boolean);
+    const directoryIndex = segments.findIndex((segment) => PREVIEW_DATASET_DIRECTORIES.has(segment));
+
+    if (directoryIndex < 3) return;
+
+    const datasetRootSegments = segments.slice(0, directoryIndex);
+    const datasetRoot = datasetRootSegments.join("/");
+    const directory = segments[directoryIndex];
+    const extension = segments[segments.length - 1]?.split(".").pop()?.toLowerCase() ?? "";
+
+    if (!grouped.has(datasetRoot)) {
+      grouped.set(datasetRoot, {
+        category: datasetRootSegments[0] ?? "",
+        brand: datasetRootSegments[1] ?? "",
+        dataset: datasetRootSegments[2] ?? datasetRootSegments[datasetRootSegments.length - 1] ?? "",
+        images: [],
+        previewVideoBlobPath: null,
+      });
+    }
+
+    const entry = grouped.get(datasetRoot);
+    if (!entry) return;
+
+    if (directory === "preview" && extension === "mp4" && segments[segments.length - 1]?.toLowerCase() === "hover.mp4") {
+      entry.previewVideoBlobPath = blobPath;
+      return;
+    }
+
+    if (directory === "masks") return;
+
+    if (["png", "jpg", "jpeg", "webp", "avif", "svg"].includes(extension)) {
+      entry.images.push(blobPath);
+    }
+  });
+
+  return Array.from(grouped.entries())
+    .map(([fullPath, entry]) => ({
+      category: entry.category,
+      fullPath,
+      brand: entry.brand,
+      dataset: entry.dataset,
+      imageBlobPaths: selectPreviewImageBlobPaths(entry.images),
+      previewVideoBlobPath: entry.previewVideoBlobPath,
+    }))
+    .sort((left, right) => naturalCompare(left.fullPath, right.fullPath));
+})();
+
+export function getLocalFolderPreviewSnapshots(): LocalFolderPreviewSnapshot[] {
+  return LOCAL_FOLDER_PREVIEW_SNAPSHOTS;
 }

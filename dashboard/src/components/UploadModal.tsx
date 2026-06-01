@@ -72,8 +72,8 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
 
   if (!isAuthenticated || !isApproved) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-md">
-        <div className="relative w-full max-w-lg rounded-lg border border-border bg-card p-8 shadow-2xl">
+      <div className="fixed inset-0 z-[80] overflow-y-auto bg-background/80 px-4 pb-6 pt-24 backdrop-blur-md sm:px-6 sm:pt-28">
+        <div className="relative mx-auto w-full max-w-lg rounded-lg border border-border bg-card p-8 shadow-2xl">
           <button
             onClick={onClose}
             className="absolute right-4 top-4 text-muted-foreground transition-colors hover:text-foreground"
@@ -219,8 +219,8 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-md">
-      <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg border border-border bg-card p-8 shadow-2xl">
+    <div className="fixed inset-0 z-[80] overflow-y-auto bg-background/80 px-4 pb-6 pt-24 backdrop-blur-md sm:px-6 sm:pt-28">
+      <div className="relative mx-auto w-full max-w-lg overflow-y-auto rounded-lg border border-border bg-card p-8 shadow-2xl">
         <div className="absolute left-0 right-0 top-0 h-1 bg-linear-to-r from-primary/50 via-primary to-primary/50" />
         <button
           onClick={onClose}
