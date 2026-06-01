@@ -700,7 +700,6 @@ function CuratedCatalogCard({
   columns?: 2 | 3;
   onOpen: () => void;
 }) {
-  const [previewVideoActive, setPreviewVideoActive] = useState(false);
   const badge = getCategoryBadge(card);
   const previewItem = liveItem ?? placeholderItem ?? null;
   const marketingOverride = getRoboDataHubMarketingImageSet(card.pathLabel);
@@ -726,6 +725,26 @@ function CuratedCatalogCard({
       ? "border-emerald-200 bg-emerald-50 text-emerald-700"
       : "border-amber-200 bg-amber-50 text-amber-700";
   const footerLabel = previewItem ? previewItem.full_path : card.pathLabel;
+  const previewAssets = previewItem
+    ? [
+        previewItem.main_image,
+        ...previewItem.thumbnails,
+      ]
+        .filter((asset): asset is CategoryPreviewAsset => Boolean(asset))
+        .slice(0, 4)
+    : [];
+  const fallbackThumbs = [
+    displayImages.main,
+    ...displayImages.thumbs,
+  ]
+    .filter(Boolean)
+    .slice(0, 4);
+  const mosaicCells = Array.from({ length: 4 }, (_, index) => {
+    if (previewAssets.length > 0) {
+      return previewAssets[index] ?? previewAssets[previewAssets.length - 1] ?? null;
+    }
+    return fallbackThumbs[index] ?? fallbackThumbs[fallbackThumbs.length - 1] ?? null;
+  });
 
   return (
     <button
@@ -734,60 +753,34 @@ function CuratedCatalogCard({
       className="group flex h-full flex-col overflow-hidden rounded-[18px] border border-slate-200 bg-white text-left shadow-[0_14px_34px_rgba(15,23,42,0.06)] transition-all duration-300 hover:-translate-y-1 hover:border-primary/25 hover:shadow-[0_24px_56px_rgba(15,23,42,0.12)] sm:flex-row"
     >
       <div
-        className={`p-4 sm:min-w-0 sm:flex-[0_0_52%] sm:p-5 ${
-          columns === 2 ? "xl:flex-[0_0_60%]" : "xl:flex-[0_0_50%]"
+        className={`p-4 sm:min-w-0 sm:flex-[0_0_48%] sm:p-5 ${
+          columns === 2 ? "xl:flex-[0_0_48%]" : "xl:flex-[0_0_44%]"
         }`}
       >
-        <div className="flex h-full min-h-[228px] gap-1.5 sm:min-h-[246px]">
-          <div className="min-w-0 flex-1 overflow-hidden rounded-[12px] bg-slate-100">
-            {previewItem ? (
-              <DatasetPreviewPrimaryMedia
-                imageAsset={previewItem.main_image}
-                videoAsset={liveItem?.preview_video}
-                alt={card.title}
-                isVideoActive={previewVideoActive}
-                onVideoEnter={() => liveItem?.preview_video && setPreviewVideoActive(true)}
-                onVideoLeave={() => liveItem?.preview_video && setPreviewVideoActive(false)}
-                className="rounded-[12px] border-0"
-              />
+        <div className="grid aspect-square w-full grid-cols-2 gap-1.5">
+          {mosaicCells.map((cell, index) =>
+            typeof cell === "string" ? (
+              <div
+                key={`${card.title}-${cell}-${index}`}
+                className="aspect-square overflow-hidden rounded-[10px] bg-slate-100"
+              >
+                <img
+                  src={frontPageImageUrl(cell) ?? undefined}
+                  alt={`${card.title} preview ${index + 1}`}
+                  loading="lazy"
+                  decoding="async"
+                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.05]"
+                />
+              </div>
             ) : (
-              <img
-                src={frontPageImageUrl(displayImages.main) ?? undefined}
-                alt={card.title}
-                loading="lazy"
-                decoding="async"
-                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.06]"
+              <DatasetPreviewImage
+                key={`${card.title}-${cell?.asset_id ?? "thumb"}-${index}`}
+                asset={cell}
+                alt={`${card.title} preview ${index + 1}`}
+                className="aspect-square rounded-[10px] border-0"
               />
-            )}
-          </div>
-          <div className="flex w-[86px] shrink-0 flex-col gap-1.5">
-            {previewItem
-              ? (previewItem.thumbnails.length > 0
-                  ? previewItem.thumbnails.slice(0, 3)
-                  : [null, null, null]
-                ).map((thumbnail, index) => (
-                  <DatasetPreviewImage
-                    key={`${card.title}-${thumbnail?.asset_id ?? "thumb"}-${index}`}
-                    asset={thumbnail}
-                    alt={`${card.title} preview ${index + 1}`}
-                    className="min-h-0 flex-1 rounded-[8px] border-0"
-                  />
-                ))
-              : displayImages.thumbs.slice(0, 3).map((thumbPath, index) => (
-                  <div
-                    key={`${card.title}-${thumbPath}-${index}`}
-                    className="min-h-0 flex-1 overflow-hidden rounded-[8px] bg-slate-100"
-                  >
-                    <img
-                      src={frontPageImageUrl(thumbPath) ?? undefined}
-                      alt={`${card.title} preview ${index + 1}`}
-                      loading="lazy"
-                      decoding="async"
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.08]"
-                    />
-                  </div>
-                ))}
-          </div>
+            ),
+          )}
         </div>
       </div>
 
@@ -799,12 +792,6 @@ function CuratedCatalogCard({
           <span className={`inline-flex shrink-0 rounded-full border px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em] ${badgeClasses}`}>
             {previewItem ? "In Library" : card.availability}
           </span>
-        </div>
-
-        <div className="mt-3 px-4 md:px-5">
-          <p className="text-[11px] leading-6 text-slate-500 md:text-[12px]">
-            {card.description}
-          </p>
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2 px-4 md:px-5">
@@ -860,26 +847,63 @@ function getCatalogAvailabilityClasses(availability: CatalogCard["availability"]
 
 function RootShowcaseCatalogCard({
   card,
-  previewItem,
+  liveItem,
+  placeholderItem,
   onOpen,
 }: {
   card: CatalogCard;
-  previewItem?: CategoryDatasetPreview | null;
+  liveItem?: CategoryDatasetPreview | null;
+  placeholderItem?: CategoryDatasetPreview | null;
   onOpen: () => void;
 }) {
+  const [previewVideoActive, setPreviewVideoActive] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
+  const [videoFailed, setVideoFailed] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const marketingOverride = getRoboDataHubMarketingImageSet(card.pathLabel);
   const fallbackMain = card.images.main;
   const overrideMain =
     marketingOverride?.main && frontPageImageUrl(marketingOverride.main)
       ? marketingOverride.main
       : null;
-  const imageSrc = previewItem?.main_image
-    ? resolvePreviewMediaUrl(previewItem.main_image)
-    : frontPageImageUrl(overrideMain ?? fallbackMain);
+  const displayItem = placeholderItem ?? liveItem ?? null;
+  const fallbackImageSrc = frontPageImageUrl(overrideMain ?? fallbackMain);
+  const previewImageSrc = displayItem?.main_image ? resolvePreviewMediaUrl(displayItem.main_image) : null;
+  const imageSrc = imageFailed ? fallbackImageSrc : previewImageSrc ?? fallbackImageSrc;
+  const videoSrc = videoFailed ? null : resolvePreviewMediaUrl(liveItem?.preview_video);
   const badge = getCatalogViewBadge(card);
   const availabilityClasses = getCatalogAvailabilityClasses(
-    previewItem ? "In Library" : card.availability,
+    displayItem ? "In Library" : card.availability,
   );
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !videoSrc) return;
+
+    if (previewVideoActive) {
+      const playPromise = video.play();
+      if (playPromise) {
+        playPromise.catch(() => {
+          // Keep poster visible if playback cannot start immediately.
+        });
+      }
+      return;
+    }
+
+    video.pause();
+    if (video.currentTime !== 0) {
+      video.currentTime = 0;
+    }
+  }, [previewVideoActive, videoSrc]);
+
+  useEffect(() => {
+    return () => {
+      const video = videoRef.current;
+      if (video) {
+        video.pause();
+      }
+    };
+  }, []);
 
   return (
     <button
@@ -887,7 +911,11 @@ function RootShowcaseCatalogCard({
       onClick={onOpen}
       className="group flex h-full flex-col overflow-hidden rounded-[12px] border border-slate-200 bg-white text-left shadow-[0_1px_4px_rgba(0,0,0,0.04)] transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_8px_24px_rgba(13,148,136,0.10)]"
     >
-      <div className="relative h-[120px] overflow-hidden">
+      <div
+        className="relative h-[120px] overflow-hidden"
+        onMouseEnter={videoSrc ? () => setPreviewVideoActive(true) : undefined}
+        onMouseLeave={videoSrc ? () => setPreviewVideoActive(false) : undefined}
+      >
         {imageSrc ? (
           <img
             src={imageSrc}
@@ -895,12 +923,29 @@ function RootShowcaseCatalogCard({
             loading="lazy"
             decoding="async"
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+            onError={() => setImageFailed(true)}
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-slate-100">
             <Database className="h-8 w-8 text-primary/55" />
           </div>
         )}
+        {videoSrc ? (
+          <video
+            ref={videoRef}
+            src={videoSrc}
+            poster={imageSrc ?? undefined}
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            aria-hidden="true"
+            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${
+              previewVideoActive ? "opacity-100" : "opacity-0"
+            }`}
+            onError={() => setVideoFailed(true)}
+          />
+        ) : null}
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_top,#ffffff_0%,transparent_55%)]" />
         <span
           className={`absolute right-2 top-2 inline-flex rounded-[3px] px-1.5 py-0.5 text-[9px] font-extrabold tracking-[0.08em] ${badge.className}`}
@@ -935,11 +980,11 @@ function RootShowcaseCatalogCard({
           })}
         </div>
         <div className="mt-auto flex items-center justify-between pt-3">
-          <p className="text-[13px] font-bold text-primary">{previewItem ? card.hours : card.hours}</p>
+          <p className="text-[13px] font-bold text-primary">{card.hours}</p>
           <span
             className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${availabilityClasses}`}
           >
-            {previewItem ? "In Library" : card.availability}
+            {displayItem ? "In Library" : card.availability}
           </span>
         </div>
       </div>
@@ -1172,99 +1217,6 @@ function getCatalogFilterTargetSectionId(
   });
 
   return bestSectionId ?? landing.sections[0]?.id ?? null;
-}
-
-function DatasetPreviewPrimaryMedia({
-  imageAsset,
-  videoAsset,
-  alt,
-  isVideoActive,
-  onVideoEnter,
-  onVideoLeave,
-  className,
-}: {
-  imageAsset: CategoryPreviewAsset | null | undefined;
-  videoAsset: CategoryPreviewAsset | null | undefined;
-  alt: string;
-  isVideoActive: boolean;
-  onVideoEnter: () => void;
-  onVideoLeave: () => void;
-  className?: string;
-}) {
-  const [imageFailed, setImageFailed] = useState(false);
-  const [videoFailed, setVideoFailed] = useState(false);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const imageSrc = imageFailed ? null : resolvePreviewMediaUrl(imageAsset);
-  const videoSrc = videoFailed ? null : resolvePreviewMediaUrl(videoAsset);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video || !videoSrc) return;
-
-    if (isVideoActive) {
-      const playPromise = video.play();
-      if (playPromise) {
-        playPromise.catch(() => {
-          // Ignore autoplay timing issues and keep the poster visible underneath.
-        });
-      }
-      return;
-    }
-
-    video.pause();
-    if (video.currentTime !== 0) {
-      video.currentTime = 0;
-    }
-  }, [isVideoActive, videoSrc]);
-
-  useEffect(() => {
-    return () => {
-      const video = videoRef.current;
-      if (video) {
-        video.pause();
-      }
-    };
-  }, []);
-
-  return (
-    <div
-      className={`relative h-full min-h-0 overflow-hidden rounded-[18px] border border-slate-200 bg-slate-100 ${className ?? ""}`}
-      onMouseEnter={videoSrc ? onVideoEnter : undefined}
-      onMouseLeave={videoSrc ? onVideoLeave : undefined}
-    >
-      {imageSrc ? (
-        <img
-          src={imageSrc}
-          alt={alt}
-          loading="lazy"
-          decoding="async"
-          className="h-full w-full object-cover"
-          onError={() => setImageFailed(true)}
-        />
-      ) : (
-        <div className="flex h-full min-h-0 items-center justify-center bg-slate-100">
-          <Database className="h-8 w-8 text-primary/55" />
-        </div>
-      )}
-
-      {videoSrc ? (
-        <video
-          ref={videoRef}
-          src={videoSrc}
-          poster={imageSrc ?? undefined}
-          muted
-          loop
-          playsInline
-          preload="metadata"
-          aria-hidden="true"
-          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${
-            isVideoActive ? "opacity-100" : "opacity-0"
-          }`}
-          onError={() => setVideoFailed(true)}
-        />
-      ) : null}
-    </div>
-  );
 }
 
 export default function DataViewer() {
@@ -2092,7 +2044,8 @@ export default function DataViewer() {
                         <RootShowcaseCatalogCard
                           key={`${section.routeKey}-${entry.card.title}-${previewItem?.full_path ?? entry.card.pathLabel}`}
                           card={entry.card}
-                          previewItem={previewItem}
+                          liveItem={entry.liveItem}
+                          placeholderItem={entry.placeholderItem}
                           onOpen={() => {
                             if (previewItem) {
                               handleCategoryPreviewClick(previewItem);
@@ -2149,6 +2102,8 @@ export default function DataViewer() {
     if (!landing) return null;
 
     const heroStats = landing.stats.slice(0, 4);
+    const heroPosterUrl = frontPageImageUrl(landing.heroImagePath) ?? undefined;
+    const heroVideoUrl = landing.heroVideoBlobPath ? folderPreviewMediaUrl(landing.heroVideoBlobPath) : null;
 
     return (
       <div className="mx-auto w-full max-w-[1440px] px-4 py-10 sm:px-6 md:py-14">
@@ -2183,11 +2138,25 @@ export default function DataViewer() {
               </div>
 
               <div className="relative overflow-hidden rounded-[20px] border border-slate-300 shadow-[0_28px_64px_rgba(15,23,42,0.12)]">
-                <img
-                  src={frontPageImageUrl(landing.heroImagePath) ?? undefined}
-                  alt={`${landing.heroTitle} hero`}
-                  className="h-[390px] w-full object-cover"
-                />
+                {heroVideoUrl ? (
+                  <video
+                    src={heroVideoUrl}
+                    poster={heroPosterUrl}
+                    aria-label={`${landing.heroTitle} hero`}
+                    className="h-[390px] w-full object-cover"
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    preload="metadata"
+                  />
+                ) : (
+                  <img
+                    src={heroPosterUrl}
+                    alt={`${landing.heroTitle} hero`}
+                    className="h-[390px] w-full object-cover"
+                  />
+                )}
                 <div className="absolute inset-0 bg-[linear-gradient(160deg,rgba(255,255,255,0.15),transparent_45%,rgba(15,23,42,0.06))]" />
                 <div className="absolute bottom-5 left-5 rounded-[12px] border border-slate-200 bg-white/90 px-4 py-3 backdrop-blur-sm">
                   <div className="text-[8px] font-black uppercase tracking-[0.18em] text-primary">

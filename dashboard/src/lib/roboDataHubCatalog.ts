@@ -38,6 +38,7 @@ export interface CategoryLandingContent {
   heroTitle: string;
   heroDescription: string;
   heroImagePath: string;
+  heroVideoBlobPath?: string;
   heroBadge: string;
   heroPill: string;
   stats: { value: string; label: string }[];
@@ -265,6 +266,7 @@ export const CATEGORY_LANDING_CONTENT: Record<CatalogRouteKey, CategoryLandingCo
     heroDescription:
       "High-fidelity, fully-labelled data center operations datasets captured from live server room environments - built for robotics automation training pipelines.",
     heroImagePath: "serverrack/serverrack1.png",
+    heroVideoBlobPath: "serverrack/Dell/dataRackInstall/preview/hover.mp4",
     heroBadge: "Featured · Robotics AI",
     heroPill: "9 datasets available",
     stats: [
@@ -356,6 +358,7 @@ export const CATEGORY_LANDING_CONTENT: Record<CatalogRouteKey, CategoryLandingCo
     heroDescription:
       "High-fidelity, fully-labelled humanoid task datasets captured across real-world domestic and commercial environments - built for dexterous robot training pipelines.",
     heroImagePath: "humanoid/humanoid3.png",
+    heroVideoBlobPath: "humanoid/Awign/peelingPeas/preview/hover.mp4",
     heroBadge: "Featured · Robotics AI",
     heroPill: "9 datasets available",
     stats: [
@@ -483,6 +486,7 @@ export const CATEGORY_LANDING_CONTENT: Record<CatalogRouteKey, CategoryLandingCo
     heroDescription:
       "High-fidelity, fully-labelled warehouse operations datasets captured from live fulfilment environments - built for robotics automation training pipelines.",
     heroImagePath: "warehouse/warehouse2.png",
+    heroVideoBlobPath: "warehouse/Symbotic/AVnavigation/preview/hover.mp4",
     heroBadge: "Featured · Robotics AI",
     heroPill: "9 datasets available",
     stats: [
@@ -594,6 +598,7 @@ export const CATEGORY_LANDING_CONTENT: Record<CatalogRouteKey, CategoryLandingCo
     heroDescription:
       "High-fidelity, fully-labelled manufacturing datasets captured from live OEM production floors - built for robotics automation training pipelines.",
     heroImagePath: "carAutomation/carAutomation2.png",
+    heroVideoBlobPath: "carAutomation/BMW/frontGrille/preview/hover.mp4",
     heroBadge: "Featured · Robotics AI",
     heroPill: "34 datasets available",
     stats: [

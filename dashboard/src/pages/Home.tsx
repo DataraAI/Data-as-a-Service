@@ -45,6 +45,14 @@ type CustomerCard = {
   chipTone: string;
 };
 
+const HOME_SECTION_SCROLL_OFFSET = 96;
+
+function scrollToHomeSection(target: HTMLElement | null) {
+  if (!target) return;
+  const top = target.getBoundingClientRect().top + window.scrollY - HOME_SECTION_SCROLL_OFFSET;
+  window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+}
+
 const PRODUCT_CARDS: ProductCard[] = [
   {
     name: "RoboDataHub",
@@ -260,7 +268,7 @@ export default function Home() {
     if (!target) return;
 
     window.setTimeout(() => {
-      target.scrollIntoView({ behavior: "smooth", block: "start" });
+      scrollToHomeSection(target);
     }, 40);
   }, [location.hash]);
 
@@ -296,7 +304,7 @@ export default function Home() {
             <div className="mt-9 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <button
                 type="button"
-                onClick={() => productsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                onClick={() => scrollToHomeSection(productsRef.current)}
                 className="inline-flex h-14 items-center justify-center rounded-full bg-primary px-8 text-[15px] font-extrabold text-primary-foreground shadow-[0_6px_20px_rgba(13,148,136,0.2)] transition-all hover:-translate-y-0.5 hover:opacity-90"
               >
                 See How It Works
@@ -316,7 +324,7 @@ export default function Home() {
           <div className="h-px flex-1 bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
         </div>
 
-        <section id="products" ref={productsRef} className="bg-slate-50 px-4 py-16 sm:px-6">
+        <section id="products" ref={productsRef} className="scroll-mt-[104px] bg-slate-50 px-4 py-16 sm:px-6">
           <div className="mx-auto max-w-[1300px]">
             <div className="mb-10 text-center">
               <div className="inline-flex items-center gap-3 rounded-full border border-teal-200 bg-teal-50 px-8 py-3 text-xl font-extrabold uppercase tracking-[0.08em] text-primary">
@@ -339,7 +347,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="solutions" ref={solutionsRef} className="bg-white px-4 py-16 sm:px-6">
+        <section id="solutions" ref={solutionsRef} className="scroll-mt-[104px] bg-white px-4 py-16 sm:px-6">
           <div className="mx-auto max-w-[1300px]">
             <div className="mb-10 text-center">
               <div className="inline-flex items-center gap-3 rounded-full border border-teal-200 bg-teal-50 px-8 py-3 text-xl font-extrabold uppercase tracking-[0.08em] text-primary">
@@ -442,7 +450,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="customers" ref={customersRef} className="border-y border-slate-200 bg-slate-50 px-4 py-16 sm:px-6">
+        <section id="customers" ref={customersRef} className="scroll-mt-[104px] border-y border-slate-200 bg-slate-50 px-4 py-16 sm:px-6">
           <div className="mx-auto max-w-[1300px]">
             <div className="text-center">
               <div className="inline-flex items-center gap-3 rounded-full border border-blue-200 bg-blue-50 px-8 py-3 text-xl font-extrabold uppercase tracking-[0.08em] text-blue-700">
