@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useAuth } from "@/auth/useAuth";
+import AuthRequiredState from "@/components/AuthRequiredState";
+import { buildAuthPath } from "@/lib/authLinks";
+import { folderPreviewMediaUrl, frontPageImageUrl } from "@/lib/datasetFolderCover";
 import axios from "axios";
-import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   AlertCircle,
   ArrowRight,
@@ -15,18 +17,17 @@ import {
   Terminal,
   Trash2,
 } from "lucide-react";
-import { Sidebar } from "../components/Sidebar";
-import { UploadModal } from "../components/UploadModal";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Breadcrumbs } from "../components/Breadcrumbs";
+import { DatasetFolderCover } from "../components/DatasetFolderCover";
 import { ImageGrid } from "../components/ImageGrid";
 import { ImageModal } from "../components/ImageModal";
 import { MaskGenerationPanel } from "../components/MaskGenerationPanel";
 import Navigation from "../components/Navigation";
-import { Breadcrumbs } from "../components/Breadcrumbs";
-import { DatasetFolderCover } from "../components/DatasetFolderCover";
-import AuthRequiredState from "@/components/AuthRequiredState";
-import { useAuth } from "@/auth/useAuth";
-import { buildAuthPath } from "@/lib/authLinks";
-import { folderPreviewMediaUrl, frontPageImageUrl } from "@/lib/datasetFolderCover";
+import { Sidebar } from "../components/Sidebar";
+import { UploadModal } from "../components/UploadModal";
+import { VideoToolsPanel } from "../components/VideoToolsPanel";
 
 interface FolderItem {
   name: string;
@@ -744,9 +745,8 @@ function DatasetPreviewPrimaryMedia({
           playsInline
           preload="metadata"
           aria-hidden="true"
-          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${
-            isVideoActive ? "opacity-100" : "opacity-0"
-          }`}
+          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${isVideoActive ? "opacity-100" : "opacity-0"
+            }`}
           onError={() => setVideoFailed(true)}
         />
       ) : null}
@@ -782,11 +782,10 @@ function CategoryDatasetPreviewCard({
           <h3 className="mt-2 text-xl font-extrabold text-slate-950">{item.title}</h3>
         </div>
         <span
-          className={`rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
-            item.visibility === "public"
+          className={`rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${item.visibility === "public"
               ? "border-emerald-200 bg-emerald-50 text-emerald-700"
               : "border-slate-200 bg-slate-100 text-slate-500"
-          }`}
+            }`}
         >
           {item.visibility === "public" ? "Public" : "Private"}
         </span>
@@ -877,8 +876,8 @@ function PathSearchPanel({
               onFocus={onFocus}
               onChange={(event) => onChange(event.target.value)}
               placeholder={placeholder}
-            className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50/80 pl-11 pr-10 font-sans-tech text-sm text-slate-900 shadow-[0_10px_24px_rgba(15,23,42,0.05)] placeholder:text-slate-400 focus:border-primary focus:outline-none"
-          />
+              className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50/80 pl-11 pr-10 font-sans-tech text-sm text-slate-900 shadow-[0_10px_24px_rgba(15,23,42,0.05)] placeholder:text-slate-400 focus:border-primary focus:outline-none"
+            />
             {loading && (
               <Loader2 className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-primary" />
             )}
@@ -1152,9 +1151,9 @@ export default function DataViewer() {
       try {
         const params = activeCategory
           ? {
-              category: activeCategory.routeKey,
-              public_only: "true",
-            }
+            category: activeCategory.routeKey,
+            public_only: "true",
+          }
           : undefined;
         const response = await axios.get<unknown[]>("/api/dataset-paths", {
           params,
@@ -1227,6 +1226,11 @@ export default function DataViewer() {
     [images],
   );
   const maskSourceImageCount = sourceImages.length;
+  const sourceVideos = useMemo(
+    () => images.filter((image) => image.type === "video"),
+    [images],
+  );
+  const videoSourceCount = sourceVideos.length;
   const isEgoPath = useMemo(
     () => pathSegments.slice(datasetRootDepth).some((segment) => segment.toLowerCase() === "egos"),
     [datasetRootDepth, pathSegments],
@@ -1250,6 +1254,7 @@ export default function DataViewer() {
     });
   }, [isEgoPath, isLeaf, sourceImages]);
   const showMaskPanel = isLeaf && !isMaskPath && maskSourceImageCount > 0;
+  const showVideoPanel = isLeaf && !isMaskPath && videoSourceCount > 0;
 
   const allSelectableTags = useMemo(
     () =>
@@ -1292,6 +1297,11 @@ export default function DataViewer() {
       return matchesSearch && matchesTags && matchesMinFrame && matchesMaxFrame;
     });
   }, [filterText, frameRange.max, frameRange.min, images, visibleTags]);
+
+  const filteredVideos = useMemo(
+    () => filteredImages.filter((image) => image.type === "video"),
+    [filteredImages],
+  );
 
   const filteredFolders = useMemo(() => folders, [folders]);
 
@@ -1485,11 +1495,10 @@ export default function DataViewer() {
                   </span>
                   {folder.visibility && (
                     <span
-                      className={`mt-2 inline-flex rounded-full px-2 py-1 text-[10px] uppercase tracking-wide ${
-                        folder.visibility === "public"
+                      className={`mt-2 inline-flex rounded-full px-2 py-1 text-[10px] uppercase tracking-wide ${folder.visibility === "public"
                           ? "bg-primary/10 text-primary"
                           : "bg-amber-100 text-amber-700"
-                      }`}
+                        }`}
                     >
                       {folder.visibility}
                     </span>
@@ -1737,13 +1746,13 @@ export default function DataViewer() {
               <Breadcrumbs />
             </div>
           </div>
-            <div className="ml-auto flex items-center gap-4 font-sans-tech text-[11px] font-medium text-slate-500 sm:ml-0 sm:gap-6 sm:text-xs">
-              {isAuthenticated && isApproved ? (
-                <span className="flex items-center gap-2 text-primary">
-                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
-                  Live Connection
-                </span>
-              ) : (
+          <div className="ml-auto flex items-center gap-4 font-sans-tech text-[11px] font-medium text-slate-500 sm:ml-0 sm:gap-6 sm:text-xs">
+            {isAuthenticated && isApproved ? (
+              <span className="flex items-center gap-2 text-primary">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
+                Live Connection
+              </span>
+            ) : (
               <span className="flex items-center gap-2">
                 <LockKeyhole className="h-3.5 w-3.5" />
                 Signed out
@@ -1865,6 +1874,15 @@ export default function DataViewer() {
                 imageCount={maskSourceImageCount}
                 showEgocentricGeneration={showEgocentricGeneration}
                 showHandMotionGeneration={showHandMotionGeneration}
+                onGenerationSuccess={() => setReloadTick((value) => value + 1)}
+                onOpenViewerPath={(viewerPath) => navigate(viewerPath)}
+              />
+            )}
+
+            {showVideoPanel && (
+              <VideoToolsPanel
+                routePath={currentDisplayPath}
+                videos={filteredVideos.length > 0 ? filteredVideos : sourceVideos}
                 onGenerationSuccess={() => setReloadTick((value) => value + 1)}
                 onOpenViewerPath={(viewerPath) => navigate(viewerPath)}
               />

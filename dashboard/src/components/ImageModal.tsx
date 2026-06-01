@@ -1,6 +1,5 @@
 import { ChevronLeft, ChevronRight, Copy, Download, Film, Info, Loader2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import TaskIntelligencePanel from "./TaskIntelligencePanel";
 import { ThreeDViewer } from "./ThreeDViewer";
 
 interface ImageModalProps {
@@ -539,13 +538,6 @@ export function ImageModal({
             </div>
           )}
 
-          {isVideo && (
-            <TaskIntelligencePanel
-              videoID={image.asset_id}
-              videoURL={image.url}
-              datasetName={defaultDatasetName(image, "task")}
-            />
-          )}
         </div>
       </div>
     </div>

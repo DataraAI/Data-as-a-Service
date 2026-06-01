@@ -423,6 +423,20 @@ def register_routes(app: Flask) -> None:
         payload, status_code = processing_service.generate_task_intelligence(current_user, data)
         return jsonify(payload), status_code
 
+    @app.route("/api/generate_hand_mesh", methods=["POST"])
+    @auth_service.require_approved_user
+    def generate_hand_mesh():
+        current_user = auth_service.get_current_user_or_raise()
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "Invalid JSON body"}), 400
+
+        if not data.get("asset_id"):
+            return jsonify({"error": "Missing 'asset_id' in request body"}), 400
+
+        payload, status_code = processing_service.generate_hand_mesh(current_user, data)
+        return jsonify(payload), status_code
+
 
 def register_error_handlers(app: Flask) -> None:
     @app.errorhandler(PermissionError)
