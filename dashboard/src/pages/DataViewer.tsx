@@ -577,14 +577,41 @@ function resolveCatalogSectionsForCategory(
   const unmatchedLiveItems = activeCategoryPreviews.filter(
     (item) => !usedLivePaths.has(normalizePathSearchValue(item.full_path)),
   );
-  const groupedExtras = new Map<string, CategoryDatasetPreview[]>();
+  const unmatchedPlaceholderItems = localCategoryPreviewPlaceholders.filter(
+    (item) => !usedPlaceholderPaths.has(normalizePathSearchValue(item.full_path)),
+  );
+  const groupedExtras = new Map<string, Map<string, ResolvedCatalogCardEntry>>();
+
+  const upsertGroupedExtra = (
+    sectionId: string | null,
+    item: CategoryDatasetPreview,
+    kind: "live" | "placeholder",
+  ) => {
+    if (!sectionId) return;
+    const normalizedPath = normalizePathSearchValue(item.full_path);
+    if (!groupedExtras.has(sectionId)) {
+      groupedExtras.set(sectionId, new Map());
+    }
+
+    const sectionEntries = groupedExtras.get(sectionId);
+    if (!sectionEntries) return;
+
+    const existingEntry = sectionEntries.get(normalizedPath);
+    const baseCard = buildFallbackLiveCard(existingEntry?.liveItem ?? existingEntry?.placeholderItem ?? item);
+
+    sectionEntries.set(normalizedPath, {
+      card: baseCard,
+      liveItem: kind === "live" ? item : existingEntry?.liveItem ?? null,
+      placeholderItem: kind === "placeholder" ? item : existingEntry?.placeholderItem ?? null,
+    });
+  };
+
+  unmatchedPlaceholderItems.forEach((item) => {
+    upsertGroupedExtra(getLivePreviewSectionId(routeKey, item), item, "placeholder");
+  });
 
   unmatchedLiveItems.forEach((item) => {
-    const sectionId = getLivePreviewSectionId(routeKey, item);
-    if (!sectionId) return;
-    const current = groupedExtras.get(sectionId) ?? [];
-    current.push(item);
-    groupedExtras.set(sectionId, current);
+    upsertGroupedExtra(getLivePreviewSectionId(routeKey, item), item, "live");
   });
 
   const seenEntryKeys = new Set<string>();
@@ -596,13 +623,12 @@ function resolveCatalogSectionsForCategory(
       (entry) => entry.card.livePathHints?.length || entry.liveItem || entry.placeholderItem,
     );
     const marketingCards = resolvedCards.filter((entry) => !entry.card.livePathHints?.length);
-    const extraLiveCards = (groupedExtras.get(section.id) ?? [])
-      .sort((a, b) => a.title.localeCompare(b.title))
-      .map((item) => ({
-        card: buildFallbackLiveCard(item),
-        liveItem: item,
-        placeholderItem: item,
-      }));
+    const extraLiveCards = Array.from(groupedExtras.get(section.id)?.values() ?? [])
+      .sort((a, b) =>
+        (a.liveItem?.title ?? a.placeholderItem?.title ?? a.card.title).localeCompare(
+          b.liveItem?.title ?? b.placeholderItem?.title ?? b.card.title,
+        ),
+      );
 
     const uniqueCards = [...liveBackedCards, ...extraLiveCards, ...marketingCards]
       .filter((entry) => {
