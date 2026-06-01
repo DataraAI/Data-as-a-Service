@@ -361,6 +361,13 @@ function buildViewerPath(fullPath: string, imageName?: string, basePath = "/view
   return `${basePath}/${encodedPath}${query ? `?${query}` : ""}`;
 }
 
+function getPreviewDatasetRootFromVideoBlobPath(blobPath?: string | null) {
+  const normalized = String(blobPath ?? "").trim().replace(/\\/g, "/");
+  if (!normalized) return null;
+  const match = normalized.match(/^(.*)\/preview\/hover\.(mp4|webm|mov|m4v)$/i);
+  return match?.[1] ?? null;
+}
+
 function withViewerBase(viewerPath: string, basePath: string) {
   return viewerPath.startsWith("/viewer") ? `${basePath}${viewerPath.slice("/viewer".length)}` : viewerPath;
 }
@@ -1501,32 +1508,31 @@ export default function DataViewer() {
     let cancelled = false;
 
     async function loadRootCategoryPreviews() {
-      const results = await Promise.allSettled(
+      setRootCategoryPreviews({});
+
+      await Promise.all(
         CATEGORIES.map(async (category) => {
-          const response = await axios.get<CategoryDatasetPreview[]>("/api/dataset-category-previews", {
-            params: { category: category.routeKey, public_only: "true" },
-          });
-          return [
-            category.routeKey,
-            Array.isArray(response.data) ? response.data : [],
-          ] as const;
+          try {
+            const response = await axios.get<CategoryDatasetPreview[]>("/api/dataset-category-previews", {
+              params: { category: category.routeKey, public_only: "true" },
+            });
+            if (cancelled) return;
+
+            setRootCategoryPreviews((previous) => ({
+              ...previous,
+              [category.routeKey]: Array.isArray(response.data) ? response.data : [],
+            }));
+          } catch (error) {
+            if (!cancelled) {
+              console.error(`Failed to load root dataset previews for ${category.routeKey}`, error);
+              setRootCategoryPreviews((previous) => ({
+                ...previous,
+                [category.routeKey]: [],
+              }));
+            }
+          }
         }),
       );
-
-      if (cancelled) return;
-
-      const nextPreviews: Partial<Record<CategoryKey, CategoryDatasetPreview[]>> = {};
-      results.forEach((result, index) => {
-        const routeKey = CATEGORIES[index].routeKey;
-        if (result.status === "fulfilled") {
-          nextPreviews[routeKey] = result.value[1];
-        } else {
-          console.error(`Failed to load root dataset previews for ${routeKey}`, result.reason);
-          nextPreviews[routeKey] = [];
-        }
-      });
-
-      setRootCategoryPreviews(nextPreviews);
     }
 
     void loadRootCategoryPreviews();
@@ -2102,7 +2108,17 @@ export default function DataViewer() {
     if (!landing) return null;
 
     const heroStats = landing.stats.slice(0, 4);
-    const heroPosterUrl = frontPageImageUrl(landing.heroImagePath) ?? undefined;
+    const heroPreviewDatasetRoot = getPreviewDatasetRootFromVideoBlobPath(landing.heroVideoBlobPath);
+    const heroPlaceholderItem =
+      heroPreviewDatasetRoot
+        ? (localCategoryPreviewPlaceholdersByRoute[category.routeKey] ?? []).find(
+            (item) => normalizePathSearchValue(item.full_path) === normalizePathSearchValue(heroPreviewDatasetRoot),
+          ) ?? null
+        : null;
+    const heroPosterUrl =
+      (heroPlaceholderItem?.main_image ? resolvePreviewMediaUrl(heroPlaceholderItem.main_image) : null) ??
+      frontPageImageUrl(landing.heroImagePath) ??
+      undefined;
     const heroVideoUrl = landing.heroVideoBlobPath ? folderPreviewMediaUrl(landing.heroVideoBlobPath) : null;
 
     return (
