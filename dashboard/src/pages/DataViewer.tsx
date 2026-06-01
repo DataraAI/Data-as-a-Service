@@ -707,7 +707,7 @@ function CuratedCatalogCard({
   onOpen: () => void;
 }) {
   const badge = getCategoryBadge(card);
-  const previewItem = liveItem ?? placeholderItem ?? null;
+  const previewItem = placeholderItem ?? liveItem ?? null;
   const displayImages = card.images;
   const badgeClasses =
     previewItem || card.availability === "In Library"
@@ -930,7 +930,6 @@ function RootShowcaseCatalogCard({
             onError={() => setVideoFailed(true)}
           />
         ) : null}
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_top,#ffffff_0%,transparent_55%)]" />
         <span
           className={`absolute right-2 top-2 inline-flex rounded-[3px] px-1.5 py-0.5 text-[9px] font-extrabold tracking-[0.08em] ${badge.className}`}
         >

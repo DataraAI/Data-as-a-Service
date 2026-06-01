@@ -286,13 +286,24 @@ export const CATEGORY_LANDING_CONTENT: Record<CatalogRouteKey, CategoryLandingCo
       {
         id: "cable",
         title: "Cable Management",
-        countLabel: "3 datasets",
-        cards: ROOT_SHOWCASE_SECTIONS[0].cards.slice(0, 3),
+        countLabel: "4 datasets",
+        cards: [
+          ...ROOT_SHOWCASE_SECTIONS[0].cards.slice(0, 3),
+          {
+            title: "Cable Bundle Tie-Down",
+            description: "Final tie-down, strain relief, and cable-dress routines around bundled runs and patch-panel exits.",
+            tags: ["EXO-Centric", "Task Labels"],
+            availability: "On-demand",
+            hours: "480 hrs",
+            pathLabel: "dataCtr/cabling/bundleTieDown",
+            images: imageSet("serverrack/serverrack1.png", "serverrack/serverrack4.png", "serverrack/serverrack2.png", "serverrack/serverrack3.png"),
+          },
+        ],
       },
       {
         id: "server",
         title: "Server Operations",
-        countLabel: "3 datasets",
+        countLabel: "4 datasets",
         cards: [
           ROOT_SHOWCASE_SECTIONS[0].cards[2],
           {
@@ -314,6 +325,15 @@ export const CATEGORY_LANDING_CONTENT: Record<CatalogRouteKey, CategoryLandingCo
             pathLabel: "dataCtr/server/pduCheck",
             images: imageSet("serverrack/serverrack1.png", "serverrack/serverrack2.png", "serverrack/serverrack3.png", "serverrack/serverrack4.png"),
             livePathHints: ["x3690X5hotSwap"],
+          },
+          {
+            title: "Server LED Status Review",
+            description: "Rack-front LED and slot-status review workflow focused on health checks, fault lights, and service confirmation passes.",
+            tags: ["EGO-Centric", "Task Labels"],
+            availability: "On-demand",
+            hours: "330 hrs",
+            pathLabel: "dataCtr/server/ledStatus",
+            images: imageSet("serverrack/serverrack2.png", "serverrack/serverrack3.png", "serverrack/serverrack1.png", "serverrack/serverrack4.png"),
           },
         ],
       },
@@ -440,7 +460,7 @@ export const CATEGORY_LANDING_CONTENT: Record<CatalogRouteKey, CategoryLandingCo
       {
         id: "household",
         title: "Household Ops",
-        countLabel: "3 datasets",
+        countLabel: "4 datasets",
         cards: [
           {
             title: "Towel Folding",
@@ -470,6 +490,15 @@ export const CATEGORY_LANDING_CONTENT: Record<CatalogRouteKey, CategoryLandingCo
             hours: "380 hrs",
             pathLabel: "humanoid/household/trashSort",
             images: imageSet("humanoid/humanoid4.png", "humanoid/humanoid3.png", "humanoid/humanoid5.png", "humanoid/humanoid1.png"),
+          },
+          {
+            title: "Shelf Restocking",
+            description: "Reach, place, and align motions for returning common household items to shelves, bins, and cabinets.",
+            tags: ["EXO-Centric", "Task Labels", "Object Placement"],
+            availability: "On-demand",
+            hours: "350 hrs",
+            pathLabel: "humanoid/household/restocking",
+            images: imageSet("humanoid/humanoid1.png", "humanoid/humanoid5.png", "humanoid/humanoid4.png", "humanoid/humanoid3.png"),
           },
         ],
       },
@@ -506,7 +535,7 @@ export const CATEGORY_LANDING_CONTENT: Record<CatalogRouteKey, CategoryLandingCo
       {
         id: "pick",
         title: "Pick & Place",
-        countLabel: "3 datasets",
+        countLabel: "4 datasets",
         cards: [
           ROOT_SHOWCASE_SECTIONS[1].cards[0],
           {
@@ -529,12 +558,21 @@ export const CATEGORY_LANDING_CONTENT: Record<CatalogRouteKey, CategoryLandingCo
             images: imageSet("warehouse/warehouse3.png", "warehouse/warehouse2.png", "warehouse/warehouse1.png", "warehouse/warehouse4.png"),
             livePathHints: ["orderPicking"],
           },
+          {
+            title: "Shelf Replenishment Pick",
+            description: "Pick-and-place replenishment cycles moving inbound inventory from totes onto forward pick shelves.",
+            tags: ["EXO-Centric", "Task Labels"],
+            availability: "On-demand",
+            hours: "460 hrs",
+            pathLabel: "warehouse/pick/replenishment",
+            images: imageSet("warehouse/warehouse2.png", "warehouse/warehouse1.png", "warehouse/warehouse4.png", "warehouse/warehouse3.png"),
+          },
         ],
       },
       {
         id: "material",
         title: "Material Handling",
-        countLabel: "3 datasets",
+        countLabel: "4 datasets",
         cards: [
           {
             title: "Steel Pallet Stacking",
@@ -565,12 +603,21 @@ export const CATEGORY_LANDING_CONTENT: Record<CatalogRouteKey, CategoryLandingCo
             pathLabel: "warehouse/material/crossDock",
             images: imageSet("warehouse/warehouse2.png", "warehouse/warehouse3.png", "warehouse/warehouse4.png", "warehouse/warehouse1.png"),
           },
+          {
+            title: "Pallet Jack Positioning",
+            description: "Approach, align, and reposition pallet loads within narrow warehouse aisles and staging lanes.",
+            tags: ["EXO-Centric", "Task Labels"],
+            availability: "On-demand",
+            hours: "410 hrs",
+            pathLabel: "warehouse/material/palletJack",
+            images: imageSet("warehouse/warehouse4.png", "warehouse/warehouse2.png", "warehouse/warehouse1.png", "warehouse/warehouse3.png"),
+          },
         ],
       },
       {
         id: "inventory",
         title: "Inventory & QC",
-        countLabel: "3 datasets",
+        countLabel: "4 datasets",
         cards: [
           ROOT_SHOWCASE_SECTIONS[1].cards[2],
           ROOT_SHOWCASE_SECTIONS[1].cards[3],
@@ -582,6 +629,15 @@ export const CATEGORY_LANDING_CONTENT: Record<CatalogRouteKey, CategoryLandingCo
             hours: "380 hrs",
             pathLabel: "warehouse/inventory/putaway",
             images: imageSet("warehouse/warehouse1.png", "warehouse/warehouse2.png", "warehouse/warehouse4.png", "warehouse/warehouse3.png"),
+          },
+          {
+            title: "Barcode Exception Review",
+            description: "Manual exception handling around unreadable scans, mismatched counts, and inventory reconciliation checks.",
+            tags: ["EGO-Centric", "Task Labels", "Edge Cases"],
+            availability: "On-demand",
+            hours: "320 hrs",
+            pathLabel: "warehouse/inventory/barcodeException",
+            images: imageSet("warehouse/warehouse3.png", "warehouse/warehouse4.png", "warehouse/warehouse2.png", "warehouse/warehouse1.png"),
           },
         ],
       },
@@ -621,7 +677,7 @@ export const CATEGORY_LANDING_CONTENT: Record<CatalogRouteKey, CategoryLandingCo
       {
         id: "assembly",
         title: "Assembly",
-        countLabel: "6 datasets",
+        countLabel: "7 datasets",
         cards: [
           ROOT_SHOWCASE_SECTIONS[3].cards[0],
           ROOT_SHOWCASE_SECTIONS[3].cards[1],
@@ -662,6 +718,15 @@ export const CATEGORY_LANDING_CONTENT: Record<CatalogRouteKey, CategoryLandingCo
             hours: "730 hrs",
             pathLabel: "carAuto/Audi/doorPanel",
             images: imageSet("carAutomation/carAutomation2.png", "carAutomation/carAutomation4.png", "carAutomation/carAutomation3.png", "carAutomation/carAutomation5.png"),
+          },
+          {
+            title: "Seat Rail Alignment",
+            description: "Assembly-stage seat rail positioning and final alignment checks before cabin trim completion and bolt-down.",
+            tags: ["EXO-Centric", "Task Labels", "Interior Assembly"],
+            availability: "On-demand",
+            hours: "610 hrs",
+            pathLabel: "carAuto/multi/seatRailAlignment",
+            images: imageSet("carAutomation/carAutomation5.png", "carAutomation/carAutomation3.png", "carAutomation/carAutomation2.png", "carAutomation/carAutomation4.png"),
           },
         ],
       },
