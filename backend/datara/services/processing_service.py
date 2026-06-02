@@ -1460,7 +1460,6 @@ class ProcessingService:
             logger.info("Running Lyra v2v on Lambda VM for asset: %s", source_blob)
             result_path, status_code = call_lambda_vm.generate_video_to_video(
                 video_url=video_url,
-                video_name=video_name,
                 local_output_video=local_output_video,
                 vipe_zip_url=vipe_zip_url,
             )
