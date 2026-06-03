@@ -1,6 +1,19 @@
-﻿import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+﻿import { useAuth } from "@/auth/useAuth";
+import AuthRequiredState from "@/components/AuthRequiredState";
+import { buildAuthPath } from "@/lib/authLinks";
+import {
+  blobProxyUrl,
+  folderPreviewMediaUrl,
+  frontPageImageUrl,
+  getLocalFolderPreviewSnapshots,
+} from "@/lib/datasetFolderCover";
+import {
+  CATEGORY_LANDING_CONTENT,
+  ROOT_SHOWCASE_SECTIONS,
+  type CatalogCard,
+  type CategoryLandingContent,
+} from "@/lib/roboDataHubCatalog";
 import axios from "axios";
-import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   AlertCircle,
   ArrowRight,
@@ -15,30 +28,17 @@ import {
   Terminal,
   Trash2,
 } from "lucide-react";
-import { Sidebar } from "../components/Sidebar";
-import { UploadModal } from "../components/UploadModal";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Breadcrumbs } from "../components/Breadcrumbs";
+import { DatasetFolderCover } from "../components/DatasetFolderCover";
 import { ImageGrid } from "../components/ImageGrid";
 import { ImageModal } from "../components/ImageModal";
 import { MaskGenerationPanel } from "../components/MaskGenerationPanel";
 import Navigation from "../components/Navigation";
-import { Breadcrumbs } from "../components/Breadcrumbs";
-import { DatasetFolderCover } from "../components/DatasetFolderCover";
+import { Sidebar } from "../components/Sidebar";
+import { UploadModal } from "../components/UploadModal";
 import { VideoToolsPanel, type VideoFolderAsset } from "../components/VideoToolsPanel";
-import AuthRequiredState from "@/components/AuthRequiredState";
-import { useAuth } from "@/auth/useAuth";
-import { buildAuthPath } from "@/lib/authLinks";
-import {
-  blobProxyUrl,
-  folderPreviewMediaUrl,
-  frontPageImageUrl,
-  getLocalFolderPreviewSnapshots,
-} from "@/lib/datasetFolderCover";
-import {
-  CATEGORY_LANDING_CONTENT,
-  ROOT_SHOWCASE_SECTIONS,
-  type CatalogCard,
-  type CategoryLandingContent,
-} from "@/lib/roboDataHubCatalog";
 
 interface FolderItem {
   name: string;
@@ -552,12 +552,12 @@ function resolveCatalogSectionsForCategory(
       const matchedItem =
         (placeholderItem
           ? activeCategoryPreviews.find((item) => {
-              const normalizedPath = normalizePathSearchValue(item.full_path);
-              return (
-                !usedLivePaths.has(normalizedPath) &&
-                normalizedPath === normalizePathSearchValue(placeholderItem.full_path)
-              );
-            })
+            const normalizedPath = normalizePathSearchValue(item.full_path);
+            return (
+              !usedLivePaths.has(normalizedPath) &&
+              normalizedPath === normalizePathSearchValue(placeholderItem.full_path)
+            );
+          })
           : null) ??
         activeCategoryPreviews.find((item) => {
           const normalizedPath = normalizePathSearchValue(item.full_path);
@@ -749,11 +749,11 @@ function CuratedCatalogCard({
   const footerLabel = previewItem ? previewItem.full_path : card.pathLabel;
   const previewAssets = previewItem
     ? [
-        previewItem.main_image,
-        ...previewItem.thumbnails,
-      ]
-        .filter((asset): asset is CategoryPreviewAsset => Boolean(asset))
-        .slice(0, 4)
+      previewItem.main_image,
+      ...previewItem.thumbnails,
+    ]
+      .filter((asset): asset is CategoryPreviewAsset => Boolean(asset))
+      .slice(0, 4)
     : [];
   const fallbackThumbs = [
     displayImages.main,
@@ -775,9 +775,8 @@ function CuratedCatalogCard({
       className="group flex h-full flex-col overflow-hidden rounded-[18px] border border-slate-200 bg-white text-left shadow-[0_14px_34px_rgba(15,23,42,0.06)] transition-all duration-300 hover:-translate-y-1 hover:border-primary/25 hover:shadow-[0_24px_56px_rgba(15,23,42,0.12)] sm:flex-row"
     >
       <div
-        className={`p-4 sm:min-w-0 sm:flex-[0_0_48%] sm:p-5 ${
-          columns === 2 ? "xl:flex-[0_0_48%]" : "xl:flex-[0_0_44%]"
-        }`}
+        className={`p-4 sm:min-w-0 sm:flex-[0_0_48%] sm:p-5 ${columns === 2 ? "xl:flex-[0_0_48%]" : "xl:flex-[0_0_44%]"
+          }`}
       >
         <div className="grid aspect-square w-full grid-cols-2 gap-1.5">
           {mosaicCells.map((cell, index) =>
@@ -957,9 +956,8 @@ function RootShowcaseCatalogCard({
             playsInline
             preload="metadata"
             aria-hidden="true"
-            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${
-              previewVideoActive ? "opacity-100" : "opacity-0"
-            }`}
+            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${previewVideoActive ? "opacity-100" : "opacity-0"
+              }`}
             onError={() => setVideoFailed(true)}
           />
         ) : null}
@@ -1032,11 +1030,10 @@ function CategorySidebarSection({
               key={item.id}
               type="button"
               onClick={() => onSelect(item.id)}
-              className={`flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors ${
-                isActive
+              className={`flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors ${isActive
                   ? "border-primary/20 bg-primary/6 text-primary"
                   : "border-transparent text-slate-600 hover:bg-slate-100"
-              }`}
+                }`}
             >
               <span className={`h-2 w-2 shrink-0 rounded-full ${item.dotClassName}`} />
               <span className="flex-1 text-[13px] font-semibold">{item.label}</span>
@@ -1563,9 +1560,9 @@ export default function DataViewer() {
       try {
         const params = activeCategory
           ? {
-              category: activeCategory.routeKey,
-              public_only: "true",
-            }
+            category: activeCategory.routeKey,
+            public_only: "true",
+          }
           : undefined;
         const response = await axios.get<unknown[]>("/api/dataset-paths", {
           params,
@@ -1935,11 +1932,10 @@ export default function DataViewer() {
                   </span>
                   {folder.visibility && (
                     <span
-                      className={`mt-2 inline-flex rounded-full px-2 py-1 text-[10px] uppercase tracking-wide ${
-                        folder.visibility === "public"
+                      className={`mt-2 inline-flex rounded-full px-2 py-1 text-[10px] uppercase tracking-wide ${folder.visibility === "public"
                           ? "bg-primary/10 text-primary"
                           : "bg-amber-100 text-amber-700"
-                      }`}
+                        }`}
                     >
                       {folder.visibility}
                     </span>
@@ -2077,19 +2073,19 @@ export default function DataViewer() {
                       {section.cards.map((entry) => {
                         const previewItem = entry.liveItem ?? entry.placeholderItem ?? null;
                         return (
-                        <RootShowcaseCatalogCard
-                          key={`${section.routeKey}-${entry.card.title}-${previewItem?.full_path ?? entry.card.pathLabel}`}
-                          card={entry.card}
-                          liveItem={entry.liveItem}
-                          placeholderItem={entry.placeholderItem}
-                          onOpen={() => {
-                            if (previewItem) {
-                              handleCategoryPreviewClick(previewItem);
-                              return;
-                            }
-                            navigate(buildCategoryLandingPath(category, viewerBasePath));
-                          }}
-                        />
+                          <RootShowcaseCatalogCard
+                            key={`${section.routeKey}-${entry.card.title}-${previewItem?.full_path ?? entry.card.pathLabel}`}
+                            card={entry.card}
+                            liveItem={entry.liveItem}
+                            placeholderItem={entry.placeholderItem}
+                            onOpen={() => {
+                              if (previewItem) {
+                                handleCategoryPreviewClick(previewItem);
+                                return;
+                              }
+                              navigate(buildCategoryLandingPath(category, viewerBasePath));
+                            }}
+                          />
                         );
                       })}
                     </div>
@@ -2142,8 +2138,8 @@ export default function DataViewer() {
     const heroPlaceholderItem =
       heroPreviewDatasetRoot
         ? (localCategoryPreviewPlaceholdersByRoute[category.routeKey] ?? []).find(
-            (item) => normalizePathSearchValue(item.full_path) === normalizePathSearchValue(heroPreviewDatasetRoot),
-          ) ?? null
+          (item) => normalizePathSearchValue(item.full_path) === normalizePathSearchValue(heroPreviewDatasetRoot),
+        ) ?? null
         : null;
     const heroPosterUrl =
       (heroPlaceholderItem?.main_image ? resolvePreviewMediaUrl(heroPlaceholderItem.main_image) : null) ??
@@ -2422,13 +2418,13 @@ export default function DataViewer() {
               <Breadcrumbs />
             </div>
           </div>
-            <div className="ml-auto flex items-center gap-4 font-sans-tech text-[11px] font-medium text-slate-500 sm:ml-0 sm:gap-6 sm:text-xs">
-              {isAuthenticated && isApproved ? (
-                <span className="flex items-center gap-2 text-primary">
-                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
-                  Live Connection
-                </span>
-              ) : (
+          <div className="ml-auto flex items-center gap-4 font-sans-tech text-[11px] font-medium text-slate-500 sm:ml-0 sm:gap-6 sm:text-xs">
+            {isAuthenticated && isApproved ? (
+              <span className="flex items-center gap-2 text-primary">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
+                Live Connection
+              </span>
+            ) : (
               <span className="flex items-center gap-2">
                 <LockKeyhole className="h-3.5 w-3.5" />
                 Signed out

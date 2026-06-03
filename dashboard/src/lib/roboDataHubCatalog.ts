@@ -169,7 +169,7 @@ export const ROOT_SHOWCASE_SECTIONS: RootShowcaseSection[] = [
         hours: "600 hrs",
         pathLabel: "humanoid/kitchen/dishwashing",
         images: imageSet("humanoid/humanoid3.png", "humanoid/humanoid5.png", "humanoid/humanoid4.png", "humanoid/humanoid1.png"),
-        livePathHints: ["dishWasherUnloading"],
+        livePathHints: ["dishWasherUnloading", "peelingPeas"],
       },
       {
         title: "Surface Cleaning & Wiping",
@@ -392,7 +392,7 @@ export const CATEGORY_LANDING_CONTENT: Record<CatalogRouteKey, CategoryLandingCo
       { id: "all", label: "All Tasks", dotClassName: "bg-teal-600" },
       { id: "kitchen", label: "Kitchen Tasks", dotClassName: "bg-teal-400" },
       { id: "cleaning", label: "Cleaning & Hygiene", dotClassName: "bg-teal-500" },
-      { id: "household", label: "Household Ops", dotClassName: "bg-teal-700" },
+      { id: "household", label: "Household Operations", dotClassName: "bg-teal-700" },
     ],
     sections: [
       {
@@ -408,7 +408,7 @@ export const CATEGORY_LANDING_CONTENT: Record<CatalogRouteKey, CategoryLandingCo
             availability: "In Library",
             hours: "540 hrs",
             pathLabel: "humanoid/kitchen/foodPrep",
-            images: imageSet("humanoid/humanoid1.png", "humanoid/humanoid3.png", "humanoid/humanoid4.png", "humanoid/humanoid5.png"),
+            images: imageSet("humanoid/foodprep_1.png", "humanoid/foodprep_2.png", "humanoid/foodprep_3.png", "humanoid/foodprep_4.png"),
           },
           {
             title: "Appliance Operation",
@@ -417,7 +417,7 @@ export const CATEGORY_LANDING_CONTENT: Record<CatalogRouteKey, CategoryLandingCo
             availability: "In Library",
             hours: "490 hrs",
             pathLabel: "humanoid/kitchen/appliance",
-            images: imageSet("humanoid/humanoid5.png", "humanoid/humanoid3.png", "humanoid/humanoid1.png", "humanoid/humanoid4.png"),
+            images: imageSet("humanoid/Appliance_1.png", "humanoid/Appliance_2.png", "humanoid/Appliance_3.png", "humanoid/Appliance_4.png"),
           },
         ],
       },
@@ -459,7 +459,7 @@ export const CATEGORY_LANDING_CONTENT: Record<CatalogRouteKey, CategoryLandingCo
       },
       {
         id: "household",
-        title: "Household Ops",
+        title: "Household Operations",
         countLabel: "4 datasets",
         cards: [
           {
@@ -669,8 +669,7 @@ export const CATEGORY_LANDING_CONTENT: Record<CatalogRouteKey, CategoryLandingCo
       { id: "bmw", label: "BMW", dotClassName: "bg-violet-400" },
       { id: "ford", label: "Ford", dotClassName: "bg-violet-500" },
       { id: "toyota", label: "Toyota", dotClassName: "bg-violet-300" },
-      { id: "tesla", label: "Tesla", dotClassName: "bg-violet-700" },
-      { id: "audi", label: "Audi", dotClassName: "bg-violet-500" },
+      { id: "audi", label: "Audi", dotClassName: "bg-violet-700" },
       { id: "multi", label: "Multi-brand", dotClassName: "bg-violet-800" },
     ],
     sections: [
