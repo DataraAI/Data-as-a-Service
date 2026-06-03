@@ -1489,16 +1489,73 @@ class ProcessingService:
                     )
                 logger.info("Uploaded VIPE zip to blob: %s", vipe_zip_blob)
 
+            generated_at = datetime.now(timezone.utc).isoformat()
+            source_meta  = source["metadata"]
+
+            # Cosmos annotation for the Gen3C output video (metadata-only, not browseable)
+            gen3c_existing = self.azure_service.get_cosmos_doc_for_blob(
+                source_dataset["storage_container"], output_blob_name
+            ) or {}
+            self.azure_service.upsert_cosmos_item({
+                "id":              gen3c_existing.get("id", os.urandom(16).hex()),
+                "docType":         "gen3c_v2v_output",
+                "containerName":   source_dataset["storage_container"],
+                "datasetName":     source_dataset["storage_prefix"],
+                "datasetId":       source_dataset["id"],
+                "ownerUserId":     source_dataset["owner_user_id"],
+                "visibility":      source_dataset["visibility"],
+                "sourceDatasetId": source_dataset["id"],
+                "sourceBlobPath":  source_blob,
+                "view":            "gen3c",
+                "frameName":       os.path.basename(output_blob_name),
+                "blobPath":        output_blob_name,
+                "date":            source_meta.get("date", ""),
+                "frameId":         None,
+                "width":           source_meta.get("width"),
+                "height":          source_meta.get("height"),
+                "fps":             source_meta.get("fps"),
+                "frameCount":      source_meta.get("frameCount"),
+                "miscTags":        ["gen3c", "new_angle_video"],
+                "task":            source_meta.get("task", ""),
+                "sourceType":      "gen3c_output",
+                "generatedAt":     generated_at,
+            })
+
+            # Cosmos annotation for the VIPE zip (cache tracking)
+            vipe_existing = self.azure_service.get_cosmos_doc_for_blob(
+                source_dataset["storage_container"], vipe_zip_blob
+            ) or {}
+            self.azure_service.upsert_cosmos_item({
+                "id":              vipe_existing.get("id", os.urandom(16).hex()),
+                "docType":         "vipe",
+                "containerName":   source_dataset["storage_container"],
+                "datasetName":     source_dataset["storage_prefix"],
+                "datasetId":       source_dataset["id"],
+                "ownerUserId":     source_dataset["owner_user_id"],
+                "visibility":      source_dataset["visibility"],
+                "sourceDatasetId": source_dataset["id"],
+                "sourceBlobPath":  source_blob,
+                "view":            "vipe",
+                "frameName":       os.path.basename(vipe_zip_blob),
+                "blobPath":        vipe_zip_blob,
+                "date":            source_meta.get("date", ""),
+                "frameId":         None,
+                "miscTags":        ["gen3c", "vipe", "new_angle_video"],
+                "task":            source_meta.get("task", ""),
+                "sourceType":      "vipe_output",
+                "generatedAt":     generated_at,
+            })
+
             output_asset_id = self.dataset_service.encode_asset_id(source_dataset["id"], output_blob_name)
             v2v_result = {
                 "blob_name": output_blob_name,
                 "container": source_dataset["storage_container"],
-                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "generated_at": generated_at,
                 "proxy_url": f"/api/proxy/{output_asset_id}",
             }
 
             cosmos_doc = source["metadata"]
-            cosmos_doc["videoToVideoViews"] = v2v_result
+            cosmos_doc["NewAngleViews"] = v2v_result
             self.azure_service.upsert_cosmos_item(cosmos_doc)
 
             return {
