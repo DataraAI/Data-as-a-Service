@@ -1,5 +1,16 @@
-import { Download, Loader2, RefreshCw, Video } from "lucide-react";
+import { Loader2, Video } from "lucide-react";
 import { useState } from "react";
+
+type Trajectory = "up" | "down" | "left" | "right" | "zoom_in" | "zoom_out";
+
+const TRAJECTORY_OPTIONS: { value: Trajectory; label: string }[] = [
+    { value: "up", label: "Up" },
+    { value: "down", label: "Down" },
+    { value: "left", label: "Left" },
+    { value: "right", label: "Right" },
+    { value: "zoom_in", label: "Zoom In" },
+    { value: "zoom_out", label: "Zoom Out" },
+];
 
 interface VideoToVideoViewsPanelProps {
     assetId?: string;
@@ -20,6 +31,7 @@ export default function VideoToVideoViewsPanel({
         null,
     );
     const [cached, setCached] = useState(false);
+    const [trajectory, setTrajectory] = useState<Trajectory>("left");
 
     const generateViews = async () => {
         setLoading(true);
@@ -34,6 +46,7 @@ export default function VideoToVideoViewsPanel({
                     videoID,
                     videoURL,
                     datasetName,
+                    trajectory,
                 }),
             });
 
@@ -79,6 +92,27 @@ export default function VideoToVideoViewsPanel({
                         Generate alternative video perspectives using our
                         multiview synthesis technology.
                     </p>
+
+                    {/* Trajectory selector */}
+                    <div className="flex flex-col gap-1">
+                        <label className="font-sans-tech text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                            Trajectory
+                        </label>
+                        <select
+                            value={trajectory}
+                            onChange={(e) =>
+                                setTrajectory(e.target.value as Trajectory)
+                            }
+                            className="rounded-sm border border-border bg-card px-3 py-1.5 font-sans-tech text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                        >
+                            {TRAJECTORY_OPTIONS.map((opt) => (
+                                <option key={opt.value} value={opt.value}>
+                                    {opt.label}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
                     <button
                         type="button"
                         onClick={generateViews}
@@ -119,7 +153,7 @@ export default function VideoToVideoViewsPanel({
             {/* Success: generated video player */}
             {generatedVideoUrl && !loading && (
                 <div className="space-y-3">
-                    <video
+                    {/* <video
                         key={generatedVideoUrl}
                         src={generatedVideoUrl}
                         controls
@@ -137,7 +171,7 @@ export default function VideoToVideoViewsPanel({
                         <div className="flex items-center gap-2">
                             <a
                                 href={generatedVideoUrl}
-                                download="generated.mp4" // Generated Video, change name into something more descriptive later.
+                                download={`generated_${trajectory}.mp4`}
                                 className="inline-flex items-center gap-1 rounded-sm border border-primary/30 bg-primary/10 px-2 py-1 font-sans-tech text-[11px] font-semibold uppercase tracking-wider text-primary transition-colors hover:bg-primary/20"
                             >
                                 <Download className="h-3 w-3" />
@@ -152,6 +186,9 @@ export default function VideoToVideoViewsPanel({
                                 Regenerate
                             </button>
                         </div>
+                    </div> */}
+                    <div className="rounded-sm border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">
+                        <p>Success!</p>
                     </div>
                 </div>
             )}
