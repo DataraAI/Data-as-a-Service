@@ -1436,7 +1436,7 @@ class ProcessingService:
 
         # Check whether a cached VIPE zip already exists in blob storage for this asset.
         # If found, pass its SAS URL to the lambda so VIPE can be skipped.
-        vipe_zip_blob = f"{source_dataset['storage_prefix'].rstrip('/')}/lyra_v2v/{video_name}_vipe_output.zip"
+        vipe_zip_blob = f"{source_dataset['storage_prefix'].rstrip('/')}/new_angle_videos/{video_name}_vipe_output.zip"
         vipe_zip_url = None
         try:
             self.azure_service.get_container_client(
@@ -1452,7 +1452,7 @@ class ProcessingService:
             logger.info("No cached VIPE zip found for asset: %s — will run VIPE fresh", source_blob)
 
         job_root = tempfile.mkdtemp(prefix="lyra_v2v_job_", dir=DATASET_LIST_DIR)
-        local_output_video = os.path.join(job_root, f"{video_name}_direction_range.mp4") # later change form {direction} and {range} as custom script is not yet ready
+        local_output_video = os.path.join(job_root, f"{video_name}_direction_range.mp4") 
 
         try:
             from datara.services import call_lambda_vm
@@ -1467,7 +1467,7 @@ class ProcessingService:
             if status_code != 200 or not result_path:
                 return {"error": "Failed to generate video-to-video views on the Lambda VM."}, status_code or 500
 
-            output_blob_name = f"{source_dataset['storage_prefix'].rstrip('/')}/lyra_v2v/{video_name}_gen3c_output.mp4"
+            output_blob_name = f"{source_dataset['storage_prefix'].rstrip('/')}/new_angle_videos/{video_name}_generated.mp4" # later change form {direction} and {range} as custom script is not yet ready
             container_client = self.azure_service.get_container_client(source_dataset["storage_container"])
             with open(local_output_video, "rb") as fh:
                 container_client.upload_blob(

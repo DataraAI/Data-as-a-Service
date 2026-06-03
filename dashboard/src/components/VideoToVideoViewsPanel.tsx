@@ -116,7 +116,7 @@ export default function VideoToVideoViewsPanel({
                 </div>
             )}
 
-            {/* Success: generated video player; Please note, I have no idea if this will work or not.*/}
+            {/* Success: generated video player */}
             {generatedVideoUrl && !loading && (
                 <div className="space-y-3">
                     <video
@@ -137,7 +137,7 @@ export default function VideoToVideoViewsPanel({
                         <div className="flex items-center gap-2">
                             <a
                                 href={generatedVideoUrl}
-                                download="lyra_generated.mp4"
+                                download="generated.mp4" // Generated Video, change name into something more descriptive later.
                                 className="inline-flex items-center gap-1 rounded-sm border border-primary/30 bg-primary/10 px-2 py-1 font-sans-tech text-[11px] font-semibold uppercase tracking-wider text-primary transition-colors hover:bg-primary/20"
                             >
                                 <Download className="h-3 w-3" />
