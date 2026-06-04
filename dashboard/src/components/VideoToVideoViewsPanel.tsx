@@ -187,8 +187,8 @@ export default function VideoToVideoViewsPanel({
                             </button>
                         </div>
                     </div> */}
-                    <div className="rounded-sm border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">
-                        <p>Success!</p>
+                    <div className="rounded-sm border border-green-500/30 bg-green-500/10 px-4 py-3 text-xs font-bold text-green-500">
+                        ✓ Success!
                     </div>
                 </div>
             )}
