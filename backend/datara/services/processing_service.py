@@ -12,6 +12,7 @@ import sys
 import tempfile
 from datetime import datetime, timezone
 from typing import Any
+from urllib.parse import urlparse
 
 import cv2
 import gdown
@@ -1540,37 +1541,109 @@ class ProcessingService:
         )
         return blob_name
 
+    def _resolve_hand_mesh_video_url(self, video_url: str, current_user: dict[str, Any]) -> str:
+        video_url = str(video_url or "").strip()
+        if not video_url:
+            raise ValueError("Missing video_url")
+
+        if video_url.startswith("/api/proxy/"):
+            asset_id = video_url.split("/api/proxy/", 1)[1].split("?", 1)[0].strip()
+            source = self._resolve_source_asset(current_user, asset_id)
+            return self.azure_service.generate_sas_url(
+                source["dataset"]["storage_container"],
+                source["blob_name"],
+                expiry_hours=2,
+            )
+
+        if video_url.startswith("/"):
+            raise ValueError("video_url must be an absolute URL")
+
+        parsed = urlparse(video_url)
+        if parsed.scheme not in ("http", "https"):
+            raise ValueError("video_url must use http or https")
+        return video_url
+
+    def _viewer_route_path_for_blob(
+        self,
+        dataset: dict[str, Any],
+        blob_name: str,
+        current_user: dict[str, Any],
+    ) -> str:
+        summary = self.sql_store.build_dataset_summary(dataset, current_user)
+        base_path = summary["full_path"].rstrip("/")
+        prefix = dataset["storage_prefix"].rstrip("/")
+        normalised_blob = blob_name.strip("/")
+        if not normalised_blob.startswith(f"{prefix}/") and normalised_blob != prefix:
+            return base_path
+
+        relative = normalised_blob[len(prefix) :].lstrip("/")
+        parent = os.path.dirname(relative)
+        if not parent:
+            return base_path
+        return f"{base_path}/{parent}".replace("\\", "/")
+
     def generate_hand_mesh(self, current_user: dict[str, Any], data: dict[str, Any]) -> tuple[dict[str, Any], int]:
         pipeline = str(data.get("pipeline") or "default").strip() or "default"
-        source = self._resolve_source_asset(current_user, str(data.get("asset_id") or ""))
-        source_dataset = source["dataset"]
-        source_blob = source["blob_name"]
+        video_url = str(data.get("video_url") or "").strip()
+        route_path = str(data.get("route_path") or "").strip().strip("/")
+        asset_id = str(data.get("asset_id") or "").strip()
+        source_asset_id = asset_id
 
-        if not any(source_blob.lower().endswith(ext) for ext in (".mp4", ".mov", ".m4v", ".webm")):
-            return {"error": "Hand mesh generation can only be run on video assets."}, 400
+        if not video_url and not asset_id:
+            return {"error": "Missing video_url or asset_id"}, 400
 
+        try:
+            if asset_id and not video_url:
+                source = self._resolve_source_asset(current_user, asset_id)
+                source_dataset = source["dataset"]
+                source_blob = source["blob_name"]
+                if not any(source_blob.lower().endswith(ext) for ext in (".mp4", ".mov", ".m4v", ".webm")):
+                    return {"error": "Hand mesh generation can only be run on video assets."}, 400
+
+                effective_video_url = self.azure_service.generate_sas_url(
+                    source_dataset["storage_container"],
+                    source_blob,
+                    expiry_hours=2,
+                )
+                dataset = source_dataset
+                if not route_path:
+                    route_path = self._viewer_route_path_for_blob(dataset, source_blob, current_user)
+                video_basename = os.path.basename(source_blob)
+            else:
+                effective_video_url = self._resolve_hand_mesh_video_url(video_url, current_user)
+                if video_url.startswith("/api/proxy/"):
+                    proxy_asset_id = video_url.split("/api/proxy/", 1)[1].split("?", 1)[0].strip()
+                    if proxy_asset_id:
+                        source_asset_id = proxy_asset_id
+                dataset, _extra_segments = self.sql_store.resolve_dataset_route(route_path, current_user)
+                parsed_video_path = urlparse(effective_video_url).path
+                video_basename = os.path.basename(parsed_video_path)
+
+            self.sql_store.assert_user_can_access_dataset(dataset, current_user)
+        except (ValueError, PermissionError, FileNotFoundError) as exc:
+            return {"error": str(exc)}, 400 if isinstance(exc, ValueError) else 403
+
+        if not route_path:
+            return {"error": "Missing route_path"}, 400
+
+        if not any(video_basename.lower().endswith(ext) for ext in (".mp4", ".mov", ".m4v", ".webm")):
+            return {"error": "Hand mesh generation requires a direct video URL"}, 400
         seq_slug = self._slugify_sequence_name(
-            str(data.get("seq") or os.path.splitext(os.path.basename(source_blob))[0])
+            str(data.get("seq") or os.path.splitext(video_basename)[0])
         )
-        dataset_summary = self.sql_store.build_dataset_summary(source_dataset, current_user)
+        dataset_summary = self.sql_store.build_dataset_summary(dataset, current_user)
         output_route_path = f"{dataset_summary['full_path'].rstrip('/')}/hand_mesh/{seq_slug}"
-        output_storage_prefix = f"{source_dataset['storage_prefix'].rstrip('/')}/hand_mesh/{seq_slug}"
-        source_task = str(source["metadata"].get("task") or source_dataset.get("task") or "").strip()
+        output_storage_prefix = f"{dataset['storage_prefix'].rstrip('/')}/hand_mesh/{seq_slug}"
+        source_task = str(dataset.get("task") or "").strip()
 
         job_root = tempfile.mkdtemp(prefix="hand_mesh_job_", dir=DATASET_LIST_DIR)
-        source_extension = os.path.splitext(source_blob)[1] or ".mp4"
-        local_source_video = os.path.join(job_root, f"source{source_extension}")
         local_output_dir = os.path.join(job_root, "outputs")
 
         try:
-            download = self.azure_service.download_blob(source_dataset["storage_container"], source_blob)
-            with open(local_source_video, "wb") as handle:
-                handle.write(download.readall())
-
             from datara.services import call_lambda_vm
 
             local_video_paths, local_artifact_paths, status_code, error_message = call_lambda_vm.generate_hand_mesh(
-                local_input_video=local_source_video,
+                video_url=effective_video_url,
                 seq_name=seq_slug,
                 pipeline=pipeline,
                 local_output_dir=local_output_dir,
@@ -1579,11 +1652,11 @@ class ProcessingService:
                 return {"error": error_message or "Hand mesh generation failed"}, status_code or 500
 
             self.azure_service.delete_blobs_with_prefix(
-                source_dataset["storage_container"],
+                dataset["storage_container"],
                 output_storage_prefix,
             )
             self.azure_service.delete_cosmos_docs_for_prefix(
-                source_dataset["storage_container"],
+                dataset["storage_container"],
                 output_storage_prefix,
             )
 
@@ -1591,23 +1664,23 @@ class ProcessingService:
             uploaded_artifacts: list[str] = []
             for local_video_path in local_video_paths:
                 blob_name = self._upload_hand_mesh_video(
-                    dataset=source_dataset,
+                    dataset=dataset,
                     output_prefix=output_storage_prefix,
                     local_video_path=local_video_path,
                     source_task=source_task,
                     seq_slug=seq_slug,
-                    source_asset_id=str(data.get("asset_id") or ""),
+                    source_asset_id=source_asset_id,
                 )
                 uploaded_videos.append(os.path.basename(blob_name))
 
             for local_artifact_path in local_artifact_paths:
                 blob_name = self._upload_hand_mesh_artifact(
-                    dataset=source_dataset,
+                    dataset=dataset,
                     output_prefix=output_storage_prefix,
                     local_file_path=local_artifact_path,
                     source_task=source_task,
                     seq_slug=seq_slug,
-                    source_asset_id=str(data.get("asset_id") or ""),
+                    source_asset_id=source_asset_id,
                 )
                 uploaded_artifacts.append(os.path.basename(blob_name))
         except Exception as exc:

@@ -6,6 +6,8 @@ import stat
 import uuid
 from contextlib import contextmanager
 from pathlib import Path
+from urllib.parse import urlparse
+from urllib.request import Request, urlopen
 
 import paramiko
 
@@ -45,7 +47,9 @@ SAAS_HOST = os.getenv("SAAS_HOST") or _legacy_saas_attr("HOST")
 SAAS_USER = os.getenv("SAAS_USER") or _legacy_saas_attr("USER") or "ubuntu"
 
 def _resolve_key_path():
-    return os.path.expanduser("~/.ssh/azure_to_lambda")
+    return os.path.join(os.path.expanduser("~"), ".ssh", "azure_to_lambda")
+    # return os.path.expanduser("~/.ssh/azure_to_lambda")
+    # "C:\Users\valer\.ssh\azure_to_lambda"
 
 SAAS_KEY_PATH = _resolve_key_path()
 SAAS_PYTHON_BIN = os.getenv("SAAS_PYTHON_BIN") or _legacy_saas_attr("PYTHON_BIN") or "python"
@@ -93,7 +97,8 @@ REMOTE_DYN_HAMR_ROOT = os.getenv("SAAS_DYN_HAMR_ROOT") or f"{REMOTE_USER_HOME}/p
 DEFAULT_VIPE_PYTHON_BIN = f"/home/{SAAS_USER}/miniconda3/envs/vipe/bin/python"
 SAAS_VIPE_PYTHON_BIN = os.getenv("SAAS_VIPE_PYTHON_BIN") or DEFAULT_VIPE_PYTHON_BIN
 REMOTE_VIPE_RUNNER_SCRIPT = (
-    os.getenv("SAAS_VIPE_RUNNER_SCRIPT")
+    f"/home/ubuntu/Software-as-a-Service/run_vipe_dynhamr.py"
+    or os.getenv("SAAS_VIPE_RUNNER_SCRIPT")
     or posixpath.join(REMOTE_DYN_HAMR_ROOT, "run_vipe_dynhamr.py")
 )
 REMOTE_DYN_HAMR_OUTPUT_DIR = os.getenv("SAAS_DYN_HAMR_OUTPUT_DIR") or posixpath.join(
@@ -404,7 +409,7 @@ def generate_masks(*, prompt, local_input_dir, local_output_dir):
 
     job_id = uuid.uuid4().hex[:12]
     remote_root = f"/home/{SAAS_USER}/datara_mask_jobs/{job_id}"
-    remote_input_dir = posixpath.join(remote_root, "input")
+    remote_input_dir = posixpath.join(remote_root, "videos")
     remote_output_root = posixpath.join(remote_root, "output")
 
     try:
@@ -774,17 +779,211 @@ def _partition_hand_mesh_outputs(remote_paths: list[str]) -> tuple[list[str], li
     return videos, artifacts
 
 
-def generate_hand_mesh(*, local_input_video, seq_name, pipeline="default", local_output_dir):
+def _download_video_from_url(video_url: str, destination_path: str) -> None:
+    parsed = urlparse(video_url.strip())
+    if parsed.scheme not in ("http", "https"):
+        raise ValueError("video_url must be an http or https URL")
+    if not parsed.netloc:
+        raise ValueError("video_url is missing a host")
+
+    os.makedirs(os.path.dirname(destination_path), exist_ok=True)
+    request = Request(video_url.strip(), headers={"User-Agent": "datara-hand-mesh/1.0"})
+    with urlopen(request, timeout=600) as response:
+        with open(destination_path, "wb") as handle:
+            while True:
+                chunk = response.read(1024 * 1024)
+                if not chunk:
+                    break
+                handle.write(chunk)
+
+    if not os.path.isfile(destination_path) or os.path.getsize(destination_path) == 0:
+        raise ValueError("Downloaded video file is empty")
+
+
+# def generate_hand_mesh(
+#     *,
+#     video_url=None,
+#     local_input_video=None,
+#     seq_name,
+#     pipeline="default",
+#     local_output_dir,
+# ):
+#     """
+#     Download the source video (when video_url is provided), upload it to the SaaS VM,
+#     run run_vipe_dynhamr.py inside the vipe conda env, and download generated outputs
+#     from the run folder under REMOTE_DYN_HAMR_OUTPUT_DIR
+#     (default: Dyn-HaMR/output/logs/video-custom/{YYYY-MM-DD}/{custom_name}/).
+#     Returns (local_video_paths, local_artifact_paths, status_code, error_message).
+#     """
+#     if not seq_name:
+#         return [], [], 400, "Missing sequence name"
+
+#     os.makedirs(local_output_dir, exist_ok=True)
+#     local_videos_dir = os.path.join(local_output_dir, "videos")
+#     local_artifacts_dir = os.path.join(local_output_dir, "artifacts")
+#     os.makedirs(local_videos_dir, exist_ok=True)
+#     os.makedirs(local_artifacts_dir, exist_ok=True)
+
+#     job_id = uuid.uuid4().hex[:12]
+#     remote_root = f"/home/{SAAS_USER}/datara_hand_mesh_jobs/{job_id}"
+#     remote_input_dir = posixpath.join(remote_root, "input")
+#     job_marker = posixpath.join(remote_root, ".job_started")
+#     staged_input_video = local_input_video
+
+#     try:
+#         if video_url and not (staged_input_video and os.path.isfile(staged_input_video)):
+#             parsed = urlparse(video_url.strip())
+#             extension = os.path.splitext(parsed.path)[1].lower()
+#             if extension not in (".mp4", ".mov", ".m4v", ".webm"):
+#                 extension = ".mp4"
+#             staged_input_video = os.path.join(local_output_dir, f"source{extension}")
+#             _download_video_from_url(video_url, staged_input_video)
+
+#         if not staged_input_video or not os.path.isfile(staged_input_video):
+#             return [], [], 400, "Source video is missing"
+
+#         remote_input_video = posixpath.join(remote_input_dir, os.path.basename(staged_input_video))
+#         safe_seq = _shell_escape(seq_name)
+#         safe_pipeline = _shell_escape(pipeline or "default")
+
+#         with _ssh_session() as ssh_client:
+#             runner_found, runner_err = _run_command(
+#                 ssh_client,
+#                 f'test -f "{_shell_escape(REMOTE_VIPE_RUNNER_SCRIPT)}" && echo "__FOUND__"',
+#             )
+#             if "__FOUND__" not in runner_found:
+#                 logger.error(
+#                     "Remote run_vipe_dynhamr.py was not found at %s | stderr=%s",
+#                     REMOTE_VIPE_RUNNER_SCRIPT,
+#                     runner_err,
+#                 )
+#                 return [], [], 500, "VIPE hand mesh runner script was not found on the SaaS VM"
+
+#             _run_command(ssh_client, f'mkdir -p "{_shell_escape(remote_input_dir)}"')
+
+#             sftp = ssh_client.open_sftp()
+#             try:
+#                 _sftp_put_tree(sftp, staged_input_video, remote_input_video)
+#             finally:
+#                 sftp.close()
+#             _run_command(ssh_client, f'touch "{_shell_escape(job_marker)}"')
+
+#             runner_script = (
+#                 f'cd "{_shell_escape(REMOTE_DYN_HAMR_ROOT)}" && '
+#                 f'export PYTHONNOUSERSITE=1 && '
+#                 f'"{_shell_escape(SAAS_VIPE_PYTHON_BIN)}" "{_shell_escape(REMOTE_VIPE_RUNNER_SCRIPT)}" '
+#                 f'--video "{_shell_escape(remote_input_video)}" '
+#                 f'--seq "{safe_seq}" '
+#                 f'--pipeline "{safe_pipeline}"'
+#             )
+#             stdout, stderr, runner_status = _run_bash_script(ssh_client, runner_script)
+#             if runner_status != 0:
+#                 logger.error("VIPE hand mesh runner failed: %s", stderr or stdout)
+#                 _run_command(ssh_client, f'rm -rf "{_shell_escape(remote_root)}"')
+#                 return [], [], 500, stderr or stdout or "Hand mesh generation failed on the SaaS VM"
+
+#             run_output_dir = _hand_mesh_run_dir_from_stdout(stdout, seq_name)
+#             if not run_output_dir:
+#                 run_output_dir = _discover_hand_mesh_run_output_dir(ssh_client, seq_name, job_marker)
+
+#             search_roots: list[str] = []
+#             if run_output_dir:
+#                 search_roots.append(run_output_dir)
+#                 logger.info("Resolved hand mesh run output directory: %s", run_output_dir)
+#             search_roots.append(REMOTE_DYN_HAMR_OUTPUT_DIR)
+
+#             remote_outputs: list[str] = []
+#             seen_outputs: set[str] = set()
+#             for search_root in search_roots:
+#                 newer_than = None if search_root == run_output_dir else job_marker
+#                 for candidate in _discover_remote_files(
+#                     ssh_client,
+#                     search_root,
+#                     newer_than_path=newer_than,
+#                 ):
+#                     if candidate not in seen_outputs:
+#                         seen_outputs.add(candidate)
+#                         remote_outputs.append(candidate)
+#                 if remote_outputs and search_root == run_output_dir:
+#                     break
+
+#             for line in reversed(stdout.splitlines()):
+#                 candidate = line.strip()
+#                 if candidate and candidate not in seen_outputs:
+#                     seen_outputs.add(candidate)
+#                     remote_outputs.append(candidate)
+
+#             remote_videos, remote_artifacts = _partition_hand_mesh_outputs(remote_outputs)
+#             if not remote_videos and not remote_artifacts:
+#                 logger.error(
+#                     "VIPE completed without outputs under %s (run dir=%s): stdout=%s stderr=%s",
+#                     REMOTE_DYN_HAMR_OUTPUT_DIR,
+#                     run_output_dir or "unknown",
+#                     stdout,
+#                     stderr,
+#                 )
+#                 _run_command(ssh_client, f'rm -rf "{_shell_escape(remote_root)}"')
+#                 return (
+#                     [],
+#                     [],
+#                     500,
+#                     "Hand mesh pipeline completed without outputs in the expected run folder",
+#                 )
+
+#             local_video_paths: list[str] = []
+#             local_artifact_paths: list[str] = []
+#             sftp = ssh_client.open_sftp()
+#             try:
+#                 for index, remote_video_path in enumerate(remote_videos):
+#                     filename = os.path.basename(remote_video_path) or f"hand_mesh_{index + 1}.mp4"
+#                     local_path = os.path.join(local_videos_dir, filename)
+#                     if os.path.exists(local_path):
+#                         stem, ext = os.path.splitext(filename)
+#                         local_path = os.path.join(local_videos_dir, f"{stem}_{index + 1}{ext or '.mp4'}")
+#                     sftp.get(remote_video_path, local_path)
+#                     if os.path.isfile(local_path):
+#                         local_video_paths.append(local_path)
+
+#                 for index, remote_artifact_path in enumerate(remote_artifacts):
+#                     filename = os.path.basename(remote_artifact_path) or f"artifact_{index + 1}"
+#                     local_path = os.path.join(local_artifacts_dir, filename)
+#                     if os.path.exists(local_path):
+#                         stem, ext = os.path.splitext(filename)
+#                         local_path = os.path.join(
+#                             local_artifacts_dir,
+#                             f"{stem}_{index + 1}{ext or ''}",
+#                         )
+#                     sftp.get(remote_artifact_path, local_path)
+#                     if os.path.isfile(local_path):
+#                         local_artifact_paths.append(local_path)
+#             finally:
+#                 sftp.close()
+
+#             _run_command(ssh_client, f'rm -rf "{_shell_escape(remote_root)}"')
+#             if local_video_paths or local_artifact_paths:
+#                 return local_video_paths, local_artifact_paths, 200, ""
+#             return [], [], 500, "Hand mesh outputs could not be downloaded"
+#     except Exception as exc:
+#         logger.error("generate_hand_mesh error: %s", exc, exc_info=True)
+#         return [], [], 500, str(exc)
+
+def generate_hand_mesh(
+    *,
+    video_url,
+    seq_name,
+    pipeline="default",
+    local_output_dir,
+):
     """
-    Upload a source video to the SaaS VM, run run_vipe_dynhamr.py inside the vipe conda env,
-    and download generated outputs from the run folder under REMOTE_DYN_HAMR_OUTPUT_DIR
-    (default: Dyn-HaMR/output/logs/video-custom/{YYYY-MM-DD}/{custom_name}/).
+    Pass the video URL directly to the SaaS VM so it handles downloading.
+    Runs run_vipe_dynhamr.py inside the vipe conda env and downloads generated
+    outputs from the run folder under REMOTE_DYN_HAMR_OUTPUT_DIR.
     Returns (local_video_paths, local_artifact_paths, status_code, error_message).
     """
-    if not local_input_video or not os.path.isfile(local_input_video):
-        return [], [], 400, "Source video is missing"
     if not seq_name:
         return [], [], 400, "Missing sequence name"
+    if not video_url:
+        return [], [], 400, "Missing video URL"
 
     os.makedirs(local_output_dir, exist_ok=True)
     local_videos_dir = os.path.join(local_output_dir, "videos")
@@ -794,15 +993,15 @@ def generate_hand_mesh(*, local_input_video, seq_name, pipeline="default", local
 
     job_id = uuid.uuid4().hex[:12]
     remote_root = f"/home/{SAAS_USER}/datara_hand_mesh_jobs/{job_id}"
-    remote_input_dir = posixpath.join(remote_root, "input")
-    remote_input_video = posixpath.join(remote_input_dir, os.path.basename(local_input_video))
     job_marker = posixpath.join(remote_root, ".job_started")
 
     safe_seq = _shell_escape(seq_name)
     safe_pipeline = _shell_escape(pipeline or "default")
+    safe_url = _shell_escape(video_url.strip())
 
     try:
         with _ssh_session() as ssh_client:
+            
             runner_found, runner_err = _run_command(
                 ssh_client,
                 f'test -f "{_shell_escape(REMOTE_VIPE_RUNNER_SCRIPT)}" && echo "__FOUND__"',
@@ -815,22 +1014,16 @@ def generate_hand_mesh(*, local_input_video, seq_name, pipeline="default", local
                 )
                 return [], [], 500, "VIPE hand mesh runner script was not found on the SaaS VM"
 
-            sftp = ssh_client.open_sftp()
-            try:
-                _sftp_put_tree(sftp, local_input_video, remote_input_video)
-            finally:
-                sftp.close()
-
-            _run_command(ssh_client, f'mkdir -p "{_shell_escape(remote_input_dir)}"')
+            _run_command(ssh_client, f'mkdir -p "{_shell_escape(remote_root)}"')
             _run_command(ssh_client, f'touch "{_shell_escape(job_marker)}"')
 
             runner_script = (
                 f'cd "{_shell_escape(REMOTE_DYN_HAMR_ROOT)}" && '
                 f'export PYTHONNOUSERSITE=1 && '
                 f'"{_shell_escape(SAAS_VIPE_PYTHON_BIN)}" "{_shell_escape(REMOTE_VIPE_RUNNER_SCRIPT)}" '
-                f'--video "{_shell_escape(remote_input_video)}" '
+                f'--video-url "{safe_url}" '
                 f'--seq "{safe_seq}" '
-                f'--pipeline "{safe_pipeline}"'
+                f'--pipeline "{safe_pipeline}" > /dev/null'
             )
             stdout, stderr, runner_status = _run_bash_script(ssh_client, runner_script)
             if runner_status != 0:
@@ -896,6 +1089,7 @@ def generate_hand_mesh(*, local_input_video, seq_name, pipeline="default", local
                     if os.path.exists(local_path):
                         stem, ext = os.path.splitext(filename)
                         local_path = os.path.join(local_videos_dir, f"{stem}_{index + 1}{ext or '.mp4'}")
+                    print("hello world")
                     sftp.get(remote_video_path, local_path)
                     if os.path.isfile(local_path):
                         local_video_paths.append(local_path)
@@ -919,10 +1113,10 @@ def generate_hand_mesh(*, local_input_video, seq_name, pipeline="default", local
             if local_video_paths or local_artifact_paths:
                 return local_video_paths, local_artifact_paths, 200, ""
             return [], [], 500, "Hand mesh outputs could not be downloaded"
+
     except Exception as exc:
         logger.error("generate_hand_mesh error: %s", exc, exc_info=True)
         return [], [], 500, str(exc)
-
 
 def generate_task_intelligence(video_url: str):
     """

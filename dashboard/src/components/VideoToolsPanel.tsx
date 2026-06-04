@@ -94,6 +94,8 @@ export function VideoToolsPanel({
             <HandMeshGenerationPanel
               key={`${selectedVideo.asset_id}-hand`}
               assetId={selectedVideo.asset_id}
+              videoUrl={selectedVideo.url || selectedVideo.proxy_url || ""}
+              routePath={routePath}
               videoName={selectedVideo.name}
               onGenerated={(viewerPath) => {
                 onGenerationSuccess?.();

@@ -431,8 +431,10 @@ def register_routes(app: Flask) -> None:
         if not data:
             return jsonify({"error": "Invalid JSON body"}), 400
 
-        if not data.get("asset_id"):
-            return jsonify({"error": "Missing 'asset_id' in request body"}), 400
+        if not data.get("video_url") and not data.get("asset_id"):
+            return jsonify({"error": "Missing 'video_url' or 'asset_id' in request body"}), 400
+        if not data.get("route_path") and not data.get("asset_id"):
+            return jsonify({"error": "Missing 'route_path' in request body"}), 400
 
         payload, status_code = processing_service.generate_hand_mesh(current_user, data)
         return jsonify(payload), status_code

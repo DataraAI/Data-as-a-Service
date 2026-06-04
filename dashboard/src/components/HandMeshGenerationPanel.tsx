@@ -4,12 +4,16 @@ import { useState } from "react";
 
 interface HandMeshGenerationPanelProps {
   assetId: string;
+  videoUrl: string;
+  routePath: string;
   videoName: string;
   onGenerated?: (outputViewerPath: string) => void;
 }
 
 export function HandMeshGenerationPanel({
   assetId,
+  videoUrl,
+  routePath,
   videoName,
   onGenerated,
 }: HandMeshGenerationPanelProps) {
@@ -18,6 +22,11 @@ export function HandMeshGenerationPanel({
   const [lastOutputPath, setLastOutputPath] = useState<string | null>(null);
 
   const generateHandMesh = async () => {
+    if (!videoUrl.trim()) {
+      setError("No video URL is available for this asset.");
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -26,7 +35,11 @@ export function HandMeshGenerationPanel({
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ asset_id: assetId }),
+        body: JSON.stringify({
+          video_url: videoUrl,
+          route_path: routePath,
+          asset_id: assetId,
+        }),
       });
 
       const result = await response.json().catch(() => ({}));
@@ -88,7 +101,7 @@ export function HandMeshGenerationPanel({
       <button
         type="button"
         onClick={generateHandMesh}
-        disabled={loading}
+        disabled={loading || !videoUrl.trim()}
         className="flex w-full items-center justify-center gap-2 rounded-sm bg-primary px-6 py-2 text-xs font-bold uppercase text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:opacity-90 disabled:opacity-50"
       >
         {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
