@@ -490,13 +490,13 @@ function AvailabilityPill({ value }: { value: TransformCard["availability"] }) {
 function Pipe({ detail }: { detail: string }) {
   return (
     <div className="hidden items-center lg:flex">
-      <div className="mx-4 flex w-[92px] flex-col items-center">
+      <div className="mx-4 flex w-[118px] flex-col items-center">
         <div className="mb-2 h-6 w-px bg-slate-200 dark:bg-slate-700" />
-        <div className="w-full rounded-[16px] border-[1.5px] border-violet-300 bg-white px-4 py-4 text-center shadow-[0_8px_20px_rgba(124,58,237,0.06)] dark:border-violet-800/60 dark:bg-slate-900">
+        <div className="w-full rounded-[16px] border-[1.5px] border-violet-300 bg-white px-2 py-4 text-center shadow-[0_8px_20px_rgba(124,58,237,0.06)] dark:border-violet-800/60 dark:bg-slate-900">
           <div className="mx-auto mb-2 grid h-10 w-10 place-items-center rounded-[10px] border border-violet-300 bg-violet-100 text-violet-700 dark:border-violet-800 dark:bg-violet-950/50 dark:text-violet-200">
             <Hand className="h-4 w-4" />
           </div>
-          <p className="mb-0.5 text-[8px] font-extrabold uppercase tracking-[0.14em] text-violet-700 dark:text-violet-200">
+          <p className="mb-0.5 text-[8px] font-extrabold uppercase tracking-[0.05em] text-violet-700 dark:text-violet-200">
             RoboHandMotion
           </p>
           <p className="mb-1 text-[12px] font-extrabold text-slate-950 dark:text-slate-100">Engine</p>
