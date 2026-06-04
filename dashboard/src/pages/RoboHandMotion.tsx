@@ -130,7 +130,7 @@ const HOUSEHOLD_DATASETS: GalleryCard[] = [
   {
     title: "Surface & Floor Cleaning",
     description: "Sweeping, scrubbing motions — 3 tool types",
-    image: "humanoid/humanoid1.png",
+    image: "humanoid/stovetop.png",
     tags: [
       { label: "Arm Trajectory", tone: "purple" },
       { label: "Tool Grip", tone: "teal" },
@@ -140,7 +140,7 @@ const HOUSEHOLD_DATASETS: GalleryCard[] = [
   {
     title: "Dishwasher Loading",
     description: "Object placement, rack navigation, door operation",
-    image: "humanoid/humanoid2.png",
+    image: "humanoid/dishawasherload.png",
     tags: [
       { label: "Bimanual Grasp", tone: "purple" },
       { label: "Object Place", tone: "orange" },
@@ -150,7 +150,7 @@ const HOUSEHOLD_DATASETS: GalleryCard[] = [
   {
     title: "Hand Dish Washing",
     description: "Scrub, rinse, transfer — wet object sequences",
-    image: "humanoid/humanoid3.png",
+    image: "humanoid/dishwashing.png",
     tags: [
       { label: "Wet Grasp", tone: "purple" },
       { label: "Force Est.", tone: "teal" },
@@ -160,7 +160,7 @@ const HOUSEHOLD_DATASETS: GalleryCard[] = [
   {
     title: "Trash Collection & Sorting",
     description: "Pick, bag, and bin — varied object sizes & weights",
-    image: "humanoid/humanoid4.png",
+    image: "humanoid/trash_1.png",
     tags: [
       { label: "Lift & Place", tone: "purple" },
       { label: "Sort Logic", tone: "blue" },
@@ -170,7 +170,7 @@ const HOUSEHOLD_DATASETS: GalleryCard[] = [
   {
     title: "Laundry — Washer Operation",
     description: "Load, sort, and transfer fabric items",
-    image: "humanoid/humanoid5.png",
+    image: "humanoid/humanoid6.png",
     tags: [
       { label: "Deformable Obj.", tone: "purple" },
       { label: "Bimanual", tone: "orange" },
@@ -180,7 +180,7 @@ const HOUSEHOLD_DATASETS: GalleryCard[] = [
   {
     title: "Laundry — Fold & Transfer",
     description: "Garment folding, hang, and drawer placement",
-    image: "humanoid/humanoid5.png",
+    image: "humanoid/laundryfold.png",
     tags: [
       { label: "Deformable Obj.", tone: "purple" },
       { label: "Bimanual", tone: "orange" },
