@@ -665,12 +665,12 @@ export const CATEGORY_LANDING_CONTENT: Record<CatalogRouteKey, CategoryLandingCo
       { value: "10 types", label: "Operation Classes" },
     ],
     filters: [
-      { id: "all", label: "All Brands", dotClassName: "bg-violet-600" },
-      { id: "bmw", label: "BMW", dotClassName: "bg-violet-400" },
-      { id: "ford", label: "Ford", dotClassName: "bg-violet-500" },
-      { id: "toyota", label: "Toyota", dotClassName: "bg-violet-300" },
-      { id: "audi", label: "Audi", dotClassName: "bg-violet-700" },
-      { id: "multi", label: "Multi-brand", dotClassName: "bg-violet-800" },
+      { id: "all", label: "All Tasks", dotClassName: "bg-violet-600" },
+      { id: "assembly", label: "Assembly", dotClassName: "bg-violet-400" },
+      { id: "inspection", label: "Inspection & QC", dotClassName: "bg-violet-500" },
+      { id: "paint", label: "Paint & Finish", dotClassName: "bg-violet-300" },
+      { id: "wiring", label: "Wiring & Sensors", dotClassName: "bg-violet-700" },
+      { id: "cars", label: "Cars", dotClassName: "bg-violet-800" },
     ],
     sections: [
       {
