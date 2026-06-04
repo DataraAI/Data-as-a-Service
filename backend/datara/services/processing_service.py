@@ -1634,6 +1634,8 @@ class ProcessingService:
         dataset_summary = self.sql_store.build_dataset_summary(dataset, current_user)
         output_route_path = f"{dataset_summary['full_path'].rstrip('/')}/hand_mesh/{seq_slug}"
         output_storage_prefix = f"{dataset['storage_prefix'].rstrip('/')}/hand_mesh/{seq_slug}"
+        output_video_prefix = f"{output_storage_prefix}/videos"
+        output_artifact_prefix = f"{output_storage_prefix}/artifacts"
         source_task = str(dataset.get("task") or "").strip()
 
         job_root = tempfile.mkdtemp(prefix="hand_mesh_job_", dir=DATASET_LIST_DIR)
@@ -1665,7 +1667,7 @@ class ProcessingService:
             for local_video_path in local_video_paths:
                 blob_name = self._upload_hand_mesh_video(
                     dataset=dataset,
-                    output_prefix=output_storage_prefix,
+                    output_prefix=output_video_prefix,
                     local_video_path=local_video_path,
                     source_task=source_task,
                     seq_slug=seq_slug,
@@ -1676,7 +1678,7 @@ class ProcessingService:
             for local_artifact_path in local_artifact_paths:
                 blob_name = self._upload_hand_mesh_artifact(
                     dataset=dataset,
-                    output_prefix=output_storage_prefix,
+                    output_prefix=output_artifact_prefix,
                     local_file_path=local_artifact_path,
                     source_task=source_task,
                     seq_slug=seq_slug,
