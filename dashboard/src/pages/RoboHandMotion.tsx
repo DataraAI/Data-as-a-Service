@@ -34,9 +34,9 @@ type GalleryCard = {
 };
 
 const STATS = [
-  { value: "8", label: "Datasets" },
-  { value: "2,850+", label: "Hours Labeled" },
-  { value: "2", label: "Verticals" },
+  { value: "16", label: "Datasets" },
+  { value: "5,610+", label: "Hours Labeled" },
+  { value: "4", label: "Verticals" },
   { value: "Patented", label: "Hand Motion Pipeline", featured: true },
 ];
 
@@ -189,6 +189,111 @@ const HOUSEHOLD_DATASETS: GalleryCard[] = [
   },
 ];
 
+const DATA_CENTER_GALLERY: GalleryCard[] = [
+  {
+    title: "Server Rack Cabling",
+    description: "Cable route, insert & label sequence",
+    image: "serverrack/serverrack1.png",
+    tags: [{ label: "Cable Route", tone: "blue" }],
+    hours: "280 hrs",
+  },
+  {
+    title: "Hardware Swap Protocol",
+    description: "Drive, card & module replacement",
+    image: "serverrack/serverrack2.png",
+    tags: [{ label: "Hot-swap", tone: "blue" }],
+    hours: "260 hrs",
+  },
+  {
+    title: "Component Inspection",
+    description: "Visual scan & probe verification steps",
+    image: "serverrack/serverrack3.png",
+    tags: [{ label: "Visual QA", tone: "blue" }],
+    hours: "260 hrs",
+  },
+  {
+    title: "Cable Management",
+    description: "Bundle, route & secure with label scan",
+    image: "serverrack/serverrack4.png",
+    tags: [{ label: "Bundling", tone: "blue" }],
+    hours: "260 hrs",
+  },
+];
+
+const WAREHOUSE_GALLERY: GalleryCard[] = [
+  {
+    title: "Pallet Jack Navigation",
+    description: "Fork, load & transport — end-to-end route",
+    image: "warehouse/warehouse1.png",
+    tags: [{ label: "Navigation", tone: "orange" }],
+    hours: "340 hrs",
+  },
+  {
+    title: "Shelf Restocking",
+    description: "Pick, carry & place — 3 shelf heights",
+    image: "warehouse/warehouse2.png",
+    tags: [{ label: "Pick & Place", tone: "orange" }],
+    hours: "310 hrs",
+  },
+  {
+    title: "Barcode Scan & Sort",
+    description: "Item scan, verification & bin routing",
+    image: "warehouse/warehouse3.png",
+    tags: [{ label: "Scan & Sort", tone: "orange" }],
+    hours: "280 hrs",
+  },
+  {
+    title: "Bin & Pallet Sorting",
+    description: "Wide-aisle grasp, move & stack sequence",
+    image: "warehouse/warehouse4.png",
+    tags: [{ label: "Sorting", tone: "orange" }],
+    hours: "300 hrs",
+  },
+];
+
+const AUTOMOTIVE_GALLERY: GalleryCard[] = [
+  {
+    title: "Front Grille Assembly",
+    description: "Clip-insert & fastener sequence — 12 sub-steps",
+    image: "carAutomation/carAutomation2.png",
+    tags: [
+      { label: "Precision Insert", tone: "purple" },
+      { label: "Force Feedback", tone: "orange" },
+    ],
+    hours: "420 hrs",
+  },
+  {
+    title: "Rear Bumper Installation",
+    description: "Two-arm alignment, clip-in & torque verification",
+    image: "carAutomation/carAutomation5.png",
+    tags: [
+      { label: "Bimanual", tone: "purple" },
+      { label: "Alignment", tone: "teal" },
+    ],
+    hours: "380 hrs",
+  },
+  {
+    title: "Front Seat Assembly",
+    description: "Rail mount, bolt torque & harness connection sequence",
+    image: "carAutomation/carAutomation3.png",
+    tags: [
+      { label: "Multi-step", tone: "purple" },
+      { label: "Torque Seq.", tone: "blue" },
+    ],
+    hours: "360 hrs",
+  },
+  {
+    title: "Passenger Seat Positioning",
+    description: "Rotation & slide-lock with 45° approach variant",
+    image: "carAutomation/carAutomation4.png",
+    tags: [
+      { label: "Rotation", tone: "purple" },
+      { label: "Slide-lock", tone: "orange" },
+    ],
+    hours: "380 hrs",
+  },
+];
+
 function surfaceImage(path: string) {
   return frontPageImageUrl(path);
 }
@@ -337,10 +442,24 @@ function SectionHeader({
 }: {
   title: string;
   summary: string;
-  accent: "purple" | "orange";
+  accent: "purple" | "orange" | "blue" | "teal";
 }) {
-  const dot = accent === "purple" ? "bg-violet-600" : "bg-orange-600";
-  const line = accent === "purple" ? "from-violet-200" : "from-orange-200";
+  const dot =
+    accent === "purple"
+      ? "bg-violet-600"
+      : accent === "orange"
+        ? "bg-orange-600"
+        : accent === "teal"
+          ? "bg-teal-600"
+          : "bg-blue-700";
+  const line =
+    accent === "purple"
+      ? "from-violet-200"
+      : accent === "orange"
+        ? "from-orange-200"
+        : accent === "teal"
+          ? "from-teal-200"
+          : "from-blue-200";
 
   return (
     <div className="mb-4 flex items-center gap-1">
@@ -484,18 +603,32 @@ export default function RoboHandMotion() {
             <div className="flex-1 px-3 py-4">
               <p className="mb-3 px-2 text-[16px] font-extrabold text-slate-950 dark:text-slate-100">Verticals</p>
               <a
-                href="#dk"
-                className="mb-1 flex items-center gap-3 rounded-[9px] border border-violet-200 bg-violet-50 px-4 py-3 dark:border-violet-900/50 dark:bg-violet-950/30"
+                href="#dc"
+                className="mb-1 flex items-center gap-3 rounded-[9px] border border-blue-200 bg-blue-50 px-4 py-3 dark:border-blue-900/50 dark:bg-blue-950/30"
               >
-                <span className="h-3 w-3 rounded-[3px] bg-violet-600" />
-                <span className="text-[16px] font-extrabold text-slate-950 dark:text-slate-100">Dexterous Kitchen</span>
+                <span className="h-3 w-3 rounded-[3px] bg-blue-700" />
+                <span className="text-[16px] font-extrabold text-slate-950 dark:text-slate-100">Data Center</span>
               </a>
               <a
-                href="#ht"
+                href="#wh"
                 className="mb-1 flex items-center gap-3 rounded-[9px] px-4 py-3 text-slate-600 transition-colors hover:bg-orange-50/60 hover:text-orange-700 dark:text-slate-300 dark:hover:bg-orange-950/20 dark:hover:text-orange-200"
               >
-                <span className="h-3 w-3 rounded-[3px] bg-orange-600" />
-                <span className="text-[16px] font-extrabold">Household Tasks</span>
+                <span className="h-3 w-3 rounded-[3px] bg-orange-500" />
+                <span className="text-[16px] font-extrabold">Warehouse</span>
+              </a>
+              <a
+                href="#hu"
+                className="mb-1 flex items-center gap-3 rounded-[9px] px-4 py-3 text-slate-600 transition-colors hover:bg-teal-50/60 hover:text-teal-700 dark:text-slate-300 dark:hover:bg-teal-950/20 dark:hover:text-teal-200"
+              >
+                <span className="h-3 w-3 rounded-[3px] bg-teal-600" />
+                <span className="text-[16px] font-extrabold">Humanoid</span>
+              </a>
+              <a
+                href="#au"
+                className="mb-1 flex items-center gap-3 rounded-[9px] px-4 py-3 text-slate-600 transition-colors hover:bg-violet-50/60 hover:text-violet-700 dark:text-slate-300 dark:hover:bg-violet-950/20 dark:hover:text-violet-200"
+              >
+                <span className="h-3 w-3 rounded-[3px] bg-violet-600" />
+                <span className="text-[16px] font-extrabold">Automotive</span>
               </a>
             </div>
             <div className="border-t border-slate-200 px-5 py-4 dark:border-slate-800">
@@ -553,19 +686,42 @@ export default function RoboHandMotion() {
               </section>
 
               <section className="flex flex-col gap-10">
-                <div id="dk" className="scroll-mt-28">
-                  <SectionHeader title="Dexterous Kitchen" summary="3 datasets · 1,430 hrs" accent="purple" />
+                <div id="dc" className="scroll-mt-28">
+                  <SectionHeader title="Data Center" summary="4 datasets · 1,060 hrs" accent="blue" />
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    {DATA_CENTER_GALLERY.map((card) => (
+                      <HouseholdCardView key={card.title} card={card} />
+                    ))}
+                  </div>
+                </div>
+
+                <div id="wh" className="scroll-mt-28">
+                  <SectionHeader title="Warehouse" summary="4 datasets · 1,230 hrs" accent="orange" />
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    {WAREHOUSE_GALLERY.map((card) => (
+                      <HouseholdCardView key={card.title} card={card} />
+                    ))}
+                  </div>
+                </div>
+
+                <div id="hu" className="scroll-mt-28">
+                  <SectionHeader title="Humanoid" summary="9 datasets · 2,850 hrs" accent="teal" />
                   <div className="flex flex-col gap-4">
                     {DEXTEROUS_DATASETS.map((card) => (
                       <TransformCardView key={card.title} card={card} />
                     ))}
                   </div>
+                  <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {HOUSEHOLD_DATASETS.map((card) => (
+                      <HouseholdCardView key={card.title} card={card} />
+                    ))}
+                  </div>
                 </div>
 
-                <div id="ht" className="scroll-mt-28">
-                  <SectionHeader title="Household Tasks" summary="5 datasets · 1,420 hrs" accent="orange" />
-                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    {HOUSEHOLD_DATASETS.map((card) => (
+                <div id="au" className="scroll-mt-28">
+                  <SectionHeader title="Automotive" summary="4 datasets · 1,540 hrs" accent="purple" />
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {AUTOMOTIVE_GALLERY.map((card) => (
                       <HouseholdCardView key={card.title} card={card} />
                     ))}
                   </div>
