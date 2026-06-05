@@ -51,7 +51,8 @@ export function ImageModal({
   const [customVlmPrompt, setCustomVlmPrompt] = useState("");
   const [isCreatingVlmTags, setIsCreatingVlmTags] = useState(false);
 
-  const sourceIsPrivate = (image?.dataset?.visibility ?? image?.metadata?.visibility ?? "public") === "private";
+  const sourceVisibility = image?.dataset?.visibility ?? image?.metadata?.visibility ?? "public";
+  const sourceIsPrivate = sourceVisibility === "private";
   const isVideo = image?.type === "video";
   const isStillImage = image?.type === "image";
   const assetUrl = image?.proxy_url || image?.url;
