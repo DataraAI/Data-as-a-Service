@@ -98,8 +98,6 @@ REMOTE_VLM_IMAGE_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "Post Annotation", "q
 REMOTE_SEGMENTATION_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "DataraAI_segmentation.py")
 REMOTE_SUBTASK_ANNOTATOR_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "Post Annotation", "qwen_subtask_annotator.py")
 REMOTE_ROSE_RUNNER_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "DataraAI_rose_occlusion.py")
-REMOTE_ROSE_VERIFY_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "verify_rose_runtime.sh")
-REMOTE_ROSE_SETUP_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "setup_rose_runtime.sh")
 REMOTE_SAM3_PACKAGE_ROOT = posixpath.join(REMOTE_PACKAGES_ROOT, "sam3")
 
 
@@ -495,18 +493,6 @@ def remove_occlusion(
                     )
                     return None, 500, "ROSE runner script was not found on the SaaS VM"
 
-                rose_verify_found, verify_err = _run_command(
-                    ssh_client,
-                    f'test -f "{_shell_escape(REMOTE_ROSE_VERIFY_SCRIPT)}" && echo "__FOUND__"',
-                )
-                if "__FOUND__" not in rose_verify_found:
-                    logger.error(
-                        "Remote verify_rose_runtime.sh was not found at %s | stderr=%s",
-                        REMOTE_ROSE_VERIFY_SCRIPT,
-                        verify_err,
-                    )
-                    return None, 500, "ROSE verify script was not found on the SaaS VM"
-
                 sftp = ssh_client.open_sftp()
                 try:
                     _sftp_put_tree(sftp, local_input_video, remote_source_video)
@@ -514,14 +500,12 @@ def remove_occlusion(
                 finally:
                     sftp.close()
 
-                _run_command(
-                    ssh_client,
-                    f'chmod +x "{_shell_escape(REMOTE_ROSE_VERIFY_SCRIPT)}" "{_shell_escape(REMOTE_ROSE_RUNNER_SCRIPT)}"',
-                )
-
                 export_prefix = _rose_env_exports()
                 verify_script = export_prefix + "; " if export_prefix else ""
-                verify_script += f'bash "{REMOTE_ROSE_VERIFY_SCRIPT}"'
+                verify_script += (
+                    f'"{_shell_escape(SAAS_ROSE_PYTHON_BIN)}" -s '
+                    f'"{_shell_escape(REMOTE_ROSE_RUNNER_SCRIPT)}" --verify-only'
+                )
                 _verify_stdout, verify_stderr, verify_status = _run_bash_script(ssh_client, verify_script)
                 if verify_status != 0:
                     message = verify_stderr or "ROSE runtime is not installed/configured on the SaaS VM"
