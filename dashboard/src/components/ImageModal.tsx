@@ -29,9 +29,8 @@ function isExoSourceImage(image: any): boolean {
   return false;
 }
 
-function defaultDatasetName(image: any, suffix: string) {
-  const sourceName = image?.dataset?.viewer_path?.split("/").filter(Boolean).pop() || image?.name || "dataset";
-  return `${sourceName}-${suffix}`;
+function sourceDatasetName(image: any) {
+  return image?.dataset?.viewer_path?.split("/").filter(Boolean).pop() || image?.name || "dataset";
 }
 
 export function ImageModal({
@@ -51,23 +50,11 @@ export function ImageModal({
   const [selectedVlmPreset, setSelectedVlmPreset] = useState("describe_image");
   const [customVlmPrompt, setCustomVlmPrompt] = useState("");
   const [isCreatingVlmTags, setIsCreatingVlmTags] = useState(false);
-  const [egoVisibility, setEgoVisibility] = useState<"private" | "public">("private");
-  const [cornerVisibility, setCornerVisibility] = useState<"private" | "public">("private");
-  const [egoDatasetName, setEgoDatasetName] = useState("");
-  const [cornerDatasetName, setCornerDatasetName] = useState("");
 
-  const sourceVisibility = image?.dataset?.visibility ?? image?.metadata?.visibility ?? "public";
-  const sourceIsPrivate = sourceVisibility === "private";
+  const sourceIsPrivate = (image?.dataset?.visibility ?? image?.metadata?.visibility ?? "public") === "private";
   const isVideo = image?.type === "video";
   const isStillImage = image?.type === "image";
   const assetUrl = image?.proxy_url || image?.url;
-
-  useEffect(() => {
-    setEgoVisibility(sourceIsPrivate ? "private" : "private");
-    setCornerVisibility(sourceIsPrivate ? "private" : "private");
-    setEgoDatasetName(defaultDatasetName(image, "ego"));
-    setCornerDatasetName(defaultDatasetName(image, "corner"));
-  }, [image, sourceIsPrivate]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -154,7 +141,6 @@ export function ImageModal({
   const generateEgoView = async (event: React.FormEvent) => {
     event.preventDefault();
     const prompt = `${selectedCameraWork}, and remove the human(s).`;
-    const visibility = sourceIsPrivate ? "private" : egoVisibility;
     await submitDerivedRequest(
       "/api/generate_ego",
       {
@@ -162,8 +148,6 @@ export function ImageModal({
         asset_id: image.asset_id,
         date: new Date().toISOString().slice(0, 10).replace(/-/g, ""),
         tags: ["egocentric", selectedCameraWork, "no human"],
-        visibility,
-        dataset_name: visibility === "private" ? egoDatasetName.trim() : egoDatasetName.trim() || undefined,
       },
       setIsGeneratingEgo,
       onEgoGenSuccess,
@@ -174,7 +158,6 @@ export function ImageModal({
     event.preventDefault();
     const prompt = cornerCasePrompt.trim();
     if (!prompt) return;
-    const visibility = sourceIsPrivate ? "private" : cornerVisibility;
     await submitDerivedRequest(
       "/api/generate_corner_case",
       {
@@ -182,9 +165,6 @@ export function ImageModal({
         asset_id: image.asset_id,
         date: new Date().toISOString().slice(0, 10).replace(/-/g, ""),
         tags: ["corner_case", prompt],
-        visibility,
-        dataset_name:
-          visibility === "private" ? cornerDatasetName.trim() : cornerDatasetName.trim() || undefined,
       },
       setIsAddingCornerCase,
       onCornerCaseSuccess,
@@ -423,42 +403,6 @@ export function ImageModal({
                   placeholder="Describe the object or effect to insert."
                   className="w-full rounded-sm border border-border bg-input px-3 py-2 text-sm placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none"
                 />
-                <div className="rounded-sm border border-border bg-input px-3 py-3">
-                  <div className="mb-2 text-[11px] uppercase tracking-wider text-muted-foreground">
-                    Output visibility
-                  </div>
-                  <div className="flex gap-4">
-                    <label className="flex items-center gap-2 text-sm">
-                      <input
-                        type="radio"
-                        value="private"
-                        checked={sourceIsPrivate || cornerVisibility === "private"}
-                        onChange={() => setCornerVisibility("private")}
-                        disabled={sourceIsPrivate}
-                      />
-                      Private
-                    </label>
-                    <label className="flex items-center gap-2 text-sm">
-                      <input
-                        type="radio"
-                        value="public"
-                        checked={!sourceIsPrivate && cornerVisibility === "public"}
-                        onChange={() => setCornerVisibility("public")}
-                        disabled={sourceIsPrivate}
-                      />
-                      Public
-                    </label>
-                  </div>
-                </div>
-                {(sourceIsPrivate || cornerVisibility === "private") && (
-                  <input
-                    type="text"
-                    value={cornerDatasetName}
-                    onChange={(event) => setCornerDatasetName(event.target.value)}
-                    placeholder="Private dataset name"
-                    className="w-full rounded-sm border border-border bg-input px-3 py-2 text-sm placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none"
-                  />
-                )}
                 <button
                   type="submit"
                   disabled={!cornerCasePrompt.trim() || isAddingCornerCase}
@@ -491,42 +435,6 @@ export function ImageModal({
                   <option value="Rotate down 45 degrees">Rotate down 45 degrees</option>
                   <option value="Rotate down 90 degrees">Rotate down 90 degrees</option>
                 </select>
-                <div className="rounded-sm border border-border bg-input px-3 py-3">
-                  <div className="mb-2 text-[11px] uppercase tracking-wider text-muted-foreground">
-                    Output visibility
-                  </div>
-                  <div className="flex gap-4">
-                    <label className="flex items-center gap-2 text-sm">
-                      <input
-                        type="radio"
-                        value="private"
-                        checked={sourceIsPrivate || egoVisibility === "private"}
-                        onChange={() => setEgoVisibility("private")}
-                        disabled={sourceIsPrivate}
-                      />
-                      Private
-                    </label>
-                    <label className="flex items-center gap-2 text-sm">
-                      <input
-                        type="radio"
-                        value="public"
-                        checked={!sourceIsPrivate && egoVisibility === "public"}
-                        onChange={() => setEgoVisibility("public")}
-                        disabled={sourceIsPrivate}
-                      />
-                      Public
-                    </label>
-                  </div>
-                </div>
-                {(sourceIsPrivate || egoVisibility === "private") && (
-                  <input
-                    type="text"
-                    value={egoDatasetName}
-                    onChange={(event) => setEgoDatasetName(event.target.value)}
-                    placeholder="Private dataset name"
-                    className="w-full rounded-sm border border-border bg-input px-3 py-2 text-sm placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none"
-                  />
-                )}
                 <button
                   type="submit"
                   disabled={isGeneratingEgo}
@@ -543,7 +451,7 @@ export function ImageModal({
             <TaskIntelligencePanel
               videoID={image.asset_id}
               videoURL={image.url}
-              datasetName={defaultDatasetName(image, "task")}
+              datasetName={sourceDatasetName(image)}
             />
           )}
         </div>

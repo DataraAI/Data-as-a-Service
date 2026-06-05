@@ -94,62 +94,9 @@ class ProcessingService:
             return "private"
         if requested in {"private", "public"}:
             return requested
+        if source_dataset:
+            return str(source_dataset["visibility"] or "").strip() or "private"
         return "private"
-
-    @staticmethod
-    def _auto_named_variant(source_name: str, prompt: str, suffix: str) -> str:
-        stem = "".join(ch.lower() if ch.isalnum() else "-" for ch in prompt.strip())[:24].strip("-")
-        stem = stem or suffix
-        stem = stem[:24]
-        return f"{source_name}-{suffix}-{stem}".strip("-")
-
-    def _prepare_derived_target_dataset(
-        self,
-        *,
-        current_user: dict[str, Any],
-        source_dataset: dict[str, Any],
-        requested_visibility: str | None,
-        requested_dataset_name: str | None,
-        prompt: str,
-        suffix: str,
-        source_kind: str,
-        task: str = "",
-    ) -> tuple[dict[str, Any], bool]:
-        visibility = self._resolve_visibility(requested_visibility, source_dataset)
-        category = str(source_dataset["category"] or "").strip()
-        brand = str(source_dataset["brand"] or "").strip()
-        source_name = str(source_dataset["dataset_name"] or "").strip() or "dataset"
-        preferred_name = (
-            str(requested_dataset_name or "").strip()
-            or self._auto_named_variant(source_name, prompt, suffix)
-        )
-
-        if (
-            visibility == str(source_dataset["visibility"] or "").strip()
-            and preferred_name == source_name
-        ):
-            return source_dataset, False
-
-        dataset_name = self.sql_store.reserve_unique_dataset_name(
-            owner_user=current_user,
-            visibility=visibility,
-            category=category,
-            brand=brand,
-            preferred_name=preferred_name,
-        )
-
-        target_dataset = self._build_dataset_row(
-            owner_user=current_user,
-            created_by_user=current_user,
-            visibility=visibility,
-            category=category,
-            brand=brand,
-            dataset_name=dataset_name,
-            task=task,
-            source_kind=source_kind,
-            source_dataset_id=source_dataset["id"],
-        )
-        return target_dataset, True
 
     def _build_dataset_row(
         self,
@@ -1505,19 +1452,8 @@ class ProcessingService:
         source_image_url = self.azure_service.generate_sas_url(source_dataset["storage_container"], source_blob, expiry_hours=2)
         source_task = str(source["metadata"].get("task") or source_dataset.get("task") or "")
         target_dataset = source_dataset
-        created_target_dataset = False
         local_root = ""
         try:
-            target_dataset, created_target_dataset = self._prepare_derived_target_dataset(
-                current_user=current_user,
-                source_dataset=source_dataset,
-                requested_visibility=str(data.get("visibility") or ""),
-                requested_dataset_name=str(data.get("dataset_name") or ""),
-                prompt=prompt,
-                suffix="ego",
-                source_kind="ego_generation",
-                task=source_task,
-            )
             local_root = os.path.join(DATASET_LIST_DIR, target_dataset["storage_prefix"])
 
             from datara.services import call_lambda_vm
@@ -1529,8 +1465,6 @@ class ProcessingService:
                 target_dataset["storage_prefix"],
             )
             if status_code != 200:
-                if created_target_dataset and target_dataset is not source_dataset:
-                    self.sql_store.mark_dataset_deleted(target_dataset["id"])
                 return {"error": "Ego generation failed"}, status_code
 
             self._upload_to_azure(
@@ -1544,8 +1478,6 @@ class ProcessingService:
                 source_dataset_id=source_dataset["id"],
             )
         except Exception as exc:
-            if created_target_dataset and target_dataset is not source_dataset:
-                self.sql_store.mark_dataset_deleted(target_dataset["id"])
             logger.error("Error generating ego image: %s", exc, exc_info=True)
             return {"error": str(exc)}, 500
         finally:
@@ -1568,19 +1500,8 @@ class ProcessingService:
         source_image_url = self.azure_service.generate_sas_url(source_dataset["storage_container"], source_blob, expiry_hours=2)
         source_task = str(source["metadata"].get("task") or source_dataset.get("task") or "")
         target_dataset = source_dataset
-        created_target_dataset = False
         local_root = ""
         try:
-            target_dataset, created_target_dataset = self._prepare_derived_target_dataset(
-                current_user=current_user,
-                source_dataset=source_dataset,
-                requested_visibility=str(data.get("visibility") or ""),
-                requested_dataset_name=str(data.get("dataset_name") or ""),
-                prompt=prompt,
-                suffix="corner",
-                source_kind="corner_case_generation",
-                task=source_task,
-            )
             local_root = os.path.join(DATASET_LIST_DIR, target_dataset["storage_prefix"])
 
             from datara.services import call_lambda_vm
@@ -1592,8 +1513,6 @@ class ProcessingService:
                 target_dataset["storage_prefix"],
             )
             if status_code != 200:
-                if created_target_dataset and target_dataset is not source_dataset:
-                    self.sql_store.mark_dataset_deleted(target_dataset["id"])
                 return {"error": "Corner case generation failed"}, status_code
 
             requested_tags = list(data.get("tags", [])) if isinstance(data.get("tags"), list) else []
@@ -1614,8 +1533,6 @@ class ProcessingService:
                 source_dataset_id=source_dataset["id"],
             )
         except Exception as exc:
-            if created_target_dataset and target_dataset is not source_dataset:
-                self.sql_store.mark_dataset_deleted(target_dataset["id"])
             logger.error("Error generating corner case: %s", exc, exc_info=True)
             return {"error": str(exc)}, 500
         finally:
