@@ -41,13 +41,24 @@ def _legacy_saas_attr(name, default=None):
 
 
 SAAS_HOST = os.getenv("SAAS_HOST") or _legacy_saas_attr("HOST")
+SAAS_HOST = SAAS_HOST or "192.222.51.234"
 SAAS_USER = os.getenv("SAAS_USER") or _legacy_saas_attr("USER") or "ubuntu"
+SAAS_KEY_PATH = (
+    os.getenv("SAAS_KEY_PATH")
+    or _legacy_saas_attr("KEY_PATH")
+    or os.path.expanduser("~/.ssh/azure_to_lambda")
+)
+DEFAULT_SAM3_PYTHON_BIN = f"/home/{SAAS_USER}/miniconda3/envs/sam3/bin/python"
+DEFAULT_QWEN_ANGLES_PYTHON_BIN = f"/home/{SAAS_USER}/miniconda3/envs/qwen-angles-2509/bin/python"
+DEFAULT_QWEN_VLM_PYTHON_BIN = f"/home/{SAAS_USER}/miniconda3/envs/qwen-vlm/bin/python"
+DEFAULT_ROSE_PYTHON_BIN = f"/home/{SAAS_USER}/miniconda3/envs/rose_runtime/bin/python"
+DEFAULT_ADDIT_SAM2_PYTHON_BIN = f"/home/{SAAS_USER}/miniconda3/envs/addit-sam2/bin/python"
 
-def _resolve_key_path():
-    return os.path.expanduser("~/.ssh/azure_to_lambda")
-
-SAAS_KEY_PATH = _resolve_key_path()
-SAAS_PYTHON_BIN = os.getenv("SAAS_PYTHON_BIN") or _legacy_saas_attr("PYTHON_BIN") or "python"
+SAAS_PYTHON_BIN = (
+    os.getenv("SAAS_PYTHON_BIN")
+    or _legacy_saas_attr("PYTHON_BIN")
+    or DEFAULT_SAM3_PYTHON_BIN
+)
 SAAS_IMAGE_PYTHON_BIN = (
     os.getenv("SAAS_IMAGE_PYTHON_BIN")
     or _legacy_saas_attr("IMAGE_PYTHON_BIN")
@@ -56,27 +67,29 @@ SAAS_IMAGE_PYTHON_BIN = (
 SAAS_EGO_PYTHON_BIN = (
     os.getenv("SAAS_EGO_PYTHON_BIN")
     or _legacy_saas_attr("EGO_PYTHON_BIN")
-    or SAAS_IMAGE_PYTHON_BIN
+    or DEFAULT_QWEN_ANGLES_PYTHON_BIN
 )
 SAAS_VLM_PYTHON_BIN = (
     os.getenv("SAAS_VLM_PYTHON_BIN")
     or _legacy_saas_attr("VLM_PYTHON_BIN")
-    or SAAS_IMAGE_PYTHON_BIN
+    or DEFAULT_QWEN_VLM_PYTHON_BIN
 )
-DEFAULT_ADDIT_SAM2_PYTHON_BIN = f"/home/{SAAS_USER}/miniconda3/envs/addit-sam2/bin/python"
 SAAS_CORNER_PYTHON_BIN = (
     os.getenv("SAAS_CORNER_PYTHON_BIN")
+    or _legacy_saas_attr("CORNER_PYTHON_BIN")
     or DEFAULT_ADDIT_SAM2_PYTHON_BIN
 )
-SAAS_ROSE_ROOT = os.getenv("SAAS_ROSE_ROOT") or _legacy_saas_attr("ROSE_ROOT")
 SAAS_ROSE_PYTHON_BIN = (
     os.getenv("SAAS_ROSE_PYTHON_BIN")
     or _legacy_saas_attr("ROSE_PYTHON_BIN")
-    or SAAS_PYTHON_BIN
+    or DEFAULT_ROSE_PYTHON_BIN
 )
 
 REMOTE_USER_HOME = f"/home/{SAAS_USER}"
-REMOTE_SAAS_ROOT = os.getenv("SAAS_REMOTE_ROOT") or f"{REMOTE_USER_HOME}/Software-as-a-Service"
+REMOTE_PACKAGES_ROOT = posixpath.join(REMOTE_USER_HOME, "packages")
+REMOTE_SAAS_ROOT = posixpath.join(REMOTE_USER_HOME, "Software-as-a-Service")
+DEFAULT_ROSE_ROOT = posixpath.join(REMOTE_PACKAGES_ROOT, "ROSE")
+SAAS_ROSE_ROOT = DEFAULT_ROSE_ROOT
 REMOTE_IMAGE_PROMPT_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "image_prompt_tool.py")
 REMOTE_CORNER_CASE_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "Corner_case_tool.py")
 REMOTE_CORNER_CASE_OUTPUT_ROOT = "corner_images_controlnet"
@@ -87,7 +100,7 @@ REMOTE_SUBTASK_ANNOTATOR_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "Post Annotat
 REMOTE_ROSE_RUNNER_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "DataraAI_rose_occlusion.py")
 REMOTE_ROSE_VERIFY_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "verify_rose_runtime.sh")
 REMOTE_ROSE_SETUP_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "setup_rose_runtime.sh")
-REMOTE_SAM3_PACKAGE_ROOT = f"{REMOTE_USER_HOME}/packages/sam3"
+REMOTE_SAM3_PACKAGE_ROOT = posixpath.join(REMOTE_PACKAGES_ROOT, "sam3")
 
 
 @contextmanager
@@ -210,6 +223,13 @@ def _remote_image_env_prefix():
         f'PYTHONNOUSERSITE=1 '
         f'PYTHONPATH="{_shell_escape(REMOTE_USER_HOME)}:{_shell_escape(REMOTE_SAAS_ROOT)}:$PYTHONPATH" '
     )
+
+
+def _cleanup_remote_job_root(client, remote_root):
+    try:
+        _run_command(client, f'rm -rf "{_shell_escape(remote_root)}"')
+    except Exception:
+        logger.warning("Failed to clean remote job root %s", remote_root, exc_info=True)
 
 
 def generate_ego_image(prompt, imageURL, container_name, output_name):
@@ -376,54 +396,55 @@ def generate_masks(*, prompt, local_input_dir, local_output_dir):
 
     try:
         with _ssh_session() as ssh_client:
-            script_exists_stdout, script_exists_stderr = _run_command(
-                ssh_client,
-                f'test -f "{_shell_escape(REMOTE_SEGMENTATION_SCRIPT)}" && echo "__FOUND__"',
-            )
-            if "__FOUND__" not in script_exists_stdout:
-                logger.error(
-                    "Remote DataraAI_segmentation.py was not found at %s | stderr=%s",
-                    REMOTE_SEGMENTATION_SCRIPT,
-                    script_exists_stderr,
+            try:
+                script_exists_stdout, script_exists_stderr = _run_command(
+                    ssh_client,
+                    f'test -f "{_shell_escape(REMOTE_SEGMENTATION_SCRIPT)}" && echo "__FOUND__"',
                 )
+                if "__FOUND__" not in script_exists_stdout:
+                    logger.error(
+                        "Remote DataraAI_segmentation.py was not found at %s | stderr=%s",
+                        REMOTE_SEGMENTATION_SCRIPT,
+                        script_exists_stderr,
+                    )
+                    return None, 500
+
+                sftp = ssh_client.open_sftp()
+                try:
+                    _sftp_put_tree(sftp, local_input_dir, remote_input_dir)
+                finally:
+                    sftp.close()
+
+                command_parts = [
+                    f'"{_shell_escape(SAAS_PYTHON_BIN)}" -s "{_shell_escape(REMOTE_SEGMENTATION_SCRIPT)}"',
+                    '--input_mode "folder"',
+                    f'--image_dir "{_shell_escape(remote_input_dir)}"',
+                    f'--segment "{_shell_escape(prompt)}"',
+                    f'--output_dir "{_shell_escape(remote_output_root)}"',
+                ]
+
+                remote_command = (
+                    f'cd "{_shell_escape(REMOTE_SAAS_ROOT)}" && '
+                    f'PYTHONNOUSERSITE=1 PYTHONPATH="{_shell_escape(REMOTE_USER_HOME)}:{_shell_escape(REMOTE_SAM3_PACKAGE_ROOT)}:{_shell_escape(REMOTE_SAAS_ROOT)}:$PYTHONPATH" '
+                    + " ".join(command_parts)
+                )
+                stdout, stderr = _run_command(ssh_client, remote_command)
+                remote_result_dir = (stdout.strip().split("\n")[-1].strip() if stdout else "") or ""
+                if not remote_result_dir.startswith(remote_output_root):
+                    logger.error("Mask generation returned invalid output path: %s | stderr=%s", remote_result_dir, stderr)
+                    return None, 500
+
+                sftp = ssh_client.open_sftp()
+                try:
+                    _sftp_get_tree(sftp, remote_result_dir, local_output_dir)
+                finally:
+                    sftp.close()
+
+                if os.path.isdir(local_output_dir):
+                    return local_output_dir, 200
                 return None, 500
-
-            sftp = ssh_client.open_sftp()
-            try:
-                _sftp_put_tree(sftp, local_input_dir, remote_input_dir)
             finally:
-                sftp.close()
-
-            command_parts = [
-                f'"{_shell_escape(SAAS_PYTHON_BIN)}" -s "{_shell_escape(REMOTE_SEGMENTATION_SCRIPT)}"',
-                '--input_mode "folder"',
-                f'--image_dir "{_shell_escape(remote_input_dir)}"',
-                f'--segment "{_shell_escape(prompt)}"',
-                f'--output_dir "{_shell_escape(remote_output_root)}"',
-            ]
-
-            remote_command = (
-                f'cd "{_shell_escape(REMOTE_SAAS_ROOT)}" && '
-                f'PYTHONNOUSERSITE=1 PYTHONPATH="{_shell_escape(REMOTE_USER_HOME)}:{_shell_escape(REMOTE_SAM3_PACKAGE_ROOT)}:{_shell_escape(REMOTE_SAAS_ROOT)}:$PYTHONPATH" '
-                + " ".join(command_parts)
-            )
-            stdout, stderr = _run_command(ssh_client, remote_command)
-            remote_result_dir = (stdout.strip().split("\n")[-1].strip() if stdout else "") or ""
-            if not remote_result_dir.startswith(remote_output_root):
-                logger.error("Mask generation returned invalid output path: %s | stderr=%s", remote_result_dir, stderr)
-                _run_command(ssh_client, f'rm -rf "{_shell_escape(remote_root)}"')
-                return None, 500
-
-            sftp = ssh_client.open_sftp()
-            try:
-                _sftp_get_tree(sftp, remote_result_dir, local_output_dir)
-            finally:
-                sftp.close()
-
-            _run_command(ssh_client, f'rm -rf "{_shell_escape(remote_root)}"')
-            if os.path.isdir(local_output_dir):
-                return local_output_dir, 200
-            return None, 500
+                _cleanup_remote_job_root(ssh_client, remote_root)
     except Exception as e:
         logger.error("generate_masks error: %s", e, exc_info=True)
         return None, 500
@@ -461,99 +482,98 @@ def remove_occlusion(
 
     try:
         with _ssh_session() as ssh_client:
-            rose_runner_found, runner_err = _run_command(
-                ssh_client,
-                f'test -f "{_shell_escape(REMOTE_ROSE_RUNNER_SCRIPT)}" && echo "__FOUND__"',
-            )
-            if "__FOUND__" not in rose_runner_found:
-                logger.error(
-                    "Remote DataraAI_rose_occlusion.py was not found at %s | stderr=%s",
-                    REMOTE_ROSE_RUNNER_SCRIPT,
-                    runner_err,
-                )
-                return None, 500, "ROSE runner script was not found on the SaaS VM"
-
-            rose_verify_found, verify_err = _run_command(
-                ssh_client,
-                f'test -f "{_shell_escape(REMOTE_ROSE_VERIFY_SCRIPT)}" && echo "__FOUND__"',
-            )
-            if "__FOUND__" not in rose_verify_found:
-                logger.error(
-                    "Remote verify_rose_runtime.sh was not found at %s | stderr=%s",
-                    REMOTE_ROSE_VERIFY_SCRIPT,
-                    verify_err,
-                )
-                return None, 500, "ROSE verify script was not found on the SaaS VM"
-
-            sftp = ssh_client.open_sftp()
             try:
-                _sftp_put_tree(sftp, local_input_video, remote_source_video)
-                _sftp_put_tree(sftp, local_mask_video, remote_mask_video)
-            finally:
-                sftp.close()
-
-            _run_command(
-                ssh_client,
-                f'chmod +x "{_shell_escape(REMOTE_ROSE_VERIFY_SCRIPT)}" "{_shell_escape(REMOTE_ROSE_RUNNER_SCRIPT)}"',
-            )
-
-            export_prefix = _rose_env_exports()
-            verify_script = export_prefix + "; " if export_prefix else ""
-            verify_script += f'bash "{REMOTE_ROSE_VERIFY_SCRIPT}"'
-            _verify_stdout, verify_stderr, verify_status = _run_bash_script(ssh_client, verify_script)
-            if verify_status != 0:
-                message = verify_stderr or "ROSE runtime is not installed/configured on the SaaS VM"
-                logger.error("ROSE runtime verification failed: %s", message)
-                _run_command(ssh_client, f'rm -rf "{_shell_escape(remote_root)}"')
-                return None, 503, message
-
-            runner_script = export_prefix + "; " if export_prefix else ""
-            runner_script += (
-                f'"{_shell_escape(SAAS_ROSE_PYTHON_BIN)}" -s "{_shell_escape(REMOTE_ROSE_RUNNER_SCRIPT)}" '
-                f'--source_video "{_shell_escape(remote_source_video)}" '
-                f'--mask_video "{_shell_escape(remote_mask_video)}" '
-                f'--output_dir "{_shell_escape(remote_output_dir)}" '
-                f'--prompt "{_shell_escape(prompt)}" '
-                f'--video_length "{int(window_length)}" '
-                f'--sample_height "{int(sample_height)}" '
-                f'--sample_width "{int(sample_width)}"'
-            )
-            stdout, stderr, runner_status = _run_bash_script(ssh_client, runner_script)
-            if runner_status != 0:
-                logger.error("ROSE occlusion runner failed: %s", stderr or stdout)
-                _run_command(ssh_client, f'rm -rf "{_shell_escape(remote_root)}"')
-                return None, 500, stderr or stdout or "ROSE occlusion removal failed"
-
-            remote_output_path = ""
-            for line in reversed(stdout.splitlines()):
-                candidate = line.strip()
-                if candidate.endswith((".mp4", ".mov", ".m4v", ".webm")):
-                    remote_output_path = candidate
-                    break
-
-            if not remote_output_path:
-                find_stdout, find_stderr, find_status = _run_bash_script(
+                rose_runner_found, runner_err = _run_command(
                     ssh_client,
-                    f'find "{_shell_escape(remote_output_dir)}" -maxdepth 1 -type f '
-                    r'\( -name "*.mp4" -o -name "*.mov" -o -name "*.m4v" -o -name "*.webm" \) | head -n 1',
+                    f'test -f "{_shell_escape(REMOTE_ROSE_RUNNER_SCRIPT)}" && echo "__FOUND__"',
                 )
-                if find_status == 0:
-                    remote_output_path = (find_stdout.strip().splitlines()[-1].strip() if find_stdout else "") or ""
+                if "__FOUND__" not in rose_runner_found:
+                    logger.error(
+                        "Remote DataraAI_rose_occlusion.py was not found at %s | stderr=%s",
+                        REMOTE_ROSE_RUNNER_SCRIPT,
+                        runner_err,
+                    )
+                    return None, 500, "ROSE runner script was not found on the SaaS VM"
+
+                rose_verify_found, verify_err = _run_command(
+                    ssh_client,
+                    f'test -f "{_shell_escape(REMOTE_ROSE_VERIFY_SCRIPT)}" && echo "__FOUND__"',
+                )
+                if "__FOUND__" not in rose_verify_found:
+                    logger.error(
+                        "Remote verify_rose_runtime.sh was not found at %s | stderr=%s",
+                        REMOTE_ROSE_VERIFY_SCRIPT,
+                        verify_err,
+                    )
+                    return None, 500, "ROSE verify script was not found on the SaaS VM"
+
+                sftp = ssh_client.open_sftp()
+                try:
+                    _sftp_put_tree(sftp, local_input_video, remote_source_video)
+                    _sftp_put_tree(sftp, local_mask_video, remote_mask_video)
+                finally:
+                    sftp.close()
+
+                _run_command(
+                    ssh_client,
+                    f'chmod +x "{_shell_escape(REMOTE_ROSE_VERIFY_SCRIPT)}" "{_shell_escape(REMOTE_ROSE_RUNNER_SCRIPT)}"',
+                )
+
+                export_prefix = _rose_env_exports()
+                verify_script = export_prefix + "; " if export_prefix else ""
+                verify_script += f'bash "{REMOTE_ROSE_VERIFY_SCRIPT}"'
+                _verify_stdout, verify_stderr, verify_status = _run_bash_script(ssh_client, verify_script)
+                if verify_status != 0:
+                    message = verify_stderr or "ROSE runtime is not installed/configured on the SaaS VM"
+                    logger.error("ROSE runtime verification failed: %s", message)
+                    return None, 503, message
+
+                runner_script = export_prefix + "; " if export_prefix else ""
+                runner_script += (
+                    f'"{_shell_escape(SAAS_ROSE_PYTHON_BIN)}" -s "{_shell_escape(REMOTE_ROSE_RUNNER_SCRIPT)}" '
+                    f'--source_video "{_shell_escape(remote_source_video)}" '
+                    f'--mask_video "{_shell_escape(remote_mask_video)}" '
+                    f'--output_dir "{_shell_escape(remote_output_dir)}" '
+                    f'--prompt "{_shell_escape(prompt)}" '
+                    f'--video_length "{int(window_length)}" '
+                    f'--sample_height "{int(sample_height)}" '
+                    f'--sample_width "{int(sample_width)}"'
+                )
+                stdout, stderr, runner_status = _run_bash_script(ssh_client, runner_script)
+                if runner_status != 0:
+                    logger.error("ROSE occlusion runner failed: %s", stderr or stdout)
+                    return None, 500, stderr or stdout or "ROSE occlusion removal failed"
+
+                remote_output_path = ""
+                for line in reversed(stdout.splitlines()):
+                    candidate = line.strip()
+                    if candidate.endswith((".mp4", ".mov", ".m4v", ".webm")):
+                        remote_output_path = candidate
+                        break
+
                 if not remote_output_path:
-                    logger.error("ROSE output discovery failed: stdout=%s stderr=%s", stdout, stderr or find_stderr)
-                    _run_command(ssh_client, f'rm -rf "{_shell_escape(remote_root)}"')
-                    return None, 500, "ROSE completed without returning an output video"
+                    find_stdout, find_stderr, find_status = _run_bash_script(
+                        ssh_client,
+                        f'find "{_shell_escape(remote_output_dir)}" -maxdepth 1 -type f '
+                        r'\( -name "*.mp4" -o -name "*.mov" -o -name "*.m4v" -o -name "*.webm" \) | head -n 1',
+                    )
+                    if find_status == 0:
+                        remote_output_path = (find_stdout.strip().splitlines()[-1].strip() if find_stdout else "") or ""
+                    if not remote_output_path:
+                        logger.error("ROSE output discovery failed: stdout=%s stderr=%s", stdout, stderr or find_stderr)
+                        return None, 500, "ROSE completed without returning an output video"
 
-            sftp = ssh_client.open_sftp()
-            try:
-                sftp.get(remote_output_path, local_output_video)
+                sftp = ssh_client.open_sftp()
+                try:
+                    sftp.get(remote_output_path, local_output_video)
+                finally:
+                    sftp.close()
+
+                if os.path.isfile(local_output_video):
+                    return local_output_video, 200, ""
+                return None, 500, "ROSE output video could not be downloaded"
             finally:
-                sftp.close()
-
-            _run_command(ssh_client, f'rm -rf "{_shell_escape(remote_root)}"')
-            if os.path.isfile(local_output_video):
-                return local_output_video, 200, ""
-            return None, 500, "ROSE output video could not be downloaded"
+                _cleanup_remote_job_root(ssh_client, remote_root)
     except Exception as exc:
         logger.error("remove_occlusion error: %s", exc, exc_info=True)
         return None, 500, str(exc)
