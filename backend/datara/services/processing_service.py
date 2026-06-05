@@ -1318,13 +1318,13 @@ class ProcessingService:
         source = self._resolve_source_asset(current_user, str(data.get("asset_id") or ""))
 
         # 1. Check for cache in existing Cosmos doc
-        if source["metadata"].get("taskIntelligence"):
-            logger.info("Found cached task intelligence for asset %s", data.get("asset_id"))
-            return {
-                "message": "Task intelligence retrieved from cache.",
-                "data": source["metadata"]["taskIntelligence"],
-                "cached": True,
-            }, 200
+        # if source["metadata"].get("taskIntelligence"):
+        #     logger.info("Found cached task intelligence for asset %s", data.get("asset_id"))
+        #     return {
+        #         "message": "Task intelligence retrieved from cache.",
+        #         "data": source["metadata"]["taskIntelligence"],
+        #         "cached": True,
+        #     }, 200
 
         # 2. If not cached, generate it
         source_dataset = source["dataset"]
@@ -1397,6 +1397,183 @@ class ProcessingService:
                     os.remove(local_json_path)
                 except OSError:
                     pass
+
+    def generate_video_to_video_views(self, current_user: dict[str, Any], data: dict[str, Any]) -> tuple[dict[str, Any], int]:
+        """
+        Generates a new video view for a video asset using Lyra Gen3C on the Lambda VM.
+        Checks for cached results in Cosmos DB before invoking the remote model.
+        """
+        source = self._resolve_source_asset(current_user, str(data.get("asset_id") or ""))
+
+        # Check Cache in Cosmos DB <- Remove, we have a database
+        # if source["metadata"].get("videoToVideoViews"):
+        #     logger.info("Found cached video-to-video views for asset %s", data.get("asset_id"))
+        #     cached = source["metadata"]["videoToVideoViews"]
+        #     # Rebuild proxy_url in case it was stored before this field existed
+        #     if "proxy_url" not in cached and "blob_name" in cached:
+        #         source_dataset_cached = source["dataset"]
+        #         cached["proxy_url"] = f"/api/proxy/{self.dataset_service.encode_asset_id(source_dataset_cached['id'], cached['blob_name'])}"
+        #     return {
+        #         "message": "Video-to-video views retrieved from cache.",
+        #         "data": cached,
+        #         "cached": True,
+        #     }, 200
+
+        source_dataset = source["dataset"]
+        source_blob = source["blob_name"]
+
+        if not any(source_blob.lower().endswith(ext) for ext in (".mp4", ".mov", ".m4v", ".webm")):
+            return {"error": "Video-to-Video views can only be generated for video assets."}, 400
+
+        # Generate a SAS URL so the Lambda VM can download the video directly from Azure.
+        # Expiry is set generously to cover the full VIPE + Gen3C runtime.
+        video_url = self.azure_service.generate_sas_url(
+            source_dataset["storage_container"],
+            source_blob,
+            expiry_hours=3,
+        )
+        video_name = os.path.splitext(os.path.basename(source_blob))[0]
+        trajectory = str(data.get("trajectory") or "left").strip()
+        if trajectory not in ("up", "down", "left", "right", "zoom_in", "zoom_out"):
+            return {"error": f"Invalid trajectory '{trajectory}'. Must be one of: up, down, left, right, zoom_in, zoom_out."}, 400
+
+        # Check whether a cached VIPE zip already exists in blob storage for this asset.
+        # If found, pass its SAS URL to the lambda so VIPE can be skipped.
+        vipe_zip_blob = f"{source_dataset['storage_prefix'].rstrip('/')}/new_angle_videos/{video_name}_vipe_output.zip"
+        vipe_zip_url = None
+        try:
+            self.azure_service.get_container_client(
+                source_dataset["storage_container"]
+            ).get_blob_client(vipe_zip_blob).get_blob_properties()
+            vipe_zip_url = self.azure_service.generate_sas_url(
+                source_dataset["storage_container"],
+                vipe_zip_blob,
+                expiry_hours=3,
+            )
+            logger.info("Found cached VIPE zip for asset: %s", source_blob)
+        except Exception:
+            logger.info("No cached VIPE zip found for asset: %s — will run VIPE fresh", source_blob)
+
+        job_root = tempfile.mkdtemp(prefix="lyra_v2v_job_", dir=DATASET_LIST_DIR)
+        local_output_video = os.path.join(job_root, f"{video_name}_{trajectory}_generated.mp4")
+
+        try:
+            from datara.services import call_lambda_vm
+
+            logger.info("Running Lyra v2v on Lambda VM for asset: %s", source_blob)
+            result_path, status_code = call_lambda_vm.generate_video_to_video(
+                video_url=video_url,
+                local_output_video=local_output_video,
+                vipe_zip_url=vipe_zip_url,
+                trajectory=trajectory,
+            )
+
+            if status_code != 200 or not result_path:
+                return {"error": "Failed to generate video-to-video views on the Lambda VM."}, status_code or 500
+
+            output_blob_name = f"{source_dataset['storage_prefix'].rstrip('/')}/new_angle_videos/{video_name}_{trajectory}_generated.mp4"
+            container_client = self.azure_service.get_container_client(source_dataset["storage_container"])
+            with open(local_output_video, "rb") as fh:
+                container_client.upload_blob(
+                    name=output_blob_name,
+                    data=fh,
+                    overwrite=True,
+                    content_settings=ContentSettings(content_type="video/mp4"),
+                )
+
+            # Upload the VIPE zip so it can be reused on future runs.
+            local_vipe_zip = os.path.join(job_root, "vipe_output.zip")
+            if os.path.isfile(local_vipe_zip):
+                with open(local_vipe_zip, "rb") as fh:
+                    container_client.upload_blob(
+                        name=vipe_zip_blob,
+                        data=fh,
+                        overwrite=True,
+                        content_settings=ContentSettings(content_type="application/zip"),
+                    )
+                logger.info("Uploaded VIPE zip to blob: %s", vipe_zip_blob)
+
+            generated_at = datetime.now(timezone.utc).isoformat()
+            source_meta  = source["metadata"]
+
+            # Cosmos annotation for the Gen3C output video (metadata-only, not browseable)
+            gen3c_existing = self.azure_service.get_cosmos_doc_for_blob(
+                source_dataset["storage_container"], output_blob_name
+            ) or {}
+            self.azure_service.upsert_cosmos_item({
+                "id":              gen3c_existing.get("id", os.urandom(16).hex()),
+                "docType":         "gen3c_v2v_output",
+                "containerName":   source_dataset["storage_container"],
+                "datasetName":     source_dataset["storage_prefix"],
+                "datasetId":       source_dataset["id"],
+                "ownerUserId":     source_dataset["owner_user_id"],
+                "visibility":      source_dataset["visibility"],
+                "sourceDatasetId": source_dataset["id"],
+                "sourceBlobPath":  source_blob,
+                "view":            "gen3c",
+                "frameName":       os.path.basename(output_blob_name),
+                "blobPath":        output_blob_name,
+                "date":            source_meta.get("date", ""),
+                "frameId":         None,
+                "width":           source_meta.get("width"),
+                "height":          source_meta.get("height"),
+                "fps":             source_meta.get("fps"),
+                "frameCount":      source_meta.get("frameCount"),
+                "miscTags":        ["gen3c", "new_angle_video"],
+                "task":            source_meta.get("task", ""),
+                "sourceType":      "gen3c_output",
+                "generatedAt":     generated_at,
+            })
+
+            # Cosmos annotation for the VIPE zip (cache tracking)
+            vipe_existing = self.azure_service.get_cosmos_doc_for_blob(
+                source_dataset["storage_container"], vipe_zip_blob
+            ) or {}
+            self.azure_service.upsert_cosmos_item({
+                "id":              vipe_existing.get("id", os.urandom(16).hex()),
+                "docType":         "vipe",
+                "containerName":   source_dataset["storage_container"],
+                "datasetName":     source_dataset["storage_prefix"],
+                "datasetId":       source_dataset["id"],
+                "ownerUserId":     source_dataset["owner_user_id"],
+                "visibility":      source_dataset["visibility"],
+                "sourceDatasetId": source_dataset["id"],
+                "sourceBlobPath":  source_blob,
+                "view":            "vipe",
+                "frameName":       os.path.basename(vipe_zip_blob),
+                "blobPath":        vipe_zip_blob,
+                "date":            source_meta.get("date", ""),
+                "frameId":         None,
+                "miscTags":        ["gen3c", "vipe", "new_angle_video"],
+                "task":            source_meta.get("task", ""),
+                "sourceType":      "vipe_output",
+                "generatedAt":     generated_at,
+            })
+
+            output_asset_id = self.dataset_service.encode_asset_id(source_dataset["id"], output_blob_name)
+            v2v_result = {
+                "blob_name": output_blob_name,
+                "container": source_dataset["storage_container"],
+                "generated_at": generated_at,
+                "proxy_url": f"/api/proxy/{output_asset_id}",
+            }
+
+            cosmos_doc = source["metadata"]
+            cosmos_doc["NewAngleViews"] = v2v_result
+            self.azure_service.upsert_cosmos_item(cosmos_doc)
+
+            return {
+                "message": "Video-to-video generation completed successfully.",
+                "data": v2v_result,
+                "cached": False,
+            }, 200
+
+        except Exception as e:
+            logger.error("generate_video_to_video_views error: %s", e, exc_info=True)
+            return {"error": str(e)}, 500
+        finally:
+            shutil.rmtree(job_root, ignore_errors=True)
+
 
     def _resolve_source_asset(self, current_user: dict[str, Any], asset_id: str) -> dict[str, Any]:
         if not asset_id:
