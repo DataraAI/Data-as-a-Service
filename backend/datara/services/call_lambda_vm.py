@@ -1,11 +1,14 @@
 import importlib.util
 import os
 import posixpath
+import re
 import stat
 import uuid
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import urlparse
+from urllib.request import Request, urlopen
 
 import paramiko
 
@@ -55,6 +58,12 @@ DEFAULT_QWEN_VLM_PYTHON_BIN = f"/home/{SAAS_USER}/miniconda3/envs/qwen-vlm/bin/p
 DEFAULT_ROSE_PYTHON_BIN = f"/home/{SAAS_USER}/miniconda3/envs/rose_runtime/bin/python"
 DEFAULT_ADDIT_SAM2_PYTHON_BIN = f"/home/{SAAS_USER}/miniconda3/envs/addit-sam2/bin/python"
 
+def _resolve_key_path():
+    return os.path.join(os.path.expanduser("~"), ".ssh", "azure_to_lambda")
+    # return os.path.expanduser("~/.ssh/azure_to_lambda")
+    # "C:\Users\valer\.ssh\azure_to_lambda"
+
+SAAS_KEY_PATH = _resolve_key_path()
 SAAS_PYTHON_BIN = (
     os.getenv("SAAS_PYTHON_BIN")
     or _legacy_saas_attr("PYTHON_BIN")
@@ -102,6 +111,39 @@ REMOTE_ROSE_RUNNER_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "DataraAI_rose_occl
 REMOTE_ROSE_VERIFY_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "verify_rose_runtime.sh")
 REMOTE_ROSE_SETUP_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "setup_rose_runtime.sh")
 REMOTE_SAM3_PACKAGE_ROOT = f"{REMOTE_USER_HOME}/packages/sam3"
+REMOTE_DYN_HAMR_ROOT = os.getenv("SAAS_DYN_HAMR_ROOT") or f"{REMOTE_USER_HOME}/packages/Dyn-HaMR"
+DEFAULT_VIPE_PYTHON_BIN = f"/home/{SAAS_USER}/miniconda3/envs/vipe/bin/python"
+SAAS_VIPE_PYTHON_BIN = os.getenv("SAAS_VIPE_PYTHON_BIN") or DEFAULT_VIPE_PYTHON_BIN
+REMOTE_VIPE_RUNNER_SCRIPT = (
+    f"/home/ubuntu/Software-as-a-Service/run_vipe_dynhamr.py"
+    or os.getenv("SAAS_VIPE_RUNNER_SCRIPT")
+    or posixpath.join(REMOTE_DYN_HAMR_ROOT, "run_vipe_dynhamr.py")
+)
+REMOTE_DYN_HAMR_OUTPUT_DIR = os.getenv("SAAS_DYN_HAMR_OUTPUT_DIR") or posixpath.join(
+    REMOTE_DYN_HAMR_ROOT,
+    "output",
+    "logs",
+    "video-custom",
+)
+HAND_MESH_VIDEO_SUFFIXES = (".mp4", ".mov", ".m4v", ".webm")
+HAND_MESH_ARTIFACT_SUFFIXES = (
+    ".json",
+    ".npz",
+    ".npy",
+    ".ply",
+    ".obj",
+    ".glb",
+    ".gltf",
+    ".zip",
+    ".log",
+    ".txt",
+    ".pkl",
+    ".pt",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".webp",
+)
 REMOTE_LYRA_V2V_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "lyra_v2v.py")
 
 
@@ -393,7 +435,7 @@ def generate_masks(*, prompt, local_input_dir, local_output_dir):
 
     job_id = uuid.uuid4().hex[:12]
     remote_root = f"/home/{SAAS_USER}/datara_mask_jobs/{job_id}"
-    remote_input_dir = posixpath.join(remote_root, "input")
+    remote_input_dir = posixpath.join(remote_root, "videos")
     remote_output_root = posixpath.join(remote_root, "output")
 
     try:
@@ -566,6 +608,307 @@ def remove_occlusion(
         logger.error("remove_occlusion error: %s", exc, exc_info=True)
         return None, 500, str(exc)
 
+
+# def _discover_remote_files(ssh_client, search_root, *, newer_than_path=None):
+#     discovered: list[str] = []
+#     seen: set[str] = set()
+#     if not search_root:
+#         return discovered
+
+#     newer_clause = ""
+#     if newer_than_path:
+#         newer_clause = f' -newer "{_shell_escape(newer_than_path)}"'
+
+#     find_stdout, find_stderr, find_status = _run_bash_script(
+#         ssh_client,
+#         (
+#             f'if [ -d "{_shell_escape(search_root)}" ]; then '
+#             f'find "{_shell_escape(search_root)}" -type f{newer_clause}; '
+#             "fi"
+#         ),
+#     )
+#     if find_status != 0:
+#         logger.warning("Hand mesh output search failed for %s: %s", search_root, find_stderr)
+#         return discovered
+
+#     for line in find_stdout.splitlines():
+#         candidate = line.strip()
+#         if candidate and candidate not in seen:
+#             seen.add(candidate)
+#             discovered.append(candidate)
+#     return discovered
+
+
+# def _normalise_hand_mesh_seq_token(seq_name: str) -> str:
+#     token = re.sub(r"[^a-z0-9]+", " ", str(seq_name or "").strip().lower())
+#     return " ".join(token.split())
+
+
+# def _folder_matches_hand_mesh_seq(folder_name: str, seq_name: str) -> bool:
+#     seq_norm = _normalise_hand_mesh_seq_token(seq_name)
+#     if not seq_norm:
+#         return False
+#     folder_norm = _normalise_hand_mesh_seq_token(folder_name)
+#     seq_compact = seq_norm.replace(" ", "")
+#     folder_compact = folder_norm.replace(" ", "")
+#     return seq_norm in folder_norm or seq_compact in folder_compact
+
+
+# def _is_hand_mesh_date_folder_name(folder_name: str) -> bool:
+#     return bool(re.fullmatch(r"\d{4}-\d{2}-\d{2}", folder_name.strip()))
+
+
+# def _remote_path_mtime(ssh_client, remote_path: str) -> int:
+#     stat_stdout, _, stat_status = _run_command_with_status(
+#         ssh_client,
+#         f'stat -c %Y "{_shell_escape(remote_path)}"',
+#     )
+#     if stat_status != 0:
+#         return -1
+#     try:
+#         return int(stat_stdout.strip())
+#     except ValueError:
+#         return -1
+
+
+# def _pick_newest_directory(ssh_client, directories: list[str]) -> str:
+#     best_dir = ""
+#     best_mtime = -1
+#     for candidate in directories:
+#         mtime = _remote_path_mtime(ssh_client, candidate)
+#         if mtime >= best_mtime:
+#             best_mtime = mtime
+#             best_dir = candidate
+#     return best_dir or (directories[-1] if directories else "")
+
+
+def _extract_hand_mesh_run_dir_from_path(path: str) -> str:
+    """
+    Dyn-HaMR layout: .../video-custom/{YYYY-MM-DD}/{custom_name}/...
+    """
+    normalised = path.replace("\\", "/").rstrip("/")
+    marker = "output/logs/video-custom/"
+    marker_index = normalised.find(marker)
+    if marker_index < 0:
+        return ""
+
+    base = normalised[: marker_index + len(marker)]
+    remainder = normalised[marker_index + len(marker) :].strip("/")
+    segments = [segment for segment in remainder.split("/") if segment]
+    if not segments:
+        return ""
+
+    if "." in segments[-1]:
+        segments = segments[:-1]
+    if len(segments) < 2:
+        return ""
+    return f"{base}{segments[0]}"
+
+
+# def _hand_mesh_run_dir_from_stdout(stdout: str, seq_name: str) -> str:
+#     candidates: list[str] = []
+#     for line in stdout.splitlines():
+#         run_dir = _extract_hand_mesh_run_dir_from_path(line.strip())
+#         if run_dir and run_dir not in candidates:
+#             candidates.append(run_dir)
+
+#     if not candidates:
+#         return ""
+
+#     seq_matches = [
+#         candidate
+#         for candidate in candidates
+#         if _folder_matches_hand_mesh_seq(posixpath.basename(candidate), seq_name)
+#     ]
+#     return (seq_matches or candidates)[-1]
+
+
+# def _list_hand_mesh_run_directories(
+#     ssh_client,
+#     *,
+#     newer_than_path: str | None = None,
+# ) -> list[str]:
+#     newer_clause = ""
+#     if newer_than_path:
+#         newer_clause = f' -newer "{_shell_escape(newer_than_path)}"'
+
+#     find_stdout, find_stderr, find_status = _run_bash_script(
+#         ssh_client,
+#         (
+#             f'if [ -d "{_shell_escape(REMOTE_DYN_HAMR_OUTPUT_DIR)}" ]; then '
+#             f'find "{_shell_escape(REMOTE_DYN_HAMR_OUTPUT_DIR)}" -mindepth 2 -maxdepth 2 -type d{newer_clause}; '
+#             "fi"
+#         ),
+#     )
+#     if find_status != 0:
+#         logger.warning(
+#             "Failed to list hand mesh run directories under %s: %s",
+#             REMOTE_DYN_HAMR_OUTPUT_DIR,
+#             find_stderr,
+#         )
+#         return []
+
+#     run_dirs: list[str] = []
+#     for line in find_stdout.splitlines():
+#         candidate = line.strip()
+#         if not candidate:
+#             continue
+#         date_name = posixpath.basename(posixpath.dirname(candidate))
+#         if _is_hand_mesh_date_folder_name(date_name):
+#             run_dirs.append(candidate)
+#     return run_dirs
+
+
+# def _discover_hand_mesh_run_output_dir(ssh_client, seq_name: str, job_marker: str) -> str:
+#     """
+#     Dyn-HaMR writes each run under video-custom/{YYYY-MM-DD}/{custom_name}/.
+#     """
+#     run_dirs = _list_hand_mesh_run_directories(ssh_client, newer_than_path=job_marker)
+#     if not run_dirs:
+#         run_dirs = [
+#             candidate
+#             for candidate in _list_hand_mesh_run_directories(ssh_client)
+#             if _folder_matches_hand_mesh_seq(posixpath.basename(candidate), seq_name)
+#         ]
+
+#     seq_matches = [
+#         candidate
+#         for candidate in run_dirs
+#         if _folder_matches_hand_mesh_seq(posixpath.basename(candidate), seq_name)
+#     ]
+#     return _pick_newest_directory(ssh_client, seq_matches or run_dirs)
+
+
+# def _partition_hand_mesh_outputs(remote_paths: list[str]) -> tuple[list[str], list[str]]:
+#     videos: list[str] = []
+#     artifacts: list[str] = []
+#     for remote_path in remote_paths:
+#         lower_path = remote_path.lower()
+#         if lower_path.endswith(HAND_MESH_VIDEO_SUFFIXES):
+#             videos.append(remote_path)
+#         elif lower_path.endswith(HAND_MESH_ARTIFACT_SUFFIXES):
+#             artifacts.append(remote_path)
+#     return videos, artifacts
+
+
+def generate_hand_mesh(
+    *,
+    video_url,
+    seq_name,
+    pipeline="default",
+    local_output_dir,
+):
+    """
+    Pass the video URL directly to the SaaS VM so it handles downloading.
+    Runs run_vipe_dynhamr.py, which prints OUTPUT_VIDEO and OUTPUT_OBJ sentinel
+    lines to stdout. This function parses those sentinels and SFTPs the files down.
+    Returns (local_video_paths, local_artifact_paths, status_code, error_message).
+    """
+    if not seq_name:
+        return [], [], 400, "Missing sequence name"
+    if not video_url:
+        return [], [], 400, "Missing video URL"
+
+    local_videos_dir = os.path.join(local_output_dir, "videos")
+    local_artifacts_dir = os.path.join(local_output_dir, "artifacts")
+    os.makedirs(local_videos_dir, exist_ok=True)
+    os.makedirs(local_artifacts_dir, exist_ok=True)
+
+    safe_seq = _shell_escape(seq_name)
+    safe_pipeline = _shell_escape(pipeline or "default")
+    safe_url = _shell_escape(video_url.strip())
+
+    try:
+        with _ssh_session() as ssh_client:
+            runner_found, runner_err = _run_command(
+                ssh_client,
+                f'test -f "{_shell_escape(REMOTE_VIPE_RUNNER_SCRIPT)}" && echo "__FOUND__"',
+            )
+            if "__FOUND__" not in runner_found:
+                logger.error(
+                    "Remote run_vipe_dynhamr.py was not found at %s | stderr=%s",
+                    REMOTE_VIPE_RUNNER_SCRIPT,
+                    runner_err,
+                )
+                return [], [], 500, "VIPE hand mesh runner script was not found on the SaaS VM"
+
+            runner_script = (
+                f'cd "{_shell_escape(REMOTE_DYN_HAMR_ROOT)}" && '
+                f'export PYTHONNOUSERSITE=1 && '
+                f'"{_shell_escape(SAAS_VIPE_PYTHON_BIN)}" "{_shell_escape(REMOTE_VIPE_RUNNER_SCRIPT)}" '
+                f'--video-url "{safe_url}" '
+                f'--seq "{safe_seq}" '
+                f'--pipeline "{safe_pipeline}"'
+            )
+            stdout, stderr, runner_status = _run_bash_script(ssh_client, runner_script)
+            if runner_status != 0:
+                logger.error("VIPE hand mesh runner failed: %s", stderr or stdout)
+                return [], [], 500, stderr or stdout or "Hand mesh generation failed on the SaaS VM"
+
+            # Parse sentinel lines emitted by run_vipe_dynhamr.py:
+            #   OUTPUT_VIDEO: /path/to/foo_src_cam.mp4
+            #   OUTPUT_OBJ:   /path/to/foo.obj
+            remote_videos: list[str] = []
+            remote_artifacts: list[str] = []
+            for line in stdout.splitlines():
+                line = line.strip()
+                if line.startswith("OUTPUT_VIDEO: "):
+                    remote_videos.append(line[len("OUTPUT_VIDEO: "):].strip())
+                elif line.startswith("OUTPUT_OBJ: "):
+                    remote_artifacts.append(line[len("OUTPUT_OBJ: "):].strip())
+
+            if not remote_videos and not remote_artifacts:
+                logger.error(
+                    "VIPE completed but emitted no OUTPUT_VIDEO/OUTPUT_OBJ sentinels: stdout=%s stderr=%s",
+                    stdout,
+                    stderr,
+                )
+                return [], [], 500, "Hand mesh pipeline completed without outputs"
+
+            # Determine the run output dir from any sentinel path so we can clean it up
+            run_output_dir = ""
+            for path in remote_videos + remote_artifacts:
+                run_output_dir = _extract_hand_mesh_run_dir_from_path(path)
+                if run_output_dir:
+                    break
+
+            local_video_paths: list[str] = []
+            local_artifact_paths: list[str] = []
+            sftp = ssh_client.open_sftp()
+            try:
+                for index, remote_video_path in enumerate(remote_videos):
+                    filename = os.path.basename(remote_video_path) or f"hand_mesh_{index + 1}.mp4"
+                    local_path = os.path.join(local_videos_dir, filename)
+                    if os.path.exists(local_path):
+                        stem, ext = os.path.splitext(filename)
+                        local_path = os.path.join(local_videos_dir, f"{stem}_{index + 1}{ext or '.mp4'}")
+                    sftp.get(remote_video_path, local_path)
+                    if os.path.isfile(local_path):
+                        local_video_paths.append(local_path)
+
+                for index, remote_artifact_path in enumerate(remote_artifacts):
+                    filename = os.path.basename(remote_artifact_path) or f"artifact_{index + 1}"
+                    local_path = os.path.join(local_artifacts_dir, filename)
+                    if os.path.exists(local_path):
+                        stem, ext = os.path.splitext(filename)
+                        local_path = os.path.join(local_artifacts_dir, f"{stem}_{index + 1}{ext or ''}")
+                    sftp.get(remote_artifact_path, local_path)
+                    if os.path.isfile(local_path):
+                        local_artifact_paths.append(local_path)
+            finally:
+                sftp.close()
+
+            if run_output_dir:
+                _run_command(ssh_client, f'rm -rf "{_shell_escape(run_output_dir)}"')
+                logger.info("Cleaned up remote output directory: %s", run_output_dir)
+
+            if local_video_paths or local_artifact_paths:
+                return local_video_paths, local_artifact_paths, 200, ""
+            return [], [], 500, "Hand mesh outputs could not be downloaded"
+
+    except Exception as exc:
+        logger.error("generate_hand_mesh error: %s", exc, exc_info=True)
+        return [], [], 500, str(exc)
 
 def generate_task_intelligence(video_url: str):
     """

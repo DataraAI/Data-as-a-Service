@@ -1,8 +1,8 @@
-import React, { Suspense } from 'react';
+import { Html, OrbitControls, Stage } from '@react-three/drei';
 import { Canvas, useLoader } from '@react-three/fiber';
-import { OrbitControls, Stage, Html } from '@react-three/drei';
-import { STLLoader, GLTFLoader } from 'three-stdlib';
-import { Loader2, AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Loader2 } from 'lucide-react';
+import React, { Suspense } from 'react';
+import { GLTFLoader, OBJLoader, STLLoader } from 'three-stdlib';
 
 interface ModelProps {
     url: string;
@@ -23,11 +23,22 @@ function GLBModel({ url }: ModelProps) {
     return <primitive object={gltf.scene} />;
 }
 
+function OBJModel({ url }: ModelProps) {
+    const obj = useLoader(OBJLoader, url);
+    return <primitive object={obj} />;
+}
+
 function ModelSelector({ url }: ModelProps) {
     const isGLB = url.toLowerCase().endsWith('.glb') || url.toLowerCase().endsWith('.gltf') || url.toLowerCase().includes('.glb?') || url.toLowerCase().includes('.gltf?');
+    const isOBJ = url.toLowerCase().endsWith(".obj");
+    alert("last 10 characters: " + url.substring(url.length - 10));
 
     if (isGLB) {
         return <GLBModel url={url} />;
+    }
+    else if (isOBJ) {
+        alert("last 10 characters: " + url.substring(url.length - 10));
+        return <OBJModel url={url} />;
     }
     return <STLModel url={url} />;
 }
