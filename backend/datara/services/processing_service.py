@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import mimetypes
 import os
 import re
 import shutil
@@ -11,6 +12,7 @@ import sys
 import tempfile
 from datetime import datetime, timezone
 from typing import Any
+from urllib.parse import urlparse
 
 import cv2
 import gdown
@@ -1579,6 +1581,301 @@ class ProcessingService:
         if not asset_id:
             raise ValueError("Missing asset_id")
         return self.dataset_service.resolve_asset(asset_id, current_user)
+
+    @staticmethod
+    def _slugify_sequence_name(value: str) -> str:
+        slug = re.sub(r"[^a-zA-Z0-9]+", "_", str(value or "").strip())
+        slug = slug.strip("_")
+        return slug or "sequence"
+
+    @staticmethod
+    def _probe_video_file(video_path: str) -> dict[str, Any]:
+        capture = cv2.VideoCapture(video_path)
+        try:
+            fps = float(capture.get(cv2.CAP_PROP_FPS) or 0.0)
+            width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH) or 0)
+            height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT) or 0)
+            frame_count = int(capture.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
+            if width <= 0 or height <= 0:
+                success, frame = capture.read()
+                if success and frame is not None:
+                    height, width = frame.shape[:2]
+                    frame_count = max(frame_count, 1)
+        finally:
+            capture.release()
+
+        return {
+            "fps": fps if fps > 0 else 30.0,
+            "width": width if width > 0 else 1280,
+            "height": height if height > 0 else 720,
+            "frame_count": frame_count if frame_count > 0 else 1,
+        }
+
+    def _upload_hand_mesh_video(
+        self,
+        *,
+        dataset: dict[str, Any],
+        output_prefix: str,
+        local_video_path: str,
+        source_task: str,
+        seq_slug: str,
+        source_asset_id: str,
+    ) -> str:
+        filename = os.path.basename(local_video_path)
+        blob_name = f"{output_prefix.rstrip('/')}/{filename}"
+        video_metadata = self._probe_video_file(local_video_path)
+        container_client = self.azure_service.get_container_client(dataset["storage_container"])
+
+        with open(local_video_path, "rb") as handle:
+            container_client.upload_blob(
+                name=blob_name,
+                data=handle,
+                overwrite=True,
+                content_settings=ContentSettings(content_type="video/mp4"),
+            )
+
+        existing_doc = self.azure_service.get_cosmos_doc_for_blob(dataset["storage_container"], blob_name) or {}
+        self.azure_service.upsert_cosmos_item(
+            {
+                "id": existing_doc.get("id", os.urandom(16).hex()),
+                "docType": "video_annotation",
+                "containerName": dataset["storage_container"],
+                "datasetName": output_prefix.rstrip("/"),
+                "datasetId": dataset["id"],
+                "ownerUserId": dataset["owner_user_id"],
+                "visibility": dataset["visibility"],
+                "sourceDatasetId": dataset["id"],
+                "view": "hand_mesh",
+                "frameName": filename,
+                "blobPath": blob_name,
+                "date": existing_doc.get("date", ""),
+                "frameId": None,
+                "width": video_metadata["width"],
+                "height": video_metadata["height"],
+                "miscTags": ["video", "hand_mesh", seq_slug],
+                "task": source_task,
+                "handMeshSequence": seq_slug,
+                "sourceAssetId": source_asset_id,
+                "VLM_tags": existing_doc.get("VLM_tags", []),
+                "VLM_tags_by_prompt": existing_doc.get("VLM_tags_by_prompt", {}),
+                "VLM_effective_prompts": existing_doc.get("VLM_effective_prompts", {}),
+                "VLM_last_prompt_label": existing_doc.get("VLM_last_prompt_label"),
+                "vlm": existing_doc.get("vlm"),
+                "sharpnessScore": None,
+                "clear": None,
+                "sourceType": "hand_mesh_video",
+                "frameCount": video_metadata["frame_count"],
+                "fps": video_metadata["fps"],
+            }
+        )
+        return blob_name
+
+    def _upload_hand_mesh_artifact(
+        self,
+        *,
+        dataset: dict[str, Any],
+        output_prefix: str,
+        local_file_path: str,
+        source_task: str,
+        seq_slug: str,
+        source_asset_id: str,
+    ) -> str:
+        filename = os.path.basename(local_file_path)
+        blob_name = f"{output_prefix.rstrip('/')}/{filename}"
+        content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+        container_client = self.azure_service.get_container_client(dataset["storage_container"])
+
+        with open(local_file_path, "rb") as handle:
+            container_client.upload_blob(
+                name=blob_name,
+                data=handle,
+                overwrite=True,
+                content_settings=ContentSettings(content_type=content_type),
+            )
+
+        existing_doc = self.azure_service.get_cosmos_doc_for_blob(dataset["storage_container"], blob_name) or {}
+        self.azure_service.upsert_cosmos_item(
+            {
+                "id": existing_doc.get("id", os.urandom(16).hex()),
+                "docType": "hand_mesh_artifact",
+                "containerName": dataset["storage_container"],
+                "datasetName": output_prefix.rstrip("/"),
+                "datasetId": dataset["id"],
+                "ownerUserId": dataset["owner_user_id"],
+                "visibility": dataset["visibility"],
+                "sourceDatasetId": dataset["id"],
+                "view": "hand_mesh",
+                "frameName": filename,
+                "blobPath": blob_name,
+                "date": existing_doc.get("date", ""),
+                "frameId": None,
+                "miscTags": ["hand_mesh", "hand_mesh_artifact", seq_slug],
+                "task": source_task,
+                "handMeshSequence": seq_slug,
+                "sourceAssetId": source_asset_id,
+                "sourceType": "hand_mesh_artifact",
+            }
+        )
+        return blob_name
+
+    def _resolve_hand_mesh_video_url(self, video_url: str, current_user: dict[str, Any]) -> str:
+        video_url = str(video_url or "").strip()
+        if not video_url:
+            raise ValueError("Missing video_url")
+
+        if video_url.startswith("/api/proxy/"):
+            asset_id = video_url.split("/api/proxy/", 1)[1].split("?", 1)[0].strip()
+            source = self._resolve_source_asset(current_user, asset_id)
+            return self.azure_service.generate_sas_url(
+                source["dataset"]["storage_container"],
+                source["blob_name"],
+                expiry_hours=2,
+            )
+
+        if video_url.startswith("/"):
+            raise ValueError("video_url must be an absolute URL")
+
+        parsed = urlparse(video_url)
+        if parsed.scheme not in ("http", "https"):
+            raise ValueError("video_url must use http or https")
+        return video_url
+
+    def _viewer_route_path_for_blob(
+        self,
+        dataset: dict[str, Any],
+        blob_name: str,
+        current_user: dict[str, Any],
+    ) -> str:
+        summary = self.sql_store.build_dataset_summary(dataset, current_user)
+        base_path = summary["full_path"].rstrip("/")
+        prefix = dataset["storage_prefix"].rstrip("/")
+        normalised_blob = blob_name.strip("/")
+        if not normalised_blob.startswith(f"{prefix}/") and normalised_blob != prefix:
+            return base_path
+
+        relative = normalised_blob[len(prefix) :].lstrip("/")
+        parent = os.path.dirname(relative)
+        if not parent:
+            return base_path
+        return f"{base_path}/{parent}".replace("\\", "/")
+
+    def generate_hand_mesh(self, current_user: dict[str, Any], data: dict[str, Any]) -> tuple[dict[str, Any], int]:
+        pipeline = str(data.get("pipeline") or "default").strip() or "default"
+        video_url = str(data.get("video_url") or "").strip()
+        route_path = str(data.get("route_path") or "").strip().strip("/")
+        asset_id = str(data.get("asset_id") or "").strip()
+        source_asset_id = asset_id
+
+        if not video_url and not asset_id:
+            return {"error": "Missing video_url or asset_id"}, 400
+
+        try:
+            if asset_id and not video_url:
+                source = self._resolve_source_asset(current_user, asset_id)
+                source_dataset = source["dataset"]
+                source_blob = source["blob_name"]
+                if not any(source_blob.lower().endswith(ext) for ext in (".mp4", ".mov", ".m4v", ".webm")):
+                    return {"error": "Hand mesh generation can only be run on video assets."}, 400
+
+                effective_video_url = self.azure_service.generate_sas_url(
+                    source_dataset["storage_container"],
+                    source_blob,
+                    expiry_hours=2,
+                )
+                dataset = source_dataset
+                if not route_path:
+                    route_path = self._viewer_route_path_for_blob(dataset, source_blob, current_user)
+                video_basename = os.path.basename(source_blob)
+            else:
+                effective_video_url = self._resolve_hand_mesh_video_url(video_url, current_user)
+                if video_url.startswith("/api/proxy/"):
+                    proxy_asset_id = video_url.split("/api/proxy/", 1)[1].split("?", 1)[0].strip()
+                    if proxy_asset_id:
+                        source_asset_id = proxy_asset_id
+                dataset, _extra_segments = self.sql_store.resolve_dataset_route(route_path, current_user)
+                parsed_video_path = urlparse(effective_video_url).path
+                video_basename = os.path.basename(parsed_video_path)
+
+            self.sql_store.assert_user_can_access_dataset(dataset, current_user)
+        except (ValueError, PermissionError, FileNotFoundError) as exc:
+            return {"error": str(exc)}, 400 if isinstance(exc, ValueError) else 403
+
+        if not route_path:
+            return {"error": "Missing route_path"}, 400
+
+        if not any(video_basename.lower().endswith(ext) for ext in (".mp4", ".mov", ".m4v", ".webm")):
+            return {"error": "Hand mesh generation requires a direct video URL"}, 400
+        seq_slug = self._slugify_sequence_name(
+            str(data.get("seq") or os.path.splitext(video_basename)[0])
+        )
+        dataset_summary = self.sql_store.build_dataset_summary(dataset, current_user)
+        output_route_path = f"{dataset_summary['full_path'].rstrip('/')}/hand_mesh/{seq_slug}"
+        output_storage_prefix = f"{dataset['storage_prefix'].rstrip('/')}/hand_mesh/{seq_slug}"
+        output_video_prefix = f"{output_storage_prefix}/videos"
+        output_artifact_prefix = f"{output_storage_prefix}/artifacts"
+        source_task = str(dataset.get("task") or "").strip()
+
+        job_root = tempfile.mkdtemp(prefix="hand_mesh_job_", dir=DATASET_LIST_DIR)
+        local_output_dir = os.path.join(job_root, "outputs")
+
+        try:
+            from datara.services import call_lambda_vm
+
+            local_video_paths, local_artifact_paths, status_code, error_message = call_lambda_vm.generate_hand_mesh(
+                video_url=effective_video_url,
+                seq_name=seq_slug,
+                pipeline=pipeline,
+                local_output_dir=local_output_dir,
+            )
+            if status_code != 200 or (not local_video_paths and not local_artifact_paths):
+                return {"error": error_message or "Hand mesh generation failed"}, status_code or 500
+
+            self.azure_service.delete_blobs_with_prefix(
+                dataset["storage_container"],
+                output_storage_prefix,
+            )
+            self.azure_service.delete_cosmos_docs_for_prefix(
+                dataset["storage_container"],
+                output_storage_prefix,
+            )
+
+            uploaded_videos: list[str] = []
+            uploaded_artifacts: list[str] = []
+            for local_video_path in local_video_paths:
+                blob_name = self._upload_hand_mesh_video(
+                    dataset=dataset,
+                    output_prefix=output_video_prefix,
+                    local_video_path=local_video_path,
+                    source_task=source_task,
+                    seq_slug=seq_slug,
+                    source_asset_id=source_asset_id,
+                )
+                uploaded_videos.append(os.path.basename(blob_name))
+
+            for local_artifact_path in local_artifact_paths:
+                blob_name = self._upload_hand_mesh_artifact(
+                    dataset=dataset,
+                    output_prefix=output_artifact_prefix,
+                    local_file_path=local_artifact_path,
+                    source_task=source_task,
+                    seq_slug=seq_slug,
+                    source_asset_id=source_asset_id,
+                )
+                uploaded_artifacts.append(os.path.basename(blob_name))
+        except Exception as exc:
+            logger.error("generate_hand_mesh error: %s", exc, exc_info=True)
+            return {"error": str(exc)}, 400 if isinstance(exc, ValueError) else 500
+        finally:
+            shutil.rmtree(job_root, ignore_errors=True)
+
+        return {
+            "message": "Hand mesh outputs generated and uploaded successfully.",
+            "output_route_path": output_route_path,
+            "output_viewer_path": f"/viewer/{output_route_path}",
+            "output_videos": uploaded_videos,
+            "output_artifacts": uploaded_artifacts,
+            "seq": seq_slug,
+        }, 200
 
     @staticmethod
     def _normalise_sentence(text: str) -> str:

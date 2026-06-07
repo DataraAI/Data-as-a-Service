@@ -437,6 +437,22 @@ def register_routes(app: Flask) -> None:
         payload, status_code = processing_service.generate_video_to_video_views(current_user, data)
         return jsonify(payload), status_code
 
+    @app.route("/api/generate_hand_mesh", methods=["POST"])
+    @auth_service.require_approved_user
+    def generate_hand_mesh():
+        current_user = auth_service.get_current_user_or_raise()
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "Invalid JSON body"}), 400
+
+        if not data.get("video_url") and not data.get("asset_id"):
+            return jsonify({"error": "Missing 'video_url' or 'asset_id' in request body"}), 400
+        if not data.get("route_path") and not data.get("asset_id"):
+            return jsonify({"error": "Missing 'route_path' in request body"}), 400
+
+        payload, status_code = processing_service.generate_hand_mesh(current_user, data)
+        return jsonify(payload), status_code
+
 def register_error_handlers(app: Flask) -> None:
     @app.errorhandler(PermissionError)
     def handle_permission_error(error):
