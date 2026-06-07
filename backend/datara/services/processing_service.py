@@ -96,14 +96,9 @@ class ProcessingService:
             return "private"
         if requested in {"private", "public"}:
             return requested
+        if source_dataset:
+            return str(source_dataset["visibility"] or "").strip() or "private"
         return "private"
-
-    @staticmethod
-    def _auto_named_variant(source_name: str, prompt: str, suffix: str) -> str:
-        stem = "".join(ch.lower() if ch.isalnum() else "-" for ch in prompt.strip())[:24].strip("-")
-        stem = stem or suffix
-        stem = stem[:24]
-        return f"{source_name}-{suffix}-{stem}".strip("-")
 
     def _build_dataset_row(
         self,
@@ -610,17 +605,29 @@ class ProcessingService:
         return name.lower()
 
     @staticmethod
-    def _mask_instance_sort_key(instance_name: str) -> tuple[int, int, str]:
-        match = re.match(r"object[_-]?(\d+)$", instance_name.strip().lower())
+    def _parse_instance_number(instance_name: str) -> int | None:
+        normalized = instance_name.strip().lower()
+        if normalized.isdigit():
+            return int(normalized)
+
+        match = re.match(r"object[_-]?(\d+)$", normalized)
         if match:
-            return (0, int(match.group(1)), instance_name.lower())
+            return int(match.group(1))
+
+        return None
+
+    @staticmethod
+    def _mask_instance_sort_key(instance_name: str) -> tuple[int, int, str]:
+        instance_number = ProcessingService._parse_instance_number(instance_name)
+        if instance_number is not None:
+            return (0, instance_number, instance_name.lower())
         return (1, 0, instance_name.lower())
 
     @staticmethod
     def _instance_label(instance_name: str) -> str:
-        match = re.match(r"object[_-]?(\d+)$", instance_name.strip().lower())
-        if match:
-            return f"Object {int(match.group(1))}"
+        instance_number = ProcessingService._parse_instance_number(instance_name)
+        if instance_number is not None:
+            return f"Object {instance_number}"
         return instance_name.replace("_", " ").strip() or instance_name
 
     @staticmethod
@@ -697,10 +704,8 @@ class ProcessingService:
                 if not instance_name:
                     continue
 
-                instance_id = instance_name
-                match = re.match(r"object[_-]?(\d+)$", instance_name.lower())
-                if match:
-                    instance_id = match.group(1)
+                instance_number = self._parse_instance_number(instance_name)
+                instance_id = str(instance_number) if instance_number is not None else instance_name
 
                 instances.append(
                     {
@@ -809,8 +814,8 @@ class ProcessingService:
         instance_id = str(selection.get("instance_id") or "").strip()
         if instance_id:
             for available_name in available_names:
-                match = re.match(r"object[_-]?(\d+)$", available_name.lower())
-                if match and match.group(1) == instance_id:
+                instance_number = self._parse_instance_number(available_name)
+                if instance_number is not None and str(instance_number) == instance_id:
                     return [available_name]
                 if available_name == instance_id:
                     return [available_name]
@@ -1919,9 +1924,12 @@ class ProcessingService:
         source_dataset = source["dataset"]
         source_blob = source["blob_name"]
         source_image_url = self.azure_service.generate_sas_url(source_dataset["storage_container"], source_blob, expiry_hours=2)
+        source_task = str(source["metadata"].get("task") or source_dataset.get("task") or "")
         target_dataset = source_dataset
-        local_root = os.path.join(DATASET_LIST_DIR, target_dataset["storage_prefix"])
+        local_root = ""
         try:
+            local_root = os.path.join(DATASET_LIST_DIR, target_dataset["storage_prefix"])
+
             from datara.services import call_lambda_vm
 
             _local_path, status_code = call_lambda_vm.generate_ego_image(
@@ -1938,7 +1946,7 @@ class ProcessingService:
                 local_process_dir=local_root,
                 date_val=str(data.get("date") or ""),
                 misc_tags=list(data.get("tags", [])) if isinstance(data.get("tags"), list) else [],
-                task=str(source["metadata"].get("task") or ""),
+                task=source_task,
                 create_video_annotation=False,
                 upload_view="egos",
                 source_dataset_id=source_dataset["id"],
@@ -1947,7 +1955,8 @@ class ProcessingService:
             logger.error("Error generating ego image: %s", exc, exc_info=True)
             return {"error": str(exc)}, 500
         finally:
-            shutil.rmtree(local_root, ignore_errors=True)
+            if local_root:
+                shutil.rmtree(local_root, ignore_errors=True)
 
         return {
             "message": "Ego view processed and uploaded successfully",
@@ -1963,9 +1972,12 @@ class ProcessingService:
         source_dataset = source["dataset"]
         source_blob = source["blob_name"]
         source_image_url = self.azure_service.generate_sas_url(source_dataset["storage_container"], source_blob, expiry_hours=2)
+        source_task = str(source["metadata"].get("task") or source_dataset.get("task") or "")
         target_dataset = source_dataset
-        local_root = os.path.join(DATASET_LIST_DIR, target_dataset["storage_prefix"])
+        local_root = ""
         try:
+            local_root = os.path.join(DATASET_LIST_DIR, target_dataset["storage_prefix"])
+
             from datara.services import call_lambda_vm
 
             _local_path, status_code = call_lambda_vm.invoke_corner_case(
@@ -1989,7 +2001,7 @@ class ProcessingService:
                 local_process_dir=local_root,
                 date_val=str(data.get("date") or ""),
                 misc_tags=misc_tags,
-                task=str(source["metadata"].get("task") or ""),
+                task=source_task,
                 create_video_annotation=False,
                 upload_view="corner_images_controlnet",
                 source_dataset_id=source_dataset["id"],
@@ -1998,7 +2010,8 @@ class ProcessingService:
             logger.error("Error generating corner case: %s", exc, exc_info=True)
             return {"error": str(exc)}, 500
         finally:
-            shutil.rmtree(local_root, ignore_errors=True)
+            if local_root:
+                shutil.rmtree(local_root, ignore_errors=True)
 
         return {
             "message": "Corner case generation completed successfully",
