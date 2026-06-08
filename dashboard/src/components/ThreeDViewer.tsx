@@ -2,6 +2,7 @@ import { Html, OrbitControls, Stage } from '@react-three/drei';
 import { Canvas, useLoader } from '@react-three/fiber';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import React, { Suspense } from 'react';
+import * as THREE from 'three';
 import { GLTFLoader, OBJLoader, STLLoader } from 'three-stdlib';
 
 interface ModelProps {
@@ -25,19 +26,34 @@ function GLBModel({ url }: ModelProps) {
 
 function OBJModel({ url }: ModelProps) {
     const obj = useLoader(OBJLoader, url);
-    return <primitive object={obj} />;
+    // 💡 FIX: Inject a visible material into the OBJ children meshes 
+    // so they don't render invisible or pitch black.
+    React.useMemo(() => {
+        obj.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+                child.material = new THREE.MeshStandardMaterial({
+                    color: "#0d9488", // Teal styling to match DataraAI themes
+                    roughness: 0.4,
+                    metalness: 0.2,
+                    side: THREE.DoubleSide // Ensure inside/outside of mesh are visible
+                });
+            }
+        });
+    }, [obj]);
+
+    return <primitive object={obj} scale={1} />;
 }
 
 function ModelSelector({ url }: ModelProps) {
     const isGLB = url.toLowerCase().endsWith('.glb') || url.toLowerCase().endsWith('.gltf') || url.toLowerCase().includes('.glb?') || url.toLowerCase().includes('.gltf?');
     const isOBJ = url.toLowerCase().endsWith(".obj");
-    alert("last 10 characters: " + url.substring(url.length - 10));
+    // alert("last 10 characters: " + url.substring(url.length - 10));
 
     if (isGLB) {
         return <GLBModel url={url} />;
     }
     else if (isOBJ) {
-        alert("last 10 characters: " + url.substring(url.length - 10));
+        // console.log("Full URL: " + url);
         return <OBJModel url={url} />;
     }
     return <STLModel url={url} />;
