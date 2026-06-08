@@ -1276,6 +1276,13 @@ export default function DataViewer() {
   const landingTopRef = useRef<HTMLDivElement | null>(null);
   const contentScrollRef = useRef<HTMLDivElement | null>(null);
 
+  useEffect(() => {
+    if (!folderDropdownOpen) return;
+    const handler = () => setFolderDropdownOpen(null);
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [folderDropdownOpen]);
+
   const pathSegments = useMemo(
     () => location.pathname.split("/").filter((part) => part && part !== "viewer" && part !== "robodatahub"),
     [location.pathname],
@@ -1862,7 +1869,7 @@ export default function DataViewer() {
         className={`mx-auto grid w-full grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3 ${maxWidthClassName}`}
       >
         {items.map((folder) => {
-          const isDataset = isDatasetRoutePath(folder.full_path);
+          const isOwnFolder = folder.full_path.startsWith("my/");
 
           return (
             <div
@@ -1876,10 +1883,11 @@ export default function DataViewer() {
                 )
               }
             >
-              {isDataset && (
+              {isOwnFolder && (
                 <div className="absolute right-4 top-4 z-20">
                   <button
                     type="button"
+                    onMouseDown={(event) => event.stopPropagation()}
                     onClick={(event) => {
                       event.stopPropagation();
                       setFolderDropdownOpen((previous) =>
@@ -1893,27 +1901,23 @@ export default function DataViewer() {
                   </button>
 
                   {folderDropdownOpen === folder.full_path && (
-                    <>
-                      <div
-                        className="fixed inset-0 z-10"
-                        onClick={() => setFolderDropdownOpen(null)}
-                        aria-hidden
-                      />
-                      <div className="absolute right-0 z-20 mt-1 w-40 rounded-2xl border border-slate-200 bg-white py-1 shadow-[0_20px_40px_rgba(15,23,42,0.12)]">
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setDeleteModalFolder(folder);
-                            setFolderDropdownOpen(null);
-                          }}
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left font-sans-tech text-sm text-destructive hover:bg-destructive/10"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          Delete
-                        </button>
-                      </div>
-                    </>
+                    <div
+                      className="absolute right-0 z-20 mt-1 w-40 rounded-2xl border border-slate-200 bg-white py-1 shadow-[0_20px_40px_rgba(15,23,42,0.12)]"
+                      onMouseDown={(event) => event.stopPropagation()}
+                    >
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setDeleteModalFolder(folder);
+                          setFolderDropdownOpen(null);
+                        }}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-left font-sans-tech text-sm text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Delete
+                      </button>
+                    </div>
                   )}
                 </div>
               )}
