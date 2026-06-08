@@ -34,6 +34,10 @@ function sourceDatasetName(image: any) {
   return image?.dataset?.viewer_path?.split("/").filter(Boolean).pop() || image?.name || "dataset";
 }
 
+function defaultDatasetName(image: any, suffix: string) {
+  return `${sourceDatasetName(image)}-${suffix}`;
+}
+
 export function ImageModal({
   image,
   onClose,
@@ -53,7 +57,6 @@ export function ImageModal({
   const [isCreatingVlmTags, setIsCreatingVlmTags] = useState(false);
 
   const sourceVisibility = image?.dataset?.visibility ?? image?.metadata?.visibility ?? "public";
-  const sourceIsPrivate = sourceVisibility === "private";
   const isVideo = image?.type === "video";
   const isStillImage = image?.type === "image";
   const assetUrl = image?.proxy_url || image?.url;
@@ -184,7 +187,7 @@ export function ImageModal({
       <div className="relative flex flex-1 items-center justify-center overflow-hidden p-8">
         {image.type === "3d" ? (
           <div className="relative h-full w-full max-w-4xl rounded-lg border border-border bg-card/50">
-            <ThreeDViewer url={image?.url} />
+            <ThreeDViewer url={assetUrl} />
           </div>
         ) : isVideo ? (
           <video
