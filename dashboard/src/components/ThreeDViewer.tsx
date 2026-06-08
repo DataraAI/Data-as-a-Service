@@ -41,6 +41,30 @@ function OBJModel({ url }: ModelProps) {
         });
     }, [obj]);
 
+    // Automatic garbage collection routine to free RAM
+    React.useEffect(() => {
+        // 👇 CLEANUP RUNS AUTOMATICALLY WHEN THE MODEL SWAPS OR UNMOUNTS
+        return () => {
+            obj.traverse((child) => {
+                if (child instanceof THREE.Mesh) {
+                    // 🧠 Free up RAM vertex structures
+                    if (child.geometry) {
+                        child.geometry.dispose();
+                    }
+
+                    // 🎨 Free up VRAM material structures
+                    if (child.material) {
+                        if (Array.isArray(child.material)) {
+                            child.material.forEach((mat) => mat.dispose());
+                        } else {
+                            child.material.dispose();
+                        }
+                    }
+                }
+            });
+        };
+    }, [obj]);
+
     return <primitive object={obj} scale={1} />;
 }
 
