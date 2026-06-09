@@ -1,8 +1,6 @@
-import { useAuth } from "@/auth/useAuth";
-import AuthRequiredState from "@/components/AuthRequiredState";
-import { buildAuthPath } from "@/lib/authLinks";
-import { folderPreviewMediaUrl, frontPageImageUrl } from "@/lib/datasetFolderCover";
+﻿import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import axios from "axios";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   AlertCircle,
   ArrowRight,
@@ -17,17 +15,30 @@ import {
   Terminal,
   Trash2,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Breadcrumbs } from "../components/Breadcrumbs";
-import { DatasetFolderCover } from "../components/DatasetFolderCover";
+import { Sidebar } from "../components/Sidebar";
+import { UploadModal } from "../components/UploadModal";
 import { ImageGrid } from "../components/ImageGrid";
 import { ImageModal } from "../components/ImageModal";
 import { MaskGenerationPanel } from "../components/MaskGenerationPanel";
 import Navigation from "../components/Navigation";
-import { Sidebar } from "../components/Sidebar";
-import { UploadModal } from "../components/UploadModal";
-import { VideoToolsPanel } from "../components/VideoToolsPanel";
+import { Breadcrumbs } from "../components/Breadcrumbs";
+import { DatasetFolderCover } from "../components/DatasetFolderCover";
+import { VideoToolsPanel, type VideoFolderAsset } from "../components/VideoToolsPanel";
+import AuthRequiredState from "@/components/AuthRequiredState";
+import { useAuth } from "@/auth/useAuth";
+import { buildAuthPath } from "@/lib/authLinks";
+import {
+  blobProxyUrl,
+  folderPreviewMediaUrl,
+  frontPageImageUrl,
+  getLocalFolderPreviewSnapshots,
+} from "@/lib/datasetFolderCover";
+import {
+  CATEGORY_LANDING_CONTENT,
+  ROOT_SHOWCASE_SECTIONS,
+  type CatalogCard,
+  type CategoryLandingContent,
+} from "@/lib/roboDataHubCatalog";
 
 interface FolderItem {
   name: string;
@@ -91,6 +102,8 @@ type StoragePreviewKey = "carAutomation" | "serverrack" | "humanoid" | "warehous
 interface CategoryConfig {
   routeKey: CategoryKey;
   previewKey: StoragePreviewKey;
+  publicSlug: string;
+  aliases: string[];
   label: string;
   description: string;
 }
@@ -115,17 +128,28 @@ interface CategoryDatasetPreview {
   preview_video?: CategoryPreviewAsset | null;
 }
 
+interface ResolvedCatalogCardEntry {
+  card: CatalogCard;
+  liveItem: CategoryDatasetPreview | null;
+  placeholderItem: CategoryDatasetPreview | null;
+}
+
+function cloneEntryWithTitle(entry: ResolvedCatalogCardEntry, title: string): ResolvedCatalogCardEntry {
+  return {
+    ...entry,
+    card: {
+      ...entry.card,
+      title,
+    },
+  };
+}
+
 const CATEGORIES: CategoryConfig[] = [
-  {
-    routeKey: "carAutomation",
-    previewKey: "carAutomation",
-    label: "Automotive",
-    description:
-      "Assembly, inspection, and vehicle-production data for robotics workflows across automotive environments.",
-  },
   {
     routeKey: "serverrack",
     previewKey: "serverrack",
+    publicSlug: "data-center",
+    aliases: ["serverrack", "serverracks", "datacenter", "datacentre", "data-center"],
     label: "Data Center",
     description:
       "Data-center interaction, port-level operation, and maintenance-focused datasets for rack and cabling tasks.",
@@ -133,16 +157,29 @@ const CATEGORIES: CategoryConfig[] = [
   {
     routeKey: "dexterity",
     previewKey: "humanoid",
-    label: "Dexterity",
+    publicSlug: "dexterity",
+    aliases: ["dexterity", "humanoid"],
+    label: "Humanoid",
     description:
       "Fine-motor manipulation and embodied task data for dexterous robotic systems operating across practical, object-centric scenarios.",
   },
   {
     routeKey: "warehouse",
     previewKey: "warehouse",
+    publicSlug: "warehouse",
+    aliases: ["warehouse"],
     label: "Warehouse",
     description:
       "Logistics, handling, and storage-operation data for robotic movement, picking, and material flow.",
+  },
+  {
+    routeKey: "carAutomation",
+    previewKey: "carAutomation",
+    publicSlug: "automotive",
+    aliases: ["carAutomation", "carautomation"],
+    label: "Automotive",
+    description:
+      "Assembly, inspection, and vehicle-production data for robotics workflows across automotive environments.",
   },
 ];
 
@@ -290,10 +327,11 @@ function normalizeCategoryValue(value?: string | null) {
 
 function getCategoryByRouteKey(value?: string | null) {
   const normalizedValue = normalizeCategoryValue(value);
-  return (
-    CATEGORIES.find((category) => normalizeCategoryValue(category.routeKey) === normalizedValue) ??
-    null
-  );
+  return CATEGORIES.find((category) => {
+    if (normalizeCategoryValue(category.routeKey) === normalizedValue) return true;
+    if (normalizeCategoryValue(category.publicSlug) === normalizedValue) return true;
+    return category.aliases.some((alias) => normalizeCategoryValue(alias) === normalizedValue);
+  }) ?? null;
 }
 
 function pathBelongsToCategory(fullPath: string, routeKey: CategoryKey) {
@@ -301,22 +339,9 @@ function pathBelongsToCategory(fullPath: string, routeKey: CategoryKey) {
   if (segments.length === 0) return false;
   const categorySegment =
     segments[0] === "my" ? segments[1] : segments[0] === "admin" ? segments[2] : segments[0];
-  return normalizeCategoryValue(categorySegment) === normalizeCategoryValue(routeKey);
-}
-
-function buildCategoryHeroImagePaths(category: CategoryConfig) {
-  if (category.routeKey === "serverrack") {
-    return [
-      "serverrack/serverrack (1).png",
-      "serverrack/serverrack1.png",
-      "serverrack/serverrack2.png",
-      "serverrack/serverrack3.png",
-    ];
-  }
-
-  return [0, 1, 2, 3].map(
-    (index) =>
-      `${category.previewKey}/${category.previewKey}${index === 0 ? "" : index}.png`,
+  return (
+    getCategoryByRouteKey(categorySegment)?.routeKey === routeKey ||
+    normalizeCategoryValue(categorySegment) === normalizeCategoryValue(routeKey)
   );
 }
 
@@ -336,8 +361,20 @@ function buildViewerPath(fullPath: string, imageName?: string, basePath = "/view
   return `${basePath}/${encodedPath}${query ? `?${query}` : ""}`;
 }
 
+function getPreviewDatasetRootFromVideoBlobPath(blobPath?: string | null) {
+  const normalized = String(blobPath ?? "").trim().replace(/\\/g, "/");
+  if (!normalized) return null;
+  const match = normalized.match(/^(.*)\/preview\/hover\.(mp4|webm|mov|m4v)$/i);
+  return match?.[1] ?? null;
+}
+
 function withViewerBase(viewerPath: string, basePath: string) {
   return viewerPath.startsWith("/viewer") ? `${basePath}${viewerPath.slice("/viewer".length)}` : viewerPath;
+}
+
+function buildCategoryLandingPath(category: CategoryConfig, basePath: string) {
+  const segment = basePath.startsWith("/robodatahub") ? category.publicSlug : category.routeKey;
+  return `${basePath}/${segment}`;
 }
 
 function groupVlmPromptTags(tags: string[]) {
@@ -391,90 +428,6 @@ function isDatasetRoutePath(path: string) {
   return parts.length === 3;
 }
 
-function ShowcasePreviewImage({
-  blobPath,
-  alt,
-  onClick,
-}: {
-  blobPath: string;
-  alt: string;
-  onClick: () => void;
-}) {
-  const [failed, setFailed] = useState(false);
-  const src = frontPageImageUrl(blobPath);
-
-  if (!src || failed) {
-    return (
-      <button
-        type="button"
-        onClick={onClick}
-        className="group relative flex aspect-[5/4] w-full items-center justify-center overflow-hidden rounded-[20px] border border-slate-200 bg-slate-100 transition-all duration-300 hover:border-primary/30 hover:shadow-[0_0_0_2px_rgba(13,148,136,0.12)]"
-      >
-        <Database className="h-9 w-9 text-primary/60" />
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-background via-background/80 to-transparent px-4 py-3 text-left">
-          <span className="font-sans-tech text-[11px] uppercase tracking-[0.18em] text-primary">
-            Open in viewer
-          </span>
-        </div>
-      </button>
-    );
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="group relative w-full overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-[0_18px_40px_rgba(15,23,42,0.08)] transition-all duration-300 hover:border-primary/30 hover:shadow-[0_0_0_2px_rgba(13,148,136,0.12)] focus:border-primary focus:outline-none focus:shadow-[0_0_0_2px_rgba(13,148,136,0.12)]"
-    >
-      <div className="aspect-[5/4] overflow-hidden">
-        <img
-          src={src}
-          alt={alt}
-          loading="lazy"
-          decoding="async"
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-          onError={() => setFailed(true)}
-        />
-      </div>
-      <div className="absolute inset-0 bg-gradient-to-t from-background/75 via-background/10 to-transparent opacity-80 transition-opacity group-hover:opacity-100" />
-      <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-3 px-4 py-3">
-        <span className="font-sans-tech text-[11px] uppercase tracking-[0.18em] text-primary">
-          Open in viewer
-        </span>
-        <ArrowRight className="h-4 w-4 text-primary transition-transform group-hover:translate-x-1" />
-      </div>
-    </button>
-  );
-}
-
-function CategoryHeroImage({ blobPath, alt }: { blobPath: string; alt: string }) {
-  const [failed, setFailed] = useState(false);
-  const src = frontPageImageUrl(blobPath);
-
-  if (!src || failed) {
-    return (
-      <div className="flex aspect-[4/3] w-full items-center justify-center rounded-[20px] border border-slate-200 bg-slate-100">
-        <Database className="h-8 w-8 text-primary/60" />
-      </div>
-    );
-  }
-
-  return (
-    <div className="w-full overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-[0_16px_36px_rgba(15,23,42,0.08)]">
-      <div className="aspect-[4/3] overflow-hidden">
-        <img
-          src={src}
-          alt={alt}
-          loading="lazy"
-          decoding="async"
-          className="h-full w-full object-cover transition-transform duration-500 hover:scale-[1.03]"
-          onError={() => setFailed(true)}
-        />
-      </div>
-    </div>
-  );
-}
-
 function getCategoryAccent(routeKey: CategoryKey) {
   switch (routeKey) {
     case "serverrack":
@@ -504,41 +457,600 @@ function getCategoryAccent(routeKey: CategoryKey) {
   }
 }
 
-function getCategoryStory(category: CategoryConfig) {
-  switch (category.routeKey) {
+function getCategoryBadge(card: CatalogCard) {
+  const isEgo = card.tags.some((tag) => tag.toLowerCase().includes("ego-centric"));
+  return {
+    label: isEgo ? "EGO" : "EXO",
+    className: isEgo
+      ? "border-teal-200 bg-teal-50 text-teal-700"
+      : "border-blue-200 bg-blue-50 text-blue-700",
+  };
+}
+
+function matchesLivePreviewHint(card: CatalogCard, item: CategoryDatasetPreview) {
+  if (!card.livePathHints || card.livePathHints.length === 0) return false;
+  const normalizedPath = normalizePathSearchValue(item.full_path);
+  return card.livePathHints.some((hint) => normalizedPath.includes(normalizePathSearchValue(hint)));
+}
+
+function buildFallbackLiveCard(item: CategoryDatasetPreview): CatalogCard {
+  const label = item.title?.trim() || item.full_path.split("/").filter(Boolean).pop() || item.full_path;
+  const tags = ["Live Preview"];
+  if (item.brand?.trim()) tags.push(item.brand.trim());
+  if (item.preview_video) tags.push("Hover Video");
+
+  return {
+    title: label,
+    description: `Live dataset preview for ${label}. Open the folder to browse orig, egos, masks, and related assets in the viewer.`,
+    tags,
+    availability: "In Library",
+    hours: "Live dataset",
+    pathLabel: item.full_path,
+    images: { main: "", thumbs: [] },
+  };
+}
+
+function buildLocalPreviewAsset(blobPath: string, label: string, index: number): CategoryPreviewAsset {
+  const fileName = blobPath.split("/").filter(Boolean).pop() ?? label;
+  return {
+    asset_id: `local:${blobPath}:${index}`,
+    blob_path: blobPath,
+    name: fileName,
+    label,
+    proxy_url: blobProxyUrl(blobPath),
+  };
+}
+
+function buildLocalPlaceholderPreview(
+  snapshot: ReturnType<typeof getLocalFolderPreviewSnapshots>[number],
+  basePath: string,
+): CategoryDatasetPreview | null {
+  const usableImages = snapshot.imageBlobPaths.slice(0, 4);
+  if (usableImages.length === 0) return null;
+
+  return {
+    title: snapshot.dataset,
+    brand: snapshot.brand,
+    full_path: snapshot.fullPath,
+    viewer_path: buildViewerPath(snapshot.fullPath, undefined, basePath),
+    visibility: "public",
+    owner_slug: "roboteyeview",
+    main_image: buildLocalPreviewAsset(usableImages[0], `${snapshot.dataset} cover`, 0),
+    thumbnails: usableImages
+      .slice(1, 4)
+      .map((blobPath, index) =>
+        buildLocalPreviewAsset(blobPath, `${snapshot.dataset} preview ${index + 1}`, index + 1),
+      ),
+    preview_video: null,
+  };
+}
+
+function resolveCatalogSectionsForCategory(
+  routeKey: CategoryKey,
+  landingContent: CategoryLandingContent,
+  activeCategoryPreviews: CategoryDatasetPreview[],
+  localCategoryPreviewPlaceholders: CategoryDatasetPreview[],
+) {
+  const usedLivePaths = new Set<string>();
+  const usedPlaceholderPaths = new Set<string>();
+  const matchedBySection = new Map<string, ResolvedCatalogCardEntry[]>();
+
+  landingContent.sections.forEach((section) => {
+    const sectionEntries: ResolvedCatalogCardEntry[] = [];
+
+    section.cards.forEach((card) => {
+      const placeholderItem =
+        localCategoryPreviewPlaceholders.find((item) => {
+          const normalizedPath = normalizePathSearchValue(item.full_path);
+          return !usedPlaceholderPaths.has(normalizedPath) && matchesLivePreviewHint(card, item);
+        }) ?? null;
+
+      if (placeholderItem) {
+        usedPlaceholderPaths.add(normalizePathSearchValue(placeholderItem.full_path));
+      }
+
+      const matchedItem =
+        (placeholderItem
+          ? activeCategoryPreviews.find((item) => {
+              const normalizedPath = normalizePathSearchValue(item.full_path);
+              return (
+                !usedLivePaths.has(normalizedPath) &&
+                normalizedPath === normalizePathSearchValue(placeholderItem.full_path)
+              );
+            })
+          : null) ??
+        activeCategoryPreviews.find((item) => {
+          const normalizedPath = normalizePathSearchValue(item.full_path);
+          return !usedLivePaths.has(normalizedPath) && matchesLivePreviewHint(card, item);
+        }) ??
+        null;
+
+      if (matchedItem) {
+        usedLivePaths.add(normalizePathSearchValue(matchedItem.full_path));
+      }
+
+      sectionEntries.push({ card, liveItem: matchedItem, placeholderItem });
+    });
+
+    matchedBySection.set(section.id, sectionEntries);
+  });
+
+  const EXCLUDED_PANEL_NAMES = ["test", "short-test"];
+  const isExcludedPanel = (item: { full_path: string; title?: string | null }) => {
+    const name = (item.title?.trim() || item.full_path.split("/").filter(Boolean).pop() || "").toLowerCase();
+    return EXCLUDED_PANEL_NAMES.includes(name);
+  };
+
+  const unmatchedLiveItems = activeCategoryPreviews.filter(
+    (item) => !usedLivePaths.has(normalizePathSearchValue(item.full_path)) && !isExcludedPanel(item),
+  );
+  const unmatchedPlaceholderItems = localCategoryPreviewPlaceholders.filter(
+    (item) => !usedPlaceholderPaths.has(normalizePathSearchValue(item.full_path)) && !isExcludedPanel(item),
+  );
+  const groupedExtras = new Map<string, Map<string, ResolvedCatalogCardEntry>>();
+
+  const upsertGroupedExtra = (
+    sectionId: string | null,
+    item: CategoryDatasetPreview,
+    kind: "live" | "placeholder",
+  ) => {
+    if (!sectionId) return;
+    const normalizedPath = normalizePathSearchValue(item.full_path);
+    if (!groupedExtras.has(sectionId)) {
+      groupedExtras.set(sectionId, new Map());
+    }
+
+    const sectionEntries = groupedExtras.get(sectionId);
+    if (!sectionEntries) return;
+
+    const existingEntry = sectionEntries.get(normalizedPath);
+    const baseCard = buildFallbackLiveCard(existingEntry?.liveItem ?? existingEntry?.placeholderItem ?? item);
+
+    sectionEntries.set(normalizedPath, {
+      card: baseCard,
+      liveItem: kind === "live" ? item : existingEntry?.liveItem ?? null,
+      placeholderItem: kind === "placeholder" ? item : existingEntry?.placeholderItem ?? null,
+    });
+  };
+
+  unmatchedPlaceholderItems.forEach((item) => {
+    upsertGroupedExtra(getLivePreviewSectionId(routeKey, item), item, "placeholder");
+  });
+
+  unmatchedLiveItems.forEach((item) => {
+    upsertGroupedExtra(getLivePreviewSectionId(routeKey, item), item, "live");
+  });
+
+  const seenEntryKeys = new Set<string>();
+  const titleCounts = new Map<string, number>();
+
+  return landingContent.sections.map((section) => {
+    const resolvedCards = matchedBySection.get(section.id) ?? [];
+    const liveBackedCards = resolvedCards.filter(
+      (entry) => entry.card.livePathHints?.length || entry.liveItem || entry.placeholderItem,
+    );
+    const marketingCards = resolvedCards.filter((entry) => !entry.card.livePathHints?.length);
+    const extraLiveCards = Array.from(groupedExtras.get(section.id)?.values() ?? [])
+      .sort((a, b) =>
+        (a.liveItem?.title ?? a.placeholderItem?.title ?? a.card.title).localeCompare(
+          b.liveItem?.title ?? b.placeholderItem?.title ?? b.card.title,
+        ),
+      );
+
+    const uniqueCards = [...liveBackedCards, ...extraLiveCards, ...marketingCards]
+      .filter((entry) => {
+        const entryKey =
+          entry.liveItem?.full_path ??
+          entry.placeholderItem?.full_path ??
+          entry.card.pathLabel;
+        const normalizedKey = normalizePathSearchValue(entryKey);
+        if (seenEntryKeys.has(normalizedKey)) {
+          return false;
+        }
+        seenEntryKeys.add(normalizedKey);
+        return true;
+      })
+      .map((entry) => {
+        const normalizedTitle = entry.card.title.trim().toLowerCase();
+        const seenCount = titleCounts.get(normalizedTitle) ?? 0;
+        titleCounts.set(normalizedTitle, seenCount + 1);
+
+        if (seenCount === 0) {
+          return entry;
+        }
+
+        return cloneEntryWithTitle(entry, `${entry.card.title} ${seenCount + 1}`);
+      });
+
+    return {
+      ...section,
+      cards: uniqueCards,
+    };
+  });
+}
+
+function getLivePreviewSectionId(routeKey: CategoryKey, item: CategoryDatasetPreview) {
+  const normalizedPath = normalizePathSearchValue(item.full_path);
+
+  switch (routeKey) {
     case "serverrack":
-      return {
-        eyebrow: "Data Center · Robotics AI",
-        summary:
-          "High-fidelity server-room captures built for port-level manipulation, rack maintenance, and robotics automation workflows.",
-        statLabel: "Operational focus",
-        statValue: "Rack + cabling",
-      };
+      if (normalizedPath.includes("ethernetcable") || normalizedPath.includes("adpluggingcable")) {
+        return "cable";
+      }
+      if (
+        normalizedPath.includes("switchtray") ||
+        normalizedPath.includes("datarackinstall") ||
+        normalizedPath.includes("pduinstallation") ||
+        normalizedPath.includes("networkcardinstall") ||
+        normalizedPath.includes("x3690x5hotswap")
+      ) {
+        return "hardware";
+      }
+      return "server";
     case "warehouse":
-      return {
-        eyebrow: "Warehouse · Material Flow",
-        summary:
-          "Warehouse movement, handling, and storage-operation data shaped for logistics robotics and live facility workflows.",
-        statLabel: "Operational focus",
-        statValue: "Picking + transport",
-      };
+      if (normalizedPath.includes("loadingpellets") || normalizedPath.includes("steelpallets")) {
+        return "material";
+      }
+      return "pick";
     case "dexterity":
-      return {
-        eyebrow: "Dexterity · Embodied Control",
-        summary:
-          "Fine-motor manipulation data for embodied systems working across close-range object interaction and practical task execution.",
-        statLabel: "Operational focus",
-        statValue: "Fine manipulation",
-      };
+      if (normalizedPath.includes("dishwasherunloading") || normalizedPath.includes("peelingpeas")) {
+        return "kitchen";
+      }
+      if (normalizedPath.includes("washingmachine") || normalizedPath.includes("towel") || normalizedPath.includes("crockery")) {
+        return "household";
+      }
+      return "cleaning";
+    case "carAutomation":
+      if (
+        normalizedPath.includes("passengerseat") ||
+        normalizedPath.includes("dooralignment") ||
+        normalizedPath.includes("wheelbolts")
+      ) {
+        return "inspection";
+      }
+      if (
+        normalizedPath.includes("frontgrille") ||
+        normalizedPath.includes("frontseat") ||
+        normalizedPath.includes("rearbumber") ||
+        normalizedPath.includes("rearbumper") ||
+        normalizedPath.includes("windshieldreplacement") ||
+        normalizedPath.includes("doorpanelassembly")
+      ) {
+        return "assembly";
+      }
+      return "cars";
     default:
-      return {
-        eyebrow: "Automotive · Physical AI",
-        summary:
-          "Assembly, inspection, and service-oriented captures for vehicle-production robotics and automation training pipelines.",
-        statLabel: "Operational focus",
-        statValue: "Assembly + inspection",
-      };
+      return null;
   }
+}
+
+function CuratedCatalogCard({
+  card,
+  liveItem,
+  placeholderItem,
+  buttonLabel,
+  columns = 3,
+  onOpen,
+}: {
+  card: CatalogCard;
+  liveItem?: CategoryDatasetPreview | null;
+  placeholderItem?: CategoryDatasetPreview | null;
+  buttonLabel: string;
+  columns?: 2 | 3;
+  onOpen: () => void;
+}) {
+  const badge = getCategoryBadge(card);
+  const previewItem = placeholderItem ?? liveItem ?? null;
+  const displayImages = card.images;
+  const badgeClasses =
+    previewItem || card.availability === "In Library"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+      : "border-amber-200 bg-amber-50 text-amber-700";
+  const footerLabel = previewItem ? previewItem.full_path : card.pathLabel;
+  const previewAssets = previewItem
+    ? [
+        previewItem.main_image,
+        ...previewItem.thumbnails,
+      ]
+        .filter((asset): asset is CategoryPreviewAsset => Boolean(asset))
+        .slice(0, 4)
+    : [];
+  const fallbackThumbs = [
+    displayImages.main,
+    ...displayImages.thumbs,
+  ]
+    .filter(Boolean)
+    .slice(0, 4);
+  const mosaicCells = Array.from({ length: 4 }, (_, index) => {
+    if (previewAssets.length > 0) {
+      return previewAssets[index] ?? previewAssets[previewAssets.length - 1] ?? null;
+    }
+    return fallbackThumbs[index] ?? fallbackThumbs[fallbackThumbs.length - 1] ?? null;
+  });
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="group flex h-full flex-col overflow-hidden rounded-[18px] border border-slate-200 bg-white text-left shadow-[0_14px_34px_rgba(15,23,42,0.06)] transition-all duration-300 hover:-translate-y-1 hover:border-primary/25 hover:shadow-[0_24px_56px_rgba(15,23,42,0.12)] sm:flex-row"
+    >
+      <div
+        className={`p-4 sm:min-w-0 sm:flex-[0_0_48%] sm:p-5 ${
+          columns === 2 ? "xl:flex-[0_0_48%]" : "xl:flex-[0_0_44%]"
+        }`}
+      >
+        <div className="grid aspect-square w-full grid-cols-2 gap-1.5">
+          {mosaicCells.map((cell, index) =>
+            typeof cell === "string" ? (
+              <div
+                key={`${card.title}-${cell}-${index}`}
+                className="aspect-square overflow-hidden rounded-[10px] bg-slate-100"
+              >
+                <img
+                  src={frontPageImageUrl(cell) ?? undefined}
+                  alt={`${card.title} preview ${index + 1}`}
+                  loading="lazy"
+                  decoding="async"
+                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.05]"
+                />
+              </div>
+            ) : (
+              <DatasetPreviewImage
+                key={`${card.title}-${cell?.asset_id ?? "thumb"}-${index}`}
+                asset={cell}
+                alt={`${card.title} preview ${index + 1}`}
+                className="aspect-square rounded-[10px] border-0"
+              />
+            ),
+          )}
+        </div>
+      </div>
+
+      <div className="flex min-w-0 flex-1 flex-col border-t border-slate-200 sm:border-l sm:border-t-0">
+        <div className="flex items-start justify-between gap-3 px-4 pt-4 md:px-5">
+          <h3 className="text-[14px] font-bold leading-6 text-slate-950 md:text-[15px]">
+            {card.title}
+          </h3>
+          <span className={`inline-flex shrink-0 rounded-full border px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em] ${badgeClasses}`}>
+            {previewItem ? "In Library" : card.availability}
+          </span>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2 px-4 md:px-5">
+          <span className={`inline-flex rounded-[6px] border px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] ${badge.className}`}>
+            {badge.label}
+          </span>
+          {card.tags.map((tag) => (
+            <span
+              key={`${card.title}-${tag}`}
+              className="inline-flex rounded-[6px] border border-slate-200 bg-slate-50 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-500"
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
+
+        <div className="mt-3 px-4 md:px-5">
+          <div className="truncate font-mono-tech text-[10px] leading-5 text-slate-400 sm:text-[11px]">
+            {footerLabel}
+          </div>
+        </div>
+
+        <div className="mt-auto flex justify-end border-t border-slate-200 px-4 py-4 md:px-5">
+          <span className="inline-flex min-w-[144px] items-center justify-center gap-2 rounded-full border border-primary/20 bg-primary/6 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.1em] text-primary md:text-[11px]">
+            {buttonLabel}
+            <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+          </span>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function getCatalogViewBadge(card: CatalogCard) {
+  const isEgo = card.tags.some((tag) => tag.toLowerCase().includes("ego-centric"));
+  if (isEgo) {
+    return {
+      label: "EGO",
+      className: "border border-primary/30 bg-primary/10 text-primary",
+    };
+  }
+  return {
+    label: "EXO",
+    className: "border border-blue-300 bg-blue-50 text-blue-700",
+  };
+}
+
+function getCatalogAvailabilityClasses(availability: CatalogCard["availability"]) {
+  return availability === "In Library"
+    ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
+    : "border border-amber-200 bg-amber-50 text-amber-700";
+}
+
+function RootShowcaseCatalogCard({
+  card,
+  liveItem,
+  placeholderItem,
+  onOpen,
+}: {
+  card: CatalogCard;
+  liveItem?: CategoryDatasetPreview | null;
+  placeholderItem?: CategoryDatasetPreview | null;
+  onOpen: () => void;
+}) {
+  const [previewVideoActive, setPreviewVideoActive] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
+  const [videoFailed, setVideoFailed] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const fallbackMain = card.images.main;
+  const displayItem = placeholderItem ?? liveItem ?? null;
+  const fallbackImageSrc = frontPageImageUrl(fallbackMain);
+  const previewImageSrc = displayItem?.main_image ? resolvePreviewMediaUrl(displayItem.main_image) : null;
+  const imageSrc = imageFailed ? fallbackImageSrc : previewImageSrc ?? fallbackImageSrc;
+  const videoSrc = videoFailed ? null : resolvePreviewMediaUrl(liveItem?.preview_video);
+  const badge = getCatalogViewBadge(card);
+  const availabilityClasses = getCatalogAvailabilityClasses(
+    displayItem ? "In Library" : card.availability,
+  );
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !videoSrc) return;
+
+    if (previewVideoActive) {
+      const playPromise = video.play();
+      if (playPromise) {
+        playPromise.catch(() => {
+          // Keep poster visible if playback cannot start immediately.
+        });
+      }
+      return;
+    }
+
+    video.pause();
+    if (video.currentTime !== 0) {
+      video.currentTime = 0;
+    }
+  }, [previewVideoActive, videoSrc]);
+
+  useEffect(() => {
+    return () => {
+      const video = videoRef.current;
+      if (video) {
+        video.pause();
+      }
+    };
+  }, []);
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="group flex h-full flex-col overflow-hidden rounded-[12px] border border-slate-200 bg-white text-left shadow-[0_1px_4px_rgba(0,0,0,0.04)] transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_8px_24px_rgba(13,148,136,0.10)]"
+    >
+      <div
+        className="relative h-[120px] overflow-hidden"
+        onMouseEnter={videoSrc ? () => setPreviewVideoActive(true) : undefined}
+        onMouseLeave={videoSrc ? () => setPreviewVideoActive(false) : undefined}
+      >
+        {imageSrc ? (
+          <img
+            src={imageSrc}
+            alt={card.title}
+            loading="lazy"
+            decoding="async"
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+            onError={() => setImageFailed(true)}
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-slate-100">
+            <Database className="h-8 w-8 text-primary/55" />
+          </div>
+        )}
+        {videoSrc ? (
+          <video
+            ref={videoRef}
+            src={videoSrc}
+            poster={imageSrc ?? undefined}
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            aria-hidden="true"
+            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${
+              previewVideoActive ? "opacity-100" : "opacity-0"
+            }`}
+            onError={() => setVideoFailed(true)}
+          />
+        ) : null}
+        <span
+          className={`absolute right-2 top-2 inline-flex rounded-[3px] px-1.5 py-0.5 text-[9px] font-extrabold tracking-[0.08em] ${badge.className}`}
+        >
+          {badge.label}
+        </span>
+      </div>
+
+      <div className="flex flex-1 flex-col p-3">
+        <h3 className="text-[13px] font-bold text-slate-950">{card.title}</h3>
+        <p className="mt-1 text-[11px] leading-[1.5] text-slate-500">{card.description}</p>
+        <div className="mt-2.5 flex flex-wrap gap-1">
+          {card.tags.map((tag) => {
+            const tone = tag.toLowerCase().includes("ego-centric")
+              ? "border-primary/20 bg-primary/10 text-primary"
+              : tag.toLowerCase().includes("exo-centric")
+                ? "border-blue-200 bg-blue-50 text-blue-700"
+                : tag.toLowerCase().includes("edge")
+                  ? "border-orange-200 bg-orange-50 text-orange-600"
+                  : tag.toLowerCase().includes("seg")
+                    ? "border-violet-200 bg-violet-50 text-violet-700"
+                    : "border-teal-200 bg-teal-50 text-teal-700";
+
+            return (
+              <span
+                key={`${card.pathLabel}-${tag}`}
+                className={`inline-flex rounded-[3px] border px-1.5 py-0.5 text-[9px] font-semibold ${tone}`}
+              >
+                {tag}
+              </span>
+            );
+          })}
+        </div>
+        <div className="mt-auto flex items-center justify-between pt-3">
+          <p className="text-[13px] font-bold text-primary">{card.hours}</p>
+          <span
+            className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${availabilityClasses}`}
+          >
+            {displayItem ? "In Library" : card.availability}
+          </span>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function CategorySidebarSection({
+  title,
+  items,
+  activeItemId,
+  onSelect,
+}: {
+  title: string;
+  items: { id: string; label: string; dotClassName: string; badge?: string }[];
+  activeItemId?: string;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <div className="mb-5">
+      <div className="mb-3 px-2 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+        {title}
+      </div>
+      <div className="space-y-1.5">
+        {items.map((item) => {
+          const isActive = item.id === activeItemId;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onSelect(item.id)}
+              className={`flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors ${
+                isActive
+                  ? "border-primary/20 bg-primary/6 text-primary"
+                  : "border-transparent text-slate-600 hover:bg-slate-100"
+              }`}
+            >
+              <span className={`h-2 w-2 shrink-0 rounded-full ${item.dotClassName}`} />
+              <span className="flex-1 text-[13px] font-semibold">{item.label}</span>
+              {item.badge ? (
+                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+                  {item.badge}
+                </span>
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 function CompactPathSearch({
@@ -547,6 +1059,7 @@ function CompactPathSearch({
   suggestions,
   placeholder,
   submitDisabled,
+  className,
   onFocus,
   onChange,
   onSubmit,
@@ -558,6 +1071,7 @@ function CompactPathSearch({
   suggestions: FolderItem[];
   placeholder: string;
   submitDisabled: boolean;
+  className?: string;
   onFocus: () => void;
   onChange: (value: string) => void;
   onSubmit: () => void;
@@ -565,7 +1079,7 @@ function CompactPathSearch({
   renderHighlightedPath: (fullPath: string) => ReactNode;
 }) {
   return (
-    <div className="relative w-full max-w-xl">
+    <div className={`relative w-full ${className ?? "max-w-xl"}`}>
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -636,7 +1150,7 @@ function DatasetPreviewImage({
 
   return (
     <div
-      className={`relative overflow-hidden rounded-[18px] border border-slate-200 bg-slate-100 ${className ?? ""}`}
+      className={`relative h-full min-h-0 overflow-hidden rounded-[18px] border border-slate-200 bg-slate-100 ${className ?? ""}`}
     >
       {src ? (
         <img
@@ -648,7 +1162,7 @@ function DatasetPreviewImage({
           onError={() => setFailed(true)}
         />
       ) : (
-        <div className="flex h-full min-h-[120px] items-center justify-center bg-slate-100">
+        <div className="flex h-full min-h-0 items-center justify-center bg-slate-100">
           <Database className="h-8 w-8 text-primary/55" />
         </div>
       )}
@@ -664,310 +1178,61 @@ function resolvePreviewMediaUrl(asset: CategoryPreviewAsset | null | undefined):
   return asset.proxy_url || null;
 }
 
-function DatasetPreviewPrimaryMedia({
-  imageAsset,
-  videoAsset,
-  alt,
-  isVideoActive,
-  onVideoEnter,
-  onVideoLeave,
-}: {
-  imageAsset: CategoryPreviewAsset | null | undefined;
-  videoAsset: CategoryPreviewAsset | null | undefined;
-  alt: string;
-  isVideoActive: boolean;
-  onVideoEnter: () => void;
-  onVideoLeave: () => void;
-}) {
-  const [imageFailed, setImageFailed] = useState(false);
-  const [videoFailed, setVideoFailed] = useState(false);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const imageSrc = imageFailed ? null : resolvePreviewMediaUrl(imageAsset);
-  const videoSrc = videoFailed ? null : resolvePreviewMediaUrl(videoAsset);
+function normalizeCatalogMatchText(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/&/g, " ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video || !videoSrc) return;
+function getCatalogFilterTargetSectionId(
+  landing: CategoryLandingContent,
+  filterId: string,
+): string | null {
+  if (filterId === "all") return null;
 
-    if (isVideoActive) {
-      const playPromise = video.play();
-      if (playPromise) {
-        playPromise.catch(() => {
-          // Ignore autoplay timing issues and keep the poster visible underneath.
-        });
-      }
-      return;
+  const exactSection = landing.sections.find((section) => section.id === filterId);
+  if (exactSection) return exactSection.id;
+
+  const filter = landing.filters.find((item) => item.id === filterId);
+  if (!filter) return landing.sections[0]?.id ?? null;
+
+  const filterTerms = Array.from(
+    new Set(
+      normalizeCatalogMatchText(`${filter.id} ${filter.label}`)
+        .split(" ")
+        .filter((term) => term && term !== "all" && term !== "task" && term !== "tasks" && term !== "ops"),
+    ),
+  );
+
+  let bestSectionId: string | null = null;
+  let bestScore = 0;
+
+  landing.sections.forEach((section) => {
+    const haystack = normalizeCatalogMatchText(
+      [
+        section.id,
+        section.title,
+        ...section.cards.flatMap((card) => [card.title, card.description, card.pathLabel, ...card.tags]),
+      ].join(" "),
+    );
+
+    const score = filterTerms.reduce((total, term) => {
+      if (!term || !haystack.includes(term)) return total;
+      const isHeadingMatch =
+        section.id === term || normalizeCatalogMatchText(section.title).includes(term);
+      return total + (isHeadingMatch ? 3 : 1);
+    }, 0);
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestSectionId = section.id;
     }
+  });
 
-    video.pause();
-    if (video.currentTime !== 0) {
-      video.currentTime = 0;
-    }
-  }, [isVideoActive, videoSrc]);
-
-  useEffect(() => {
-    return () => {
-      const video = videoRef.current;
-      if (video) {
-        video.pause();
-      }
-    };
-  }, []);
-
-  return (
-    <div
-      className="relative aspect-[1.08/1] overflow-hidden rounded-[18px] border border-slate-200 bg-slate-100"
-      onMouseEnter={videoSrc ? onVideoEnter : undefined}
-      onMouseLeave={videoSrc ? onVideoLeave : undefined}
-    >
-      {imageSrc ? (
-        <img
-          src={imageSrc}
-          alt={alt}
-          loading="lazy"
-          decoding="async"
-          className="h-full w-full object-cover"
-          onError={() => setImageFailed(true)}
-        />
-      ) : (
-        <div className="flex h-full min-h-[160px] items-center justify-center bg-slate-100">
-          <Database className="h-8 w-8 text-primary/55" />
-        </div>
-      )}
-
-      {videoSrc ? (
-        <video
-          ref={videoRef}
-          src={videoSrc}
-          poster={imageSrc ?? undefined}
-          muted
-          loop
-          playsInline
-          preload="metadata"
-          aria-hidden="true"
-          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${isVideoActive ? "opacity-100" : "opacity-0"
-            }`}
-          onError={() => setVideoFailed(true)}
-        />
-      ) : null}
-    </div>
-  );
-}
-
-function CategoryDatasetPreviewCard({
-  item,
-  onClick,
-}: {
-  item: CategoryDatasetPreview;
-  onClick: () => void;
-}) {
-  const [isPreviewVideoActive, setIsPreviewVideoActive] = useState(false);
-  const thumbnailItems = Array.from({ length: 4 }, (_, index) => item.thumbnails[index] ?? item.main_image);
-  const activatePreviewVideo = () => setIsPreviewVideoActive(true);
-  const deactivatePreviewVideo = () => setIsPreviewVideoActive(false);
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      onFocusCapture={item.preview_video ? activatePreviewVideo : undefined}
-      onBlurCapture={item.preview_video ? deactivatePreviewVideo : undefined}
-      className="group flex h-full flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white p-5 text-left shadow-[0_22px_54px_rgba(15,23,42,0.08)] transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-[0_28px_70px_rgba(15,23,42,0.12)]"
-    >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">
-            {item.brand || "DataraAI"}
-          </div>
-          <h3 className="mt-2 text-xl font-extrabold text-slate-950">{item.title}</h3>
-        </div>
-        <span
-          className={`rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${item.visibility === "public"
-              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-              : "border-slate-200 bg-slate-100 text-slate-500"
-            }`}
-        >
-          {item.visibility === "public" ? "Public" : "Private"}
-        </span>
-      </div>
-
-      <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1.08fr)_220px]">
-        <DatasetPreviewPrimaryMedia
-          imageAsset={item.main_image}
-          videoAsset={item.preview_video}
-          alt={`${item.title} primary preview`}
-          isVideoActive={isPreviewVideoActive}
-          onVideoEnter={activatePreviewVideo}
-          onVideoLeave={deactivatePreviewVideo}
-        />
-
-        <div className="grid grid-cols-2 gap-3">
-          {thumbnailItems.map((thumbnail, index) => (
-            <DatasetPreviewImage
-              key={`${item.full_path}-${thumbnail?.asset_id ?? "empty"}-${index}`}
-              asset={thumbnail}
-              alt={`${item.title} preview ${index + 1}`}
-              className="aspect-square"
-            />
-          ))}
-        </div>
-      </div>
-
-      <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-200 pt-4">
-        <span className="truncate text-xs text-slate-500">{item.full_path}</span>
-        <span className="inline-flex shrink-0 items-center gap-2 text-xs font-bold text-primary">
-          Open folder
-          <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
-        </span>
-      </div>
-    </button>
-  );
-}
-
-function PathSearchPanel({
-  title,
-  description,
-  value,
-  loading,
-  suggestions,
-  placeholder,
-  submitDisabled,
-  onFocus,
-  onChange,
-  onSubmit,
-  onSuggestionClick,
-  renderHighlightedPath,
-}: {
-  title: string;
-  description: string;
-  value: string;
-  loading: boolean;
-  suggestions: FolderItem[];
-  placeholder: string;
-  submitDisabled: boolean;
-  onFocus: () => void;
-  onChange: (value: string) => void;
-  onSubmit: () => void;
-  onSuggestionClick: (fullPath: string) => void;
-  renderHighlightedPath: (fullPath: string) => ReactNode;
-}) {
-  return (
-    <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_24px_60px_rgba(15,23,42,0.08)] md:p-8">
-      <div className="max-w-3xl">
-        <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Path Search</div>
-        <h3 className="mt-3 mb-2 font-sans-tech text-2xl font-bold text-slate-950">{title}</h3>
-        <p className="font-sans-tech text-sm leading-7 text-slate-600">
-          {description}
-        </p>
-      </div>
-      <div className="relative mt-6 w-full">
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            onSubmit();
-          }}
-          className="flex flex-col gap-3 sm:flex-row"
-        >
-          <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
-            <input
-              type="text"
-              value={value}
-              onFocus={onFocus}
-              onChange={(event) => onChange(event.target.value)}
-              placeholder={placeholder}
-              className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50/80 pl-11 pr-10 font-sans-tech text-sm text-slate-900 shadow-[0_10px_24px_rgba(15,23,42,0.05)] placeholder:text-slate-400 focus:border-primary focus:outline-none"
-            />
-            {loading && (
-              <Loader2 className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-primary" />
-            )}
-          </div>
-          <button
-            type="submit"
-            disabled={submitDisabled}
-            className="inline-flex h-12 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary px-5 font-sans-tech text-sm font-bold text-primary-foreground transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Open path
-          </button>
-        </form>
-
-        {value.trim() !== "" && (
-          <div className="mt-3 overflow-hidden rounded-[20px] border border-slate-200 bg-white/96 text-left shadow-[0_24px_60px_rgba(15,23,42,0.12)] backdrop-blur-sm dark:bg-card/95 dark:shadow-[0_24px_60px_rgba(0,0,0,0.3)]">
-            {suggestions.length > 0 ? (
-              <div className="divide-y divide-border">
-                {suggestions.map((suggestion) => (
-                  <button
-                    key={suggestion.full_path}
-                    type="button"
-                    onClick={() => onSuggestionClick(suggestion.full_path)}
-                    className="w-full px-4 py-3 text-left transition-colors hover:bg-primary/8"
-                  >
-                    {renderHighlightedPath(suggestion.full_path)}
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div className="px-4 py-3 font-sans-tech text-sm text-muted-foreground">
-                {loading ? "Loading paths..." : "No matching paths found"}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function LoggedOutHub({ viewerBasePath }: { viewerBasePath: string }) {
-  return (
-    <div className="mx-auto w-full max-w-[1440px] px-4 py-12 sm:px-6 md:py-16">
-      <div className="marketing-hero-data overflow-hidden rounded-[34px] border border-slate-200 p-6 shadow-[0_28px_70px_rgba(15,23,42,0.1)] md:p-8">
-        <div className="max-w-3xl">
-          <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-[11px] uppercase tracking-[0.22em] text-primary">
-            RoboDataHub
-          </div>
-          <h1 className="mt-6 text-[clamp(2.3rem,4.8vw,4rem)] font-black tracking-[-0.05em] text-slate-950">
-            Sign in to browse the full data library.
-          </h1>
-          <p className="mt-5 max-w-2xl text-base leading-8 text-slate-600">
-            Keep the public-facing design visible, but preserve the current access model:
-            dataset contents stay behind account approval.
-          </p>
-          <div className="mt-8 flex flex-col gap-4 sm:flex-row">
-            <Link
-              to={buildAuthPath("login", viewerBasePath)}
-              className="inline-flex h-12 items-center justify-center rounded-xl border border-slate-300 bg-white px-6 text-sm font-semibold text-slate-600 transition-colors hover:border-primary/20 hover:text-primary"
-            >
-              Sign In
-            </Link>
-            <Link
-              to={buildAuthPath("register", viewerBasePath)}
-              className="inline-flex h-12 items-center justify-center rounded-xl bg-primary px-6 text-sm font-bold text-primary-foreground"
-            >
-              Get Access
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-8 grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
-        {CATEGORIES.map((category) => (
-          <div
-            key={category.routeKey}
-            className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_20px_46px_rgba(15,23,42,0.08)]"
-          >
-            <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
-              <Database className="h-5 w-5 text-primary" />
-            </div>
-            <div className="font-sans-tech text-xl font-bold text-slate-950">{category.label}</div>
-            <p className="mt-3 text-sm leading-relaxed text-slate-600">
-              {category.description}
-            </p>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+  return bestSectionId ?? landing.sections[0]?.id ?? null;
 }
 
 export default function DataViewer() {
@@ -981,7 +1246,9 @@ export default function DataViewer() {
 
   const [folders, setFolders] = useState<FolderItem[]>([]);
   const [categoryPreviews, setCategoryPreviews] = useState<CategoryDatasetPreview[]>([]);
+  const [loadedCategoryPreviewKey, setLoadedCategoryPreviewKey] = useState<CategoryKey | null>(null);
   const [categoryPreviewsLoading, setCategoryPreviewsLoading] = useState(false);
+  const [rootCategoryPreviews, setRootCategoryPreviews] = useState<Partial<Record<CategoryKey, CategoryDatasetPreview[]>>>({});
   const [images, setImages] = useState<ImageItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedImage, setSelectedImage] = useState<ImageItem | null>(null);
@@ -1004,6 +1271,10 @@ export default function DataViewer() {
   const [pathSearchLoaded, setPathSearchLoaded] = useState(false);
   const [pathSearchTouched, setPathSearchTouched] = useState(false);
   const [reloadTick, setReloadTick] = useState(0);
+  const [activeLandingFilterId, setActiveLandingFilterId] = useState("all");
+  const sectionAnchorRefs = useRef<Record<string, HTMLElement | null>>({});
+  const landingTopRef = useRef<HTMLDivElement | null>(null);
+  const contentScrollRef = useRef<HTMLDivElement | null>(null);
 
   const pathSegments = useMemo(
     () => location.pathname.split("/").filter((part) => part && part !== "viewer" && part !== "robodatahub"),
@@ -1021,10 +1292,109 @@ export default function DataViewer() {
         : null,
     [pathSegments],
   );
+  const activeLandingContent = useMemo<CategoryLandingContent | null>(
+    () => (activeCategory ? CATEGORY_LANDING_CONTENT[activeCategory.routeKey] : null),
+    [activeCategory],
+  );
+  const localCategoryPreviewPlaceholdersByRoute = useMemo(() => {
+    const snapshots = getLocalFolderPreviewSnapshots();
+    return CATEGORIES.reduce(
+      (acc, category) => {
+        acc[category.routeKey] = snapshots
+          .filter(
+            (snapshot) =>
+              normalizeCategoryValue(snapshot.category) ===
+              normalizeCategoryValue(category.previewKey),
+          )
+          .map((snapshot) => buildLocalPlaceholderPreview(snapshot, viewerBasePath))
+          .filter((item): item is CategoryDatasetPreview => Boolean(item));
+        return acc;
+      },
+      {} as Record<CategoryKey, CategoryDatasetPreview[]>,
+    );
+  }, [viewerBasePath]);
+  const localCategoryPreviewPlaceholders = activeCategory
+    ? localCategoryPreviewPlaceholdersByRoute[activeCategory.routeKey] ?? []
+    : [];
+  const activeCategoryPreviews = useMemo(() => {
+    if (!activeCategory || loadedCategoryPreviewKey !== activeCategory.routeKey) return [];
+    return categoryPreviews;
+  }, [activeCategory, categoryPreviews, loadedCategoryPreviewKey]);
+  const resolvedCategorySections = useMemo(() => {
+    if (!activeCategory || !activeLandingContent) return [];
+    return resolveCatalogSectionsForCategory(
+      activeCategory.routeKey,
+      activeLandingContent,
+      activeCategoryPreviews,
+      localCategoryPreviewPlaceholders,
+    );
+  }, [activeCategory, activeLandingContent, activeCategoryPreviews, localCategoryPreviewPlaceholders]);
+  const rootResolvedShowcaseSections = useMemo(() => {
+    return ROOT_SHOWCASE_SECTIONS.map((section) => {
+      const landingContent = CATEGORY_LANDING_CONTENT[section.routeKey];
+      const categoryPreviewsForRoute = rootCategoryPreviews[section.routeKey] ?? [];
+      const placeholdersForRoute = localCategoryPreviewPlaceholdersByRoute[section.routeKey] ?? [];
+      const resolvedSections = resolveCatalogSectionsForCategory(
+        section.routeKey,
+        landingContent,
+        categoryPreviewsForRoute,
+        placeholdersForRoute,
+      );
+      const flattenedEntries = resolvedSections.flatMap((resolvedSection) => resolvedSection.cards);
+      const realBackedEntries = flattenedEntries.filter(
+        (entry) => entry.liveItem || entry.placeholderItem,
+      );
+      const marketingEntries = flattenedEntries.filter(
+        (entry) => !entry.liveItem && !entry.placeholderItem,
+      );
+      const cards =
+        realBackedEntries.length >= 4
+          ? realBackedEntries.slice(0, 4)
+          : [...realBackedEntries, ...marketingEntries.slice(0, 4 - realBackedEntries.length)];
+
+      return {
+        ...section,
+        cards,
+      };
+    });
+  }, [localCategoryPreviewPlaceholdersByRoute, rootCategoryPreviews]);
   const pathSearchScopeKey = activeCategory?.routeKey ?? "global";
 
   const isRootLanding = pathSegments.length === 0;
   const isCategoryLanding = Boolean(activeCategory) && pathSegments.length === 1;
+  const isCatalogLanding = isRootLanding || isCategoryLanding;
+
+  useEffect(() => {
+    setActiveLandingFilterId(activeLandingContent?.filters[0]?.id ?? "all");
+    sectionAnchorRefs.current = {};
+  }, [activeLandingContent]);
+
+  const handleLandingFilterSelect = (filterId: string) => {
+    setActiveLandingFilterId(filterId);
+
+    if (!activeLandingContent || typeof window === "undefined") return;
+
+    const targetSectionId = getCatalogFilterTargetSectionId(activeLandingContent, filterId);
+    const targetElement = targetSectionId
+      ? sectionAnchorRefs.current[targetSectionId]
+      : landingTopRef.current;
+
+    if (!targetElement) return;
+    const scrollContainer = contentScrollRef.current;
+
+    if (scrollContainer) {
+      const containerRect = scrollContainer.getBoundingClientRect();
+      const targetRect = targetElement.getBoundingClientRect();
+      const nextTop =
+        scrollContainer.scrollTop + (targetRect.top - containerRect.top) - 24;
+
+      scrollContainer.scrollTo({ top: Math.max(nextTop, 0), behavior: "smooth" });
+      return;
+    }
+
+    const top = targetElement.getBoundingClientRect().top + window.scrollY - 112;
+    window.scrollTo({ top: Math.max(top, 0), behavior: "smooth" });
+  };
 
   useEffect(() => {
     if (!isAuthenticated || !isApproved || isRootLanding || isCategoryLanding) {
@@ -1099,26 +1469,31 @@ export default function DataViewer() {
   }, [currentDisplayPath, isAuthenticated, isApproved, isRootLanding, isCategoryLanding, reloadTick]);
 
   useEffect(() => {
-    if (!isAuthenticated || !isApproved || !isCategoryLanding || !activeCategory) {
+    if (!isCategoryLanding || !activeCategory) {
       setCategoryPreviews([]);
+      setLoadedCategoryPreviewKey(null);
       setCategoryPreviewsLoading(false);
       return;
     }
 
     let cancelled = false;
+    const category = activeCategory;
 
     async function loadCategoryPreviews() {
+      setLoadedCategoryPreviewKey(null);
       setCategoryPreviewsLoading(true);
       try {
         const response = await axios.get<CategoryDatasetPreview[]>("/api/dataset-category-previews", {
-          params: { category: activeCategory.routeKey, public_only: "true" },
+          params: { category: category.routeKey, public_only: "true" },
         });
         if (cancelled) return;
         setCategoryPreviews(Array.isArray(response.data) ? response.data : []);
+        setLoadedCategoryPreviewKey(category.routeKey);
       } catch (error) {
         if (!cancelled) {
           console.error("Failed to load category dataset previews", error);
           setCategoryPreviews([]);
+          setLoadedCategoryPreviewKey(null);
         }
       } finally {
         if (!cancelled) {
@@ -1132,15 +1507,52 @@ export default function DataViewer() {
     return () => {
       cancelled = true;
     };
-  }, [activeCategory, isAuthenticated, isApproved, isCategoryLanding, reloadTick]);
+  }, [activeCategory, isCategoryLanding, reloadTick]);
 
   useEffect(() => {
-    if (!isAuthenticated || !isApproved) {
-      setAllFolderPaths([]);
-      setPathSearchLoaded(false);
+    if (!isRootLanding) {
+      setRootCategoryPreviews({});
       return;
     }
 
+    let cancelled = false;
+
+    async function loadRootCategoryPreviews() {
+      setRootCategoryPreviews({});
+
+      await Promise.all(
+        CATEGORIES.map(async (category) => {
+          try {
+            const response = await axios.get<CategoryDatasetPreview[]>("/api/dataset-category-previews", {
+              params: { category: category.routeKey, public_only: "true" },
+            });
+            if (cancelled) return;
+
+            setRootCategoryPreviews((previous) => ({
+              ...previous,
+              [category.routeKey]: Array.isArray(response.data) ? response.data : [],
+            }));
+          } catch (error) {
+            if (!cancelled) {
+              console.error(`Failed to load root dataset previews for ${category.routeKey}`, error);
+              setRootCategoryPreviews((previous) => ({
+                ...previous,
+                [category.routeKey]: [],
+              }));
+            }
+          }
+        }),
+      );
+    }
+
+    void loadRootCategoryPreviews();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isRootLanding, reloadTick]);
+
+  useEffect(() => {
     const shouldLoadPaths = isRootLanding || isCategoryLanding || pathSearchTouched;
     if (!shouldLoadPaths || pathSearchLoaded) return;
 
@@ -1151,9 +1563,9 @@ export default function DataViewer() {
       try {
         const params = activeCategory
           ? {
-            category: activeCategory.routeKey,
-            public_only: "true",
-          }
+              category: activeCategory.routeKey,
+              public_only: "true",
+            }
           : undefined;
         const response = await axios.get<unknown[]>("/api/dataset-paths", {
           params,
@@ -1183,15 +1595,7 @@ export default function DataViewer() {
     return () => {
       cancelled = true;
     };
-  }, [
-    isAuthenticated,
-    isApproved,
-    isRootLanding,
-    isCategoryLanding,
-    activeCategory,
-    pathSearchTouched,
-    pathSearchLoaded,
-  ]);
+  }, [isRootLanding, isCategoryLanding, activeCategory, pathSearchTouched, pathSearchLoaded]);
 
   useEffect(() => {
     setAllFolderPaths([]);
@@ -1297,16 +1701,25 @@ export default function DataViewer() {
       return matchesSearch && matchesTags && matchesMinFrame && matchesMaxFrame;
     });
   }, [filterText, frameRange.max, frameRange.min, images, visibleTags]);
-
   const filteredVideos = useMemo(
     () => filteredImages.filter((image) => image.type === "video"),
     [filteredImages],
   );
+  const videoPanelItems = useMemo<VideoFolderAsset[]>(() => {
+    const panelVideos = filteredVideos.length > 0 ? filteredVideos : sourceVideos;
+    return panelVideos.map((video) => ({
+      asset_id: video.asset_id,
+      name: video.name,
+      url: video.url,
+      proxy_url: video.proxy_url,
+      metadata: video.metadata as Record<string, unknown> | undefined,
+    }));
+  }, [filteredVideos, sourceVideos]);
 
   const filteredFolders = useMemo(() => folders, [folders]);
 
   const pathSuggestions = useMemo(() => {
-    if (!isAuthenticated || !isApproved || !pathSearchText.trim()) return [];
+    if (!pathSearchText.trim()) return [];
 
     const scopedPrefix = activeCategory ? activeCategory.routeKey : null;
 
@@ -1323,10 +1736,10 @@ export default function DataViewer() {
       .sort((a, b) => a.score - b.score || a.item.full_path.localeCompare(b.item.full_path))
       .slice(0, 8)
       .map((entry) => entry.item);
-  }, [activeCategory, allFolderPaths, isAuthenticated, isApproved, isRootLanding, pathSearchText]);
+  }, [activeCategory, allFolderPaths, isRootLanding, pathSearchText]);
 
   const itemCount = isCategoryLanding
-    ? categoryPreviews.length
+    ? activeCategoryPreviews.length
     : isLeaf
       ? filteredImages.length
       : filteredFolders.length;
@@ -1355,7 +1768,12 @@ export default function DataViewer() {
 
   function handlePathSuggestionClick(fullPath: string) {
     setPathSearchText("");
-    navigate(buildViewerPath(fullPath, undefined, viewerBasePath));
+    const nextPath = buildViewerPath(fullPath, undefined, viewerBasePath);
+    if (!isAuthenticated || !isApproved) {
+      navigate(buildAuthPath("login", nextPath));
+      return;
+    }
+    navigate(nextPath);
   }
 
   function handlePathSearchSubmit() {
@@ -1364,11 +1782,33 @@ export default function DataViewer() {
   }
 
   function handleCategoryPreviewClick(item: CategoryDatasetPreview) {
-    navigate(
-      item.viewer_path
-        ? withViewerBase(item.viewer_path, viewerBasePath)
-        : buildViewerPath(item.full_path, undefined, viewerBasePath),
-    );
+    const nextPath = item.viewer_path
+      ? withViewerBase(item.viewer_path, viewerBasePath)
+      : buildViewerPath(item.full_path, undefined, viewerBasePath);
+
+    if (!isAuthenticated || !isApproved) {
+      navigate(buildAuthPath("login", nextPath));
+      return;
+    }
+
+    navigate(nextPath);
+  }
+
+  function handleCuratedCardOpen(pathLabel: string, category?: CategoryConfig | null) {
+    const normalizedTarget = normalizePathSearchValue(pathLabel);
+    const match = allFolderPaths.find((item) => {
+      const normalizedPath = normalizePathSearchValue(item.full_path);
+      return normalizedPath === normalizedTarget || normalizedPath.includes(normalizedTarget);
+    });
+
+    if (match) {
+      handlePathSuggestionClick(match.full_path);
+      return;
+    }
+
+    if (category) {
+      navigate(buildCategoryLandingPath(category, viewerBasePath));
+    }
   }
 
   async function handleDeleteFolder() {
@@ -1495,10 +1935,11 @@ export default function DataViewer() {
                   </span>
                   {folder.visibility && (
                     <span
-                      className={`mt-2 inline-flex rounded-full px-2 py-1 text-[10px] uppercase tracking-wide ${folder.visibility === "public"
+                      className={`mt-2 inline-flex rounded-full px-2 py-1 text-[10px] uppercase tracking-wide ${
+                        folder.visibility === "public"
                           ? "bg-primary/10 text-primary"
                           : "bg-amber-100 text-amber-700"
-                        }`}
+                      }`}
                     >
                       {folder.visibility}
                     </span>
@@ -1526,207 +1967,442 @@ export default function DataViewer() {
   }
 
   const renderRootLanding = () => (
-    <div className="mx-auto w-full max-w-[1440px] px-4 py-12 sm:px-6 md:py-16">
-      <div className="min-w-0">
-        <div className="marketing-hero-data mb-8 overflow-hidden rounded-[34px] border border-slate-200 p-6 shadow-[0_28px_70px_rgba(15,23,42,0.1)] md:p-8">
-          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 font-sans-tech text-[11px] uppercase tracking-[0.22em] text-primary">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
-            RoboDataHub
-          </div>
-          <h1 className="mb-4 max-w-3xl font-sans-tech text-[clamp(2.3rem,4.8vw,4rem)] font-black tracking-[-0.05em] text-slate-950">
-            RoboDataHub
-          </h1>
-          <p className="max-w-3xl font-sans-tech text-base leading-8 text-slate-600">
-            Browse DataraAI&apos;s public physical-AI datasets by category, or search a known path
-            when you already know the folder you want.
-          </p>
-          <div className="mt-6 flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => navigate(`${viewerBasePath}/my`)}
-              className="inline-flex h-12 items-center gap-2 rounded-xl border border-primary/20 bg-primary px-5 font-sans-tech text-sm font-bold text-primary-foreground transition-colors hover:opacity-90"
-            >
-              My private data
-              <ArrowRight className="h-4 w-4" />
-            </button>
-            {user?.role === "admin" && (
-              <button
-                type="button"
-                onClick={() => navigate(`${viewerBasePath}/admin/${user.storageSlug}`)}
-                className="inline-flex h-12 items-center gap-2 rounded-xl border border-slate-300 bg-white px-5 font-sans-tech text-sm font-semibold text-slate-700 transition-colors hover:border-primary/20 hover:text-primary"
-              >
-                Admin access
-                <Shield className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-        </div>
+    <div className="mx-auto w-full max-w-[1440px] px-4 py-10 sm:px-6 md:py-14">
+      <div className="overflow-hidden rounded-[30px] border border-slate-200 bg-white shadow-[0_30px_70px_rgba(15,23,42,0.1)]">
+        <div className="grid lg:grid-cols-[220px_minmax(0,1fr)]">
+          <aside className="flex flex-col border-b border-slate-200 bg-slate-50/90 p-5 lg:border-b-0 lg:border-r lg:p-6">
+            <div className="border-b border-slate-200 pb-5">
+              <div className="text-lg font-extrabold tracking-[0.04em] text-primary">DataraAI</div>
+              <div className="mt-1 text-base font-bold text-slate-950">Physical AI Data</div>
+            </div>
 
-        <PathSearchPanel
-          title="Search the full library"
-          description="Use search to jump straight to a brand, endpoint folder, or deeper asset path anywhere in RoboDataHub."
-          value={pathSearchText}
-          loading={pathSearchLoading}
-          suggestions={pathSuggestions}
-          placeholder="Search any folder or path, e.g. BMW or carAutomation/BMW/frontGrille"
-          submitDisabled={pathSuggestions.length === 0}
-          onFocus={() => setPathSearchTouched(true)}
-          onChange={(value) => {
-            setPathSearchTouched(true);
-            setPathSearchText(value);
-          }}
-          onSubmit={handlePathSearchSubmit}
-          onSuggestionClick={handlePathSuggestionClick}
-          renderHighlightedPath={renderHighlightedPath}
-        />
+            <div className="pt-4">
+              <div className="mb-3 px-2 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+                Verticals
+              </div>
+              <div className="space-y-1.5">
+                {ROOT_SHOWCASE_SECTIONS.map((section) => {
+                  const category = CATEGORIES.find((item) => item.routeKey === section.routeKey);
+                  if (!category) return null;
 
-        <div className="mt-10">
-          <div className="mb-6 flex items-center gap-3">
-            <div className="h-3 w-3 rounded-[4px] bg-primary shadow-[0_0_12px_rgba(13,148,136,0.35)]" />
-            <div className="text-2xl font-extrabold text-slate-950">Categories</div>
-          </div>
-          <p className="mb-8 max-w-3xl text-sm leading-7 text-slate-600">
-            Start with the four active DataraAI categories, then step into the endpoint folders
-            inside each one.
-          </p>
+                  return (
+                    <button
+                      key={section.routeKey}
+                      type="button"
+                      onClick={() => navigate(buildCategoryLandingPath(category, viewerBasePath))}
+                      className="flex w-full items-center gap-3 rounded-xl border border-transparent px-3 py-2.5 text-left text-slate-600 transition-colors hover:bg-slate-100"
+                    >
+                      <span className={`h-2.5 w-2.5 shrink-0 rounded-[3px] ${getCategoryAccent(category.routeKey).dot}`} />
+                      <span className="text-[14px] font-extrabold text-slate-950">{section.title}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
-          <div className="grid gap-6 lg:grid-cols-2">
-            {CATEGORIES.map((category) => (
-              <section
-                key={category.routeKey}
-                className="grid gap-6 overflow-hidden rounded-[30px] border border-slate-200 bg-white p-5 shadow-[0_24px_60px_rgba(15,23,42,0.08)] lg:grid-cols-[minmax(0,1fr)_320px]"
-              >
-                <div className="flex flex-col justify-between">
-                  <div>
-                    <div className={`mb-4 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${getCategoryAccent(category.routeKey).chip}`}>
-                      <span className={`h-2 w-2 rounded-full ${getCategoryAccent(category.routeKey).dot}`} />
-                      {getCategoryStory(category).eyebrow}
+            <div className="mt-5 border-t border-slate-200 pt-4">
+              {isAuthenticated && isApproved ? (
+                <div className="space-y-3">
+                  <button
+                    type="button"
+                    onClick={() => navigate(`${viewerBasePath}/my`)}
+                    className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
+                  >
+                    My private data
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsUploadModalOpen(true)}
+                    className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
+                  >
+                    Import data
+                  </button>
+                </div>
+              ) : (
+                <Link
+                  to={buildAuthPath("register", viewerBasePath)}
+                  className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
+                >
+                  Get Access
+                </Link>
+              )}
+            </div>
+          </aside>
+
+          <div className="min-w-0 p-6 md:p-8">
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-6">
+              <div>
+                <h1 className="text-[24px] font-extrabold tracking-[-0.03em] text-slate-950">
+                  RoboDataHub
+                </h1>
+                <p className="mt-1 text-[13px] text-slate-500">
+                  100+ datasets · Physical AI training data
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <CompactPathSearch
+                  value={pathSearchText}
+                  loading={pathSearchLoading}
+                  suggestions={pathSuggestions}
+                  placeholder="Search datasets..."
+                  submitDisabled={pathSuggestions.length === 0}
+                  className="max-w-[760px]"
+                  onFocus={() => setPathSearchTouched(true)}
+                  onChange={(value) => {
+                    setPathSearchTouched(true);
+                    setPathSearchText(value);
+                  }}
+                  onSubmit={handlePathSearchSubmit}
+                  onSuggestionClick={handlePathSuggestionClick}
+                  renderHighlightedPath={renderHighlightedPath}
+                />
+              </div>
+            </div>
+
+            <div className="mt-8 space-y-9">
+              {rootResolvedShowcaseSections.map((section) => {
+                const category = CATEGORIES.find((item) => item.routeKey === section.routeKey);
+                if (!category) return null;
+
+                return (
+                  <section key={section.routeKey}>
+                    <div className="mb-4 flex items-center gap-3">
+                      <span className={`h-3 w-3 shrink-0 rounded-[3px] ${section.dotClassName}`} />
+                      <span className="text-[16px] font-extrabold text-slate-950">{section.title}</span>
+                      <div className={`h-px flex-1 bg-gradient-to-r ${section.lineClassName} to-transparent`} />
                     </div>
-                    <div className="text-2xl font-extrabold tracking-[-0.03em] text-slate-950">
-                      {category.label}
+
+                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                      {section.cards.map((entry) => {
+                        const previewItem = entry.liveItem ?? entry.placeholderItem ?? null;
+                        return (
+                        <RootShowcaseCatalogCard
+                          key={`${section.routeKey}-${entry.card.title}-${previewItem?.full_path ?? entry.card.pathLabel}`}
+                          card={entry.card}
+                          liveItem={entry.liveItem}
+                          placeholderItem={entry.placeholderItem}
+                          onOpen={() => {
+                            if (previewItem) {
+                              handleCategoryPreviewClick(previewItem);
+                              return;
+                            }
+                            navigate(buildCategoryLandingPath(category, viewerBasePath));
+                          }}
+                        />
+                        );
+                      })}
                     </div>
-                    <p className="mt-4 max-w-xl text-sm leading-7 text-slate-600">
-                      {getCategoryStory(category).summary}
+                  </section>
+                );
+              })}
+
+              <section className="rounded-[20px] border border-primary/15 bg-[linear-gradient(135deg,rgba(13,148,136,0.05),rgba(29,78,216,0.03))] p-8">
+                <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="max-w-3xl">
+                    <h2 className="text-2xl font-black tracking-[-0.03em] text-slate-950">
+                      Request a Custom Dataset
+                    </h2>
+                    <p className="mt-3 text-sm leading-7 text-slate-600">
+                      Don&apos;t see what you need? Our team captures any task, environment, or
+                      robot workflow on demand.
                     </p>
                   </div>
-                  <div className="mt-6 flex flex-wrap items-center gap-3">
-                    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-slate-500">
-                      Browse endpoint folders
-                    </span>
-                    <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-slate-500">
-                      {getCategoryStory(category).statLabel}: {getCategoryStory(category).statValue}
-                    </span>
-                  </div>
-                  <div className="mt-6">
-                    <button
-                      type="button"
-                      onClick={() => navigate(`${viewerBasePath}/${category.routeKey}`)}
-                      className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 font-sans-tech text-sm font-bold text-primary-foreground transition-colors hover:opacity-90"
-                    >
-                      Enter Category
-                      <ArrowRight className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  {buildCategoryHeroImagePaths(category)
-                    .slice(0, 4)
-                    .map((blobPath, index) => (
-                      <CategoryHeroImage
-                        key={`${category.routeKey}-${blobPath}`}
-                        blobPath={blobPath}
-                        alt={`${category.label} preview ${index + 1}`}
-                      />
+                  <div className="flex flex-wrap items-center gap-3">
+                    {CATEGORIES.map((category) => (
+                      <span
+                        key={`${category.routeKey}-pill`}
+                        className={`inline-flex rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${getCategoryAccent(category.routeKey).chip}`}
+                      >
+                        {category.label}
+                      </span>
                     ))}
+                    <Link
+                      to={buildAuthPath("register", viewerBasePath)}
+                      className="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-5 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
+                    >
+                      Submit Request
+                    </Link>
+                  </div>
                 </div>
               </section>
-            ))}
+            </div>
           </div>
         </div>
       </div>
     </div>
   );
 
-  const renderCategoryLanding = (category: CategoryConfig) => (
-    <div className="mx-auto w-full max-w-[1440px] px-4 py-12 sm:px-6 md:py-16">
-      <div className="min-w-0">
-        <div className="overflow-hidden rounded-[34px] border border-slate-200 bg-white shadow-[0_28px_70px_rgba(15,23,42,0.1)]">
-          <div className="marketing-hero-data grid gap-8 border-b border-slate-200 p-6 md:grid-cols-[minmax(0,1.1fr)_300px] md:p-8">
-            <div className="max-w-3xl">
-              <div className={`mb-5 inline-flex items-center gap-2 rounded-full border px-4 py-2 font-sans-tech text-[11px] uppercase tracking-[0.22em] ${getCategoryAccent(category.routeKey).chip}`}>
-                {getCategoryStory(category).eyebrow}
-              </div>
-              <h1 className="text-[clamp(2.3rem,4.8vw,4rem)] font-black tracking-[-0.05em] text-slate-950">
-                RoboDataHub {category.label}
-              </h1>
-              <p className="mt-5 max-w-2xl text-base leading-8 text-slate-600 md:text-lg">
-                {getCategoryStory(category).summary}
-              </p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-slate-500">
-                  {categoryPreviews.length} public endpoint folders
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-slate-500">
-                  {getCategoryStory(category).statLabel}: {getCategoryStory(category).statValue}
-                </span>
-              </div>
-            </div>
+  const renderCategoryLanding = (category: CategoryConfig) => {
+    const landing = activeLandingContent;
+    if (!landing) return null;
 
-            <CategoryHeroImage
-              blobPath={buildCategoryHeroImagePaths(category)[0]}
-              alt={`${category.label} hero`}
-            />
-          </div>
+    const heroStats = landing.stats.slice(0, 4);
+    const heroPreviewDatasetRoot = getPreviewDatasetRootFromVideoBlobPath(landing.heroVideoBlobPath);
+    const heroPlaceholderItem =
+      heroPreviewDatasetRoot
+        ? (localCategoryPreviewPlaceholdersByRoute[category.routeKey] ?? []).find(
+            (item) => normalizePathSearchValue(item.full_path) === normalizePathSearchValue(heroPreviewDatasetRoot),
+          ) ?? null
+        : null;
+    const heroPosterUrl =
+      (heroPlaceholderItem?.main_image ? resolvePreviewMediaUrl(heroPlaceholderItem.main_image) : null) ??
+      frontPageImageUrl(landing.heroImagePath) ??
+      undefined;
+    const heroVideoUrl = landing.heroVideoBlobPath ? folderPreviewMediaUrl(landing.heroVideoBlobPath) : null;
 
-          <div className="p-6 md:p-8">
-            <div className="mb-8">
-              <PathSearchPanel
-                title={`Search inside ${category.label}`}
-                description={`Jump to a brand, endpoint folder, or deeper asset path within the ${category.label.toLowerCase()} catalog while keeping the current viewer access rules intact.`}
-                value={pathSearchText}
-                loading={pathSearchLoading}
-                suggestions={pathSuggestions}
-                placeholder={`Search ${category.label.toLowerCase()} paths`}
-                submitDisabled={pathSuggestions.length === 0}
-                onFocus={() => setPathSearchTouched(true)}
-                onChange={(value) => {
-                  setPathSearchTouched(true);
-                  setPathSearchText(value);
-                }}
-                onSubmit={handlePathSearchSubmit}
-                onSuggestionClick={handlePathSuggestionClick}
-                renderHighlightedPath={renderHighlightedPath}
-              />
-            </div>
+    return (
+      <div className="mx-auto w-full max-w-[1440px] px-4 py-10 sm:px-6 md:py-14">
+        <div className="overflow-hidden rounded-[30px] border border-slate-200 bg-white shadow-[0_30px_70px_rgba(15,23,42,0.1)]">
+          <section className="relative overflow-hidden border-b border-slate-200">
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(13,148,136,0.06),transparent_52%),radial-gradient(ellipse_at_bottom_left,rgba(15,23,42,0.03),transparent_46%)]" />
+            <div className="relative grid gap-10 p-6 md:p-8 lg:grid-cols-2 lg:items-center">
+              <div>
+                <div className={`mb-5 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] ${getCategoryAccent(category.routeKey).chip}`}>
+                  <span className={`h-2 w-2 rounded-full ${getCategoryAccent(category.routeKey).dot}`} />
+                  {landing.heroEyebrow}
+                </div>
+                <h1 className="text-[clamp(2.4rem,4.8vw,4.5rem)] font-black tracking-[-0.06em] text-slate-950">
+                  {landing.heroTitle}
+                </h1>
+                <p className="mt-5 max-w-2xl text-sm leading-8 text-slate-600 md:text-base">
+                  {landing.heroDescription}
+                </p>
 
-            {categoryPreviewsLoading ? (
-              <div className="flex min-h-[220px] items-center justify-center rounded-[24px] border border-slate-200 bg-slate-50">
-                <div className="flex items-center gap-3 text-sm text-slate-500">
-                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                  Loading folder previews...
+                <div className="mt-8 grid gap-px overflow-hidden rounded-[14px] border border-slate-300 bg-slate-200 sm:grid-cols-4">
+                  {heroStats.map((stat) => (
+                    <div key={`${landing.routeKey}-${stat.label}`} className="bg-slate-50 px-4 py-4">
+                      <div className="text-[22px] font-extrabold tracking-[-0.03em] text-slate-950">
+                        {stat.value}
+                      </div>
+                      <div className="mt-1 text-[9px] font-bold uppercase tracking-[0.16em] text-slate-400">
+                        {stat.label}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-            ) : categoryPreviews.length > 0 ? (
-              <div className="grid gap-5 lg:grid-cols-2">
-                {categoryPreviews.map((item) => (
-                  <CategoryDatasetPreviewCard
-                    key={item.full_path}
-                    item={item}
-                    onClick={() => handleCategoryPreviewClick(item)}
+
+              <div className="relative overflow-hidden rounded-[20px] border border-slate-300 shadow-[0_28px_64px_rgba(15,23,42,0.12)]">
+                {heroVideoUrl ? (
+                  <video
+                    src={heroVideoUrl}
+                    poster={heroPosterUrl}
+                    aria-label={`${landing.heroTitle} hero`}
+                    className="h-[390px] w-full object-cover"
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    preload="metadata"
                   />
+                ) : (
+                  <img
+                    src={heroPosterUrl}
+                    alt={`${landing.heroTitle} hero`}
+                    className="h-[390px] w-full object-cover"
+                  />
+                )}
+                <div className="absolute inset-0 bg-[linear-gradient(160deg,rgba(255,255,255,0.15),transparent_45%,rgba(15,23,42,0.06))]" />
+                <div className="absolute bottom-5 left-5 rounded-[12px] border border-slate-200 bg-white/90 px-4 py-3 backdrop-blur-sm">
+                  <div className="text-[8px] font-black uppercase tracking-[0.18em] text-primary">
+                    {landing.heroBadge}
+                  </div>
+                  <div className="mt-1 text-[13px] font-bold text-slate-950">{landing.heroTitle}</div>
+                </div>
+                <div className="absolute right-4 top-4 rounded-[8px] border border-slate-200 bg-white/90 px-3 py-1.5 text-[11px] font-semibold text-slate-500 backdrop-blur-sm">
+                  <strong className="text-primary">{landing.heroPill}</strong>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="border-b border-slate-200 bg-slate-50/80 px-6 py-5 md:px-8">
+            <div className="grid gap-px overflow-hidden rounded-[16px] border border-slate-300 bg-slate-200 md:grid-cols-5">
+              {landing.stats.map((stat) => (
+                <div key={`${landing.routeKey}-band-${stat.label}`} className="bg-slate-50 px-5 py-4">
+                  <div className="text-[26px] font-black tracking-[-0.04em] text-slate-950">
+                    {stat.value}
+                  </div>
+                  <div className="mt-1 text-[9px] font-bold uppercase tracking-[0.16em] text-slate-400">
+                    {stat.label}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <div className="grid lg:grid-cols-[240px_minmax(0,1fr)]">
+            <aside className="flex flex-col border-b border-slate-200 bg-slate-50/90 p-5 lg:border-b-0 lg:border-r lg:p-6">
+              <CategorySidebarSection
+                title="Verticals"
+                items={CATEGORIES.map((item) => ({
+                  id: item.routeKey,
+                  label: item.label,
+                  dotClassName: getCategoryAccent(item.routeKey).dot,
+                }))}
+                activeItemId={category.routeKey}
+                onSelect={(routeKey) => {
+                  const nextCategory = CATEGORIES.find((item) => item.routeKey === routeKey);
+                  if (nextCategory) {
+                    navigate(buildCategoryLandingPath(nextCategory, viewerBasePath));
+                  }
+                }}
+              />
+
+              <CategorySidebarSection
+                title="Filters"
+                items={landing.filters}
+                activeItemId={activeLandingFilterId}
+                onSelect={handleLandingFilterSelect}
+              />
+
+              <div className="mt-5 border-t border-slate-200 pt-4">
+                {!isAuthenticated || !isApproved ? (
+                  <Link
+                    to={buildAuthPath("register", viewerBasePath)}
+                    className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
+                  >
+                    Get Access
+                  </Link>
+                ) : (
+                  <div className="space-y-3">
+                    <button
+                      type="button"
+                      onClick={() => navigate(`${viewerBasePath}/my`)}
+                      className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
+                    >
+                      My private data
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsUploadModalOpen(true)}
+                      className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
+                    >
+                      Import data
+                    </button>
+                    {user?.role === "admin" ? (
+                      <button
+                        type="button"
+                        onClick={() => navigate(`${viewerBasePath}/admin/${user.storageSlug}`)}
+                        className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/8 px-4 text-sm font-bold text-primary transition-colors hover:bg-primary/12"
+                      >
+                        Admin access
+                        <Shield className="h-4 w-4" />
+                      </button>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+            </aside>
+
+            <div className="min-w-0 p-6 md:p-8">
+              <div ref={landingTopRef} className="scroll-mt-32" />
+              <div className="space-y-9">
+                <section className="rounded-[22px] border border-slate-200 bg-slate-50/70 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.05)]">
+                  <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                    <div className="max-w-2xl">
+                      <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                        Search library
+                      </div>
+                      <h2 className="mt-2 text-[18px] font-extrabold tracking-[-0.03em] text-slate-950">
+                        Search real {category.label.toLowerCase()} datasets
+                      </h2>
+                      <p className="mt-1 text-sm leading-6 text-slate-500">
+                        Search by dataset, task, or brand and jump straight into the live folder structure.
+                      </p>
+                    </div>
+                    <CompactPathSearch
+                      value={pathSearchText}
+                      loading={pathSearchLoading}
+                      suggestions={pathSuggestions}
+                      placeholder={`Search ${category.label.toLowerCase()} datasets...`}
+                      submitDisabled={pathSuggestions.length === 0}
+                      className="max-w-none xl:w-[640px]"
+                      onFocus={() => setPathSearchTouched(true)}
+                      onChange={(value) => {
+                        setPathSearchTouched(true);
+                        setPathSearchText(value);
+                      }}
+                      onSubmit={handlePathSearchSubmit}
+                      onSuggestionClick={handlePathSuggestionClick}
+                      renderHighlightedPath={renderHighlightedPath}
+                    />
+                  </div>
+                </section>
+
+                {resolvedCategorySections.map((section) => (
+                  <section
+                    key={`${landing.routeKey}-${section.id}`}
+                    ref={(node) => {
+                      sectionAnchorRefs.current[section.id] = node;
+                    }}
+                    className="scroll-mt-32"
+                  >
+                    <div className="mb-4 flex items-center gap-3 border-l-[3px] border-primary pl-3">
+                      <span className="text-[15px] font-extrabold text-slate-950">{section.title}</span>
+                      <div className="h-px flex-1 bg-gradient-to-r from-primary/20 to-transparent" />
+                      <span className="text-[11px] font-semibold text-slate-400">{section.countLabel}</span>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {section.cards.map((entry) => (
+                        <CuratedCatalogCard
+                          key={`${section.id}-${entry.card.title}-${entry.liveItem?.full_path ?? entry.placeholderItem?.full_path ?? "marketing"}`}
+                          card={entry.card}
+                          liveItem={entry.liveItem}
+                          placeholderItem={entry.placeholderItem}
+                          columns={2}
+                          buttonLabel={
+                            entry.liveItem || entry.placeholderItem
+                              ? "Enter dataset"
+                              : "Explore dataset"
+                          }
+                          onOpen={() =>
+                            entry.liveItem || entry.placeholderItem
+                              ? handleCategoryPreviewClick(entry.liveItem ?? entry.placeholderItem!)
+                              : handleCuratedCardOpen(entry.card.pathLabel, category)
+                          }
+                        />
+                      ))}
+                    </div>
+                  </section>
                 ))}
+
+                <section className="rounded-[20px] border border-primary/15 bg-[linear-gradient(128deg,rgba(13,148,136,0.05),rgba(15,23,42,0.02)_55%,transparent)] p-8">
+                  <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="max-w-3xl">
+                      <h2 className="text-[28px] font-black tracking-[-0.04em] text-slate-950">
+                        {landing.ctaTitle}
+                      </h2>
+                      <p className="mt-3 text-sm leading-7 text-slate-600">
+                        {landing.ctaDescription}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-3">
+                      <Link
+                        to={buildAuthPath("register", viewerBasePath)}
+                        className="inline-flex h-12 items-center justify-center rounded-xl bg-primary px-5 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
+                      >
+                        Request access
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => navigate(viewerBasePath)}
+                        className="inline-flex h-12 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-700 transition-colors hover:border-primary/20 hover:text-primary"
+                      >
+                        Back to RoboDataHub
+                      </button>
+                    </div>
+                  </div>
+                </section>
               </div>
-            ) : (
-              <div className="rounded-[24px] border border-dashed border-slate-300 bg-slate-50 p-6 text-sm leading-7 text-slate-500">
-                No public endpoint folders are available in this category yet.
-              </div>
-            )}
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="relative flex min-h-screen flex-col bg-background font-sans-tech text-foreground md:h-screen md:overflow-hidden">
@@ -1746,13 +2422,13 @@ export default function DataViewer() {
               <Breadcrumbs />
             </div>
           </div>
-          <div className="ml-auto flex items-center gap-4 font-sans-tech text-[11px] font-medium text-slate-500 sm:ml-0 sm:gap-6 sm:text-xs">
-            {isAuthenticated && isApproved ? (
-              <span className="flex items-center gap-2 text-primary">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
-                Live Connection
-              </span>
-            ) : (
+            <div className="ml-auto flex items-center gap-4 font-sans-tech text-[11px] font-medium text-slate-500 sm:ml-0 sm:gap-6 sm:text-xs">
+              {isAuthenticated && isApproved ? (
+                <span className="flex items-center gap-2 text-primary">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
+                  Live Connection
+                </span>
+              ) : (
               <span className="flex items-center gap-2">
                 <LockKeyhole className="h-3.5 w-3.5" />
                 Signed out
@@ -1767,16 +2443,24 @@ export default function DataViewer() {
           </div>
         ) : !isAuthenticated ? (
           isRootLanding ? (
-            <LoggedOutHub viewerBasePath={viewerBasePath} />
+            renderRootLanding()
+          ) : isCategoryLanding && activeCategory ? (
+            renderCategoryLanding(activeCategory)
           ) : (
             <div className="mx-auto flex-1 w-full max-w-[1440px] px-4 py-10 sm:px-6">
-              <AuthRequiredState description="Sign in before viewing dataset contents. Public datasets stay available to signed-in users only." />
+              <AuthRequiredState description="Sign in before viewing dataset contents. Public catalog pages stay visible, but deeper folder contents remain behind account approval." />
             </div>
           )
         ) : !isApproved ? (
-          <div className="mx-auto flex-1 w-full max-w-[1440px] px-4 py-10 sm:px-6">
-            <AuthRequiredState />
-          </div>
+          isRootLanding ? (
+            renderRootLanding()
+          ) : isCategoryLanding && activeCategory ? (
+            renderCategoryLanding(activeCategory)
+          ) : (
+            <div className="mx-auto flex-1 w-full max-w-[1440px] px-4 py-10 sm:px-6">
+              <AuthRequiredState />
+            </div>
+          )
         ) : (
           <div className="flex flex-1 flex-col overflow-hidden xl:flex-row">
             {isLeaf && (
@@ -1797,36 +2481,41 @@ export default function DataViewer() {
             )}
 
             <div className="flex min-w-0 flex-1 flex-col bg-background/50">
-              <div className="flex min-h-10 flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50/70 px-4 py-2 sm:flex-nowrap sm:py-0">
-                <div className="flex items-center space-x-4">
-                  <div className="flex items-center rounded-sm border border-slate-200 bg-white px-2 py-1 text-xs shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
-                    <span className="mr-2 font-sans-tech text-slate-500">Items:</span>
-                    <span className="font-sans-tech text-slate-900">{itemCount}</span>
+              {!isCatalogLanding && (
+                <div className="flex min-h-10 flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50/70 px-4 py-2 sm:flex-nowrap sm:py-0">
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center rounded-sm border border-slate-200 bg-white px-2 py-1 text-xs shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                      <span className="mr-2 font-sans-tech text-slate-500">Items:</span>
+                      <span className="font-sans-tech text-slate-900">{itemCount}</span>
+                    </div>
+                    <div className="h-4 w-px bg-slate-200" />
+                    <button
+                      onClick={() => setReloadTick((value) => value + 1)}
+                      className="flex items-center gap-1 font-sans-tech text-xs text-slate-500 transition-colors hover:text-slate-900"
+                    >
+                      <RefreshCw
+                        className={`h-3.5 w-3.5 ${loading || categoryPreviewsLoading ? "animate-spin" : ""}`}
+                      />
+                      <span>Refresh</span>
+                    </button>
                   </div>
-                  <div className="h-4 w-px bg-slate-200" />
-                  <button
-                    onClick={() => setReloadTick((value) => value + 1)}
-                    className="flex items-center gap-1 font-sans-tech text-xs text-slate-500 transition-colors hover:text-slate-900"
-                  >
-                    <RefreshCw
-                      className={`h-3.5 w-3.5 ${loading || categoryPreviewsLoading ? "animate-spin" : ""}`}
-                    />
-                    <span>Refresh</span>
-                  </button>
+
+                  {!isLeaf && (
+                    <button
+                      onClick={() => setIsUploadModalOpen(true)}
+                      className="flex items-center gap-2 rounded-sm border border-primary/25 bg-primary/10 px-3 py-1 font-sans-tech text-xs font-medium text-primary transition-colors hover:bg-primary/15"
+                    >
+                      <Terminal className="h-3 w-3" />
+                      Import Data
+                    </button>
+                  )}
                 </div>
+              )}
 
-                {!isLeaf && (
-                  <button
-                    onClick={() => setIsUploadModalOpen(true)}
-                    className="flex items-center gap-2 rounded-sm border border-primary/25 bg-primary/10 px-3 py-1 font-sans-tech text-xs font-medium text-primary transition-colors hover:bg-primary/15"
-                  >
-                    <Terminal className="h-3 w-3" />
-                    Import Data
-                  </button>
-                )}
-              </div>
-
-              <div className="custom-scrollbar relative flex-1 overflow-y-auto bg-background/40 p-0">
+              <div
+                ref={contentScrollRef}
+                className="custom-scrollbar relative flex-1 overflow-y-auto bg-background/40 p-0"
+              >
                 {loading && (
                   <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/70 backdrop-blur-sm">
                     <div className="flex flex-col items-center gap-4">
@@ -1882,7 +2571,7 @@ export default function DataViewer() {
             {showVideoPanel && (
               <VideoToolsPanel
                 routePath={currentDisplayPath}
-                videos={filteredVideos.length > 0 ? filteredVideos : sourceVideos}
+                videos={videoPanelItems}
                 onGenerationSuccess={() => setReloadTick((value) => value + 1)}
                 onOpenViewerPath={(viewerPath) => navigate(viewerPath)}
               />
