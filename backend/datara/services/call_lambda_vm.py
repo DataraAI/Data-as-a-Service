@@ -609,79 +609,6 @@ def remove_occlusion(
         return None, 500, str(exc)
 
 
-# def _discover_remote_files(ssh_client, search_root, *, newer_than_path=None):
-#     discovered: list[str] = []
-#     seen: set[str] = set()
-#     if not search_root:
-#         return discovered
-
-#     newer_clause = ""
-#     if newer_than_path:
-#         newer_clause = f' -newer "{_shell_escape(newer_than_path)}"'
-
-#     find_stdout, find_stderr, find_status = _run_bash_script(
-#         ssh_client,
-#         (
-#             f'if [ -d "{_shell_escape(search_root)}" ]; then '
-#             f'find "{_shell_escape(search_root)}" -type f{newer_clause}; '
-#             "fi"
-#         ),
-#     )
-#     if find_status != 0:
-#         logger.warning("Hand mesh output search failed for %s: %s", search_root, find_stderr)
-#         return discovered
-
-#     for line in find_stdout.splitlines():
-#         candidate = line.strip()
-#         if candidate and candidate not in seen:
-#             seen.add(candidate)
-#             discovered.append(candidate)
-#     return discovered
-
-
-# def _normalise_hand_mesh_seq_token(seq_name: str) -> str:
-#     token = re.sub(r"[^a-z0-9]+", " ", str(seq_name or "").strip().lower())
-#     return " ".join(token.split())
-
-
-# def _folder_matches_hand_mesh_seq(folder_name: str, seq_name: str) -> bool:
-#     seq_norm = _normalise_hand_mesh_seq_token(seq_name)
-#     if not seq_norm:
-#         return False
-#     folder_norm = _normalise_hand_mesh_seq_token(folder_name)
-#     seq_compact = seq_norm.replace(" ", "")
-#     folder_compact = folder_norm.replace(" ", "")
-#     return seq_norm in folder_norm or seq_compact in folder_compact
-
-
-# def _is_hand_mesh_date_folder_name(folder_name: str) -> bool:
-#     return bool(re.fullmatch(r"\d{4}-\d{2}-\d{2}", folder_name.strip()))
-
-
-# def _remote_path_mtime(ssh_client, remote_path: str) -> int:
-#     stat_stdout, _, stat_status = _run_command_with_status(
-#         ssh_client,
-#         f'stat -c %Y "{_shell_escape(remote_path)}"',
-#     )
-#     if stat_status != 0:
-#         return -1
-#     try:
-#         return int(stat_stdout.strip())
-#     except ValueError:
-#         return -1
-
-
-# def _pick_newest_directory(ssh_client, directories: list[str]) -> str:
-#     best_dir = ""
-#     best_mtime = -1
-#     for candidate in directories:
-#         mtime = _remote_path_mtime(ssh_client, candidate)
-#         if mtime >= best_mtime:
-#             best_mtime = mtime
-#             best_dir = candidate
-#     return best_dir or (directories[-1] if directories else "")
-
-
 def _extract_hand_mesh_run_dir_from_path(path: str) -> str:
     """
     Dyn-HaMR layout: .../video-custom/{YYYY-MM-DD}/{custom_name}/...
@@ -703,92 +630,6 @@ def _extract_hand_mesh_run_dir_from_path(path: str) -> str:
     if len(segments) < 2:
         return ""
     return f"{base}{segments[0]}"
-
-
-# def _hand_mesh_run_dir_from_stdout(stdout: str, seq_name: str) -> str:
-#     candidates: list[str] = []
-#     for line in stdout.splitlines():
-#         run_dir = _extract_hand_mesh_run_dir_from_path(line.strip())
-#         if run_dir and run_dir not in candidates:
-#             candidates.append(run_dir)
-
-#     if not candidates:
-#         return ""
-
-#     seq_matches = [
-#         candidate
-#         for candidate in candidates
-#         if _folder_matches_hand_mesh_seq(posixpath.basename(candidate), seq_name)
-#     ]
-#     return (seq_matches or candidates)[-1]
-
-
-# def _list_hand_mesh_run_directories(
-#     ssh_client,
-#     *,
-#     newer_than_path: str | None = None,
-# ) -> list[str]:
-#     newer_clause = ""
-#     if newer_than_path:
-#         newer_clause = f' -newer "{_shell_escape(newer_than_path)}"'
-
-#     find_stdout, find_stderr, find_status = _run_bash_script(
-#         ssh_client,
-#         (
-#             f'if [ -d "{_shell_escape(REMOTE_DYN_HAMR_OUTPUT_DIR)}" ]; then '
-#             f'find "{_shell_escape(REMOTE_DYN_HAMR_OUTPUT_DIR)}" -mindepth 2 -maxdepth 2 -type d{newer_clause}; '
-#             "fi"
-#         ),
-#     )
-#     if find_status != 0:
-#         logger.warning(
-#             "Failed to list hand mesh run directories under %s: %s",
-#             REMOTE_DYN_HAMR_OUTPUT_DIR,
-#             find_stderr,
-#         )
-#         return []
-
-#     run_dirs: list[str] = []
-#     for line in find_stdout.splitlines():
-#         candidate = line.strip()
-#         if not candidate:
-#             continue
-#         date_name = posixpath.basename(posixpath.dirname(candidate))
-#         if _is_hand_mesh_date_folder_name(date_name):
-#             run_dirs.append(candidate)
-#     return run_dirs
-
-
-# def _discover_hand_mesh_run_output_dir(ssh_client, seq_name: str, job_marker: str) -> str:
-#     """
-#     Dyn-HaMR writes each run under video-custom/{YYYY-MM-DD}/{custom_name}/.
-#     """
-#     run_dirs = _list_hand_mesh_run_directories(ssh_client, newer_than_path=job_marker)
-#     if not run_dirs:
-#         run_dirs = [
-#             candidate
-#             for candidate in _list_hand_mesh_run_directories(ssh_client)
-#             if _folder_matches_hand_mesh_seq(posixpath.basename(candidate), seq_name)
-#         ]
-
-#     seq_matches = [
-#         candidate
-#         for candidate in run_dirs
-#         if _folder_matches_hand_mesh_seq(posixpath.basename(candidate), seq_name)
-#     ]
-#     return _pick_newest_directory(ssh_client, seq_matches or run_dirs)
-
-
-# def _partition_hand_mesh_outputs(remote_paths: list[str]) -> tuple[list[str], list[str]]:
-#     videos: list[str] = []
-#     artifacts: list[str] = []
-#     for remote_path in remote_paths:
-#         lower_path = remote_path.lower()
-#         if lower_path.endswith(HAND_MESH_VIDEO_SUFFIXES):
-#             videos.append(remote_path)
-#         elif lower_path.endswith(HAND_MESH_ARTIFACT_SUFFIXES):
-#             artifacts.append(remote_path)
-#     return videos, artifacts
 
 
 def generate_hand_mesh(
@@ -847,15 +688,22 @@ def generate_hand_mesh(
 
             # Parse sentinel lines emitted by run_vipe_dynhamr.py:
             #   OUTPUT_VIDEO: /path/to/foo_src_cam.mp4
-            #   OUTPUT_OBJ:   /path/to/foo.obj
+            #   OUTPUT_OBJ:   /path/to/foo folder to .obj files
             remote_videos: list[str] = []
             remote_artifacts: list[str] = []
+            sftp = ssh_client.open_sftp()
             for line in stdout.splitlines():
                 line = line.strip()
                 if line.startswith("OUTPUT_VIDEO: "):
                     remote_videos.append(line[len("OUTPUT_VIDEO: "):].strip())
                 elif line.startswith("OUTPUT_OBJ: "):
-                    remote_artifacts.append(line[len("OUTPUT_OBJ: "):].strip())
+                    path = line[len("OUTPUT_OBJ: "):].strip()
+                    dir_contents = sftp.listdir(path)
+                    for filename in dir_contents:
+                        if filename.lower().endswith(".obj"):
+                            full_path = posixpath.join(path, filename)
+                            remote_artifacts.append(full_path)
+            sftp.close()
 
             if not remote_videos and not remote_artifacts:
                 logger.error(

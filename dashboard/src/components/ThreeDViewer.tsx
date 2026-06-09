@@ -2,6 +2,7 @@ import { Html, OrbitControls, Stage } from '@react-three/drei';
 import { Canvas, useLoader } from '@react-three/fiber';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import React, { Suspense } from 'react';
+import * as THREE from 'three';
 import { GLTFLoader, OBJLoader, STLLoader } from 'three-stdlib';
 
 interface ModelProps {
@@ -25,21 +26,61 @@ function GLBModel({ url }: ModelProps) {
 
 function OBJModel({ url }: ModelProps) {
     const obj = useLoader(OBJLoader, url);
-    return <primitive object={obj} />;
+    React.useMemo(() => {
+        obj.position.set(0, 0, 0);
+        obj.rotation.set(0, 0, 0);
+        obj.scale.set(1, 1, 1);
+
+        obj.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+                child.geometry.computeBoundingBox();
+                child.geometry.computeBoundingSphere();
+                child.geometry.center();
+
+                child.material = new THREE.MeshStandardMaterial({
+                    color: "#0d9488",
+                    roughness: 0.4,
+                    metalness: 0.2,
+                    side: THREE.DoubleSide
+                });
+            }
+        });
+    }, [obj]);
+
+    React.useEffect(() => {
+        return () => {
+            obj.traverse((child) => {
+                if (child instanceof THREE.Mesh) {
+                    if (child.geometry) {
+                        child.geometry.dispose();
+                    }
+                    if (child.material) {
+                        if (Array.isArray(child.material)) {
+                            child.material.forEach((mat) => mat.dispose());
+                        } else {
+                            child.material.dispose();
+                        }
+                    }
+                }
+            });
+        };
+    }, [obj]);
+
+    return <primitive object={obj} scale={1} />;
 }
 
 function ModelSelector({ url }: ModelProps) {
     const isGLB = url.toLowerCase().endsWith('.glb') || url.toLowerCase().endsWith('.gltf') || url.toLowerCase().includes('.glb?') || url.toLowerCase().includes('.gltf?');
     const isOBJ = url.toLowerCase().endsWith(".obj");
-    alert("last 10 characters: " + url.substring(url.length - 10));
 
     if (isGLB) {
         return <GLBModel url={url} />;
     }
+
     else if (isOBJ) {
-        alert("last 10 characters: " + url.substring(url.length - 10));
         return <OBJModel url={url} />;
     }
+
     return <STLModel url={url} />;
 }
 
@@ -64,7 +105,7 @@ interface ThreeDViewerProps {
 export function ThreeDViewer({ url }: ThreeDViewerProps) {
     return (
         <div className="w-full h-full relative">
-            <Canvas shadows gl={{ antialias: true }} camera={{ position: [0, 0, 150], fov: 50 }}>
+            <Canvas shadows gl={{ antialias: true }} camera={{ position: [0, 0, .3], fov: 50 }}>
                 <ErrorBoundary
                     fallback={
                         <Html center>
@@ -85,12 +126,12 @@ export function ThreeDViewer({ url }: ThreeDViewerProps) {
                             </Html>
                         }
                     >
-                        <Stage environment="city" intensity={0.6}>
+                        <Stage environment="city" intensity={0.6} adjustCamera={false}>
                             <ModelSelector url={url} />
                         </Stage>
                     </Suspense>
                 </ErrorBoundary>
-                <OrbitControls autoRotate />
+                <OrbitControls makeDefault autoRotate={false} enableDamping />
             </Canvas>
         </div>
     );
