@@ -2330,26 +2330,23 @@ export default function DataViewer() {
                                         iconClassName="h-16 w-16 text-muted-foreground transition-colors group-hover:text-primary"
                                     />
                                 </div>
-                                <div className="flex w-full items-start gap-2">
-                                    <div className="flex-1 text-center">
-                                        <span className="block break-words font-sans-tech text-lg font-bold uppercase tracking-[0.12em] text-slate-950 transition-colors group-hover:text-primary">
-                                            {folder.name}
+                                <div className="relative w-full text-center">
+                                    <span className={`block break-words font-sans-tech text-lg font-bold uppercase tracking-[0.12em] text-slate-950 transition-colors group-hover:text-primary ${isOwnFolder ? "pr-8 pl-8" : ""}`}>
+                                        {folder.name}
+                                    </span>
+                                    {folder.visibility && (
+                                        <span
+                                            className={`mt-2 inline-flex rounded-full px-2 py-1 text-[10px] uppercase tracking-wide ${
+                                                folder.visibility === "public"
+                                                    ? "bg-primary/10 text-primary"
+                                                    : "bg-amber-100 text-amber-700"
+                                            }`}
+                                        >
+                                            {folder.visibility}
                                         </span>
-                                        {folder.visibility && (
-                                            <span
-                                                className={`mt-2 inline-flex rounded-full px-2 py-1 text-[10px] uppercase tracking-wide ${
-                                                    folder.visibility ===
-                                                    "public"
-                                                        ? "bg-primary/10 text-primary"
-                                                        : "bg-amber-100 text-amber-700"
-                                                }`}
-                                            >
-                                                {folder.visibility}
-                                            </span>
-                                        )}
-                                    </div>
+                                    )}
                                     {isOwnFolder && (
-                                        <div className="relative shrink-0">
+                                        <div className="absolute right-0 top-0">
                                             <button
                                                 type="button"
                                                 onMouseDown={(event) =>
