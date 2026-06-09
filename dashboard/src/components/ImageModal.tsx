@@ -1,8 +1,8 @@
 import { ChevronLeft, ChevronRight, Copy, Download, Film, Info, Loader2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import TaskIntelligencePanel from "./TaskIntelligencePanel";
-import VideoToVideoViewsPanel from "./VideoToVideoViewsPanel";
 import { ThreeDViewer } from "./ThreeDViewer";
+import VideoToVideoViewsPanel from "./VideoToVideoViewsPanel";
 
 interface ImageModalProps {
   image: any;
