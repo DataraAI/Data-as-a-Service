@@ -141,7 +141,7 @@ const PRODUCT_CARDS: ProductCard[] = [
     name: "RoboHandMotion",
     badge: "Patented IP",
     tagline: "Precision hand & tool interaction data for dexterous robots",
-    pills: ["Finger-level motion capture", "Tool + object interaction", "Humanoid-ready format"],
+    pills: ["Finger-level motion capture", "Tool + object interaction", "Dexterity-ready format"],
     linkLabel: "Learn more",
     to: "/robohandmotion",
     icon: Hand,
@@ -222,7 +222,7 @@ const CUSTOMER_CARDS: CustomerCard[] = [
     company: "Figure AI",
     detail:
       "Faster model convergence on manipulation tasks using RoboDataHub dexterous sequences vs. in-house collection.",
-    label: "Humanoid",
+    label: "Dexterity",
     valueTone: "text-primary",
     chipTone: "border-teal-200 bg-teal-50 text-primary",
   },
@@ -378,7 +378,7 @@ export default function Home() {
               DataraAI <span className="text-primary">closes the gap.</span>
             </div>
             <p className="mx-auto mt-7 max-w-[560px] text-[17px] leading-[1.7] text-slate-500">
-              The complete data stack for Physical AI. Humanoid. Automotive. Warehouse. Data Center.
+              The complete data stack for Physical AI. Dexterity. Automotive. Warehouse. Data Center.
             </p>
 
             <div className="mt-9 flex flex-col items-center justify-center gap-4 sm:flex-row">

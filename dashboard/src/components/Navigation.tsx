@@ -36,7 +36,7 @@ const PRODUCT_NAV_ITEMS: NavItem[] = [
   {
     key: "robohandmotion",
     label: "RoboHandMotion",
-    subtitle: "Humanoid Data",
+    subtitle: "Dexterity Data",
     href: "/robohandmotion",
   },
   {

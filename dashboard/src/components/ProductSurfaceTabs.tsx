@@ -32,7 +32,7 @@ const ITEMS: Array<{
   {
     key: "robohandmotion",
     label: "RoboHandMotion",
-    subtitle: "Humanoid data",
+    subtitle: "Dexterity data",
     to: "/robohandmotion",
   },
   {

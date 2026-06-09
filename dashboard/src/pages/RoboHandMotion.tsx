@@ -621,7 +621,7 @@ export default function RoboHandMotion() {
                 className="mb-1 flex items-center gap-3 rounded-[9px] px-4 py-3 text-slate-600 transition-colors hover:bg-teal-50/60 hover:text-teal-700 dark:text-slate-300 dark:hover:bg-teal-950/20 dark:hover:text-teal-200"
               >
                 <span className="h-3 w-3 rounded-[3px] bg-teal-600" />
-                <span className="text-[16px] font-extrabold">Humanoid</span>
+                <span className="text-[16px] font-extrabold">Dexterity</span>
               </a>
               <a
                 href="#au"
@@ -705,7 +705,7 @@ export default function RoboHandMotion() {
                 </div>
 
                 <div id="hu" className="scroll-mt-28">
-                  <SectionHeader title="Humanoid" summary="9 datasets · 2,850 hrs" accent="teal" />
+                  <SectionHeader title="Dexterity" summary="9 datasets · 2,850 hrs" accent="teal" />
                   <div className="flex flex-col gap-4">
                     {DEXTEROUS_DATASETS.map((card) => (
                       <TransformCardView key={card.title} card={card} />

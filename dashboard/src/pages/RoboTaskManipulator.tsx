@@ -183,7 +183,7 @@ const DATA_CENTER_GALLERY: GalleryCard[] = [
   },
 ];
 
-const HUMANOID_GALLERY: GalleryCard[] = [
+const DEXTERITY_GALLERY: GalleryCard[] = [
   {
     title: "Kitchen Drawer Manipulation",
     description: "Step-segmented drawer open, grasp & place sequence with hand pose labels",
@@ -539,7 +539,7 @@ export default function RoboTaskManipulator() {
                 className="mb-1 flex items-center gap-3 rounded-[9px] px-4 py-3 text-slate-600 transition-colors hover:bg-teal-50/60 hover:text-teal-700 dark:text-slate-300 dark:hover:bg-teal-950/20 dark:hover:text-teal-200"
               >
                 <span className="h-3 w-3 rounded-[3px] bg-teal-600" />
-                <span className="text-[16px] font-extrabold">Humanoid</span>
+                <span className="text-[16px] font-extrabold">Dexterity</span>
               </a>
               <a
                 href="#au"
@@ -623,9 +623,9 @@ export default function RoboTaskManipulator() {
                 </div>
 
                 <div id="hu" className="scroll-mt-28">
-                  <SectionHeader title="Humanoid" summary="3 datasets · 1,430 hrs" accent="teal" />
+                  <SectionHeader title="Dexterity" summary="3 datasets · 1,430 hrs" accent="teal" />
                   <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    {HUMANOID_GALLERY.map((card) => (
+                    {DEXTERITY_GALLERY.map((card) => (
                       <GalleryCardView key={card.title} card={card} />
                     ))}
                   </div>
