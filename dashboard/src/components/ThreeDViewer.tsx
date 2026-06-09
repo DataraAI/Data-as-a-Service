@@ -26,33 +26,34 @@ function GLBModel({ url }: ModelProps) {
 
 function OBJModel({ url }: ModelProps) {
     const obj = useLoader(OBJLoader, url);
-    // 💡 FIX: Inject a visible material into the OBJ children meshes 
-    // so they don't render invisible or pitch black.
     React.useMemo(() => {
+        obj.position.set(0, 0, 0);
+        obj.rotation.set(0, 0, 0);
+        obj.scale.set(1, 1, 1);
+
         obj.traverse((child) => {
             if (child instanceof THREE.Mesh) {
+                child.geometry.computeBoundingBox();
+                child.geometry.computeBoundingSphere();
+                child.geometry.center();
+
                 child.material = new THREE.MeshStandardMaterial({
-                    color: "#0d9488", // Teal styling to match DataraAI themes
+                    color: "#0d9488",
                     roughness: 0.4,
                     metalness: 0.2,
-                    side: THREE.DoubleSide // Ensure inside/outside of mesh are visible
+                    side: THREE.DoubleSide
                 });
             }
         });
     }, [obj]);
 
-    // Automatic garbage collection routine to free RAM
     React.useEffect(() => {
-        // 👇 CLEANUP RUNS AUTOMATICALLY WHEN THE MODEL SWAPS OR UNMOUNTS
         return () => {
             obj.traverse((child) => {
                 if (child instanceof THREE.Mesh) {
-                    // 🧠 Free up RAM vertex structures
                     if (child.geometry) {
                         child.geometry.dispose();
                     }
-
-                    // 🎨 Free up VRAM material structures
                     if (child.material) {
                         if (Array.isArray(child.material)) {
                             child.material.forEach((mat) => mat.dispose());
@@ -71,15 +72,15 @@ function OBJModel({ url }: ModelProps) {
 function ModelSelector({ url }: ModelProps) {
     const isGLB = url.toLowerCase().endsWith('.glb') || url.toLowerCase().endsWith('.gltf') || url.toLowerCase().includes('.glb?') || url.toLowerCase().includes('.gltf?');
     const isOBJ = url.toLowerCase().endsWith(".obj");
-    // alert("last 10 characters: " + url.substring(url.length - 10));
 
     if (isGLB) {
         return <GLBModel url={url} />;
     }
+
     else if (isOBJ) {
-        // console.log("Full URL: " + url);
         return <OBJModel url={url} />;
     }
+
     return <STLModel url={url} />;
 }
 
@@ -104,7 +105,7 @@ interface ThreeDViewerProps {
 export function ThreeDViewer({ url }: ThreeDViewerProps) {
     return (
         <div className="w-full h-full relative">
-            <Canvas shadows gl={{ antialias: true }} camera={{ position: [0, 0, 150], fov: 50 }}>
+            <Canvas shadows gl={{ antialias: true }} camera={{ position: [0, 0, .3], fov: 50 }}>
                 <ErrorBoundary
                     fallback={
                         <Html center>
@@ -125,12 +126,12 @@ export function ThreeDViewer({ url }: ThreeDViewerProps) {
                             </Html>
                         }
                     >
-                        <Stage environment="city" intensity={0.6}>
+                        <Stage environment="city" intensity={0.6} adjustCamera={false}>
                             <ModelSelector url={url} />
                         </Stage>
                     </Suspense>
                 </ErrorBoundary>
-                <OrbitControls autoRotate />
+                <OrbitControls makeDefault autoRotate={false} enableDamping />
             </Canvas>
         </div>
     );
