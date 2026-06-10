@@ -51,7 +51,7 @@ const PROCESS_STEPS: StepCard[] = [
   },
   {
     step: "Step 02",
-    title: "RoboEyeView Engine",
+    title: "RoboAnnotator Engine",
     description: "Scene reconstruction & view synthesis.",
     accent: "teal",
     icon: "engine",
@@ -438,7 +438,7 @@ function Pipe({ detail }: { detail: string }) {
             <Sparkles className="h-4 w-4" />
           </div>
           <p className="mb-0.5 text-[8px] font-extrabold uppercase tracking-[0.05em] text-teal-700 dark:text-teal-200">
-            RoboEyeView
+            RoboAnnotator
           </p>
           <p className="mb-1 text-[12px] font-extrabold text-slate-950 dark:text-slate-100">Engine</p>
           <p className="text-[8px] text-slate-500 dark:text-slate-400">{detail}</p>
@@ -519,7 +519,7 @@ export default function RoboEyeView() {
           <aside className="hidden min-h-[calc(100vh-88px)] w-[220px] shrink-0 border-r border-slate-200 bg-slate-50/90 xl:flex xl:flex-col dark:border-slate-800 dark:bg-slate-950/80">
             <div className="border-b border-slate-200 px-5 py-6 dark:border-slate-800">
               <p className="text-[18px] font-extrabold tracking-[0.04em] text-primary">DataraAI</p>
-              <p className="mt-1 text-[16px] font-bold text-slate-950 dark:text-slate-100">RoboEyeView</p>
+              <p className="mt-1 text-[16px] font-bold text-slate-950 dark:text-slate-100">RoboAnnotator</p>
             </div>
             <div className="flex-1 px-3 py-4">
               <p className="mb-3 px-2 text-[16px] font-extrabold text-slate-950 dark:text-slate-100">Verticals</p>
@@ -554,7 +554,7 @@ export default function RoboEyeView() {
             </div>
             <div className="border-t border-slate-200 px-5 py-4 dark:border-slate-800">
               <Link
-                to={buildAuthPath("register", "/roboeyeview")}
+                to={buildAuthPath("register", "/roboannotator")}
                 className="inline-flex h-10 w-full items-center justify-center rounded-[8px] bg-teal-600 px-4 text-[12px] font-bold text-white transition-opacity hover:opacity-90"
               >
                 Get Access
@@ -570,7 +570,7 @@ export default function RoboEyeView() {
                     <Eye className="h-4 w-4" />
                   </div>
                   <h1 className="text-[30px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">
-                    RoboEyeView
+                    RoboAnnotator
                   </h1>
                   <span className="rounded-full border border-teal-200 bg-teal-50 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-teal-700 dark:border-teal-900/50 dark:bg-teal-950/30 dark:text-teal-200">
                     Patented
@@ -627,7 +627,7 @@ export default function RoboEyeView() {
                     </div>
                     <div>
                       <p className="mb-1 text-[15px] font-bold text-slate-950 dark:text-slate-100">
-                        Run RoboEyeView on Your EXO Footage
+                        Run RoboAnnotator on Your EXO Footage
                       </p>
                       <p className="max-w-[480px] text-[12px] leading-5 text-slate-500 dark:text-slate-400">
                         Already have EXO footage? We&apos;ll synthesize robot-ready EGO datasets — egocentric robot-perspective viewpoints — across any task, environment, or robot form factor.
@@ -641,7 +641,7 @@ export default function RoboEyeView() {
                       <Badge tone="purple">Automotive</Badge>
                     </div>
                     <Link
-                      to={buildAuthPath("register", "/roboeyeview")}
+                      to={buildAuthPath("register", "/roboannotator")}
                       className="inline-flex w-full items-center justify-center rounded-[8px] bg-teal-600 px-6 py-2.5 text-[13px] font-bold text-white transition-opacity hover:opacity-90"
                     >
                       Submit Your Footage

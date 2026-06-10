@@ -25,9 +25,9 @@ const ITEMS: Array<{
   },
   {
     key: "roboeyeview",
-    label: "RoboEyeView",
+    label: "RoboAnnotator",
     subtitle: "Visual intelligence",
-    to: "/roboeyeview",
+    to: "/roboannotator",
   },
   {
     key: "robohandmotion",

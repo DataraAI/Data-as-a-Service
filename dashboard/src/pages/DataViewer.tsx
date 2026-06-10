@@ -29,13 +29,14 @@ import {
   Trash2,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Breadcrumbs } from "../components/Breadcrumbs";
 import { DatasetFolderCover } from "../components/DatasetFolderCover";
 import { ImageGrid } from "../components/ImageGrid";
 import { ImageModal } from "../components/ImageModal";
 import { MaskGenerationPanel } from "../components/MaskGenerationPanel";
 import Navigation from "../components/Navigation";
+import FooterSection from "../components/FooterSection";
 import { Sidebar } from "../components/Sidebar";
 import { UploadModal } from "../components/UploadModal";
 import { VideoToolsPanel, type VideoFolderAsset } from "../components/VideoToolsPanel";
@@ -1282,6 +1283,12 @@ export default function DataViewer() {
     () => (location.pathname.startsWith("/robodatahub") ? "/robodatahub" : "/viewer"),
     [location.pathname],
   );
+  const authRedirectPath = useMemo(
+    () => buildAuthPath("login", `${location.pathname}${location.search}`),
+    [location.pathname, location.search],
+  );
+  const canUseLockedViewerLayout = isAuthenticated && isApproved;
+  const canUseCatalogSearch = isAuthenticated && isApproved;
 
   const [folders, setFolders] = useState<FolderItem[]>([]);
   const [categoryPreviews, setCategoryPreviews] = useState<CategoryDatasetPreview[]>([]);
@@ -1415,6 +1422,7 @@ export default function DataViewer() {
   const isRootLanding = pathSegments.length === 0;
   const isCategoryLanding = Boolean(activeCategory) && pathSegments.length === 1;
   const isCatalogLanding = isRootLanding || isCategoryLanding;
+  const showCatalogFooter = isRootLanding;
   const visibleRootRouteKeys = useMemo(
     () =>
       (Object.entries(visibleRootSectionKeys) as [CategoryKey, boolean][])
@@ -1539,7 +1547,7 @@ export default function DataViewer() {
   }, [currentDisplayPath, isAuthenticated, isApproved, isRootLanding, isCategoryLanding, reloadTick]);
 
   useEffect(() => {
-    if (!isCategoryLanding || !activeCategory) {
+    if (!isAuthenticated || !isApproved || !isCategoryLanding || !activeCategory) {
       setCategoryPreviews([]);
       setLoadedCategoryPreviewKey(null);
       setCategoryPreviewsLoading(false);
@@ -1557,17 +1565,12 @@ export default function DataViewer() {
           params: { category: category.routeKey, public_only: "true" },
         });
         if (cancelled) return;
-<<<<<<< HEAD
-        setCategoryPreviews(Array.isArray(response.data) ? response.data : []);
-        setLoadedCategoryPreviewKey(category.routeKey);
-=======
         setCategoryPreviews(
           Array.isArray(response.data)
             ? response.data.filter((item) => !isExcludedDatasetPath(item.full_path))
             : [],
         );
-        setLoadedCategoryPreviewKey(activeCategory.routeKey);
->>>>>>> a06186e (Update RoboDataHub dataset cards and dexterity paths)
+        setLoadedCategoryPreviewKey(category.routeKey);
       } catch (error) {
         if (!cancelled) {
           console.error("Failed to load category dataset previews", error);
@@ -1586,10 +1589,10 @@ export default function DataViewer() {
     return () => {
       cancelled = true;
     };
-  }, [activeCategory, isCategoryLanding, reloadTick]);
+  }, [activeCategory, isAuthenticated, isApproved, isCategoryLanding, reloadTick]);
 
   useEffect(() => {
-    if (!isRootLanding) {
+    if (!isRootLanding || !isAuthenticated || !isApproved) {
       setRootCategoryPreviews({});
       setVisibleRootSectionKeys({});
       rootPreviewLoadingKeysRef.current.clear();
@@ -1599,10 +1602,10 @@ export default function DataViewer() {
     setRootCategoryPreviews({});
     setVisibleRootSectionKeys({});
     rootPreviewLoadingKeysRef.current.clear();
-  }, [isRootLanding, reloadTick]);
+  }, [isAuthenticated, isApproved, isRootLanding, reloadTick]);
 
   useEffect(() => {
-    if (!isRootLanding) return;
+    if (!isRootLanding || !isAuthenticated || !isApproved) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -1635,10 +1638,10 @@ export default function DataViewer() {
     return () => {
       observer.disconnect();
     };
-  }, [isRootLanding, rootResolvedShowcaseSections]);
+  }, [isAuthenticated, isApproved, isRootLanding, rootResolvedShowcaseSections]);
 
   useEffect(() => {
-    if (!isRootLanding) {
+    if (!isRootLanding || !isAuthenticated || !isApproved) {
       return;
     }
 
@@ -1685,10 +1688,10 @@ export default function DataViewer() {
     return () => {
       cancelled = true;
     };
-  }, [isRootLanding, rootCategoryPreviews, visibleRootSectionKeys]);
+  }, [isAuthenticated, isApproved, isRootLanding, rootCategoryPreviews, visibleRootSectionKeys]);
 
   useEffect(() => {
-    if (!isCatalogLanding || pathSearchLoaded || pathSearchPrimed) return;
+    if (!canUseCatalogSearch || !isCatalogLanding || pathSearchLoaded || pathSearchPrimed) return;
 
     const readyForWarmup = initialRootCatalogContentReady || initialCategoryCatalogContentReady;
     if (!readyForWarmup) return;
@@ -1725,6 +1728,7 @@ export default function DataViewer() {
     };
   }, [
     activeCategory,
+    canUseCatalogSearch,
     categoryPreviewsLoading,
     initialCategoryCatalogContentReady,
     initialRootCatalogContentReady,
@@ -1735,7 +1739,8 @@ export default function DataViewer() {
   ]);
 
   useEffect(() => {
-    const shouldLoadPaths = pathSearchPrimed || pathSearchTouched || pathSearchText.trim().length > 0;
+    const shouldLoadPaths =
+      canUseCatalogSearch && (pathSearchPrimed || pathSearchTouched || pathSearchText.trim().length > 0);
     if (!shouldLoadPaths || pathSearchLoaded) return;
 
     let cancelled = false;
@@ -1778,7 +1783,7 @@ export default function DataViewer() {
     return () => {
       cancelled = true;
     };
-  }, [activeCategory, pathSearchLoaded, pathSearchPrimed, pathSearchText, pathSearchTouched]);
+  }, [activeCategory, canUseCatalogSearch, pathSearchLoaded, pathSearchPrimed, pathSearchText, pathSearchTouched]);
 
   useEffect(() => {
     setAllFolderPaths([]);
@@ -1960,6 +1965,10 @@ export default function DataViewer() {
       return;
     }
     navigate(nextPath);
+  }
+
+  function promptGuestSignIn(nextPath = viewerBasePath) {
+    navigate(buildAuthPath("login", nextPath));
   }
 
   function handlePathSearchSubmit() {
@@ -2174,7 +2183,14 @@ export default function DataViewer() {
                     <button
                       key={section.routeKey}
                       type="button"
-                      onClick={() => navigate(buildCategoryLandingPath(category, viewerBasePath))}
+                      onClick={() => {
+                        const nextPath = buildCategoryLandingPath(category, viewerBasePath);
+                        if (!isAuthenticated) {
+                          promptGuestSignIn(nextPath);
+                          return;
+                        }
+                        navigate(nextPath);
+                      }}
                       className="flex w-full items-center gap-3 rounded-xl border border-transparent px-3 py-2.5 text-left text-slate-600 transition-colors hover:bg-slate-100"
                     >
                       <span className={`h-2.5 w-2.5 shrink-0 rounded-[3px] ${getCategoryAccent(category.routeKey).dot}`} />
@@ -2227,18 +2243,34 @@ export default function DataViewer() {
 
               <div className="flex flex-wrap items-center gap-3">
                 <CompactPathSearch
-                  value={pathSearchText}
-                  loading={pathSearchLoading}
-                  suggestions={pathSuggestions}
-                  placeholder="Search datasets..."
-                  submitDisabled={pathSuggestions.length === 0}
+                  value={isAuthenticated ? pathSearchText : ""}
+                  loading={isAuthenticated ? pathSearchLoading : false}
+                  suggestions={isAuthenticated ? pathSuggestions : []}
+                  placeholder={isAuthenticated ? "Search datasets..." : "Sign in to search datasets"}
+                  submitDisabled={isAuthenticated ? pathSuggestions.length === 0 : false}
                   className="max-w-[760px]"
-                  onFocus={() => setPathSearchTouched(true)}
+                  onFocus={() => {
+                    if (!isAuthenticated) {
+                      promptGuestSignIn(viewerBasePath);
+                      return;
+                    }
+                    setPathSearchTouched(true);
+                  }}
                   onChange={(value) => {
+                    if (!isAuthenticated) {
+                      promptGuestSignIn(viewerBasePath);
+                      return;
+                    }
                     setPathSearchTouched(true);
                     setPathSearchText(value);
                   }}
-                  onSubmit={handlePathSearchSubmit}
+                  onSubmit={() => {
+                    if (!isAuthenticated) {
+                      promptGuestSignIn(viewerBasePath);
+                      return;
+                    }
+                    handlePathSearchSubmit();
+                  }}
                   onSuggestionClick={handlePathSuggestionClick}
                   renderHighlightedPath={renderHighlightedPath}
                 />
@@ -2278,7 +2310,12 @@ export default function DataViewer() {
                                 handleCategoryPreviewClick(previewItem);
                                 return;
                               }
-                              navigate(buildCategoryLandingPath(category, viewerBasePath));
+                              const nextPath = buildCategoryLandingPath(category, viewerBasePath);
+                              if (!isAuthenticated) {
+                                promptGuestSignIn(nextPath);
+                                return;
+                              }
+                              navigate(nextPath);
                             }}
                           />
                         );
@@ -2333,15 +2370,10 @@ export default function DataViewer() {
     const heroPlaceholderItem =
       heroPreviewDatasetRoot
         ? (localCategoryPreviewPlaceholdersByRoute[category.routeKey] ?? []).find(
-<<<<<<< HEAD
-          (item) => normalizePathSearchValue(item.full_path) === normalizePathSearchValue(heroPreviewDatasetRoot),
-        ) ?? null
-=======
             (item) =>
               normalizePathSearchValue(item.full_path) ===
               normalizePathSearchValue(canonicalizeDatasetPathForRoute(heroPreviewDatasetRoot, category.routeKey)),
           ) ?? null
->>>>>>> a06186e (Update RoboDataHub dataset cards and dexterity paths)
         : null;
     const heroPosterUrl =
       (heroPlaceholderItem?.main_image ? resolvePreviewMediaUrl(heroPlaceholderItem.main_image) : null) ??
@@ -2384,6 +2416,7 @@ export default function DataViewer() {
               <div className="relative overflow-hidden rounded-[20px] border border-slate-300 shadow-[0_28px_64px_rgba(15,23,42,0.12)]">
                 {heroVideoUrl ? (
                   <video
+                    key={`${category.routeKey}-hero-video-${heroVideoUrl}`}
                     src={heroVideoUrl}
                     poster={heroPosterUrl}
                     aria-label={`${landing.heroTitle} hero`}
@@ -2396,6 +2429,7 @@ export default function DataViewer() {
                   />
                 ) : (
                   <img
+                    key={`${category.routeKey}-hero-image-${heroPosterUrl ?? "fallback"}`}
                     src={heroPosterUrl}
                     alt={`${landing.heroTitle} hero`}
                     className="h-[390px] w-full object-cover"
@@ -2603,11 +2637,19 @@ export default function DataViewer() {
   };
 
   return (
-    <div className="relative flex min-h-screen flex-col bg-background font-sans-tech text-foreground md:h-screen md:overflow-hidden">
+    <div
+      className={`relative flex min-h-screen flex-col bg-background font-sans-tech text-foreground ${
+        canUseLockedViewerLayout && !showCatalogFooter ? "md:h-screen md:overflow-hidden" : ""
+      }`}
+    >
       <div className="pointer-events-none absolute inset-0 bg-grid-pattern opacity-[0.04]" />
       <Navigation />
 
-      <div className="relative z-10 flex flex-1 flex-col pt-[88px] md:overflow-hidden">
+      <div
+        className={`relative z-10 flex flex-1 flex-col pt-[88px] ${
+          canUseLockedViewerLayout && !showCatalogFooter ? "md:overflow-hidden" : ""
+        }`}
+      >
         <div className="z-20 flex min-h-12 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-background/90 px-4 py-2 backdrop-blur-md sm:flex-nowrap sm:py-0">
           <div className="flex min-w-0 items-center gap-4">
             <div className="flex items-center gap-2 text-sm">
@@ -2642,12 +2684,8 @@ export default function DataViewer() {
         ) : !isAuthenticated ? (
           isRootLanding ? (
             renderRootLanding()
-          ) : isCategoryLanding && activeCategory ? (
-            renderCategoryLanding(activeCategory)
           ) : (
-            <div className="mx-auto flex-1 w-full max-w-[1440px] px-4 py-10 sm:px-6">
-              <AuthRequiredState description="Sign in before viewing dataset contents. Public catalog pages stay visible, but deeper folder contents remain behind account approval." />
-            </div>
+            <Navigate to={authRedirectPath} replace />
           )
         ) : !isApproved ? (
           isRootLanding ? (
@@ -2844,6 +2882,8 @@ export default function DataViewer() {
           </div>
         )}
       </div>
+
+      {showCatalogFooter && <FooterSection />}
     </div>
   );
 }

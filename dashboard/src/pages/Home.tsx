@@ -131,7 +131,7 @@ const PRODUCT_CARDS: ProductCard[] = [
     tagline: "AI-assisted annotation platform for robot training data",
     pills: ["EXO to EGO view synthesis", "85% to 95%+ accuracy", "60% labelling cost cut"],
     linkLabel: "Learn more",
-    to: "/roboeyeview",
+    to: "/roboannotator",
     icon: Eye,
     tone: "border-blue-200/80 border-t-4 border-t-blue-700",
     pillTone: "border-blue-200 bg-blue-50 text-blue-700",
@@ -230,7 +230,7 @@ const CUSTOMER_CARDS: CustomerCard[] = [
     value: "60%",
     company: "BMW Robotics",
     detail:
-      "Reduction in labeling cost for production-line vision models using RoboEyeView EGO synthesis pipeline.",
+      "Reduction in labeling cost for production-line vision models using RoboAnnotator EGO synthesis pipeline.",
     label: "Automotive",
     valueTone: "text-violet-700",
     chipTone: "border-violet-200 bg-violet-50 text-violet-700",
