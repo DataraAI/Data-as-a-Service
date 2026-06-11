@@ -589,55 +589,8 @@ export default function RoboHandMotion() {
       <Navigation />
 
       <main className="pt-[88px]">
-        <div className="mx-auto flex max-w-[1440px]">
-          <aside className="hidden min-h-[calc(100vh-88px)] w-[220px] shrink-0 border-r border-slate-200 bg-slate-50/90 xl:flex xl:flex-col dark:border-slate-800 dark:bg-slate-950/80">
-            <div className="border-b border-slate-200 px-5 py-6 dark:border-slate-800">
-              <p className="text-[18px] font-extrabold tracking-[0.04em] text-primary">DataraAI</p>
-              <p className="mt-1 text-[16px] font-bold text-slate-950 dark:text-slate-100">Hand Motion</p>
-            </div>
-            <div className="flex-1 px-3 py-4">
-              <p className="mb-3 px-2 text-[16px] font-extrabold text-slate-950 dark:text-slate-100">Verticals</p>
-              <a
-                href="#dc"
-                className="mb-1 flex items-center gap-3 rounded-[9px] border border-blue-200 bg-blue-50 px-4 py-3 dark:border-blue-900/50 dark:bg-blue-950/30"
-              >
-                <span className="h-3 w-3 rounded-[3px] bg-blue-700" />
-                <span className="text-[16px] font-extrabold text-slate-950 dark:text-slate-100">Data Center</span>
-              </a>
-              <a
-                href="#wh"
-                className="mb-1 flex items-center gap-3 rounded-[9px] px-4 py-3 text-slate-600 transition-colors hover:bg-orange-50/60 hover:text-orange-700 dark:text-slate-300 dark:hover:bg-orange-950/20 dark:hover:text-orange-200"
-              >
-                <span className="h-3 w-3 rounded-[3px] bg-orange-500" />
-                <span className="text-[16px] font-extrabold">Warehouse</span>
-              </a>
-              <a
-                href="#hu"
-                className="mb-1 flex items-center gap-3 rounded-[9px] px-4 py-3 text-slate-600 transition-colors hover:bg-teal-50/60 hover:text-teal-700 dark:text-slate-300 dark:hover:bg-teal-950/20 dark:hover:text-teal-200"
-              >
-                <span className="h-3 w-3 rounded-[3px] bg-teal-600" />
-                <span className="text-[16px] font-extrabold">Dexterity</span>
-              </a>
-              <a
-                href="#au"
-                className="mb-1 flex items-center gap-3 rounded-[9px] px-4 py-3 text-slate-600 transition-colors hover:bg-violet-50/60 hover:text-violet-700 dark:text-slate-300 dark:hover:bg-violet-950/20 dark:hover:text-violet-200"
-              >
-                <span className="h-3 w-3 rounded-[3px] bg-violet-600" />
-                <span className="text-[16px] font-extrabold">Automotive</span>
-              </a>
-            </div>
-            <div className="border-t border-slate-200 px-5 py-4 dark:border-slate-800">
-              <Link
-                to={buildAuthPath("register", "/robohandmotion")}
-                className="inline-flex h-10 w-full items-center justify-center rounded-[8px] bg-violet-600 px-4 text-[12px] font-bold text-white transition-opacity hover:opacity-90"
-              >
-                Get Access
-              </Link>
-            </div>
-          </aside>
-
-          <div className="flex-1 overflow-hidden bg-white px-4 py-9 sm:px-6 md:px-10 xl:px-11 dark:bg-slate-950">
-            <div className="mx-auto max-w-[1180px]">
+        <div className="mx-auto max-w-[1320px] bg-white px-4 py-9 sm:px-6 md:px-10 xl:px-12 dark:bg-slate-950">
+          <div className="mx-auto max-w-[1280px]">
               <section className="mb-6">
                 <div className="mb-2 flex flex-wrap items-center gap-3">
                   <div className="grid h-9 w-9 place-items-center rounded-[9px] border border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900/50 dark:bg-violet-950/30 dark:text-violet-200">
@@ -754,7 +707,6 @@ export default function RoboHandMotion() {
                   </div>
                 </div>
               </section>
-            </div>
           </div>
         </div>
       </main>
