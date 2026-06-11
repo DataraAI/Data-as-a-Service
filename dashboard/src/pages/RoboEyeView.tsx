@@ -34,9 +34,9 @@ type ShowcaseSection = {
 };
 
 const STATS = [
-  { value: "6", label: "Datasets" },
-  { value: "5,570+", label: "EGO Hours" },
-  { value: "3", label: "Verticals" },
+  { value: "7", label: "Datasets" },
+  { value: "6,770+", label: "EGO Hours" },
+  { value: "4", label: "Verticals" },
   { value: "Patented", label: "EXO → EGO Pipeline", featured: true },
 ];
 
@@ -51,7 +51,7 @@ const PROCESS_STEPS: StepCard[] = [
   },
   {
     step: "Step 02",
-    title: "RoboEyeView Engine",
+    title: "RoboAnnotator Engine",
     description: "Scene reconstruction & view synthesis.",
     accent: "teal",
     icon: "engine",
@@ -115,8 +115,36 @@ const SHOWCASE_SECTIONS: ShowcaseSection[] = [
     ],
   },
   {
+    id: "wh",
+    title: "Warehouse",
+    summary: "1 dataset · 1,200 hrs",
+    accent: "teal",
+    cards: [
+      {
+        title: "Warehouse Inspection",
+        description:
+          "Wide-angle EXO of warehouse floor operations → synthesized robot-perspective EGO views",
+        availability: "In Library",
+        sourceImage: "warehouse/warehouseinspection.png",
+        engineDetail: "View Synthesis",
+        outputs: [
+          { image: "warehouse/warehouseinspection.png", label: "Front" },
+          { image: "warehouse/warehouseinspection.png", label: "Overhead" },
+          { image: "warehouse/warehouseinspection.png", label: "Side" },
+          { image: "warehouse/warehouseinspection.png", label: "Low Angle" },
+        ],
+        tags: [
+          { label: "Scene Reconstruction", tone: "teal" },
+          { label: "Depth Estimation", tone: "teal" },
+          { label: "Multi-angle Synthesis", tone: "blue" },
+        ],
+        hours: "1,200 hrs EGO output",
+      },
+    ],
+  },
+  {
     id: "hu",
-    title: "Humanoid",
+    title: "Dexterity",
     summary: "3 datasets · 1,430 hrs",
     accent: "teal",
     cards: [
@@ -125,13 +153,13 @@ const SHOWCASE_SECTIONS: ShowcaseSection[] = [
         description:
           "Full-body EXO of trash bag handling → synthesized robot hand-level EGO view",
         availability: "On-demand",
-        sourceImage: "humanoid/humanoid.png",
+        sourceImage: "humanoid/kitchendrawer.png",
         engineDetail: "Hand Tracking",
         outputs: [
-          { image: "humanoid/humanoid1.png", label: "Robot Hand-level" },
-          { image: "humanoid/humanoid1.png", label: "Side" },
-          { image: "humanoid/humanoid1.png", label: "Overhead" },
-          { image: "humanoid/humanoid1.png", label: "Low Angle" },
+          { image: "humanoid/kitchendrawer.png", label: "Robot Hand-level" },
+          { image: "humanoid/kitchendrawer.png", label: "Side" },
+          { image: "humanoid/kitchendrawer.png", label: "Overhead" },
+          { image: "humanoid/kitchendrawer.png", label: "Low Angle" },
         ],
         tags: [
           { label: "Hand Pose Tracking", tone: "teal" },
@@ -145,13 +173,13 @@ const SHOWCASE_SECTIONS: ShowcaseSection[] = [
         description:
           "Full-body cleaning task EXO → 2 robot-perspective EGO views at different proximities",
         availability: "In Library",
-        sourceImage: "humanoid/humanoid2.png",
+        sourceImage: "humanoid/stovetop.png",
         engineDetail: "Motion Synthesis",
         outputs: [
-          { image: "humanoid/humanoid3.png", label: "Mid-range" },
-          { image: "humanoid/humanoid4.png", label: "Close-up" },
-          { image: "humanoid/humanoid4.png", label: "Overhead" },
-          { image: "humanoid/humanoid4.png", label: "Low Angle" },
+          { image: "humanoid/stovetop.png", label: "Mid-range" },
+          { image: "humanoid/stovetop.png", label: "Close-up" },
+          { image: "humanoid/stovetop.png", label: "Overhead" },
+          { image: "humanoid/stovetop.png", label: "Low Angle" },
         ],
         tags: [
           { label: "Hand Pose Tracking", tone: "teal" },
@@ -165,13 +193,13 @@ const SHOWCASE_SECTIONS: ShowcaseSection[] = [
         description:
           "Wide kitchen scene EXO → synthesized close-up EGO at hand manipulation level",
         availability: "On-demand",
-        sourceImage: "humanoid/humanoid5.png",
+        sourceImage: "humanoid/dishwashing.png",
         engineDetail: "Grasp Synthesis",
         outputs: [
-          { image: "humanoid/humanoid6.png", label: "Hand-level Grasp" },
-          { image: "humanoid/humanoid6.png", label: "Side" },
-          { image: "humanoid/humanoid6.png", label: "Overhead" },
-          { image: "humanoid/humanoid6.png", label: "Low Angle" },
+          { image: "humanoid/dishwashing.png", label: "Hand-level Grasp" },
+          { image: "humanoid/dishwashing.png", label: "Side" },
+          { image: "humanoid/dishwashing.png", label: "Overhead" },
+          { image: "humanoid/dishwashing.png", label: "Low Angle" },
         ],
         tags: [
           { label: "Grasp Keypoints", tone: "teal" },
@@ -403,14 +431,14 @@ function AvailabilityPill({ value }: { value: TransformCard["availability"] }) {
 function Pipe({ detail }: { detail: string }) {
   return (
     <div className="hidden items-center lg:flex">
-      <div className="mx-4 flex w-[92px] flex-col items-center">
+      <div className="mx-4 flex w-[110px] flex-col items-center">
         <div className="mb-2 h-6 w-px bg-slate-200 dark:bg-slate-700" />
-        <div className="w-full rounded-[16px] border-[1.5px] border-teal-300 bg-white px-4 py-4 text-center shadow-[0_8px_20px_rgba(13,148,136,0.06)] dark:border-teal-800/60 dark:bg-slate-900">
+        <div className="w-full rounded-[16px] border-[1.5px] border-teal-300 bg-white px-2 py-4 text-center shadow-[0_8px_20px_rgba(13,148,136,0.06)] dark:border-teal-800/60 dark:bg-slate-900">
           <div className="mx-auto mb-2 grid h-10 w-10 place-items-center rounded-[10px] border border-teal-300 bg-teal-100 text-teal-700 dark:border-teal-800 dark:bg-teal-950/50 dark:text-teal-200">
             <Sparkles className="h-4 w-4" />
           </div>
-          <p className="mb-0.5 text-[8px] font-extrabold uppercase tracking-[0.14em] text-teal-700 dark:text-teal-200">
-            RoboEyeView
+          <p className="mb-0.5 text-[8px] font-extrabold uppercase tracking-[0.05em] text-teal-700 dark:text-teal-200">
+            RoboAnnotator
           </p>
           <p className="mb-1 text-[12px] font-extrabold text-slate-950 dark:text-slate-100">Engine</p>
           <p className="text-[8px] text-slate-500 dark:text-slate-400">{detail}</p>
@@ -491,7 +519,7 @@ export default function RoboEyeView() {
           <aside className="hidden min-h-[calc(100vh-88px)] w-[220px] shrink-0 border-r border-slate-200 bg-slate-50/90 xl:flex xl:flex-col dark:border-slate-800 dark:bg-slate-950/80">
             <div className="border-b border-slate-200 px-5 py-6 dark:border-slate-800">
               <p className="text-[18px] font-extrabold tracking-[0.04em] text-primary">DataraAI</p>
-              <p className="mt-1 text-[16px] font-bold text-slate-950 dark:text-slate-100">RoboEyeView</p>
+              <p className="mt-1 text-[16px] font-bold text-slate-950 dark:text-slate-100">RoboAnnotator</p>
             </div>
             <div className="flex-1 px-3 py-4">
               <p className="mb-3 px-2 text-[16px] font-extrabold text-slate-950 dark:text-slate-100">Verticals</p>
@@ -503,11 +531,18 @@ export default function RoboEyeView() {
                 <span className="text-[16px] font-extrabold text-slate-950 dark:text-slate-100">Data Center</span>
               </a>
               <a
+                href="#wh"
+                className="mb-1 flex items-center gap-3 rounded-[9px] px-4 py-3 text-slate-600 transition-colors hover:bg-orange-50/60 hover:text-orange-700 dark:text-slate-300 dark:hover:bg-orange-950/20 dark:hover:text-orange-200"
+              >
+                <span className="h-3 w-3 rounded-[3px] bg-orange-500" />
+                <span className="text-[16px] font-extrabold">Warehouse</span>
+              </a>
+              <a
                 href="#hu"
                 className="mb-1 flex items-center gap-3 rounded-[9px] px-4 py-3 text-slate-600 transition-colors hover:bg-teal-50/60 hover:text-teal-700 dark:text-slate-300 dark:hover:bg-teal-950/20 dark:hover:text-teal-200"
               >
                 <span className="h-3 w-3 rounded-[3px] bg-teal-600" />
-                <span className="text-[16px] font-extrabold">Humanoid</span>
+                <span className="text-[16px] font-extrabold">Dexterity</span>
               </a>
               <a
                 href="#au"
@@ -519,7 +554,7 @@ export default function RoboEyeView() {
             </div>
             <div className="border-t border-slate-200 px-5 py-4 dark:border-slate-800">
               <Link
-                to={buildAuthPath("register", "/roboeyeview")}
+                to={buildAuthPath("register", "/roboannotator")}
                 className="inline-flex h-10 w-full items-center justify-center rounded-[8px] bg-teal-600 px-4 text-[12px] font-bold text-white transition-opacity hover:opacity-90"
               >
                 Get Access
@@ -535,7 +570,7 @@ export default function RoboEyeView() {
                     <Eye className="h-4 w-4" />
                   </div>
                   <h1 className="text-[30px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">
-                    RoboEyeView
+                    RoboAnnotator
                   </h1>
                   <span className="rounded-full border border-teal-200 bg-teal-50 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-teal-700 dark:border-teal-900/50 dark:bg-teal-950/30 dark:text-teal-200">
                     Patented
@@ -592,7 +627,7 @@ export default function RoboEyeView() {
                     </div>
                     <div>
                       <p className="mb-1 text-[15px] font-bold text-slate-950 dark:text-slate-100">
-                        Run RoboEyeView on Your EXO Footage
+                        Run RoboAnnotator on Your EXO Footage
                       </p>
                       <p className="max-w-[480px] text-[12px] leading-5 text-slate-500 dark:text-slate-400">
                         Already have EXO footage? We&apos;ll synthesize robot-ready EGO datasets — egocentric robot-perspective viewpoints — across any task, environment, or robot form factor.
@@ -602,11 +637,11 @@ export default function RoboEyeView() {
                   <div className="flex shrink-0 flex-col items-start gap-2 lg:items-center">
                     <div className="flex gap-[5px]">
                       <Badge tone="blue">Data Center</Badge>
-                      <Badge tone="teal">Humanoid</Badge>
+                      <Badge tone="teal">Dexterity</Badge>
                       <Badge tone="purple">Automotive</Badge>
                     </div>
                     <Link
-                      to={buildAuthPath("register", "/roboeyeview")}
+                      to={buildAuthPath("register", "/roboannotator")}
                       className="inline-flex w-full items-center justify-center rounded-[8px] bg-teal-600 px-6 py-2.5 text-[13px] font-bold text-white transition-opacity hover:opacity-90"
                     >
                       Submit Your Footage

@@ -34,6 +34,7 @@ const App = () => (
         <Route path="/robohandmotion" element={<RoboHandMotion />} />
         <Route path="/robotaskmanipulator" element={<RoboTaskManipulator />} />
         <Route path="/explore" element={<ExploreDatasets />} />
+        <Route path="/roboannotator" element={<RoboEyeView />} />
         <Route path="/roboeyeview" element={<RoboEyeView />} />
         <Route path="/auth" element={<AuthPage />} />
         <Route path="/admin/users" element={<AdminUsers />} />

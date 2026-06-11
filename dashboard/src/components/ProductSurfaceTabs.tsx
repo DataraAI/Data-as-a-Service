@@ -25,14 +25,14 @@ const ITEMS: Array<{
   },
   {
     key: "roboeyeview",
-    label: "RoboEyeView",
+    label: "RoboAnnotator",
     subtitle: "Visual intelligence",
-    to: "/roboeyeview",
+    to: "/roboannotator",
   },
   {
     key: "robohandmotion",
     label: "RoboHandMotion",
-    subtitle: "Humanoid data",
+    subtitle: "Dexterity data",
     to: "/robohandmotion",
   },
   {

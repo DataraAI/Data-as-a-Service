@@ -34,9 +34,9 @@ type GalleryCard = {
 };
 
 const STATS = [
-  { value: "10", label: "Datasets" },
-  { value: "3,800+", label: "Hours Labeled" },
-  { value: "3", label: "Verticals" },
+  { value: "13", label: "Datasets" },
+  { value: "5,230+", label: "Hours Labeled" },
+  { value: "4", label: "Verticals" },
   { value: "95%", label: "Precision · Peer Robotics", featured: true },
 ];
 
@@ -180,6 +180,39 @@ const DATA_CENTER_GALLERY: GalleryCard[] = [
     image: "serverrack/serverrack4.png",
     tags: [{ label: "Bundling", tone: "blue" }],
     hours: "260 hrs",
+  },
+];
+
+const DEXTERITY_GALLERY: GalleryCard[] = [
+  {
+    title: "Kitchen Drawer Manipulation",
+    description: "Step-segmented drawer open, grasp & place sequence with hand pose labels",
+    image: "humanoid/kitchendrawer.png",
+    tags: [
+      { label: "Hand Pose", tone: "teal" },
+      { label: "Grasp Primitives", tone: "orange" },
+    ],
+    hours: "380 hrs",
+  },
+  {
+    title: "Surface Cleaning — Stovetop",
+    description: "Wipe trajectory & contact zone sequence across stovetop surface",
+    image: "humanoid/stovetop.png",
+    tags: [
+      { label: "Trajectory", tone: "teal" },
+      { label: "Contact Points", tone: "blue" },
+    ],
+    hours: "450 hrs",
+  },
+  {
+    title: "Dishwashing — Sink Manipulation",
+    description: "Grasp, scrub & rinse step sequence with wet object handling annotations",
+    image: "humanoid/dishwashing.png",
+    tags: [
+      { label: "Grasp Type", tone: "teal" },
+      { label: "Edge Conditions", tone: "orange" },
+    ],
+    hours: "600 hrs",
   },
 ];
 
@@ -488,11 +521,25 @@ export default function RoboTaskManipulator() {
             <div className="flex-1 px-3 py-4">
               <p className="mb-3 px-2 text-[16px] font-extrabold text-slate-950 dark:text-slate-100">Verticals</p>
               <a
+                href="#dc"
+                className="mb-1 flex items-center gap-3 rounded-[9px] border border-blue-200 bg-blue-50 px-4 py-3 dark:border-blue-900/50 dark:bg-blue-950/30"
+              >
+                <span className="h-3 w-3 rounded-[3px] bg-blue-700" />
+                <span className="text-[16px] font-extrabold text-slate-950 dark:text-slate-100">Data Center</span>
+              </a>
+              <a
                 href="#wh"
-                className="mb-1 flex items-center gap-3 rounded-[9px] border border-teal-200 bg-teal-50 px-4 py-3 dark:border-teal-900/50 dark:bg-teal-950/30"
+                className="mb-1 flex items-center gap-3 rounded-[9px] px-4 py-3 text-slate-600 transition-colors hover:bg-orange-50/60 hover:text-orange-700 dark:text-slate-300 dark:hover:bg-orange-950/20 dark:hover:text-orange-200"
+              >
+                <span className="h-3 w-3 rounded-[3px] bg-orange-500" />
+                <span className="text-[16px] font-extrabold">Warehouse</span>
+              </a>
+              <a
+                href="#hu"
+                className="mb-1 flex items-center gap-3 rounded-[9px] px-4 py-3 text-slate-600 transition-colors hover:bg-teal-50/60 hover:text-teal-700 dark:text-slate-300 dark:hover:bg-teal-950/20 dark:hover:text-teal-200"
               >
                 <span className="h-3 w-3 rounded-[3px] bg-teal-600" />
-                <span className="text-[16px] font-extrabold text-slate-950 dark:text-slate-100">Warehouse</span>
+                <span className="text-[16px] font-extrabold">Dexterity</span>
               </a>
               <a
                 href="#au"
@@ -500,13 +547,6 @@ export default function RoboTaskManipulator() {
               >
                 <span className="h-3 w-3 rounded-[3px] bg-violet-600" />
                 <span className="text-[16px] font-extrabold">Automotive</span>
-              </a>
-              <a
-                href="#dc"
-                className="mb-1 flex items-center gap-3 rounded-[9px] px-4 py-3 text-slate-600 transition-colors hover:bg-blue-50/60 hover:text-blue-700 dark:text-slate-300 dark:hover:bg-blue-950/20 dark:hover:text-blue-200"
-              >
-                <span className="h-3 w-3 rounded-[3px] bg-blue-700" />
-                <span className="text-[16px] font-extrabold">Data Center</span>
               </a>
             </div>
             <div className="border-t border-slate-200 px-5 py-4 dark:border-slate-800">
@@ -564,6 +604,15 @@ export default function RoboTaskManipulator() {
               </section>
 
               <section className="flex flex-col gap-10">
+                <div id="dc" className="scroll-mt-28">
+                  <SectionHeader title="Data Center" summary="4 datasets · 1,060 hrs" accent="blue" />
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    {DATA_CENTER_GALLERY.map((card) => (
+                      <GalleryCardView key={card.title} card={card} compact />
+                    ))}
+                  </div>
+                </div>
+
                 <div id="wh" className="scroll-mt-28">
                   <SectionHeader title="Warehouse" summary="2 datasets · 1,200 hrs" accent="teal" />
                   <div className="flex flex-col gap-4">
@@ -573,20 +622,20 @@ export default function RoboTaskManipulator() {
                   </div>
                 </div>
 
-                <div id="au" className="scroll-mt-28">
-                  <SectionHeader title="Automotive Assembly" summary="4 datasets · 1,540 hrs" accent="purple" />
-                  <div className="grid gap-4 md:grid-cols-2">
-                    {AUTOMOTIVE_GALLERY.map((card) => (
+                <div id="hu" className="scroll-mt-28">
+                  <SectionHeader title="Dexterity" summary="3 datasets · 1,430 hrs" accent="teal" />
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {DEXTERITY_GALLERY.map((card) => (
                       <GalleryCardView key={card.title} card={card} />
                     ))}
                   </div>
                 </div>
 
-                <div id="dc" className="scroll-mt-28">
-                  <SectionHeader title="Data Center" summary="4 datasets · 1,060 hrs" accent="blue" />
-                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                    {DATA_CENTER_GALLERY.map((card) => (
-                      <GalleryCardView key={card.title} card={card} compact />
+                <div id="au" className="scroll-mt-28">
+                  <SectionHeader title="Automotive Assembly" summary="4 datasets · 1,540 hrs" accent="purple" />
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {AUTOMOTIVE_GALLERY.map((card) => (
+                      <GalleryCardView key={card.title} card={card} />
                     ))}
                   </div>
                 </div>

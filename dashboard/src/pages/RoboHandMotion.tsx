@@ -34,9 +34,9 @@ type GalleryCard = {
 };
 
 const STATS = [
-  { value: "8", label: "Datasets" },
-  { value: "2,850+", label: "Hours Labeled" },
-  { value: "2", label: "Verticals" },
+  { value: "16", label: "Datasets" },
+  { value: "5,610+", label: "Hours Labeled" },
+  { value: "4", label: "Verticals" },
   { value: "Patented", label: "Hand Motion Pipeline", featured: true },
 ];
 
@@ -71,13 +71,13 @@ const DEXTEROUS_DATASETS: TransformCard[] = [
     title: "Kitchen Drawer Manipulation",
     description: "Full-body EXO of trash bag handling → hand-level pose & grasp annotations",
     availability: "On-demand",
-    sourceImage: "humanoid/humanoid.png",
+    sourceImage: "humanoid/kitchendrawer.png",
     engineDetail: "Hand Tracking",
     outputs: [
-      { image: "humanoid/humanoid1.png", label: "Wrist Pose" },
-      { image: "humanoid/humanoid1.png", label: "Finger Joints" },
-      { image: "humanoid/humanoid1.png", label: "Grasp Point" },
-      { image: "humanoid/humanoid1.png", label: "Motion Path" },
+      { image: "humanoid/kitchendrawer.png", label: "Wrist Pose" },
+      { image: "humanoid/kitchendrawer.png", label: "Finger Joints" },
+      { image: "humanoid/kitchendrawer.png", label: "Grasp Point" },
+      { image: "humanoid/kitchendrawer.png", label: "Motion Path" },
     ],
     tags: [
       { label: "Hand Pose Tracking", tone: "purple" },
@@ -90,13 +90,13 @@ const DEXTEROUS_DATASETS: TransformCard[] = [
     title: "Surface Cleaning — Stovetop",
     description: "Full-body cleaning EXO → hand skeleton & contact zone annotations at varied proximities",
     availability: "In Library",
-    sourceImage: "humanoid/humanoid2.png",
+    sourceImage: "humanoid/stovetop.png",
     engineDetail: "Motion Synthesis",
     outputs: [
-      { image: "humanoid/humanoid3.png", label: "Hand Path" },
-      { image: "humanoid/humanoid4.png", label: "Contact Points" },
-      { image: "humanoid/humanoid3.png", label: "Pose Sequence" },
-      { image: "humanoid/humanoid4.png", label: "Close-up" },
+      { image: "humanoid/stovetop.png", label: "Hand Path" },
+      { image: "humanoid/stovetop.png", label: "Contact Points" },
+      { image: "humanoid/stovetop.png", label: "Pose Sequence" },
+      { image: "humanoid/stovetop.png", label: "Close-up" },
     ],
     tags: [
       { label: "Hand Pose Tracking", tone: "purple" },
@@ -109,13 +109,13 @@ const DEXTEROUS_DATASETS: TransformCard[] = [
     title: "Dishwashing — Sink Manipulation",
     description: "Wide kitchen scene EXO → grasp classification & wet object handling annotations",
     availability: "On-demand",
-    sourceImage: "humanoid/humanoid5.png",
+    sourceImage: "humanoid/dishwashing.png",
     engineDetail: "Grasp Synthesis",
     outputs: [
-      { image: "humanoid/humanoid6.png", label: "Grasp Type" },
-      { image: "humanoid/humanoid6.png", label: "Object State" },
-      { image: "humanoid/humanoid6.png", label: "Joint Angles" },
-      { image: "humanoid/humanoid6.png", label: "Motion Arc" },
+      { image: "humanoid/dishwashing.png", label: "Grasp Type" },
+      { image: "humanoid/dishwashing.png", label: "Object State" },
+      { image: "humanoid/dishwashing.png", label: "Joint Angles" },
+      { image: "humanoid/dishwashing.png", label: "Motion Arc" },
     ],
     tags: [
       { label: "Grasp Keypoints", tone: "purple" },
@@ -130,7 +130,7 @@ const HOUSEHOLD_DATASETS: GalleryCard[] = [
   {
     title: "Surface & Floor Cleaning",
     description: "Sweeping, scrubbing motions — 3 tool types",
-    image: "humanoid/humanoid1.png",
+    image: "humanoid/stovetop.png",
     tags: [
       { label: "Arm Trajectory", tone: "purple" },
       { label: "Tool Grip", tone: "teal" },
@@ -140,7 +140,7 @@ const HOUSEHOLD_DATASETS: GalleryCard[] = [
   {
     title: "Dishwasher Loading",
     description: "Object placement, rack navigation, door operation",
-    image: "humanoid/humanoid2.png",
+    image: "humanoid/dishawasherload.png",
     tags: [
       { label: "Bimanual Grasp", tone: "purple" },
       { label: "Object Place", tone: "orange" },
@@ -150,7 +150,7 @@ const HOUSEHOLD_DATASETS: GalleryCard[] = [
   {
     title: "Hand Dish Washing",
     description: "Scrub, rinse, transfer — wet object sequences",
-    image: "humanoid/humanoid3.png",
+    image: "humanoid/dishwashing.png",
     tags: [
       { label: "Wet Grasp", tone: "purple" },
       { label: "Force Est.", tone: "teal" },
@@ -160,7 +160,7 @@ const HOUSEHOLD_DATASETS: GalleryCard[] = [
   {
     title: "Trash Collection & Sorting",
     description: "Pick, bag, and bin — varied object sizes & weights",
-    image: "humanoid/humanoid4.png",
+    image: "humanoid/trash_1.png",
     tags: [
       { label: "Lift & Place", tone: "purple" },
       { label: "Sort Logic", tone: "blue" },
@@ -170,7 +170,7 @@ const HOUSEHOLD_DATASETS: GalleryCard[] = [
   {
     title: "Laundry — Washer Operation",
     description: "Load, sort, and transfer fabric items",
-    image: "humanoid/humanoid5.png",
+    image: "humanoid/humanoid6.png",
     tags: [
       { label: "Deformable Obj.", tone: "purple" },
       { label: "Bimanual", tone: "orange" },
@@ -180,12 +180,117 @@ const HOUSEHOLD_DATASETS: GalleryCard[] = [
   {
     title: "Laundry — Fold & Transfer",
     description: "Garment folding, hang, and drawer placement",
-    image: "humanoid/humanoid5.png",
+    image: "humanoid/laundryfold.png",
     tags: [
       { label: "Deformable Obj.", tone: "purple" },
       { label: "Bimanual", tone: "orange" },
     ],
     hours: "250 hrs",
+  },
+];
+
+const DATA_CENTER_GALLERY: GalleryCard[] = [
+  {
+    title: "Server Rack Cabling",
+    description: "Cable route, insert & label sequence",
+    image: "serverrack/serverrack1.png",
+    tags: [{ label: "Cable Route", tone: "blue" }],
+    hours: "280 hrs",
+  },
+  {
+    title: "Hardware Swap Protocol",
+    description: "Drive, card & module replacement",
+    image: "serverrack/serverrack2.png",
+    tags: [{ label: "Hot-swap", tone: "blue" }],
+    hours: "260 hrs",
+  },
+  {
+    title: "Component Inspection",
+    description: "Visual scan & probe verification steps",
+    image: "serverrack/serverrack3.png",
+    tags: [{ label: "Visual QA", tone: "blue" }],
+    hours: "260 hrs",
+  },
+  {
+    title: "Cable Management",
+    description: "Bundle, route & secure with label scan",
+    image: "serverrack/serverrack4.png",
+    tags: [{ label: "Bundling", tone: "blue" }],
+    hours: "260 hrs",
+  },
+];
+
+const WAREHOUSE_GALLERY: GalleryCard[] = [
+  {
+    title: "Pallet Jack Navigation",
+    description: "Fork, load & transport — end-to-end route",
+    image: "warehouse/warehouse1.png",
+    tags: [{ label: "Navigation", tone: "orange" }],
+    hours: "340 hrs",
+  },
+  {
+    title: "Shelf Restocking",
+    description: "Pick, carry & place — 3 shelf heights",
+    image: "warehouse/warehouse2.png",
+    tags: [{ label: "Pick & Place", tone: "orange" }],
+    hours: "310 hrs",
+  },
+  {
+    title: "Barcode Scan & Sort",
+    description: "Item scan, verification & bin routing",
+    image: "warehouse/warehouse3.png",
+    tags: [{ label: "Scan & Sort", tone: "orange" }],
+    hours: "280 hrs",
+  },
+  {
+    title: "Bin & Pallet Sorting",
+    description: "Wide-aisle grasp, move & stack sequence",
+    image: "warehouse/warehouse4.png",
+    tags: [{ label: "Sorting", tone: "orange" }],
+    hours: "300 hrs",
+  },
+];
+
+const AUTOMOTIVE_GALLERY: GalleryCard[] = [
+  {
+    title: "Front Grille Assembly",
+    description: "Clip-insert & fastener sequence — 12 sub-steps",
+    image: "carAutomation/carAutomation2.png",
+    tags: [
+      { label: "Precision Insert", tone: "purple" },
+      { label: "Force Feedback", tone: "orange" },
+    ],
+    hours: "420 hrs",
+  },
+  {
+    title: "Rear Bumper Installation",
+    description: "Two-arm alignment, clip-in & torque verification",
+    image: "carAutomation/carAutomation5.png",
+    tags: [
+      { label: "Bimanual", tone: "purple" },
+      { label: "Alignment", tone: "teal" },
+    ],
+    hours: "380 hrs",
+  },
+  {
+    title: "Front Seat Assembly",
+    description: "Rail mount, bolt torque & harness connection sequence",
+    image: "carAutomation/carAutomation3.png",
+    tags: [
+      { label: "Multi-step", tone: "purple" },
+      { label: "Torque Seq.", tone: "blue" },
+    ],
+    hours: "360 hrs",
+  },
+  {
+    title: "Passenger Seat Positioning",
+    description: "Rotation & slide-lock with 45° approach variant",
+    image: "carAutomation/carAutomation4.png",
+    tags: [
+      { label: "Rotation", tone: "purple" },
+      { label: "Slide-lock", tone: "orange" },
+    ],
+    hours: "380 hrs",
   },
 ];
 
@@ -337,10 +442,24 @@ function SectionHeader({
 }: {
   title: string;
   summary: string;
-  accent: "purple" | "orange";
+  accent: "purple" | "orange" | "blue" | "teal";
 }) {
-  const dot = accent === "purple" ? "bg-violet-600" : "bg-orange-600";
-  const line = accent === "purple" ? "from-violet-200" : "from-orange-200";
+  const dot =
+    accent === "purple"
+      ? "bg-violet-600"
+      : accent === "orange"
+        ? "bg-orange-600"
+        : accent === "teal"
+          ? "bg-teal-600"
+          : "bg-blue-700";
+  const line =
+    accent === "purple"
+      ? "from-violet-200"
+      : accent === "orange"
+        ? "from-orange-200"
+        : accent === "teal"
+          ? "from-teal-200"
+          : "from-blue-200";
 
   return (
     <div className="mb-4 flex items-center gap-1">
@@ -371,13 +490,13 @@ function AvailabilityPill({ value }: { value: TransformCard["availability"] }) {
 function Pipe({ detail }: { detail: string }) {
   return (
     <div className="hidden items-center lg:flex">
-      <div className="mx-4 flex w-[92px] flex-col items-center">
+      <div className="mx-4 flex w-[118px] flex-col items-center">
         <div className="mb-2 h-6 w-px bg-slate-200 dark:bg-slate-700" />
-        <div className="w-full rounded-[16px] border-[1.5px] border-violet-300 bg-white px-4 py-4 text-center shadow-[0_8px_20px_rgba(124,58,237,0.06)] dark:border-violet-800/60 dark:bg-slate-900">
+        <div className="w-full rounded-[16px] border-[1.5px] border-violet-300 bg-white px-2 py-4 text-center shadow-[0_8px_20px_rgba(124,58,237,0.06)] dark:border-violet-800/60 dark:bg-slate-900">
           <div className="mx-auto mb-2 grid h-10 w-10 place-items-center rounded-[10px] border border-violet-300 bg-violet-100 text-violet-700 dark:border-violet-800 dark:bg-violet-950/50 dark:text-violet-200">
             <Hand className="h-4 w-4" />
           </div>
-          <p className="mb-0.5 text-[8px] font-extrabold uppercase tracking-[0.14em] text-violet-700 dark:text-violet-200">
+          <p className="mb-0.5 text-[8px] font-extrabold uppercase tracking-[0.05em] text-violet-700 dark:text-violet-200">
             RoboHandMotion
           </p>
           <p className="mb-1 text-[12px] font-extrabold text-slate-950 dark:text-slate-100">Engine</p>
@@ -484,18 +603,32 @@ export default function RoboHandMotion() {
             <div className="flex-1 px-3 py-4">
               <p className="mb-3 px-2 text-[16px] font-extrabold text-slate-950 dark:text-slate-100">Verticals</p>
               <a
-                href="#dk"
-                className="mb-1 flex items-center gap-3 rounded-[9px] border border-violet-200 bg-violet-50 px-4 py-3 dark:border-violet-900/50 dark:bg-violet-950/30"
+                href="#dc"
+                className="mb-1 flex items-center gap-3 rounded-[9px] border border-blue-200 bg-blue-50 px-4 py-3 dark:border-blue-900/50 dark:bg-blue-950/30"
               >
-                <span className="h-3 w-3 rounded-[3px] bg-violet-600" />
-                <span className="text-[16px] font-extrabold text-slate-950 dark:text-slate-100">Dexterous Kitchen</span>
+                <span className="h-3 w-3 rounded-[3px] bg-blue-700" />
+                <span className="text-[16px] font-extrabold text-slate-950 dark:text-slate-100">Data Center</span>
               </a>
               <a
-                href="#ht"
+                href="#wh"
                 className="mb-1 flex items-center gap-3 rounded-[9px] px-4 py-3 text-slate-600 transition-colors hover:bg-orange-50/60 hover:text-orange-700 dark:text-slate-300 dark:hover:bg-orange-950/20 dark:hover:text-orange-200"
               >
-                <span className="h-3 w-3 rounded-[3px] bg-orange-600" />
-                <span className="text-[16px] font-extrabold">Household Tasks</span>
+                <span className="h-3 w-3 rounded-[3px] bg-orange-500" />
+                <span className="text-[16px] font-extrabold">Warehouse</span>
+              </a>
+              <a
+                href="#hu"
+                className="mb-1 flex items-center gap-3 rounded-[9px] px-4 py-3 text-slate-600 transition-colors hover:bg-teal-50/60 hover:text-teal-700 dark:text-slate-300 dark:hover:bg-teal-950/20 dark:hover:text-teal-200"
+              >
+                <span className="h-3 w-3 rounded-[3px] bg-teal-600" />
+                <span className="text-[16px] font-extrabold">Dexterity</span>
+              </a>
+              <a
+                href="#au"
+                className="mb-1 flex items-center gap-3 rounded-[9px] px-4 py-3 text-slate-600 transition-colors hover:bg-violet-50/60 hover:text-violet-700 dark:text-slate-300 dark:hover:bg-violet-950/20 dark:hover:text-violet-200"
+              >
+                <span className="h-3 w-3 rounded-[3px] bg-violet-600" />
+                <span className="text-[16px] font-extrabold">Automotive</span>
               </a>
             </div>
             <div className="border-t border-slate-200 px-5 py-4 dark:border-slate-800">
@@ -553,19 +686,42 @@ export default function RoboHandMotion() {
               </section>
 
               <section className="flex flex-col gap-10">
-                <div id="dk" className="scroll-mt-28">
-                  <SectionHeader title="Dexterous Kitchen" summary="3 datasets · 1,430 hrs" accent="purple" />
+                <div id="dc" className="scroll-mt-28">
+                  <SectionHeader title="Data Center" summary="4 datasets · 1,060 hrs" accent="blue" />
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    {DATA_CENTER_GALLERY.map((card) => (
+                      <HouseholdCardView key={card.title} card={card} />
+                    ))}
+                  </div>
+                </div>
+
+                <div id="wh" className="scroll-mt-28">
+                  <SectionHeader title="Warehouse" summary="4 datasets · 1,230 hrs" accent="orange" />
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    {WAREHOUSE_GALLERY.map((card) => (
+                      <HouseholdCardView key={card.title} card={card} />
+                    ))}
+                  </div>
+                </div>
+
+                <div id="hu" className="scroll-mt-28">
+                  <SectionHeader title="Dexterity" summary="9 datasets · 2,850 hrs" accent="teal" />
                   <div className="flex flex-col gap-4">
                     {DEXTEROUS_DATASETS.map((card) => (
                       <TransformCardView key={card.title} card={card} />
                     ))}
                   </div>
+                  <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {HOUSEHOLD_DATASETS.map((card) => (
+                      <HouseholdCardView key={card.title} card={card} />
+                    ))}
+                  </div>
                 </div>
 
-                <div id="ht" className="scroll-mt-28">
-                  <SectionHeader title="Household Tasks" summary="5 datasets · 1,420 hrs" accent="orange" />
-                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    {HOUSEHOLD_DATASETS.map((card) => (
+                <div id="au" className="scroll-mt-28">
+                  <SectionHeader title="Automotive" summary="4 datasets · 1,540 hrs" accent="purple" />
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {AUTOMOTIVE_GALLERY.map((card) => (
                       <HouseholdCardView key={card.title} card={card} />
                     ))}
                   </div>

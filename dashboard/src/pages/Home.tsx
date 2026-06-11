@@ -1,6 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, Fragment } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { ArrowRight, Database, Eye, Hand, Workflow, type LucideIcon } from "lucide-react";
+import { ArrowRight, Database, Eye, Hand, Workflow, Factory, Layers, Box, Zap, Bot, type LucideIcon } from "lucide-react";
 import Navigation from "@/components/Navigation";
 import FooterSection from "@/components/FooterSection";
 import { buildAuthPath } from "@/lib/authLinks";
@@ -45,6 +45,65 @@ type CustomerCard = {
   chipTone: string;
 };
 
+type PipelineStep = {
+  step: string;
+  title: string;
+  description: string;
+  badge: string;
+  icon: LucideIcon;
+  accent: "teal" | "blue" | "violet" | "orange" | "emerald";
+};
+
+const PIPELINE_ARROWS = [
+  { line: "from-teal-400 to-blue-400",     head: "border-l-blue-400"    },
+  { line: "from-blue-400 to-violet-400",   head: "border-l-violet-400"  },
+  { line: "from-violet-400 to-orange-400", head: "border-l-orange-400"  },
+  { line: "from-orange-400 to-emerald-400", head: "border-l-emerald-400" },
+];
+
+const PIPELINE_STEPS: PipelineStep[] = [
+  {
+    step: "01",
+    title: "Real Factory Data",
+    description: "Data from OEM floors, warehouses & data centers.",
+    badge: "Data",
+    icon: Factory,
+    accent: "teal",
+  },
+  {
+    step: "02",
+    title: "Real2Sim",
+    description: "Real scenes & trajectories converted into accurate sim environments.",
+    badge: "Transfer",
+    icon: Layers,
+    accent: "blue",
+  },
+  {
+    step: "03",
+    title: "ISAAC SIM",
+    description: "Robot policies trained at scale in NVIDIA Isaac Sim.",
+    badge: "NVIDIA",
+    icon: Box,
+    accent: "violet",
+  },
+  {
+    step: "04",
+    title: "Sim2Real",
+    description: "Trained policies transferred to physical robots, grounded in real data.",
+    badge: "Deploy",
+    icon: Zap,
+    accent: "orange",
+  },
+  {
+    step: "05",
+    title: "Robot",
+    description: "Production-ready robots. Sim-to-real gap closed.",
+    badge: "Production",
+    icon: Bot,
+    accent: "emerald",
+  },
+];
+
 const HOME_SECTION_SCROLL_OFFSET = 96;
 
 function scrollToHomeSection(target: HTMLElement | null) {
@@ -72,7 +131,7 @@ const PRODUCT_CARDS: ProductCard[] = [
     tagline: "AI-assisted annotation platform for robot training data",
     pills: ["EXO to EGO view synthesis", "85% to 95%+ accuracy", "60% labelling cost cut"],
     linkLabel: "Learn more",
-    to: "/roboeyeview",
+    to: "/roboannotator",
     icon: Eye,
     tone: "border-blue-200/80 border-t-4 border-t-blue-700",
     pillTone: "border-blue-200 bg-blue-50 text-blue-700",
@@ -82,7 +141,7 @@ const PRODUCT_CARDS: ProductCard[] = [
     name: "RoboHandMotion",
     badge: "Patented IP",
     tagline: "Precision hand & tool interaction data for dexterous robots",
-    pills: ["Finger-level motion capture", "Tool + object interaction", "Humanoid-ready format"],
+    pills: ["Finger-level motion capture", "Tool + object interaction", "Dexterity-ready format"],
     linkLabel: "Learn more",
     to: "/robohandmotion",
     icon: Hand,
@@ -163,7 +222,7 @@ const CUSTOMER_CARDS: CustomerCard[] = [
     company: "Figure AI",
     detail:
       "Faster model convergence on manipulation tasks using RoboDataHub dexterous sequences vs. in-house collection.",
-    label: "Humanoid",
+    label: "Dexterity",
     valueTone: "text-primary",
     chipTone: "border-teal-200 bg-teal-50 text-primary",
   },
@@ -171,7 +230,7 @@ const CUSTOMER_CARDS: CustomerCard[] = [
     value: "60%",
     company: "BMW Robotics",
     detail:
-      "Reduction in labeling cost for production-line vision models using RoboEyeView EGO synthesis pipeline.",
+      "Reduction in labeling cost for production-line vision models using RoboAnnotator EGO synthesis pipeline.",
     label: "Automotive",
     valueTone: "text-violet-700",
     chipTone: "border-violet-200 bg-violet-50 text-violet-700",
@@ -196,6 +255,27 @@ const TRUSTED_BY = [
   "Waymo",
   "1X Technologies",
 ];
+
+function PipelineStepCard({ step }: { step: PipelineStep }) {
+  const accentClasses = {
+    teal:    { badge: "border-teal-200 bg-teal-50 text-teal-700",    bar: "bg-teal-500"    },
+    blue:    { badge: "border-blue-200 bg-blue-50 text-blue-700",    bar: "bg-blue-500"    },
+    violet:  { badge: "border-violet-200 bg-violet-50 text-violet-700", bar: "bg-violet-500" },
+    orange:  { badge: "border-orange-200 bg-orange-50 text-orange-700", bar: "bg-orange-500" },
+    emerald: { badge: "border-emerald-200 bg-emerald-50 text-emerald-700", bar: "bg-emerald-500" },
+  }[step.accent];
+
+  return (
+    <div className="relative flex flex-1 flex-col items-center overflow-hidden rounded-[20px] border border-slate-200 bg-white px-5 pb-7 pt-6 text-center shadow-[0_1px_6px_rgba(0,0,0,0.05)]">
+      <p className="mb-2 text-[15px] font-black tracking-[-0.02em] text-slate-950">{step.title}</p>
+      <span className={`mb-3 inline-flex rounded-md border px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.12em] ${accentClasses.badge}`}>
+        {step.badge}
+      </span>
+      <p className="text-[12px] leading-5 text-slate-500">{step.description}</p>
+      <div className={`absolute bottom-0 left-0 h-[4px] w-full ${accentClasses.bar}`} />
+    </div>
+  );
+}
 
 function ProductTile({ card }: { card: ProductCard }) {
   const Icon = card.icon;
@@ -298,7 +378,7 @@ export default function Home() {
               DataraAI <span className="text-primary">closes the gap.</span>
             </div>
             <p className="mx-auto mt-7 max-w-[560px] text-[17px] leading-[1.7] text-slate-500">
-              The complete data stack for Physical AI. Humanoid. Automotive. Warehouse. Data Center.
+              The complete data stack for Physical AI. Dexterity. Automotive. Warehouse. Data Center.
             </p>
 
             <div className="mt-9 flex flex-col items-center justify-center gap-4 sm:flex-row">
@@ -319,10 +399,48 @@ export default function Home() {
           </div>
         </section>
 
-        <div className="mx-auto flex max-w-[1300px] items-center gap-5 px-4 py-7 sm:px-6 md:py-8">
-          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
-          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
-        </div>
+        <section className="bg-slate-50/60 px-4 py-14 sm:px-6">
+          <div className="mx-auto max-w-[1300px]">
+            <div className="mb-10 text-center">
+              <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-2 text-[11px] font-extrabold uppercase tracking-[0.16em] text-slate-500 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+                How It Works
+              </div>
+              <h2 className="mt-4 text-[32px] font-black tracking-[-0.05em] text-slate-950">
+                From Factory Floor to Deployed Robot
+              </h2>
+              <p className="mx-auto mt-3 max-w-[500px] text-[15px] leading-7 text-slate-500">
+                Real-world data powering every step — from factory floor to deployed robot.
+              </p>
+            </div>
+
+            <div className="mb-3 hidden items-center gap-1.5 lg:flex">
+              <div className="h-2.5 w-2.5 shrink-0 rounded-full bg-teal-400 ring-2 ring-teal-100" />
+              <div className="relative flex h-6 flex-1 items-center">
+                <div className="absolute inset-x-0 top-1/2 h-[2px] -translate-y-1/2 rounded-full bg-gradient-to-r from-teal-400 via-violet-400 to-emerald-400" />
+                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full border border-teal-200/80 bg-white px-4 py-1 text-[10px] font-extrabold uppercase tracking-[0.16em] text-teal-700 shadow-sm">
+                  DataraAI End-to-End
+                </div>
+              </div>
+              <div className="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-400 ring-2 ring-emerald-100" />
+            </div>
+
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-stretch">
+              {PIPELINE_STEPS.map((step, i) => (
+                <Fragment key={step.title}>
+                  <PipelineStepCard step={step} />
+                  {i < PIPELINE_STEPS.length - 1 && (
+                    <div className="hidden shrink-0 items-center justify-center lg:flex">
+                      <div className="flex items-center drop-shadow-sm">
+                        <div className={`h-[6px] w-14 rounded-l-full bg-gradient-to-r ${PIPELINE_ARROWS[i].line}`} />
+                        <div className={`h-0 w-0 border-y-[10px] border-y-transparent border-l-[16px] ${PIPELINE_ARROWS[i].head}`} />
+                      </div>
+                    </div>
+                  )}
+                </Fragment>
+              ))}
+            </div>
+          </div>
+        </section>
 
         <section id="products" ref={productsRef} className="scroll-mt-[104px] bg-slate-50 px-4 py-16 sm:px-6">
           <div className="mx-auto max-w-[1300px]">

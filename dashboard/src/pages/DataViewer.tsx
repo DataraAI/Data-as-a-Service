@@ -1,6 +1,19 @@
-﻿import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+﻿import { useAuth } from "@/auth/useAuth";
+import AuthRequiredState from "@/components/AuthRequiredState";
+import { buildAuthPath } from "@/lib/authLinks";
+import {
+  blobProxyUrl,
+  folderPreviewMediaUrl,
+  frontPageImageUrl,
+  getLocalFolderPreviewSnapshots,
+} from "@/lib/datasetFolderCover";
+import {
+  CATEGORY_LANDING_CONTENT,
+  ROOT_SHOWCASE_SECTIONS,
+  type CatalogCard,
+  type CategoryLandingContent,
+} from "@/lib/roboDataHubCatalog";
 import axios from "axios";
-import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   AlertCircle,
   ArrowRight,
@@ -15,30 +28,18 @@ import {
   Terminal,
   Trash2,
 } from "lucide-react";
-import { Sidebar } from "../components/Sidebar";
-import { UploadModal } from "../components/UploadModal";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Breadcrumbs } from "../components/Breadcrumbs";
+import { DatasetFolderCover } from "../components/DatasetFolderCover";
 import { ImageGrid } from "../components/ImageGrid";
 import { ImageModal } from "../components/ImageModal";
 import { MaskGenerationPanel } from "../components/MaskGenerationPanel";
 import Navigation from "../components/Navigation";
-import { Breadcrumbs } from "../components/Breadcrumbs";
-import { DatasetFolderCover } from "../components/DatasetFolderCover";
+import FooterSection from "../components/FooterSection";
+import { Sidebar } from "../components/Sidebar";
+import { UploadModal } from "../components/UploadModal";
 import { VideoToolsPanel, type VideoFolderAsset } from "../components/VideoToolsPanel";
-import AuthRequiredState from "@/components/AuthRequiredState";
-import { useAuth } from "@/auth/useAuth";
-import { buildAuthPath } from "@/lib/authLinks";
-import {
-  blobProxyUrl,
-  folderPreviewMediaUrl,
-  frontPageImageUrl,
-  getLocalFolderPreviewSnapshots,
-} from "@/lib/datasetFolderCover";
-import {
-  CATEGORY_LANDING_CONTENT,
-  ROOT_SHOWCASE_SECTIONS,
-  type CatalogCard,
-  type CategoryLandingContent,
-} from "@/lib/roboDataHubCatalog";
 
 interface FolderItem {
   name: string;
@@ -159,7 +160,7 @@ const CATEGORIES: CategoryConfig[] = [
     previewKey: "humanoid",
     publicSlug: "dexterity",
     aliases: ["dexterity", "humanoid"],
-    label: "Humanoid",
+    label: "Dexterity",
     description:
       "Fine-motor manipulation and embodied task data for dexterous robotic systems operating across practical, object-centric scenarios.",
   },
@@ -301,6 +302,14 @@ function uniqueFolderItems(items: FolderItem[]) {
   });
 }
 
+const EXCLUDED_DATASET_PANEL_NAMES = new Set(["test", "short-test", "washing-test"]);
+
+function isExcludedDatasetPath(fullPath: string) {
+  const segments = fullPath.split("/").filter(Boolean);
+  const datasetName = segments[segments.length - 1]?.trim().toLowerCase() ?? "";
+  return EXCLUDED_DATASET_PANEL_NAMES.has(datasetName);
+}
+
 function normalizeCategoryValue(value?: string | null) {
   const normalized = String(value ?? "")
     .toLowerCase()
@@ -359,6 +368,20 @@ function buildViewerPath(fullPath: string, imageName?: string, basePath = "/view
 
   const query = params.toString();
   return `${basePath}/${encodedPath}${query ? `?${query}` : ""}`;
+}
+
+function canonicalizeDatasetPathForRoute(fullPath: string, routeKey: CategoryKey) {
+  const normalizedPath = String(fullPath ?? "").replace(/\\/g, "/");
+  const segments = normalizedPath.split("/").filter(Boolean);
+  if (segments.length === 0) return normalizedPath;
+
+  const sourceCategory = getCategoryByRouteKey(segments[0]);
+  if (!sourceCategory || sourceCategory.routeKey !== routeKey) {
+    return segments.join("/");
+  }
+
+  segments[0] = routeKey;
+  return segments.join("/");
 }
 
 function getPreviewDatasetRootFromVideoBlobPath(blobPath?: string | null) {
@@ -504,6 +527,7 @@ function buildLocalPreviewAsset(blobPath: string, label: string, index: number):
 function buildLocalPlaceholderPreview(
   snapshot: ReturnType<typeof getLocalFolderPreviewSnapshots>[number],
   basePath: string,
+  datasetFullPath = snapshot.fullPath,
 ): CategoryDatasetPreview | null {
   const usableImages = snapshot.imageBlobPaths.slice(0, 4);
   if (usableImages.length === 0) return null;
@@ -511,8 +535,8 @@ function buildLocalPlaceholderPreview(
   return {
     title: snapshot.dataset,
     brand: snapshot.brand,
-    full_path: snapshot.fullPath,
-    viewer_path: buildViewerPath(snapshot.fullPath, undefined, basePath),
+    full_path: datasetFullPath,
+    viewer_path: buildViewerPath(datasetFullPath, undefined, basePath),
     visibility: "public",
     owner_slug: "roboteyeview",
     main_image: buildLocalPreviewAsset(usableImages[0], `${snapshot.dataset} cover`, 0),
@@ -521,7 +545,9 @@ function buildLocalPlaceholderPreview(
       .map((blobPath, index) =>
         buildLocalPreviewAsset(blobPath, `${snapshot.dataset} preview ${index + 1}`, index + 1),
       ),
-    preview_video: null,
+    preview_video: snapshot.previewVideoBlobPath
+      ? buildLocalPreviewAsset(snapshot.previewVideoBlobPath, `${snapshot.dataset} hover`, 0)
+      : null,
   };
 }
 
@@ -552,12 +578,12 @@ function resolveCatalogSectionsForCategory(
       const matchedItem =
         (placeholderItem
           ? activeCategoryPreviews.find((item) => {
-              const normalizedPath = normalizePathSearchValue(item.full_path);
-              return (
-                !usedLivePaths.has(normalizedPath) &&
-                normalizedPath === normalizePathSearchValue(placeholderItem.full_path)
-              );
-            })
+            const normalizedPath = normalizePathSearchValue(item.full_path);
+            return (
+              !usedLivePaths.has(normalizedPath) &&
+              normalizedPath === normalizePathSearchValue(placeholderItem.full_path)
+            );
+          })
           : null) ??
         activeCategoryPreviews.find((item) => {
           const normalizedPath = normalizePathSearchValue(item.full_path);
@@ -575,7 +601,7 @@ function resolveCatalogSectionsForCategory(
     matchedBySection.set(section.id, sectionEntries);
   });
 
-  const EXCLUDED_PANEL_NAMES = ["test", "short-test"];
+  const EXCLUDED_PANEL_NAMES = ["test", "short-test", "washing-test", "washingmachineloading"];
   const isExcludedPanel = (item: { full_path: string; title?: string | null }) => {
     const name = (item.title?.trim() || item.full_path.split("/").filter(Boolean).pop() || "").toLowerCase();
     return EXCLUDED_PANEL_NAMES.includes(name);
@@ -749,11 +775,11 @@ function CuratedCatalogCard({
   const footerLabel = previewItem ? previewItem.full_path : card.pathLabel;
   const previewAssets = previewItem
     ? [
-        previewItem.main_image,
-        ...previewItem.thumbnails,
-      ]
-        .filter((asset): asset is CategoryPreviewAsset => Boolean(asset))
-        .slice(0, 4)
+      previewItem.main_image,
+      ...previewItem.thumbnails,
+    ]
+      .filter((asset): asset is CategoryPreviewAsset => Boolean(asset))
+      .slice(0, 4)
     : [];
   const fallbackThumbs = [
     displayImages.main,
@@ -775,9 +801,8 @@ function CuratedCatalogCard({
       className="group flex h-full flex-col overflow-hidden rounded-[18px] border border-slate-200 bg-white text-left shadow-[0_14px_34px_rgba(15,23,42,0.06)] transition-all duration-300 hover:-translate-y-1 hover:border-primary/25 hover:shadow-[0_24px_56px_rgba(15,23,42,0.12)] sm:flex-row"
     >
       <div
-        className={`p-4 sm:min-w-0 sm:flex-[0_0_48%] sm:p-5 ${
-          columns === 2 ? "xl:flex-[0_0_48%]" : "xl:flex-[0_0_44%]"
-        }`}
+        className={`p-4 sm:min-w-0 sm:flex-[0_0_48%] sm:p-5 ${columns === 2 ? "xl:flex-[0_0_48%]" : "xl:flex-[0_0_44%]"
+          }`}
       >
         <div className="grid aspect-square w-full grid-cols-2 gap-1.5">
           {mosaicCells.map((cell, index) =>
@@ -879,6 +904,7 @@ function RootShowcaseCatalogCard({
   onOpen: () => void;
 }) {
   const [previewVideoActive, setPreviewVideoActive] = useState(false);
+  const [shouldLoadVideo, setShouldLoadVideo] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
   const [videoFailed, setVideoFailed] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -887,21 +913,30 @@ function RootShowcaseCatalogCard({
   const fallbackImageSrc = frontPageImageUrl(fallbackMain);
   const previewImageSrc = displayItem?.main_image ? resolvePreviewMediaUrl(displayItem.main_image) : null;
   const imageSrc = imageFailed ? fallbackImageSrc : previewImageSrc ?? fallbackImageSrc;
-  const videoSrc = videoFailed ? null : resolvePreviewMediaUrl(liveItem?.preview_video);
+  const resolvedVideoSrc = displayItem?.preview_video ? resolvePreviewMediaUrl(displayItem.preview_video) : null;
+  const videoSrc = videoFailed ? null : resolvedVideoSrc;
   const badge = getCatalogViewBadge(card);
   const availabilityClasses = getCatalogAvailabilityClasses(
     displayItem ? "In Library" : card.availability,
   );
 
   useEffect(() => {
+    setImageFailed(false);
+  }, [fallbackImageSrc, previewImageSrc]);
+
+  useEffect(() => {
+    setVideoFailed(false);
+  }, [resolvedVideoSrc]);
+
+  useEffect(() => {
     const video = videoRef.current;
-    if (!video || !videoSrc) return;
+    if (!video || !videoSrc || !shouldLoadVideo) return;
 
     if (previewVideoActive) {
       const playPromise = video.play();
       if (playPromise) {
         playPromise.catch(() => {
-          // Keep poster visible if playback cannot start immediately.
+          // Keep the poster visible if playback cannot start immediately.
         });
       }
       return;
@@ -911,7 +946,7 @@ function RootShowcaseCatalogCard({
     if (video.currentTime !== 0) {
       video.currentTime = 0;
     }
-  }, [previewVideoActive, videoSrc]);
+  }, [previewVideoActive, shouldLoadVideo, videoSrc]);
 
   useEffect(() => {
     return () => {
@@ -930,7 +965,14 @@ function RootShowcaseCatalogCard({
     >
       <div
         className="relative h-[120px] overflow-hidden"
-        onMouseEnter={videoSrc ? () => setPreviewVideoActive(true) : undefined}
+        onMouseEnter={
+          videoSrc
+            ? () => {
+                setShouldLoadVideo(true);
+                setPreviewVideoActive(true);
+              }
+            : undefined
+        }
         onMouseLeave={videoSrc ? () => setPreviewVideoActive(false) : undefined}
       >
         {imageSrc ? (
@@ -947,7 +989,7 @@ function RootShowcaseCatalogCard({
             <Database className="h-8 w-8 text-primary/55" />
           </div>
         )}
-        {videoSrc ? (
+        {videoSrc && shouldLoadVideo ? (
           <video
             ref={videoRef}
             src={videoSrc}
@@ -957,9 +999,8 @@ function RootShowcaseCatalogCard({
             playsInline
             preload="metadata"
             aria-hidden="true"
-            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${
-              previewVideoActive ? "opacity-100" : "opacity-0"
-            }`}
+            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${previewVideoActive ? "opacity-100" : "opacity-0"
+              }`}
             onError={() => setVideoFailed(true)}
           />
         ) : null}
@@ -1032,11 +1073,10 @@ function CategorySidebarSection({
               key={item.id}
               type="button"
               onClick={() => onSelect(item.id)}
-              className={`flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors ${
-                isActive
+              className={`flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors ${isActive
                   ? "border-primary/20 bg-primary/6 text-primary"
                   : "border-transparent text-slate-600 hover:bg-slate-100"
-              }`}
+                }`}
             >
               <span className={`h-2 w-2 shrink-0 rounded-full ${item.dotClassName}`} />
               <span className="flex-1 text-[13px] font-semibold">{item.label}</span>
@@ -1243,12 +1283,21 @@ export default function DataViewer() {
     () => (location.pathname.startsWith("/robodatahub") ? "/robodatahub" : "/viewer"),
     [location.pathname],
   );
+  const authRedirectPath = useMemo(
+    () => buildAuthPath("login", `${location.pathname}${location.search}`),
+    [location.pathname, location.search],
+  );
+  const canUseLockedViewerLayout = isAuthenticated && isApproved;
+  const canUseCatalogSearch = isAuthenticated && isApproved;
 
   const [folders, setFolders] = useState<FolderItem[]>([]);
   const [categoryPreviews, setCategoryPreviews] = useState<CategoryDatasetPreview[]>([]);
   const [loadedCategoryPreviewKey, setLoadedCategoryPreviewKey] = useState<CategoryKey | null>(null);
   const [categoryPreviewsLoading, setCategoryPreviewsLoading] = useState(false);
   const [rootCategoryPreviews, setRootCategoryPreviews] = useState<Partial<Record<CategoryKey, CategoryDatasetPreview[]>>>({});
+  const [visibleRootSectionKeys, setVisibleRootSectionKeys] = useState<
+    Partial<Record<CategoryKey, boolean>>
+  >({});
   const [images, setImages] = useState<ImageItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedImage, setSelectedImage] = useState<ImageItem | null>(null);
@@ -1269,9 +1318,12 @@ export default function DataViewer() {
   const [allFolderPaths, setAllFolderPaths] = useState<FolderItem[]>([]);
   const [pathSearchLoading, setPathSearchLoading] = useState(false);
   const [pathSearchLoaded, setPathSearchLoaded] = useState(false);
+  const [pathSearchPrimed, setPathSearchPrimed] = useState(false);
   const [pathSearchTouched, setPathSearchTouched] = useState(false);
   const [reloadTick, setReloadTick] = useState(0);
   const [activeLandingFilterId, setActiveLandingFilterId] = useState("all");
+  const rootSectionRefs = useRef<Partial<Record<CategoryKey, HTMLElement | null>>>({});
+  const rootPreviewLoadingKeysRef = useRef<Set<CategoryKey>>(new Set());
   const sectionAnchorRefs = useRef<Record<string, HTMLElement | null>>({});
   const landingTopRef = useRef<HTMLDivElement | null>(null);
   const contentScrollRef = useRef<HTMLDivElement | null>(null);
@@ -1306,8 +1358,15 @@ export default function DataViewer() {
               normalizeCategoryValue(snapshot.category) ===
               normalizeCategoryValue(category.previewKey),
           )
-          .map((snapshot) => buildLocalPlaceholderPreview(snapshot, viewerBasePath))
-          .filter((item): item is CategoryDatasetPreview => Boolean(item));
+          .map((snapshot) =>
+            buildLocalPlaceholderPreview(
+              snapshot,
+              viewerBasePath,
+              canonicalizeDatasetPathForRoute(snapshot.fullPath, category.routeKey),
+            ),
+          )
+          .filter((item): item is CategoryDatasetPreview => Boolean(item))
+          .filter((item) => !isExcludedDatasetPath(item.full_path))
         return acc;
       },
       {} as Record<CategoryKey, CategoryDatasetPreview[]>,
@@ -1363,6 +1422,23 @@ export default function DataViewer() {
   const isRootLanding = pathSegments.length === 0;
   const isCategoryLanding = Boolean(activeCategory) && pathSegments.length === 1;
   const isCatalogLanding = isRootLanding || isCategoryLanding;
+  const showCatalogFooter = isRootLanding;
+  const visibleRootRouteKeys = useMemo(
+    () =>
+      (Object.entries(visibleRootSectionKeys) as [CategoryKey, boolean][])
+        .filter(([, isVisible]) => isVisible)
+        .map(([routeKey]) => routeKey),
+    [visibleRootSectionKeys],
+  );
+  const initialRootCatalogContentReady = useMemo(() => {
+    if (!isRootLanding || visibleRootRouteKeys.length === 0) return false;
+    return visibleRootRouteKeys.every((routeKey) => rootCategoryPreviews[routeKey] !== undefined);
+  }, [isRootLanding, rootCategoryPreviews, visibleRootRouteKeys]);
+  const initialCategoryCatalogContentReady =
+    isCategoryLanding &&
+    Boolean(activeCategory) &&
+    !categoryPreviewsLoading &&
+    loadedCategoryPreviewKey === activeCategory.routeKey;
 
   useEffect(() => {
     setActiveLandingFilterId(activeLandingContent?.filters[0]?.id ?? "all");
@@ -1416,7 +1492,9 @@ export default function DataViewer() {
           params: { path: currentDisplayPath },
         });
         const nextFolders = uniqueFolderItems(
-          normalizeFolderResults(folderResponse.data).sort((a, b) => a.name.localeCompare(b.name)),
+          normalizeFolderResults(folderResponse.data)
+            .filter((item) => !isExcludedDatasetPath(item.full_path))
+            .sort((a, b) => a.name.localeCompare(b.name)),
         );
 
         if (cancelled) return;
@@ -1469,7 +1547,7 @@ export default function DataViewer() {
   }, [currentDisplayPath, isAuthenticated, isApproved, isRootLanding, isCategoryLanding, reloadTick]);
 
   useEffect(() => {
-    if (!isCategoryLanding || !activeCategory) {
+    if (!isAuthenticated || !isApproved || !isCategoryLanding || !activeCategory) {
       setCategoryPreviews([]);
       setLoadedCategoryPreviewKey(null);
       setCategoryPreviewsLoading(false);
@@ -1487,7 +1565,11 @@ export default function DataViewer() {
           params: { category: category.routeKey, public_only: "true" },
         });
         if (cancelled) return;
-        setCategoryPreviews(Array.isArray(response.data) ? response.data : []);
+        setCategoryPreviews(
+          Array.isArray(response.data)
+            ? response.data.filter((item) => !isExcludedDatasetPath(item.full_path))
+            : [],
+        );
         setLoadedCategoryPreviewKey(category.routeKey);
       } catch (error) {
         if (!cancelled) {
@@ -1507,53 +1589,158 @@ export default function DataViewer() {
     return () => {
       cancelled = true;
     };
-  }, [activeCategory, isCategoryLanding, reloadTick]);
+  }, [activeCategory, isAuthenticated, isApproved, isCategoryLanding, reloadTick]);
 
   useEffect(() => {
-    if (!isRootLanding) {
+    if (!isRootLanding || !isAuthenticated || !isApproved) {
       setRootCategoryPreviews({});
+      setVisibleRootSectionKeys({});
+      rootPreviewLoadingKeysRef.current.clear();
+      return;
+    }
+
+    setRootCategoryPreviews({});
+    setVisibleRootSectionKeys({});
+    rootPreviewLoadingKeysRef.current.clear();
+  }, [isAuthenticated, isApproved, isRootLanding, reloadTick]);
+
+  useEffect(() => {
+    if (!isRootLanding || !isAuthenticated || !isApproved) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        setVisibleRootSectionKeys((previous) => {
+          let changed = false;
+          const next = { ...previous };
+
+          entries.forEach((entry) => {
+            const routeKey = (entry.target as HTMLElement).dataset.rootCategoryKey as CategoryKey | undefined;
+            if (!routeKey || !entry.isIntersecting || next[routeKey]) return;
+            next[routeKey] = true;
+            changed = true;
+          });
+
+          return changed ? next : previous;
+        });
+      },
+      {
+        rootMargin: "220px 0px",
+        threshold: 0.2,
+      },
+    );
+
+    const targets = Object.values(rootSectionRefs.current).filter(
+      (target): target is HTMLElement => Boolean(target),
+    );
+
+    targets.forEach((target) => observer.observe(target));
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [isAuthenticated, isApproved, isRootLanding, rootResolvedShowcaseSections]);
+
+  useEffect(() => {
+    if (!isRootLanding || !isAuthenticated || !isApproved) {
       return;
     }
 
     let cancelled = false;
 
-    async function loadRootCategoryPreviews() {
-      setRootCategoryPreviews({});
+    (Object.entries(visibleRootSectionKeys) as [CategoryKey, boolean][])
+      .filter(([, isVisible]) => isVisible)
+      .map(([routeKey]) => routeKey)
+      .filter(
+        (routeKey) =>
+          rootCategoryPreviews[routeKey] === undefined &&
+          !rootPreviewLoadingKeysRef.current.has(routeKey),
+      )
+      .forEach((routeKey) => {
+        rootPreviewLoadingKeysRef.current.add(routeKey);
 
-      await Promise.all(
-        CATEGORIES.map(async (category) => {
-          try {
-            const response = await axios.get<CategoryDatasetPreview[]>("/api/dataset-category-previews", {
-              params: { category: category.routeKey, public_only: "true" },
-            });
+        void axios
+          .get<CategoryDatasetPreview[]>("/api/dataset-category-previews", {
+            params: { category: routeKey, public_only: "true" },
+          })
+          .then((response) => {
             if (cancelled) return;
-
             setRootCategoryPreviews((previous) => ({
               ...previous,
-              [category.routeKey]: Array.isArray(response.data) ? response.data : [],
+              [routeKey]: Array.isArray(response.data)
+                ? response.data.filter((item) => !isExcludedDatasetPath(item.full_path))
+                : [],
             }));
-          } catch (error) {
+          })
+          .catch((error) => {
             if (!cancelled) {
-              console.error(`Failed to load root dataset previews for ${category.routeKey}`, error);
+              console.error(`Failed to load root dataset previews for ${routeKey}`, error);
               setRootCategoryPreviews((previous) => ({
                 ...previous,
-                [category.routeKey]: [],
+                [routeKey]: [],
               }));
             }
-          }
-        }),
-      );
-    }
-
-    void loadRootCategoryPreviews();
+          })
+          .finally(() => {
+            rootPreviewLoadingKeysRef.current.delete(routeKey);
+          });
+      });
 
     return () => {
       cancelled = true;
     };
-  }, [isRootLanding, reloadTick]);
+  }, [isAuthenticated, isApproved, isRootLanding, rootCategoryPreviews, visibleRootSectionKeys]);
 
   useEffect(() => {
-    const shouldLoadPaths = isRootLanding || isCategoryLanding || pathSearchTouched;
+    if (!canUseCatalogSearch || !isCatalogLanding || pathSearchLoaded || pathSearchPrimed) return;
+
+    const readyForWarmup = initialRootCatalogContentReady || initialCategoryCatalogContentReady;
+    if (!readyForWarmup) return;
+
+    let cancelled = false;
+    let timeoutId: number | null = null;
+    let idleId: number | null = null;
+
+    const primeSearch = () => {
+      if (!cancelled) {
+        setPathSearchPrimed(true);
+      }
+    };
+
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+
+    if (typeof idleWindow.requestIdleCallback === "function") {
+      idleId = idleWindow.requestIdleCallback(primeSearch, { timeout: 1200 });
+    } else {
+      timeoutId = window.setTimeout(primeSearch, 700);
+    }
+
+    return () => {
+      cancelled = true;
+      if (idleId !== null && typeof idleWindow.cancelIdleCallback === "function") {
+        idleWindow.cancelIdleCallback(idleId);
+      }
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [
+    activeCategory,
+    canUseCatalogSearch,
+    categoryPreviewsLoading,
+    initialCategoryCatalogContentReady,
+    initialRootCatalogContentReady,
+    isCatalogLanding,
+    loadedCategoryPreviewKey,
+    pathSearchLoaded,
+    pathSearchPrimed,
+  ]);
+
+  useEffect(() => {
+    const shouldLoadPaths =
+      canUseCatalogSearch && (pathSearchPrimed || pathSearchTouched || pathSearchText.trim().length > 0);
     if (!shouldLoadPaths || pathSearchLoaded) return;
 
     let cancelled = false;
@@ -1563,9 +1750,9 @@ export default function DataViewer() {
       try {
         const params = activeCategory
           ? {
-              category: activeCategory.routeKey,
-              public_only: "true",
-            }
+            category: activeCategory.routeKey,
+            public_only: "true",
+          }
           : undefined;
         const response = await axios.get<unknown[]>("/api/dataset-paths", {
           params,
@@ -1573,7 +1760,8 @@ export default function DataViewer() {
         if (cancelled) return;
 
         const nextPaths = uniqueFolderItems(
-          normalizeFolderResults(response.data).sort((a, b) => a.full_path.localeCompare(b.full_path)),
+          normalizeFolderResults(response.data)
+            .sort((a, b) => a.full_path.localeCompare(b.full_path)),
         );
 
         setAllFolderPaths(nextPaths);
@@ -1595,11 +1783,14 @@ export default function DataViewer() {
     return () => {
       cancelled = true;
     };
-  }, [isRootLanding, isCategoryLanding, activeCategory, pathSearchTouched, pathSearchLoaded]);
+  }, [activeCategory, canUseCatalogSearch, pathSearchLoaded, pathSearchPrimed, pathSearchText, pathSearchTouched]);
 
   useEffect(() => {
     setAllFolderPaths([]);
+    setPathSearchLoading(false);
     setPathSearchLoaded(false);
+    setPathSearchPrimed(false);
+    setPathSearchTouched(false);
   }, [reloadTick, pathSearchScopeKey]);
 
   useEffect(() => {
@@ -1776,6 +1967,10 @@ export default function DataViewer() {
     navigate(nextPath);
   }
 
+  function promptGuestSignIn(nextPath = viewerBasePath) {
+    navigate(buildAuthPath("login", nextPath));
+  }
+
   function handlePathSearchSubmit() {
     if (pathSuggestions.length === 0) return;
     handlePathSuggestionClick(pathSuggestions[0].full_path);
@@ -1935,11 +2130,10 @@ export default function DataViewer() {
                   </span>
                   {folder.visibility && (
                     <span
-                      className={`mt-2 inline-flex rounded-full px-2 py-1 text-[10px] uppercase tracking-wide ${
-                        folder.visibility === "public"
+                      className={`mt-2 inline-flex rounded-full px-2 py-1 text-[10px] uppercase tracking-wide ${folder.visibility === "public"
                           ? "bg-primary/10 text-primary"
                           : "bg-amber-100 text-amber-700"
-                      }`}
+                        }`}
                     >
                       {folder.visibility}
                     </span>
@@ -1989,7 +2183,14 @@ export default function DataViewer() {
                     <button
                       key={section.routeKey}
                       type="button"
-                      onClick={() => navigate(buildCategoryLandingPath(category, viewerBasePath))}
+                      onClick={() => {
+                        const nextPath = buildCategoryLandingPath(category, viewerBasePath);
+                        if (!isAuthenticated) {
+                          promptGuestSignIn(nextPath);
+                          return;
+                        }
+                        navigate(nextPath);
+                      }}
                       className="flex w-full items-center gap-3 rounded-xl border border-transparent px-3 py-2.5 text-left text-slate-600 transition-colors hover:bg-slate-100"
                     >
                       <span className={`h-2.5 w-2.5 shrink-0 rounded-[3px] ${getCategoryAccent(category.routeKey).dot}`} />
@@ -2042,18 +2243,34 @@ export default function DataViewer() {
 
               <div className="flex flex-wrap items-center gap-3">
                 <CompactPathSearch
-                  value={pathSearchText}
-                  loading={pathSearchLoading}
-                  suggestions={pathSuggestions}
-                  placeholder="Search datasets..."
-                  submitDisabled={pathSuggestions.length === 0}
+                  value={isAuthenticated ? pathSearchText : ""}
+                  loading={isAuthenticated ? pathSearchLoading : false}
+                  suggestions={isAuthenticated ? pathSuggestions : []}
+                  placeholder={isAuthenticated ? "Search datasets..." : "Sign in to search datasets"}
+                  submitDisabled={isAuthenticated ? pathSuggestions.length === 0 : false}
                   className="max-w-[760px]"
-                  onFocus={() => setPathSearchTouched(true)}
+                  onFocus={() => {
+                    if (!isAuthenticated) {
+                      promptGuestSignIn(viewerBasePath);
+                      return;
+                    }
+                    setPathSearchTouched(true);
+                  }}
                   onChange={(value) => {
+                    if (!isAuthenticated) {
+                      promptGuestSignIn(viewerBasePath);
+                      return;
+                    }
                     setPathSearchTouched(true);
                     setPathSearchText(value);
                   }}
-                  onSubmit={handlePathSearchSubmit}
+                  onSubmit={() => {
+                    if (!isAuthenticated) {
+                      promptGuestSignIn(viewerBasePath);
+                      return;
+                    }
+                    handlePathSearchSubmit();
+                  }}
                   onSuggestionClick={handlePathSuggestionClick}
                   renderHighlightedPath={renderHighlightedPath}
                 />
@@ -2066,7 +2283,13 @@ export default function DataViewer() {
                 if (!category) return null;
 
                 return (
-                  <section key={section.routeKey}>
+                  <section
+                    key={section.routeKey}
+                    ref={(element) => {
+                      rootSectionRefs.current[section.routeKey] = element;
+                    }}
+                    data-root-category-key={section.routeKey}
+                  >
                     <div className="mb-4 flex items-center gap-3">
                       <span className={`h-3 w-3 shrink-0 rounded-[3px] ${section.dotClassName}`} />
                       <span className="text-[16px] font-extrabold text-slate-950">{section.title}</span>
@@ -2077,19 +2300,24 @@ export default function DataViewer() {
                       {section.cards.map((entry) => {
                         const previewItem = entry.liveItem ?? entry.placeholderItem ?? null;
                         return (
-                        <RootShowcaseCatalogCard
-                          key={`${section.routeKey}-${entry.card.title}-${previewItem?.full_path ?? entry.card.pathLabel}`}
-                          card={entry.card}
-                          liveItem={entry.liveItem}
-                          placeholderItem={entry.placeholderItem}
-                          onOpen={() => {
-                            if (previewItem) {
-                              handleCategoryPreviewClick(previewItem);
-                              return;
-                            }
-                            navigate(buildCategoryLandingPath(category, viewerBasePath));
-                          }}
-                        />
+                          <RootShowcaseCatalogCard
+                            key={`${section.routeKey}-${entry.card.title}-${previewItem?.full_path ?? entry.card.pathLabel}`}
+                            card={entry.card}
+                            liveItem={entry.liveItem}
+                            placeholderItem={entry.placeholderItem}
+                            onOpen={() => {
+                              if (previewItem) {
+                                handleCategoryPreviewClick(previewItem);
+                                return;
+                              }
+                              const nextPath = buildCategoryLandingPath(category, viewerBasePath);
+                              if (!isAuthenticated) {
+                                promptGuestSignIn(nextPath);
+                                return;
+                              }
+                              navigate(nextPath);
+                            }}
+                          />
                         );
                       })}
                     </div>
@@ -2142,7 +2370,9 @@ export default function DataViewer() {
     const heroPlaceholderItem =
       heroPreviewDatasetRoot
         ? (localCategoryPreviewPlaceholdersByRoute[category.routeKey] ?? []).find(
-            (item) => normalizePathSearchValue(item.full_path) === normalizePathSearchValue(heroPreviewDatasetRoot),
+            (item) =>
+              normalizePathSearchValue(item.full_path) ===
+              normalizePathSearchValue(canonicalizeDatasetPathForRoute(heroPreviewDatasetRoot, category.routeKey)),
           ) ?? null
         : null;
     const heroPosterUrl =
@@ -2186,6 +2416,7 @@ export default function DataViewer() {
               <div className="relative overflow-hidden rounded-[20px] border border-slate-300 shadow-[0_28px_64px_rgba(15,23,42,0.12)]">
                 {heroVideoUrl ? (
                   <video
+                    key={`${category.routeKey}-hero-video-${heroVideoUrl}`}
                     src={heroVideoUrl}
                     poster={heroPosterUrl}
                     aria-label={`${landing.heroTitle} hero`}
@@ -2198,6 +2429,7 @@ export default function DataViewer() {
                   />
                 ) : (
                   <img
+                    key={`${category.routeKey}-hero-image-${heroPosterUrl ?? "fallback"}`}
                     src={heroPosterUrl}
                     alt={`${landing.heroTitle} hero`}
                     className="h-[390px] w-full object-cover"
@@ -2405,11 +2637,19 @@ export default function DataViewer() {
   };
 
   return (
-    <div className="relative flex min-h-screen flex-col bg-background font-sans-tech text-foreground md:h-screen md:overflow-hidden">
+    <div
+      className={`relative flex min-h-screen flex-col bg-background font-sans-tech text-foreground ${
+        canUseLockedViewerLayout && !showCatalogFooter ? "md:h-screen md:overflow-hidden" : ""
+      }`}
+    >
       <div className="pointer-events-none absolute inset-0 bg-grid-pattern opacity-[0.04]" />
       <Navigation />
 
-      <div className="relative z-10 flex flex-1 flex-col pt-[88px] md:overflow-hidden">
+      <div
+        className={`relative z-10 flex flex-1 flex-col pt-[88px] ${
+          canUseLockedViewerLayout && !showCatalogFooter ? "md:overflow-hidden" : ""
+        }`}
+      >
         <div className="z-20 flex min-h-12 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-background/90 px-4 py-2 backdrop-blur-md sm:flex-nowrap sm:py-0">
           <div className="flex min-w-0 items-center gap-4">
             <div className="flex items-center gap-2 text-sm">
@@ -2422,13 +2662,13 @@ export default function DataViewer() {
               <Breadcrumbs />
             </div>
           </div>
-            <div className="ml-auto flex items-center gap-4 font-sans-tech text-[11px] font-medium text-slate-500 sm:ml-0 sm:gap-6 sm:text-xs">
-              {isAuthenticated && isApproved ? (
-                <span className="flex items-center gap-2 text-primary">
-                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
-                  Live Connection
-                </span>
-              ) : (
+          <div className="ml-auto flex items-center gap-4 font-sans-tech text-[11px] font-medium text-slate-500 sm:ml-0 sm:gap-6 sm:text-xs">
+            {isAuthenticated && isApproved ? (
+              <span className="flex items-center gap-2 text-primary">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
+                Live Connection
+              </span>
+            ) : (
               <span className="flex items-center gap-2">
                 <LockKeyhole className="h-3.5 w-3.5" />
                 Signed out
@@ -2444,12 +2684,8 @@ export default function DataViewer() {
         ) : !isAuthenticated ? (
           isRootLanding ? (
             renderRootLanding()
-          ) : isCategoryLanding && activeCategory ? (
-            renderCategoryLanding(activeCategory)
           ) : (
-            <div className="mx-auto flex-1 w-full max-w-[1440px] px-4 py-10 sm:px-6">
-              <AuthRequiredState description="Sign in before viewing dataset contents. Public catalog pages stay visible, but deeper folder contents remain behind account approval." />
-            </div>
+            <Navigate to={authRedirectPath} replace />
           )
         ) : !isApproved ? (
           isRootLanding ? (
@@ -2646,6 +2882,8 @@ export default function DataViewer() {
           </div>
         )}
       </div>
+
+      {showCatalogFooter && <FooterSection />}
     </div>
   );
 }

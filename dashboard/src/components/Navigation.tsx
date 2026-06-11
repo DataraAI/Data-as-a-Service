@@ -29,14 +29,14 @@ const PRODUCT_NAV_ITEMS: NavItem[] = [
   },
   {
     key: "roboeyeview",
-    label: "RoboEyeView",
+    label: "RoboAnnotator",
     subtitle: "Visual Intelligence",
-    href: "/roboeyeview",
+    href: "/roboannotator",
   },
   {
     key: "robohandmotion",
     label: "RoboHandMotion",
-    subtitle: "Humanoid Data",
+    subtitle: "Dexterity Data",
     href: "/robohandmotion",
   },
   {
@@ -82,7 +82,9 @@ export default function Navigation() {
     if (location.pathname.startsWith("/viewer") || location.pathname.startsWith("/robodatahub")) {
       return "robodatahub";
     }
-    if (location.pathname.startsWith("/roboeyeview")) return "roboeyeview";
+    if (location.pathname.startsWith("/roboannotator") || location.pathname.startsWith("/roboeyeview")) {
+      return "roboeyeview";
+    }
     if (location.pathname.startsWith("/robohandmotion")) return "robohandmotion";
     if (location.pathname.startsWith("/robotaskmanipulator")) return "robotaskmanipulator";
     if (location.pathname === "/product" && location.hash === "#robohandmotion") {
