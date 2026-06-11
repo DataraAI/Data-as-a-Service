@@ -83,32 +83,23 @@ export default function Company() {
           </p>
         </section>
 
-        <section className="border-b border-slate-200 bg-slate-50 px-4 py-10 sm:px-6">
-          <div className="mx-auto grid max-w-[1300px] gap-6 md:grid-cols-3">
-            <div className="flex flex-col gap-2">
-              <div className="mb-1 inline-flex h-9 w-9 items-center justify-center rounded-[10px] border border-teal-300 bg-teal-50">
-                <span className="h-4 w-4 rounded-full border-2 border-primary border-t-transparent" />
-              </div>
-              <div className="text-[15px] font-extrabold text-slate-950">Real-World First</div>
-              <p className="text-[13px] leading-6 text-slate-500">
+        <section className="border-b border-slate-200 bg-slate-50 px-4 py-9 sm:px-6">
+          <div className="mx-auto grid max-w-[1300px] md:grid-cols-3">
+            <div className="py-5 md:pr-8">
+              <div className="text-[17px] font-extrabold tracking-[-0.01em] text-slate-950">Real-World First</div>
+              <p className="mt-2 max-w-sm text-[13px] leading-6 text-slate-500">
                 Authentic multi-modal datasets captured in operating environments — not simulated proxies.
               </p>
             </div>
-            <div className="flex flex-col gap-2">
-              <div className="mb-1 inline-flex h-9 w-9 items-center justify-center rounded-[10px] border border-blue-300 bg-blue-50">
-                <span className="h-4 w-4 rounded-sm border-2 border-blue-700" />
-              </div>
-              <div className="text-[15px] font-extrabold text-slate-950">Data Infrastructure</div>
-              <p className="text-[13px] leading-6 text-slate-500">
+            <div className="border-t border-slate-200 py-5 md:border-l md:border-t-0 md:px-8">
+              <div className="text-[17px] font-extrabold tracking-[-0.01em] text-slate-950">Data Infrastructure</div>
+              <p className="mt-2 max-w-sm text-[13px] leading-6 text-slate-500">
                 End-to-end pipelines from capture to policy-ready training data across four industry verticals.
               </p>
             </div>
-            <div className="flex flex-col gap-2">
-              <div className="mb-1 inline-flex h-9 w-9 items-center justify-center rounded-[10px] border border-violet-300 bg-violet-50">
-                <span className="h-4 w-4 rounded-full border-2 border-violet-700" />
-              </div>
-              <div className="text-[15px] font-extrabold text-slate-950">Partnership-Driven</div>
-              <p className="text-[13px] leading-6 text-slate-500">
+            <div className="border-t border-slate-200 py-5 md:border-l md:border-t-0 md:pl-8">
+              <div className="text-[17px] font-extrabold tracking-[-0.01em] text-slate-950">Partnership-Driven</div>
+              <p className="mt-2 max-w-sm text-[13px] leading-6 text-slate-500">
                 Co-developed with industry leaders — Figure AI, BMW, Foxconn — to ensure real production fidelity.
               </p>
             </div>
