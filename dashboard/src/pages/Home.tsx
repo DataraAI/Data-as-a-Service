@@ -283,7 +283,7 @@ function ProductTile({ card }: { card: ProductCard }) {
   return (
     <Link
       to={card.to}
-      className={`group flex h-full flex-col rounded-[22px] border bg-white px-6 pb-8 pt-8 text-center shadow-[0_2px_8px_rgba(0,0,0,0.05)] transition-all duration-200 hover:-translate-y-1 ${card.tone}`}
+      className={`group flex h-full flex-col rounded-[22px] border bg-white px-6 pb-8 pt-8 text-center shadow-[0_2px_8px_rgba(0,0,0,0.05)] outline outline-1 outline-transparent transition-all duration-200 hover:-translate-y-1 hover:border-primary/45 hover:outline-primary/20 hover:shadow-[0_18px_42px_rgba(15,23,42,0.12)] ${card.tone}`}
     >
       <div className={`mx-auto flex h-[72px] w-[72px] items-center justify-center rounded-[20px] border ${card.pillTone}`}>
         <Icon className="h-8 w-8" />
@@ -293,12 +293,10 @@ function ProductTile({ card }: { card: ProductCard }) {
       </div>
       <h3 className="mt-4 text-[28px] font-black tracking-[-0.035em] text-slate-950">{card.name}</h3>
       <p className="mt-3 text-[15px] leading-6 text-slate-500">{card.tagline}</p>
-      <div className="mt-6 flex flex-col gap-2">
+      <div className="mt-6 divide-y divide-slate-200 border-y border-slate-200 text-left">
         {card.pills.map((pill) => (
-          <span
-            key={pill}
-            className={`inline-flex justify-center rounded-full border px-3 py-2 text-[13px] font-semibold ${card.pillTone}`}
-          >
+          <span key={pill} className="flex items-center gap-3 px-1 py-3 text-[13px] font-semibold text-slate-600">
+            <span className={`h-1 w-3 shrink-0 bg-current ${card.linkTone}`} />
             {pill}
           </span>
         ))}
@@ -369,8 +367,7 @@ export default function Home() {
       <main className="pt-[88px]">
         <section className="marketing-hero-home overflow-hidden px-4 py-10 text-center sm:px-6 md:min-h-[calc(88vh-88px)] md:py-12 lg:py-14">
           <div className="mx-auto max-w-[860px]">
-            <div className="inline-flex items-center gap-2 rounded-full border border-teal-200 bg-teal-50 px-6 py-2.5 text-[13px] font-semibold text-primary">
-              <span className="h-[7px] w-[7px] rounded-full bg-primary" />
+            <div className="inline-flex border-y border-primary/30 px-5 py-2 text-[11px] font-extrabold uppercase tracking-[0.18em] text-primary">
               NVIDIA Inception Member - 2025
             </div>
 
@@ -416,8 +413,8 @@ export default function Home() {
               <h2 className="marketing-display-title mt-4 text-[32px] font-black tracking-[-0.02em] text-slate-950">
                 From Factory Floor to Deployed Robot
               </h2>
-              <p className="mx-auto mt-3 max-w-[500px] text-[15px] leading-7 text-slate-500">
-                Real-world data powering every step — from factory floor to deployed robot.
+              <p className="mx-auto mt-3 max-w-[650px] text-[15px] leading-7 text-slate-500">
+                Real factory data is transformed into simulation-ready environments, used to train robot policies at scale, then transferred back to physical robots for production deployment.
               </p>
             </div>
 

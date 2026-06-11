@@ -51,6 +51,9 @@ interface FolderItem {
   type?: string;
 }
 
+const pathSearchCache = new Map<string, FolderItem[]>();
+const pathSearchRequestCache = new Map<string, Promise<FolderItem[]>>();
+
 interface VlmRun {
   effective_prompt?: string;
   tags?: string[];
@@ -300,6 +303,54 @@ function uniqueFolderItems(items: FolderItem[]) {
     seen.add(item.full_path);
     return true;
   });
+}
+
+function loadSearchPaths(cacheKey: string, category?: CategoryKey | null) {
+  const cachedPaths = pathSearchCache.get(cacheKey);
+  if (cachedPaths) {
+    return Promise.resolve(cachedPaths);
+  }
+
+  const pendingRequest = pathSearchRequestCache.get(cacheKey);
+  if (pendingRequest) {
+    return pendingRequest;
+  }
+
+  const params = category
+    ? new URLSearchParams({
+        category,
+        public_only: "true",
+      })
+    : null;
+  const requestUrl = params ? `/api/dataset-paths?${params.toString()}` : "/api/dataset-paths";
+  const requestInit = {
+    credentials: "same-origin",
+    priority: "low",
+  } as RequestInit & { priority: "low" };
+
+  const request = fetch(requestUrl, requestInit)
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(`Failed to load dataset paths (${response.status})`);
+      }
+      return response.json() as Promise<unknown[]>;
+    })
+    .then((payload) =>
+      uniqueFolderItems(
+        normalizeFolderResults(payload)
+          .sort((a, b) => a.full_path.localeCompare(b.full_path)),
+      ),
+    )
+    .then((paths) => {
+      pathSearchCache.set(cacheKey, paths);
+      return paths;
+    })
+    .finally(() => {
+      pathSearchRequestCache.delete(cacheKey);
+    });
+
+  pathSearchRequestCache.set(cacheKey, request);
+  return request;
 }
 
 const EXCLUDED_DATASET_PANEL_NAMES = new Set(["test", "short-test", "washing-test"]);
@@ -1098,11 +1149,9 @@ function CompactPathSearch({
   loading,
   suggestions,
   placeholder,
-  submitDisabled,
   className,
   onFocus,
   onChange,
-  onSubmit,
   onSuggestionClick,
   renderHighlightedPath,
 }: {
@@ -1110,45 +1159,33 @@ function CompactPathSearch({
   loading: boolean;
   suggestions: FolderItem[];
   placeholder: string;
-  submitDisabled: boolean;
   className?: string;
   onFocus: () => void;
   onChange: (value: string) => void;
-  onSubmit: () => void;
   onSuggestionClick: (fullPath: string) => void;
   renderHighlightedPath: (fullPath: string) => ReactNode;
 }) {
   return (
     <div className={`relative w-full ${className ?? "max-w-xl"}`}>
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          onSubmit();
-        }}
-        className="flex flex-col gap-3 sm:flex-row"
-      >
-        <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            value={value}
-            onFocus={onFocus}
-            onChange={(event) => onChange(event.target.value)}
-            placeholder={placeholder}
-            className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-10 font-sans-tech text-sm text-slate-900 shadow-[0_10px_24px_rgba(15,23,42,0.06)] placeholder:text-slate-400 focus:border-primary/30 focus:outline-none"
-          />
-          {loading && (
-            <Loader2 className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-primary" />
-          )}
-        </div>
-        <button
-          type="submit"
-          disabled={submitDisabled}
-          className="inline-flex h-11 shrink-0 items-center justify-center rounded-xl bg-primary px-5 font-sans-tech text-sm font-bold text-primary-foreground transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          Search
-        </button>
-      </form>
+      <div className="relative">
+        <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <input
+          type="text"
+          value={value}
+          onFocus={onFocus}
+          onChange={(event) => onChange(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+            }
+          }}
+          placeholder={placeholder}
+          className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-10 font-sans-tech text-sm text-slate-900 shadow-[0_10px_24px_rgba(15,23,42,0.06)] placeholder:text-slate-400 focus:border-primary/30 focus:outline-none"
+        />
+        {loading && (
+          <Loader2 className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-primary" />
+        )}
+      </div>
 
       {value.trim() !== "" && (
         <div className="absolute left-0 right-0 top-[calc(100%+0.75rem)] z-30 overflow-hidden rounded-[20px] border border-slate-200 bg-white/95 text-left shadow-[0_24px_60px_rgba(15,23,42,0.14)] backdrop-blur-sm dark:bg-card/95 dark:shadow-[0_24px_60px_rgba(0,0,0,0.3)]">
@@ -1327,6 +1364,7 @@ export default function DataViewer() {
   const sectionAnchorRefs = useRef<Record<string, HTMLElement | null>>({});
   const landingTopRef = useRef<HTMLDivElement | null>(null);
   const contentScrollRef = useRef<HTMLDivElement | null>(null);
+  const previousPathSearchReloadTickRef = useRef(reloadTick);
 
   const pathSegments = useMemo(
     () => location.pathname.split("/").filter((part) => part && part !== "viewer" && part !== "robodatahub"),
@@ -1418,28 +1456,12 @@ export default function DataViewer() {
     });
   }, [localCategoryPreviewPlaceholdersByRoute, rootCategoryPreviews]);
   const pathSearchScopeKey = activeCategory?.routeKey ?? "global";
+  const pathSearchCacheKey = `${user?.id ?? "guest"}:${pathSearchScopeKey}`;
 
   const isRootLanding = pathSegments.length === 0;
   const isCategoryLanding = Boolean(activeCategory) && pathSegments.length === 1;
   const isCatalogLanding = isRootLanding || isCategoryLanding;
   const showCatalogFooter = isRootLanding;
-  const visibleRootRouteKeys = useMemo(
-    () =>
-      (Object.entries(visibleRootSectionKeys) as [CategoryKey, boolean][])
-        .filter(([, isVisible]) => isVisible)
-        .map(([routeKey]) => routeKey),
-    [visibleRootSectionKeys],
-  );
-  const initialRootCatalogContentReady = useMemo(() => {
-    if (!isRootLanding || visibleRootRouteKeys.length === 0) return false;
-    return visibleRootRouteKeys.every((routeKey) => rootCategoryPreviews[routeKey] !== undefined);
-  }, [isRootLanding, rootCategoryPreviews, visibleRootRouteKeys]);
-  const initialCategoryCatalogContentReady =
-    isCategoryLanding &&
-    Boolean(activeCategory) &&
-    !categoryPreviewsLoading &&
-    loadedCategoryPreviewKey === activeCategory.routeKey;
-
   useEffect(() => {
     setActiveLandingFilterId(activeLandingContent?.filters[0]?.id ?? "all");
     sectionAnchorRefs.current = {};
@@ -1693,9 +1715,6 @@ export default function DataViewer() {
   useEffect(() => {
     if (!canUseCatalogSearch || !isCatalogLanding || pathSearchLoaded || pathSearchPrimed) return;
 
-    const readyForWarmup = initialRootCatalogContentReady || initialCategoryCatalogContentReady;
-    if (!readyForWarmup) return;
-
     let cancelled = false;
     let timeoutId: number | null = null;
     let idleId: number | null = null;
@@ -1712,9 +1731,9 @@ export default function DataViewer() {
     };
 
     if (typeof idleWindow.requestIdleCallback === "function") {
-      idleId = idleWindow.requestIdleCallback(primeSearch, { timeout: 1200 });
+      idleId = idleWindow.requestIdleCallback(primeSearch, { timeout: 700 });
     } else {
-      timeoutId = window.setTimeout(primeSearch, 700);
+      timeoutId = window.setTimeout(primeSearch, 300);
     }
 
     return () => {
@@ -1727,13 +1746,8 @@ export default function DataViewer() {
       }
     };
   }, [
-    activeCategory,
     canUseCatalogSearch,
-    categoryPreviewsLoading,
-    initialCategoryCatalogContentReady,
-    initialRootCatalogContentReady,
     isCatalogLanding,
-    loadedCategoryPreviewKey,
     pathSearchLoaded,
     pathSearchPrimed,
   ]);
@@ -1748,21 +1762,8 @@ export default function DataViewer() {
     async function loadAllPaths() {
       setPathSearchLoading(true);
       try {
-        const params = activeCategory
-          ? {
-            category: activeCategory.routeKey,
-            public_only: "true",
-          }
-          : undefined;
-        const response = await axios.get<unknown[]>("/api/dataset-paths", {
-          params,
-        });
+        const nextPaths = await loadSearchPaths(pathSearchCacheKey, activeCategory?.routeKey);
         if (cancelled) return;
-
-        const nextPaths = uniqueFolderItems(
-          normalizeFolderResults(response.data)
-            .sort((a, b) => a.full_path.localeCompare(b.full_path)),
-        );
 
         setAllFolderPaths(nextPaths);
         setPathSearchLoaded(true);
@@ -1783,15 +1784,31 @@ export default function DataViewer() {
     return () => {
       cancelled = true;
     };
-  }, [activeCategory, canUseCatalogSearch, pathSearchLoaded, pathSearchPrimed, pathSearchText, pathSearchTouched]);
+  }, [
+    activeCategory,
+    canUseCatalogSearch,
+    pathSearchCacheKey,
+    pathSearchLoaded,
+    pathSearchPrimed,
+    pathSearchText,
+    pathSearchTouched,
+  ]);
 
   useEffect(() => {
-    setAllFolderPaths([]);
+    const isManualReload = previousPathSearchReloadTickRef.current !== reloadTick;
+    previousPathSearchReloadTickRef.current = reloadTick;
+    if (isManualReload) {
+      pathSearchCache.delete(pathSearchCacheKey);
+      pathSearchRequestCache.delete(pathSearchCacheKey);
+    }
+
+    const cachedPaths = pathSearchCache.get(pathSearchCacheKey);
+    setAllFolderPaths(cachedPaths ?? []);
     setPathSearchLoading(false);
-    setPathSearchLoaded(false);
-    setPathSearchPrimed(false);
+    setPathSearchLoaded(Boolean(cachedPaths));
+    setPathSearchPrimed(Boolean(cachedPaths));
     setPathSearchTouched(false);
-  }, [reloadTick, pathSearchScopeKey]);
+  }, [pathSearchCacheKey, reloadTick]);
 
   useEffect(() => {
     if (!imageQueryParam || images.length === 0) return;
@@ -1969,11 +1986,6 @@ export default function DataViewer() {
 
   function promptGuestSignIn(nextPath = viewerBasePath) {
     navigate(buildAuthPath("login", nextPath));
-  }
-
-  function handlePathSearchSubmit() {
-    if (pathSuggestions.length === 0) return;
-    handlePathSuggestionClick(pathSuggestions[0].full_path);
   }
 
   function handleCategoryPreviewClick(item: CategoryDatasetPreview) {
@@ -2247,7 +2259,6 @@ export default function DataViewer() {
                   loading={isAuthenticated ? pathSearchLoading : false}
                   suggestions={isAuthenticated ? pathSuggestions : []}
                   placeholder={isAuthenticated ? "Search datasets..." : "Sign in to search datasets"}
-                  submitDisabled={isAuthenticated ? pathSuggestions.length === 0 : false}
                   className="max-w-[760px]"
                   onFocus={() => {
                     if (!isAuthenticated) {
@@ -2263,13 +2274,6 @@ export default function DataViewer() {
                     }
                     setPathSearchTouched(true);
                     setPathSearchText(value);
-                  }}
-                  onSubmit={() => {
-                    if (!isAuthenticated) {
-                      promptGuestSignIn(viewerBasePath);
-                      return;
-                    }
-                    handlePathSearchSubmit();
                   }}
                   onSuggestionClick={handlePathSuggestionClick}
                   renderHighlightedPath={renderHighlightedPath}
@@ -2397,14 +2401,12 @@ export default function DataViewer() {
                     loading={pathSearchLoading}
                     suggestions={pathSuggestions}
                     placeholder={`Search ${category.label.toLowerCase()} datasets...`}
-                    submitDisabled={pathSuggestions.length === 0}
                     className="max-w-none"
                     onFocus={() => setPathSearchTouched(true)}
                     onChange={(value) => {
                       setPathSearchTouched(true);
                       setPathSearchText(value);
                     }}
-                    onSubmit={handlePathSearchSubmit}
                     onSuggestionClick={handlePathSuggestionClick}
                     renderHighlightedPath={renderHighlightedPath}
                   />
