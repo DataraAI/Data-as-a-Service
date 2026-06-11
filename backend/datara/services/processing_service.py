@@ -1818,6 +1818,7 @@ class ProcessingService:
         output_storage_prefix = f"{dataset['storage_prefix'].rstrip('/')}/hand_mesh/{seq_slug}"
         output_video_prefix = f"{output_storage_prefix}/videos"
         output_artifact_prefix = f"{output_storage_prefix}/artifacts"
+        output_mcap_prefix = f"{output_storage_prefix}/mcaps"
         source_task = str(dataset.get("task") or "").strip()
 
         job_root = tempfile.mkdtemp(prefix="hand_mesh_job_", dir=DATASET_LIST_DIR)
@@ -1826,13 +1827,13 @@ class ProcessingService:
         try:
             from datara.services import call_lambda_vm
 
-            local_video_paths, local_artifact_paths, status_code, error_message = call_lambda_vm.generate_hand_mesh(
+            local_video_paths, local_artifact_paths, local_mcap_paths, status_code, error_message = call_lambda_vm.generate_hand_mesh(
                 video_url=effective_video_url,
                 seq_name=seq_slug,
                 pipeline=pipeline,
                 local_output_dir=local_output_dir,
             )
-            if status_code != 200 or (not local_video_paths and not local_artifact_paths):
+            if status_code != 200 or (not local_video_paths and not local_artifact_paths and not local_mcap_paths):
                 return {"error": error_message or "Hand mesh generation failed"}, status_code or 500
 
             self.azure_service.delete_blobs_with_prefix(
@@ -1846,6 +1847,7 @@ class ProcessingService:
 
             uploaded_videos: list[str] = []
             uploaded_artifacts: list[str] = []
+            uploaded_mcaps: list[str] = []
             for local_video_path in local_video_paths:
                 blob_name = self._upload_hand_mesh_video(
                     dataset=dataset,
@@ -1867,6 +1869,17 @@ class ProcessingService:
                     source_asset_id=source_asset_id,
                 )
                 uploaded_artifacts.append(os.path.basename(blob_name))
+
+            for local_mcap_path in local_mcap_paths:
+                blob_name = self._upload_hand_mesh_artifact(
+                    dataset=dataset,
+                    output_prefix=output_mcap_prefix,
+                    local_file_path=local_mcap_path,
+                    source_task=source_task,
+                    seq_slug=seq_slug,
+                    source_asset_id=source_asset_id,
+                )
+                uploaded_mcaps.append(os.path.basename(blob_name))
         except Exception as exc:
             logger.error("generate_hand_mesh error: %s", exc, exc_info=True)
             return {"error": str(exc)}, 400 if isinstance(exc, ValueError) else 500
@@ -1879,6 +1892,7 @@ class ProcessingService:
             "output_viewer_path": f"/viewer/{output_route_path}",
             "output_videos": uploaded_videos,
             "output_artifacts": uploaded_artifacts,
+            "output_mcaps" : uploaded_mcaps,
             "seq": seq_slug,
         }, 200
 
