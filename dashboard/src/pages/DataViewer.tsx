@@ -2306,10 +2306,6 @@ export default function DataViewer() {
                             liveItem={entry.liveItem}
                             placeholderItem={entry.placeholderItem}
                             onOpen={() => {
-                              if (previewItem) {
-                                handleCategoryPreviewClick(previewItem);
-                                return;
-                              }
                               const nextPath = buildCategoryLandingPath(category, viewerBasePath);
                               if (!isAuthenticated) {
                                 promptGuestSignIn(nextPath);
@@ -2386,81 +2382,86 @@ export default function DataViewer() {
         <div className="overflow-hidden rounded-[30px] border border-slate-200 bg-white shadow-[0_30px_70px_rgba(15,23,42,0.1)]">
           <section className="relative overflow-hidden border-b border-slate-200">
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(13,148,136,0.06),transparent_52%),radial-gradient(ellipse_at_bottom_left,rgba(15,23,42,0.03),transparent_46%)]" />
-            <div className="relative grid gap-10 p-6 md:p-8 lg:grid-cols-2 lg:items-center">
-              <div>
-                <div className={`mb-5 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] ${getCategoryAccent(category.routeKey).chip}`}>
-                  <span className={`h-2 w-2 rounded-full ${getCategoryAccent(category.routeKey).dot}`} />
-                  {landing.heroEyebrow}
-                </div>
-                <h1 className="text-[clamp(2.4rem,4.8vw,4.5rem)] font-black tracking-[-0.06em] text-slate-950">
+            <div className="relative p-6 md:p-8">
+              <div className="mx-auto max-w-4xl text-center">
+                <h1 className="text-[clamp(2rem,4vw,3.25rem)] font-black tracking-[-0.055em] text-slate-950">
                   {landing.heroTitle}
                 </h1>
-                <p className="mt-5 max-w-2xl text-sm leading-8 text-slate-600 md:text-base">
-                  {landing.heroDescription}
-                </p>
 
-                <div className="mt-8 grid gap-px overflow-hidden rounded-[14px] border border-slate-300 bg-slate-200 sm:grid-cols-4">
+                <div className="mx-auto mt-6 max-w-[760px]">
+                  <div className="mb-3 text-[12px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
+                    Search {category.label.toLowerCase()} datasets
+                  </div>
+                  <CompactPathSearch
+                    value={pathSearchText}
+                    loading={pathSearchLoading}
+                    suggestions={pathSuggestions}
+                    placeholder={`Search ${category.label.toLowerCase()} datasets...`}
+                    submitDisabled={pathSuggestions.length === 0}
+                    className="max-w-none"
+                    onFocus={() => setPathSearchTouched(true)}
+                    onChange={(value) => {
+                      setPathSearchTouched(true);
+                      setPathSearchText(value);
+                    }}
+                    onSubmit={handlePathSearchSubmit}
+                    onSuggestionClick={handlePathSuggestionClick}
+                    renderHighlightedPath={renderHighlightedPath}
+                  />
+                </div>
+              </div>
+
+              <div className="mx-auto mt-8 grid max-w-5xl gap-4 lg:grid-cols-[minmax(0,1fr)_260px] lg:items-stretch">
+                <div className="relative overflow-hidden rounded-[18px] border border-slate-300 shadow-[0_20px_48px_rgba(15,23,42,0.1)]">
+                  {heroVideoUrl ? (
+                    <video
+                      key={`${category.routeKey}-hero-video-${heroVideoUrl}`}
+                      src={heroVideoUrl}
+                      poster={heroPosterUrl}
+                      aria-label={`${landing.heroTitle} hero`}
+                      className="h-[300px] w-full object-cover"
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      preload="metadata"
+                    />
+                  ) : (
+                    <img
+                      key={`${category.routeKey}-hero-image-${heroPosterUrl ?? "fallback"}`}
+                      src={heroPosterUrl}
+                      alt={`${landing.heroTitle} hero`}
+                      className="h-[300px] w-full object-cover"
+                    />
+                  )}
+                  <div className="absolute inset-0 bg-[linear-gradient(160deg,rgba(255,255,255,0.12),transparent_45%,rgba(15,23,42,0.08))]" />
+                  <div className="absolute bottom-4 left-4 rounded-[10px] border border-slate-200 bg-white/90 px-3 py-2 backdrop-blur-sm">
+                    <div className="text-[8px] font-black uppercase tracking-[0.18em] text-primary">
+                      {landing.heroBadge}
+                    </div>
+                    <div className="mt-0.5 text-[12px] font-bold text-slate-950">{landing.heroTitle}</div>
+                  </div>
+                  <div className="absolute right-4 top-4 rounded-[8px] border border-slate-200 bg-white/90 px-3 py-1.5 text-[11px] font-semibold text-slate-500 backdrop-blur-sm">
+                    <strong className="text-primary">{landing.heroPill}</strong>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 lg:grid-cols-1">
                   {heroStats.map((stat) => (
-                    <div key={`${landing.routeKey}-${stat.label}`} className="bg-slate-50 px-4 py-4">
-                      <div className="text-[22px] font-extrabold tracking-[-0.03em] text-slate-950">
+                    <div
+                      key={`${landing.routeKey}-${stat.label}`}
+                      className="flex min-h-[68px] flex-col justify-center rounded-[12px] border border-slate-200 bg-slate-50 px-4 py-3"
+                    >
+                      <div className="text-[20px] font-extrabold tracking-[-0.03em] text-slate-950">
                         {stat.value}
                       </div>
-                      <div className="mt-1 text-[9px] font-bold uppercase tracking-[0.16em] text-slate-400">
+                      <div className="mt-1 text-[9px] font-bold uppercase tracking-[0.14em] text-slate-400">
                         {stat.label}
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
-
-              <div className="relative overflow-hidden rounded-[20px] border border-slate-300 shadow-[0_28px_64px_rgba(15,23,42,0.12)]">
-                {heroVideoUrl ? (
-                  <video
-                    key={`${category.routeKey}-hero-video-${heroVideoUrl}`}
-                    src={heroVideoUrl}
-                    poster={heroPosterUrl}
-                    aria-label={`${landing.heroTitle} hero`}
-                    className="h-[390px] w-full object-cover"
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                    preload="metadata"
-                  />
-                ) : (
-                  <img
-                    key={`${category.routeKey}-hero-image-${heroPosterUrl ?? "fallback"}`}
-                    src={heroPosterUrl}
-                    alt={`${landing.heroTitle} hero`}
-                    className="h-[390px] w-full object-cover"
-                  />
-                )}
-                <div className="absolute inset-0 bg-[linear-gradient(160deg,rgba(255,255,255,0.15),transparent_45%,rgba(15,23,42,0.06))]" />
-                <div className="absolute bottom-5 left-5 rounded-[12px] border border-slate-200 bg-white/90 px-4 py-3 backdrop-blur-sm">
-                  <div className="text-[8px] font-black uppercase tracking-[0.18em] text-primary">
-                    {landing.heroBadge}
-                  </div>
-                  <div className="mt-1 text-[13px] font-bold text-slate-950">{landing.heroTitle}</div>
-                </div>
-                <div className="absolute right-4 top-4 rounded-[8px] border border-slate-200 bg-white/90 px-3 py-1.5 text-[11px] font-semibold text-slate-500 backdrop-blur-sm">
-                  <strong className="text-primary">{landing.heroPill}</strong>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="border-b border-slate-200 bg-slate-50/80 px-6 py-5 md:px-8">
-            <div className="grid gap-px overflow-hidden rounded-[16px] border border-slate-300 bg-slate-200 md:grid-cols-5">
-              {landing.stats.map((stat) => (
-                <div key={`${landing.routeKey}-band-${stat.label}`} className="bg-slate-50 px-5 py-4">
-                  <div className="text-[26px] font-black tracking-[-0.04em] text-slate-950">
-                    {stat.value}
-                  </div>
-                  <div className="mt-1 text-[9px] font-bold uppercase tracking-[0.16em] text-slate-400">
-                    {stat.label}
-                  </div>
-                </div>
-              ))}
             </div>
           </section>
 
@@ -2531,38 +2532,6 @@ export default function DataViewer() {
             <div className="min-w-0 p-6 md:p-8">
               <div ref={landingTopRef} className="scroll-mt-32" />
               <div className="space-y-9">
-                <section className="rounded-[22px] border border-slate-200 bg-slate-50/70 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.05)]">
-                  <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-                    <div className="max-w-2xl">
-                      <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
-                        Search library
-                      </div>
-                      <h2 className="mt-2 text-[18px] font-extrabold tracking-[-0.03em] text-slate-950">
-                        Search real {category.label.toLowerCase()} datasets
-                      </h2>
-                      <p className="mt-1 text-sm leading-6 text-slate-500">
-                        Search by dataset, task, or brand and jump straight into the live folder structure.
-                      </p>
-                    </div>
-                    <CompactPathSearch
-                      value={pathSearchText}
-                      loading={pathSearchLoading}
-                      suggestions={pathSuggestions}
-                      placeholder={`Search ${category.label.toLowerCase()} datasets...`}
-                      submitDisabled={pathSuggestions.length === 0}
-                      className="max-w-none xl:w-[640px]"
-                      onFocus={() => setPathSearchTouched(true)}
-                      onChange={(value) => {
-                        setPathSearchTouched(true);
-                        setPathSearchText(value);
-                      }}
-                      onSubmit={handlePathSearchSubmit}
-                      onSuggestionClick={handlePathSuggestionClick}
-                      renderHighlightedPath={renderHighlightedPath}
-                    />
-                  </div>
-                </section>
-
                 {resolvedCategorySections.map((section) => (
                   <section
                     key={`${landing.routeKey}-${section.id}`}

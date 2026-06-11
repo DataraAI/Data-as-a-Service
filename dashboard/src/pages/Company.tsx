@@ -68,7 +68,11 @@ export default function Company() {
 
       <main className="pt-[88px]">
         <section className="mx-auto max-w-[1300px] border-b border-slate-200 px-4 py-16 sm:px-6">
-          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">Company</div>
+          <div className="flex items-center gap-4 text-[18px] font-extrabold uppercase tracking-[0.18em] text-primary sm:text-xl">
+            <span className="h-px w-12 bg-primary/45" />
+            Company
+            <span className="h-px w-12 bg-primary/45" />
+          </div>
           <h1 className="mt-4 text-[clamp(36px,4vw,52px)] font-black leading-[1.08] tracking-[-0.06em] text-slate-950">
             Built by PhysicalAI
             <br />

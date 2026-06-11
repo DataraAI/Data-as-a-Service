@@ -7,7 +7,6 @@ import { buildAuthPath } from "@/lib/authLinks";
 import { frontPageImageUrl } from "@/lib/datasetFolderCover";
 
 type StepCard = {
-  step: string;
   title: string;
   description: string;
   accent: "blue" | "teal" | "amber";
@@ -42,7 +41,6 @@ const STATS = [
 
 const PROCESS_STEPS: StepCard[] = [
   {
-    step: "Step 01 · Capture",
     title: "Exocentric Footage",
     description:
       "External, third-person footage from any fixed camera — overhead, wall-mounted, or stationary.",
@@ -50,14 +48,12 @@ const PROCESS_STEPS: StepCard[] = [
     icon: "capture",
   },
   {
-    step: "Step 02",
     title: "RoboAnnotator Engine",
     description: "Scene reconstruction & view synthesis.",
     accent: "teal",
     icon: "engine",
   },
   {
-    step: "Step 03 · Training Data",
     title: "Egocentric Datasets",
     description: "Robot's-eye perspective — labeled, multi-angle, ready for model training.",
     accent: "amber",
@@ -362,11 +358,10 @@ function StepCardView({ step }: { step: StepCard }) {
         : "border-amber-300 bg-amber-100 dark:border-amber-800 dark:bg-amber-950/50";
 
   return (
-    <div className={`flex-1 rounded-[12px] border px-[22px] py-5 ${classes}`}>
+    <div className={`flex min-h-[176px] flex-1 flex-col rounded-[12px] border px-[22px] py-5 ${classes}`}>
       <div className={`mb-3 grid h-9 w-9 place-items-center rounded-[8px] border ${iconClasses}`}>
         <StepIcon type={step.icon} />
       </div>
-      <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.12em]">{step.step}</p>
       <p className="mb-2 text-[16px] font-extrabold text-slate-950 dark:text-slate-100">{step.title}</p>
       <p className="text-[11px] leading-6 text-slate-500 dark:text-slate-400">{step.description}</p>
     </div>
@@ -596,7 +591,7 @@ export default function RoboEyeView() {
 
               <section className="mb-10 rounded-[14px] border border-slate-200 bg-slate-50/80 px-8 py-7 dark:border-slate-800 dark:bg-slate-900/60">
                 <p className="mb-6 text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-400">How It Works</p>
-                <div className="lg:flex lg:items-center">
+                <div className="lg:flex lg:items-stretch">
                   <StepCardView step={PROCESS_STEPS[0]} />
                   <FlowArrow />
                   <StepCardView step={PROCESS_STEPS[1]} />

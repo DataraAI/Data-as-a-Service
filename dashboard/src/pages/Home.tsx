@@ -329,6 +329,16 @@ function MetricRow({ metrics }: { metrics: SolutionCard["metrics"] }) {
   );
 }
 
+function HomeSectionLabel({ children }: { children: string }) {
+  return (
+    <div className="flex items-center justify-center gap-4 text-[18px] font-extrabold uppercase tracking-[0.18em] text-primary sm:text-xl">
+      <span className="h-px w-12 bg-primary/45" />
+      {children}
+      <span className="h-px w-12 bg-primary/45" />
+    </div>
+  );
+}
+
 export default function Home() {
   const location = useLocation();
   const productsRef = useRef<HTMLElement | null>(null);
@@ -402,9 +412,7 @@ export default function Home() {
         <section className="bg-slate-50/60 px-4 py-14 sm:px-6">
           <div className="mx-auto max-w-[1300px]">
             <div className="mb-10 text-center">
-              <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-2 text-[11px] font-extrabold uppercase tracking-[0.16em] text-slate-500 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
-                How It Works
-              </div>
+              <HomeSectionLabel>End-to-End</HomeSectionLabel>
               <h2 className="mt-4 text-[32px] font-black tracking-[-0.05em] text-slate-950">
                 From Factory Floor to Deployed Robot
               </h2>
@@ -445,10 +453,7 @@ export default function Home() {
         <section id="products" ref={productsRef} className="scroll-mt-[104px] bg-slate-50 px-4 py-16 sm:px-6">
           <div className="mx-auto max-w-[1300px]">
             <div className="mb-10 text-center">
-              <div className="inline-flex items-center gap-3 rounded-full border border-teal-200 bg-teal-50 px-8 py-3 text-xl font-extrabold uppercase tracking-[0.08em] text-primary">
-                <span className="h-2 w-2 rounded-full bg-primary" />
-                Products
-              </div>
+              <HomeSectionLabel>Products</HomeSectionLabel>
               <h2 className="mt-6 text-[36px] font-black tracking-[-0.05em] text-slate-950">
                 The Full Physical AI Data Stack
               </h2>
@@ -468,10 +473,7 @@ export default function Home() {
         <section id="solutions" ref={solutionsRef} className="scroll-mt-[104px] bg-white px-4 py-16 sm:px-6">
           <div className="mx-auto max-w-[1300px]">
             <div className="mb-10 text-center">
-              <div className="inline-flex items-center gap-3 rounded-full border border-teal-200 bg-teal-50 px-8 py-3 text-xl font-extrabold uppercase tracking-[0.08em] text-primary">
-                <span className="h-2 w-2 rounded-full bg-primary" />
-                Solutions
-              </div>
+              <HomeSectionLabel>Solutions</HomeSectionLabel>
               <h2 className="mt-6 text-[36px] font-black tracking-[-0.05em] text-slate-950">
                 Real-World Automation, Ready to Deploy
               </h2>
@@ -571,10 +573,7 @@ export default function Home() {
         <section id="customers" ref={customersRef} className="scroll-mt-[104px] border-y border-slate-200 bg-slate-50 px-4 py-16 sm:px-6">
           <div className="mx-auto max-w-[1300px]">
             <div className="text-center">
-              <div className="inline-flex items-center gap-3 rounded-full border border-blue-200 bg-blue-50 px-8 py-3 text-xl font-extrabold uppercase tracking-[0.08em] text-blue-700">
-                <span className="h-2 w-2 rounded-full bg-blue-700" />
-                Customers
-              </div>
+              <HomeSectionLabel>Customers</HomeSectionLabel>
               <h2 className="mt-6 text-[36px] font-black tracking-[-0.05em] text-slate-950">
                 Real Results in Production
               </h2>
