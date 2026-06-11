@@ -517,7 +517,7 @@ export default function RoboEyeView() {
                   <div className="grid h-9 w-9 place-items-center rounded-[9px] border border-teal-200 bg-teal-50 text-teal-700 dark:border-teal-900/50 dark:bg-teal-950/30 dark:text-teal-200">
                     <Eye className="h-4 w-4" />
                   </div>
-                  <h1 className="text-[30px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">
+                  <h1 className="marketing-display-title text-[30px] font-black tracking-[-0.005em] text-slate-950 dark:text-slate-100">
                     RoboAnnotator
                   </h1>
                   <span className="rounded-full border border-teal-200 bg-teal-50 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-teal-700 dark:border-teal-900/50 dark:bg-teal-950/30 dark:text-teal-200">

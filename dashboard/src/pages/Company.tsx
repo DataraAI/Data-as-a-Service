@@ -73,7 +73,7 @@ export default function Company() {
             Company
             <span className="h-px w-12 bg-primary/45" />
           </div>
-          <h1 className="mt-4 text-[clamp(36px,4vw,52px)] font-black leading-[1.08] tracking-[-0.06em] text-slate-950">
+          <h1 className="marketing-display-title mt-4 text-[clamp(36px,4vw,52px)] font-black leading-[1.08] tracking-[-0.03em] text-slate-950">
             Built by PhysicalAI
             <br />
             <span className="bg-gradient-to-r from-primary to-sky-600 bg-clip-text text-transparent">Veterans.</span>
@@ -195,7 +195,7 @@ export default function Company() {
 
         <section className="marketing-cta-shared px-4 py-16 text-center sm:px-6">
           <div className="mx-auto max-w-4xl">
-            <h2 className="text-[clamp(22px,2.5vw,32px)] font-extrabold tracking-[-0.04em] text-slate-950">
+            <h2 className="marketing-display-title text-[clamp(22px,2.5vw,32px)] font-extrabold tracking-[-0.015em] text-slate-950">
               Ready to close the Sim-to-Real gap?
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-[15px] leading-7 text-slate-600">

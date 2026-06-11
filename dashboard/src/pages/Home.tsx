@@ -267,7 +267,7 @@ function PipelineStepCard({ step }: { step: PipelineStep }) {
 
   return (
     <div className="relative flex flex-1 flex-col items-center overflow-hidden rounded-[20px] border border-slate-200 bg-white px-5 pb-7 pt-6 text-center shadow-[0_1px_6px_rgba(0,0,0,0.05)]">
-      <p className="mb-2 text-[15px] font-black tracking-[-0.02em] text-slate-950">{step.title}</p>
+      <p className="mb-2 text-[15px] font-black tracking-[-0.01em] text-slate-950">{step.title}</p>
       <span className={`mb-3 inline-flex rounded-md border px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.12em] ${accentClasses.badge}`}>
         {step.badge}
       </span>
@@ -291,7 +291,7 @@ function ProductTile({ card }: { card: ProductCard }) {
       <div className="mt-5 inline-flex self-center rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.14em] text-slate-600">
         {card.badge}
       </div>
-      <h3 className="mt-4 text-[28px] font-black tracking-[-0.05em] text-slate-950">{card.name}</h3>
+      <h3 className="mt-4 text-[28px] font-black tracking-[-0.035em] text-slate-950">{card.name}</h3>
       <p className="mt-3 text-[15px] leading-6 text-slate-500">{card.tagline}</p>
       <div className="mt-6 flex flex-col gap-2">
         {card.pills.map((pill) => (
@@ -374,7 +374,7 @@ export default function Home() {
               NVIDIA Inception Member - 2025
             </div>
 
-            <h1 className="mt-7 text-[clamp(38px,5.5vw,64px)] font-black leading-[1] tracking-[-0.08em] text-slate-950">
+            <h1 className="marketing-display-title mt-7 text-[clamp(38px,5.5vw,64px)] font-black leading-[1] tracking-[-0.045em] text-slate-950">
               The Sim-to-Real Gap
               <br />
               is <span className="bg-gradient-to-r from-primary to-blue-700 bg-clip-text text-transparent">Costing You.</span>
@@ -384,7 +384,7 @@ export default function Home() {
               Robots fail in production because training data does not match the real world.
             </p>
 
-            <div className="mt-16 text-[clamp(38px,5.5vw,64px)] font-black leading-[1] tracking-[-0.08em] text-slate-950 md:mt-20">
+            <div className="marketing-display-title mt-16 text-[clamp(38px,5.5vw,64px)] font-black leading-[1] tracking-[-0.045em] text-slate-950 md:mt-20">
               DataraAI <span className="text-primary">closes the gap.</span>
             </div>
             <p className="mx-auto mt-7 max-w-[560px] text-[17px] leading-[1.7] text-slate-500">
@@ -413,23 +413,12 @@ export default function Home() {
           <div className="mx-auto max-w-[1300px]">
             <div className="mb-10 text-center">
               <HomeSectionLabel>End-to-End</HomeSectionLabel>
-              <h2 className="mt-4 text-[32px] font-black tracking-[-0.05em] text-slate-950">
+              <h2 className="marketing-display-title mt-4 text-[32px] font-black tracking-[-0.02em] text-slate-950">
                 From Factory Floor to Deployed Robot
               </h2>
               <p className="mx-auto mt-3 max-w-[500px] text-[15px] leading-7 text-slate-500">
                 Real-world data powering every step — from factory floor to deployed robot.
               </p>
-            </div>
-
-            <div className="mb-3 hidden items-center gap-1.5 lg:flex">
-              <div className="h-2.5 w-2.5 shrink-0 rounded-full bg-teal-400 ring-2 ring-teal-100" />
-              <div className="relative flex h-6 flex-1 items-center">
-                <div className="absolute inset-x-0 top-1/2 h-[2px] -translate-y-1/2 rounded-full bg-gradient-to-r from-teal-400 via-violet-400 to-emerald-400" />
-                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full border border-teal-200/80 bg-white px-4 py-1 text-[10px] font-extrabold uppercase tracking-[0.16em] text-teal-700 shadow-sm">
-                  DataraAI End-to-End
-                </div>
-              </div>
-              <div className="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-400 ring-2 ring-emerald-100" />
             </div>
 
             <div className="flex flex-col gap-3 lg:flex-row lg:items-stretch">
@@ -454,7 +443,7 @@ export default function Home() {
           <div className="mx-auto max-w-[1300px]">
             <div className="mb-10 text-center">
               <HomeSectionLabel>Products</HomeSectionLabel>
-              <h2 className="mt-6 text-[36px] font-black tracking-[-0.05em] text-slate-950">
+              <h2 className="marketing-display-title mt-6 text-[36px] font-black tracking-[-0.02em] text-slate-950">
                 The Full Physical AI Data Stack
               </h2>
               <p className="mx-auto mt-3 max-w-[480px] text-[15px] leading-7 text-slate-500">
@@ -474,7 +463,7 @@ export default function Home() {
           <div className="mx-auto max-w-[1300px]">
             <div className="mb-10 text-center">
               <HomeSectionLabel>Solutions</HomeSectionLabel>
-              <h2 className="mt-6 text-[36px] font-black tracking-[-0.05em] text-slate-950">
+              <h2 className="marketing-display-title mt-6 text-[36px] font-black tracking-[-0.02em] text-slate-950">
                 Real-World Automation, Ready to Deploy
               </h2>
               <p className="mx-auto mt-3 max-w-[480px] text-[15px] leading-7 text-slate-500">
@@ -497,7 +486,7 @@ export default function Home() {
                     </div>
                     <div className="grid gap-8 xl:grid-cols-2">
                       <div>
-                        <h3 className="text-[38px] font-black leading-[1.08] tracking-[-0.05em] text-slate-950">
+                        <h3 className="marketing-display-title text-[38px] font-black leading-[1.08] tracking-[-0.02em] text-slate-950">
                           {card.title}
                         </h3>
                       </div>
@@ -551,7 +540,7 @@ export default function Home() {
                   <div className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-primary">
                     From Use Case to Production
                   </div>
-                  <h3 className="mt-4 text-[32px] font-black tracking-[-0.05em] text-slate-950">
+                  <h3 className="marketing-display-title mt-4 text-[32px] font-black tracking-[-0.02em] text-slate-950">
                     How We Work With Data Centers
                   </h3>
                   <p className="mx-auto mt-3 max-w-[560px] text-[15px] leading-7 text-slate-500">
@@ -574,7 +563,7 @@ export default function Home() {
           <div className="mx-auto max-w-[1300px]">
             <div className="text-center">
               <HomeSectionLabel>Customers</HomeSectionLabel>
-              <h2 className="mt-6 text-[36px] font-black tracking-[-0.05em] text-slate-950">
+              <h2 className="marketing-display-title mt-6 text-[36px] font-black tracking-[-0.02em] text-slate-950">
                 Real Results in Production
               </h2>
               <p className="mx-auto mt-3 max-w-[480px] text-[15px] leading-7 text-slate-500">
@@ -614,7 +603,7 @@ export default function Home() {
 
         <section className="marketing-cta-shared px-4 py-16 text-center sm:px-6">
           <div className="mx-auto max-w-4xl">
-            <h2 className="text-[clamp(24px,2.8vw,36px)] font-black tracking-[-0.04em] text-slate-950">
+            <h2 className="marketing-display-title text-[clamp(24px,2.8vw,36px)] font-black tracking-[-0.015em] text-slate-950">
               Ready to close the Sim-to-Real gap?
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-slate-600">

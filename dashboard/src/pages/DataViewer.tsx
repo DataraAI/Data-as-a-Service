@@ -2233,7 +2233,7 @@ export default function DataViewer() {
           <div className="min-w-0 p-6 md:p-8">
             <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-6">
               <div>
-                <h1 className="text-[24px] font-extrabold tracking-[-0.03em] text-slate-950">
+                <h1 className="marketing-display-title text-[24px] font-extrabold tracking-[-0.005em] text-slate-950">
                   RoboDataHub
                 </h1>
                 <p className="mt-1 text-[13px] text-slate-500">
@@ -2324,7 +2324,7 @@ export default function DataViewer() {
               <section className="rounded-[20px] border border-primary/15 bg-[linear-gradient(135deg,rgba(13,148,136,0.05),rgba(29,78,216,0.03))] p-8">
                 <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
                   <div className="max-w-3xl">
-                    <h2 className="text-2xl font-black tracking-[-0.03em] text-slate-950">
+                    <h2 className="marketing-display-title text-2xl font-black tracking-[-0.005em] text-slate-950">
                       Request a Custom Dataset
                     </h2>
                     <p className="mt-3 text-sm leading-7 text-slate-600">
@@ -2384,7 +2384,7 @@ export default function DataViewer() {
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(13,148,136,0.06),transparent_52%),radial-gradient(ellipse_at_bottom_left,rgba(15,23,42,0.03),transparent_46%)]" />
             <div className="relative p-6 md:p-8">
               <div className="mx-auto max-w-4xl text-center">
-                <h1 className="text-[clamp(2rem,4vw,3.25rem)] font-black tracking-[-0.055em] text-slate-950">
+                <h1 className="marketing-display-title text-[clamp(2rem,4vw,3.25rem)] font-black tracking-[-0.025em] text-slate-950">
                   {landing.heroTitle}
                 </h1>
 
@@ -2573,7 +2573,7 @@ export default function DataViewer() {
                 <section className="rounded-[20px] border border-primary/15 bg-[linear-gradient(128deg,rgba(13,148,136,0.05),rgba(15,23,42,0.02)_55%,transparent)] p-8">
                   <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
                     <div className="max-w-3xl">
-                      <h2 className="text-[28px] font-black tracking-[-0.04em] text-slate-950">
+                  <h2 className="marketing-display-title text-[28px] font-black tracking-[-0.015em] text-slate-950">
                         {landing.ctaTitle}
                       </h2>
                       <p className="mt-3 text-sm leading-7 text-slate-600">
