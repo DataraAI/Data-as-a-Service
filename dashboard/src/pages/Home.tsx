@@ -266,12 +266,12 @@ function PipelineStepCard({ step }: { step: PipelineStep }) {
   }[step.accent];
 
   return (
-    <div className="relative flex flex-1 flex-col items-center overflow-hidden rounded-[20px] border border-slate-200 bg-white px-5 pb-7 pt-6 text-center shadow-[0_1px_6px_rgba(0,0,0,0.05)]">
-      <p className="mb-2 text-[15px] font-black tracking-[-0.01em] text-slate-950">{step.title}</p>
+    <div className="relative flex flex-1 flex-col items-center overflow-hidden rounded-[20px] border border-slate-200 bg-white px-5 pb-7 pt-6 text-center shadow-[0_1px_6px_rgba(0,0,0,0.05)] dark:border-white/7 dark:bg-[rgba(13,16,20,0.82)] dark:shadow-[0_18px_44px_rgba(0,0,0,0.24)]">
+      <p className="mb-2 text-[15px] font-black tracking-[-0.01em] text-slate-950 dark:text-slate-100">{step.title}</p>
       <span className={`mb-3 inline-flex rounded-md border px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.12em] ${accentClasses.badge}`}>
         {step.badge}
       </span>
-      <p className="text-[12px] leading-5 text-slate-500">{step.description}</p>
+      <p className="text-[12px] leading-5 text-slate-500 dark:text-slate-400">{step.description}</p>
       <div className={`absolute bottom-0 left-0 h-[4px] w-full ${accentClasses.bar}`} />
     </div>
   );
@@ -291,7 +291,9 @@ function ProductTile({ card }: { card: ProductCard }) {
       <div className="mt-5 inline-flex self-center rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.14em] text-slate-600">
         {card.badge}
       </div>
-      <h3 className="mt-4 text-[28px] font-black tracking-[-0.035em] text-slate-950">{card.name}</h3>
+      <h3 className="mx-auto mt-4 max-w-full whitespace-nowrap text-center text-[24px] font-black tracking-[-0.05em] text-slate-950">
+        {card.name}
+      </h3>
       <p className="mt-3 text-[15px] leading-6 text-slate-500">{card.tagline}</p>
       <div className="mt-6 divide-y divide-slate-200 border-y border-slate-200 text-left">
         {card.pills.map((pill) => (
@@ -406,14 +408,14 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="bg-slate-50/60 px-4 py-14 sm:px-6">
+        <section className="bg-slate-50/60 px-4 py-14 dark:bg-slate-950/45 sm:px-6">
           <div className="mx-auto max-w-[1300px]">
             <div className="mb-10 text-center">
               <HomeSectionLabel>End-to-End</HomeSectionLabel>
               <h2 className="marketing-display-title mt-4 text-[32px] font-black tracking-[-0.02em] text-slate-950">
                 From Factory Floor to Deployed Robot
               </h2>
-              <p className="mx-auto mt-3 max-w-[650px] text-[15px] leading-7 text-slate-500">
+              <p className="mx-auto mt-3 max-w-[650px] text-[15px] leading-7 text-slate-500 dark:text-slate-400">
                 Real factory data is transformed into simulation-ready environments, used to train robot policies at scale, then transferred back to physical robots for production deployment.
               </p>
             </div>

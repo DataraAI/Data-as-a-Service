@@ -63,13 +63,11 @@ function ProductMenu({
   activeProductKey,
   align = "start",
   onNavigate,
-  onViewAllClick,
   triggerClassName,
 }: {
   activeProductKey: string | null;
   align?: "start" | "end";
   onNavigate?: () => void;
-  onViewAllClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
   triggerClassName: string;
 }) {
   return (
@@ -127,20 +125,6 @@ function ProductMenu({
             </DropdownMenuItem>
           );
         })}
-
-        <DropdownMenuSeparator className="my-1 bg-slate-200" />
-
-        <DropdownMenuItem asChild className="cursor-pointer rounded-xl px-3 py-2.5 font-semibold text-slate-600">
-          <Link
-            to="/#products"
-            onClick={(event) => {
-              onNavigate?.();
-              onViewAllClick?.(event);
-            }}
-          >
-            View all products
-          </Link>
-        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -166,7 +150,6 @@ function AccountMenu({
   hasPrivateData: boolean | null;
 }) {
   const { isApproved, user, logout } = useAuth();
-  const { isDarkMode, toggleTheme } = useAppTheme();
   const privateDataAvailable = isApproved && hasPrivateData !== false;
   const roleLabel = isApproved ? user?.role ?? "customer" : "pending approval";
 
@@ -221,14 +204,6 @@ function AccountMenu({
             No private data yet
           </DropdownMenuItem>
         )}
-
-        <DropdownMenuItem
-          className="cursor-pointer rounded-xl px-3 py-2.5 font-semibold text-slate-600"
-          onSelect={toggleTheme}
-        >
-          {isDarkMode ? <Sun className="mr-3 h-4 w-4 text-primary" /> : <Moon className="mr-3 h-4 w-4 text-primary" />}
-          {isDarkMode ? "Light mode" : "Dark mode"}
-        </DropdownMenuItem>
 
         <DropdownMenuSeparator className="my-1 bg-slate-200" />
 
@@ -400,9 +375,11 @@ export default function Navigation() {
               <div className="truncate font-sans-tech text-lg font-extrabold tracking-[0.04em] text-primary">
                 DataraAI
               </div>
-              <div className="truncate text-[11px] font-medium text-slate-500">
-                {isMarketingPage ? "Data-as-a-Service" : "Back to Home"}
-              </div>
+              {!isMarketingPage ? (
+                <div className="truncate text-[11px] font-medium text-slate-500">
+                  Back to Home
+                </div>
+              ) : null}
             </div>
           </Link>
 
@@ -431,11 +408,10 @@ export default function Navigation() {
                           {item.subtitle}
                         </span>
                       </Link>
-                      <div className="flex items-center pr-2">
+                      <div className="flex items-stretch py-1.5 pr-2">
                         <ProductMenu
                           activeProductKey={activeProductKey}
-                          onViewAllClick={(event) => handleGlobalNavClick(event, "/#products")}
-                          triggerClassName="h-8 w-8 rounded-full text-current hover:bg-white/80 hover:text-primary data-[state=open]:bg-white data-[state=open]:text-primary"
+                          triggerClassName="h-full min-h-[52px] w-10 rounded-[14px] text-current hover:bg-white/80 hover:text-primary data-[state=open]:bg-white data-[state=open]:text-primary"
                         />
                       </div>
                       <span
@@ -478,21 +454,21 @@ export default function Navigation() {
           </div>
 
           <div className="relative z-10 hidden items-center gap-3 min-[1120px]:flex">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-10 w-10 rounded-full border border-slate-200 bg-white text-slate-500 shadow-[0_10px_20px_rgba(15,23,42,0.04)] hover:border-primary/30 hover:text-primary"
+              onClick={toggleTheme}
+              aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+              title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+            >
+              {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
             {isAuthenticated ? (
               <AccountMenu canManageUsers={canManageUsers} hasPrivateData={hasPrivateData} />
             ) : (
               <>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-10 w-10 rounded-full border border-slate-200 bg-white text-slate-500 shadow-[0_10px_20px_rgba(15,23,42,0.04)] hover:border-primary/30 hover:text-primary"
-                  onClick={toggleTheme}
-                  aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
-                  title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
-                >
-                  {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                </Button>
                 <Link
                   to={loginHref}
                   className="inline-flex h-10 items-center justify-center rounded-full border border-slate-200 px-5 text-sm font-semibold text-slate-500 transition-colors hover:border-primary/30 hover:text-primary"
@@ -510,20 +486,21 @@ export default function Navigation() {
           </div>
 
           <div className="flex items-center gap-2 min-[1120px]:hidden">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-11 w-11 rounded-2xl border border-slate-200 bg-white text-slate-500 shadow-[0_10px_20px_rgba(15,23,42,0.04)] hover:text-primary"
+              onClick={toggleTheme}
+              aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+              title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+            >
+              {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
             {isAuthenticated ? (
               <AccountMenu canManageUsers={canManageUsers} hasPrivateData={hasPrivateData} />
             ) : (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-11 w-11 rounded-2xl border border-slate-200 bg-white text-slate-500 shadow-[0_10px_20px_rgba(15,23,42,0.04)] hover:text-primary"
-                onClick={toggleTheme}
-                aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
-                title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
-              >
-                {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              </Button>
+              null
             )}
 
             <Button
@@ -568,13 +545,12 @@ export default function Navigation() {
                           {item.subtitle}
                         </div>
                       </Link>
-                      <div className="flex items-center border-l border-current/10 px-2">
+                      <div className="flex items-stretch border-l border-current/10 px-2 py-1">
                         <ProductMenu
                           activeProductKey={activeProductKey}
                           align="end"
                           onNavigate={() => setIsMenuOpen(false)}
-                          onViewAllClick={(event) => handleGlobalNavClick(event, "/#products")}
-                          triggerClassName="h-9 w-9 rounded-full text-current hover:bg-white/80 hover:text-primary data-[state=open]:bg-white data-[state=open]:text-primary"
+                          triggerClassName="h-full min-h-[48px] w-10 rounded-[14px] text-current hover:bg-white/80 hover:text-primary data-[state=open]:bg-white data-[state=open]:text-primary"
                         />
                       </div>
                     </div>

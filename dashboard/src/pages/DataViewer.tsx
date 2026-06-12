@@ -20,7 +20,6 @@ import {
   Database,
   Folder,
   Loader2,
-  LockKeyhole,
   MoreVertical,
   RefreshCw,
   Search,
@@ -2632,19 +2631,6 @@ export default function DataViewer() {
               </Link>
               <Breadcrumbs />
             </div>
-          </div>
-          <div className="ml-auto flex items-center gap-4 font-sans-tech text-[11px] font-medium text-slate-500 sm:ml-0 sm:gap-6 sm:text-xs">
-            {isAuthenticated && isApproved ? (
-              <span className="flex items-center gap-2 text-primary">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
-                Live Connection
-              </span>
-            ) : (
-              <span className="flex items-center gap-2">
-                <LockKeyhole className="h-3.5 w-3.5" />
-                Signed out
-              </span>
-            )}
           </div>
         </div>
 
