@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, Eye, Sparkles } from "lucide-react";
+import { ChevronDown, Eye, Sparkles, X } from "lucide-react";
 import FooterSection from "@/components/FooterSection";
 import Navigation from "@/components/Navigation";
 import sourceFrontGrilleVideo from "@/assets/Products/RoboAnnotator/v2v/input/source-front-grille.mp4";
@@ -46,6 +46,11 @@ type VideoAsset = {
 type ImageAsset = {
   src: string;
   caption: string;
+};
+
+type ExpandedImage = {
+  src: string;
+  alt: string;
 };
 
 type ExoToEgoExample = {
@@ -369,27 +374,24 @@ function InlineEngineCard({ detail }: { detail: string }) {
   );
 }
 
-function HorizontalEngineBridge({ detail }: { detail: string }) {
+function I2IPipe({ detail }: { detail: string }) {
   return (
     <>
       <InlineEngineCard detail={detail} />
       <div className="hidden h-full items-center justify-center xl:flex">
-        <div className="flex items-center">
-          <div className="flex items-center">
-            <div className="h-[2px] w-10 rounded-[2px] bg-gradient-to-r from-blue-700 to-teal-600" />
-            <div className="h-0 w-0 border-y-[7px] border-y-transparent border-l-[11px] border-l-teal-600" />
-          </div>
-          <div className="mx-3 w-[118px] rounded-[16px] border border-teal-200 bg-gradient-to-br from-teal-50 via-white to-blue-50 px-3 py-4 text-center shadow-[0_12px_28px_rgba(13,148,136,0.08)] dark:border-slate-700 dark:bg-slate-900">
-            <div className="mx-auto mb-2 grid h-9 w-9 place-items-center rounded-[10px] border border-teal-200 bg-teal-100 text-teal-700 dark:border-white/20 dark:bg-white/10 dark:text-teal-200">
+        <div className="mx-1 flex w-[118px] flex-col items-center">
+          <div className="mb-2 h-6 w-px bg-slate-200 dark:bg-slate-700" />
+          <div className="w-full rounded-[16px] border-[1.5px] border-teal-300 bg-white px-3 py-4 text-center shadow-[0_12px_28px_rgba(13,148,136,0.08)] dark:border-teal-800/60 dark:bg-slate-900">
+            <div className="mx-auto mb-2 grid h-9 w-9 place-items-center rounded-[10px] border border-teal-300 bg-teal-100 text-teal-700 dark:border-teal-800 dark:bg-teal-950/50 dark:text-teal-200">
               <Sparkles className="h-4 w-4" />
             </div>
             <p className="text-[9px] font-black uppercase tracking-[0.14em] text-teal-700 dark:text-teal-200">RoboAnnotator</p>
             <p className="mt-1 text-[11px] font-extrabold text-slate-950 dark:text-slate-100">{detail}</p>
           </div>
-          <div className="flex items-center">
-            <div className="h-[2px] w-10 rounded-[2px] bg-gradient-to-r from-blue-700 to-teal-600" />
-            <div className="h-0 w-0 border-y-[7px] border-y-transparent border-l-[11px] border-l-teal-600" />
-          </div>
+          <div className="my-2 h-6 w-px bg-slate-200 dark:bg-slate-700" />
+          <svg width="10" height="14" viewBox="0 0 10 14" fill="none" className="text-teal-600 dark:text-teal-300">
+            <path d="M1 1l8 6-8 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
         </div>
       </div>
     </>
@@ -398,36 +400,46 @@ function HorizontalEngineBridge({ detail }: { detail: string }) {
 
 function ImagePreviewTile({
   asset,
-  aspectClass = "aspect-[4/3]",
+  onOpen,
 }: {
   asset: ImageAsset;
-  aspectClass?: string;
+  onOpen: (image: ExpandedImage) => void;
 }) {
   return (
-    <div className={`overflow-hidden ${aspectClass}`}>
-      <img src={asset.src} alt={asset.caption} className="h-full w-full object-contain" loading="lazy" decoding="async" />
-    </div>
+    <button
+      type="button"
+      onClick={() => onOpen({ src: asset.src, alt: asset.caption })}
+      className="block w-full cursor-zoom-in overflow-hidden rounded-[10px] transition-transform duration-200 hover:scale-[1.01] focus:outline-none focus:ring-2 focus:ring-teal-500/60"
+    >
+      <img
+        src={asset.src}
+        alt={asset.caption}
+        className="block h-auto w-full rounded-[10px]"
+        loading="lazy"
+        decoding="async"
+      />
+    </button>
   );
 }
 
 function ImageMosaic({
   items,
   columns,
-  aspectClass = "aspect-[4/3]",
+  onOpen,
 }: {
   items: ImageAsset[];
   columns: 1 | 2;
-  aspectClass?: string;
+  onOpen: (image: ExpandedImage) => void;
 }) {
   const gridClass = columns === 1 ? "grid-cols-1" : "grid-cols-2";
 
   return (
-    <div className={`grid gap-3 ${gridClass}`}>
+    <div className={`grid gap-1 ${gridClass}`}>
       {items.map((item, index) => {
         const spanClass = columns === 2 && items.length === 3 && index === 2 ? "sm:col-span-2" : "";
         return (
           <div key={`${item.caption}-${index}`} className={spanClass}>
-            <ImagePreviewTile asset={item} aspectClass={aspectClass} />
+            <ImagePreviewTile asset={item} onOpen={onOpen} />
           </div>
         );
       })}
@@ -450,6 +462,7 @@ function I2IRow({
   outputAspectClass = "aspect-[5/4]",
   inputNote,
   outputNote,
+  onImageOpen,
 }: {
   eyebrow: string;
   title: string;
@@ -465,6 +478,7 @@ function I2IRow({
   outputAspectClass?: string;
   inputNote?: string;
   outputNote?: string;
+  onImageOpen: (image: ExpandedImage) => void;
 }) {
   return (
     <div className="rounded-[16px] border border-slate-200/80 bg-slate-50/70 p-5 dark:border-slate-700 dark:bg-slate-900/50">
@@ -472,20 +486,74 @@ function I2IRow({
       <p className="mt-2 text-[19px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">{title}</p>
       <p className="mt-2 max-w-[760px] text-[13px] leading-7 text-slate-500 dark:text-slate-400">{description}</p>
 
-      <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,0.96fr)_146px_minmax(0,1.14fr)] xl:items-center">
+      <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,0.98fr)_118px_minmax(0,1.12fr)] xl:items-center">
         <div>
-          <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-blue-700 dark:text-blue-200">{inputTitle}</p>
-          <ImageMosaic items={inputItems} columns={inputColumns} aspectClass={inputAspectClass} />
+          <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-blue-700 dark:text-blue-200">{inputTitle}</p>
+          <ImageMosaic items={inputItems} columns={inputColumns} onOpen={onImageOpen} />
           {inputNote ? <p className="mt-3 text-[12px] font-semibold leading-6 text-slate-500 dark:text-slate-400">{inputNote}</p> : null}
         </div>
 
-        <HorizontalEngineBridge detail={engineDetail} />
+        <I2IPipe detail={engineDetail} />
 
         <div>
-          <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-teal-700 dark:text-teal-200">{outputTitle}</p>
-          <ImageMosaic items={outputItems} columns={outputColumns} aspectClass={outputAspectClass} />
+          <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-teal-700 dark:text-teal-200">{outputTitle}</p>
+          <ImageMosaic items={outputItems} columns={outputColumns} onOpen={onImageOpen} />
           {outputNote ? <p className="mt-3 text-[12px] font-semibold leading-6 text-slate-500 dark:text-slate-400">{outputNote}</p> : null}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function ImageLightbox({
+  image,
+  onClose,
+}: {
+  image: ExpandedImage | null;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    if (!image) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [image, onClose]);
+
+  if (!image) {
+    return null;
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/88 px-4 py-6 backdrop-blur-sm"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Expanded image preview"
+    >
+      <button
+        type="button"
+        onClick={onClose}
+        className="absolute right-4 top-4 grid h-11 w-11 place-items-center rounded-full border border-white/20 bg-white/10 text-white transition-colors hover:bg-white/18 focus:outline-none focus:ring-2 focus:ring-white/60"
+        aria-label="Close image preview"
+      >
+        <X className="h-5 w-5" />
+      </button>
+
+      <div className="max-h-full max-w-[min(96vw,1400px)]" onClick={(event) => event.stopPropagation()}>
+        <img src={image.src} alt={image.alt} className="max-h-[88vh] w-auto max-w-full rounded-[16px] object-contain shadow-[0_18px_50px_rgba(0,0,0,0.35)]" />
       </div>
     </div>
   );
@@ -542,6 +610,8 @@ function VideoPreviewTile({ asset, aspectClass = "aspect-[16/9]" }: { asset: Vid
 }
 
 export default function RoboEyeView() {
+  const [expandedImage, setExpandedImage] = useState<ExpandedImage | null>(null);
+
   return (
     <div className="min-h-screen bg-white text-slate-950 dark:bg-slate-950 dark:text-slate-100">
       <Navigation />
@@ -602,15 +672,16 @@ export default function RoboEyeView() {
                       engineDetail={example.engineDetail}
                       inputTitle="EXO Source"
                       outputTitle="Generated EGO Views"
-                      inputItems={[example.input]}
-                      outputItems={example.outputs}
-                      inputColumns={1}
-                      outputColumns={2}
-                      inputAspectClass="aspect-[5/4]"
-                      outputAspectClass="aspect-[5/4]"
-                    />
-                  ))}
-                </div>
+                    inputItems={[example.input]}
+                    outputItems={example.outputs}
+                    inputColumns={1}
+                    outputColumns={2}
+                    inputAspectClass="aspect-[5/4]"
+                    outputAspectClass="aspect-[5/4]"
+                    onImageOpen={setExpandedImage}
+                  />
+                ))}
+              </div>
               </div>
 
               <div className="rounded-[18px] border border-slate-200 bg-white p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700 dark:bg-slate-900">
@@ -634,6 +705,7 @@ export default function RoboEyeView() {
                     inputAspectClass="aspect-[5/4]"
                     outputAspectClass="aspect-[5/4]"
                     outputNote='Prompts shown: "Add fire in front of car" and "Add oil leak under vehicle."'
+                    onImageOpen={setExpandedImage}
                   />
                 </div>
               </div>
@@ -658,6 +730,7 @@ export default function RoboEyeView() {
                     outputColumns={2}
                     inputAspectClass="aspect-square"
                     outputAspectClass="aspect-square"
+                    onImageOpen={setExpandedImage}
                   />
                 </div>
               </div>
@@ -719,6 +792,8 @@ export default function RoboEyeView() {
           </div>
         </div>
       </main>
+
+      <ImageLightbox image={expandedImage} onClose={() => setExpandedImage(null)} />
 
       <FooterSection />
     </div>
