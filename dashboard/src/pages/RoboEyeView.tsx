@@ -1,10 +1,34 @@
-import type { ReactNode } from "react";
-import { Eye, Sparkles } from "lucide-react";
-import { Link } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { ChevronDown, Eye, Sparkles } from "lucide-react";
 import FooterSection from "@/components/FooterSection";
 import Navigation from "@/components/Navigation";
-import { buildAuthPath } from "@/lib/authLinks";
-import { frontPageImageUrl } from "@/lib/datasetFolderCover";
+import sourceFrontGrilleVideo from "@/assets/Products/RoboAnnotator/v2v/input/source-front-grille.mp4";
+import sourceFrontGrillePoster from "@/assets/Products/RoboAnnotator/v2v/input/source-front-grille-poster.jpg";
+import frontGrilleLeftVideo from "@/assets/Products/RoboAnnotator/v2v/newangles/front-grille-left.mp4";
+import frontGrilleLeftPoster from "@/assets/Products/RoboAnnotator/v2v/newangles/front-grille-left-poster.jpg";
+import frontGrilleUpVideo from "@/assets/Products/RoboAnnotator/v2v/newangles/front-grille-up.mp4";
+import frontGrilleUpPoster from "@/assets/Products/RoboAnnotator/v2v/newangles/front-grille-up-poster.jpg";
+import occlusionRemovedVideo from "@/assets/Products/RoboAnnotator/v2v/occl_removal/occlusion-removed.mp4";
+import occlusionRemovedPoster from "@/assets/Products/RoboAnnotator/v2v/occl_removal/occlusion-removed-poster.jpg";
+import exoCarAutomation from "@/assets/Products/RoboAnnotator/i2i/exo2ego/2exo_carautomation.png";
+import egoCarAutomationFront from "@/assets/Products/RoboAnnotator/i2i/exo2ego/2ego_carautomation.png";
+import egoCarAutomationSide from "@/assets/Products/RoboAnnotator/i2i/exo2ego/2ego_carautomation1.png";
+import egoCarAutomationLow from "@/assets/Products/RoboAnnotator/i2i/exo2ego/2ego_carautomation2.png";
+import exoServerRack from "@/assets/Products/RoboAnnotator/i2i/exo2ego/2exo_serverrack.png";
+import egoServerRackFront from "@/assets/Products/RoboAnnotator/i2i/exo2ego/2ego_serverrack.png";
+import egoServerRackOverhead from "@/assets/Products/RoboAnnotator/i2i/exo2ego/2ego_serverrack1.png";
+import egoServerRackSide from "@/assets/Products/RoboAnnotator/i2i/exo2ego/2ego_serverrack2.png";
+import cornerCaseInput from "@/assets/Products/RoboAnnotator/i2i/cornercase/input.png";
+import cornerCaseFire from "@/assets/Products/RoboAnnotator/i2i/cornercase/fireoutput.png";
+import cornerCaseOil from "@/assets/Products/RoboAnnotator/i2i/cornercase/oilleak.png";
+import maskInput000 from "@/assets/Products/RoboAnnotator/i2i/maskseg/000.png";
+import maskInput103 from "@/assets/Products/RoboAnnotator/i2i/maskseg/103.png";
+import maskInput206 from "@/assets/Products/RoboAnnotator/i2i/maskseg/206.png";
+import maskInput310 from "@/assets/Products/RoboAnnotator/i2i/maskseg/310.png";
+import maskOutput000 from "@/assets/Products/RoboAnnotator/i2i/maskseg/000mask.png";
+import maskOutput103 from "@/assets/Products/RoboAnnotator/i2i/maskseg/103mask.png";
+import maskOutput206 from "@/assets/Products/RoboAnnotator/i2i/maskseg/206mask.png";
+import maskOutput309 from "@/assets/Products/RoboAnnotator/i2i/maskseg/309mask.png";
 
 type StepCard = {
   title: string;
@@ -13,301 +37,160 @@ type StepCard = {
   icon: "capture" | "engine" | "training";
 };
 
-type TransformCard = {
-  title: string;
-  description: string;
-  availability: "In Library" | "On-demand";
-  sourceImage: string;
-  engineDetail: string;
-  outputs: { image: string; label: string }[];
-  tags: { label: string; tone: "teal" | "blue" | "purple" }[];
-  hours: string;
+type VideoAsset = {
+  videoSrc: string;
+  posterSrc: string;
+  caption: string;
 };
 
-type ShowcaseSection = {
-  id: string;
+type ImageAsset = {
+  src: string;
+  caption: string;
+};
+
+type ExoToEgoExample = {
   title: string;
-  summary: string;
-  accent: "blue" | "teal" | "purple";
-  cards: TransformCard[];
+  description: string;
+  engineDetail: string;
+  input: ImageAsset;
+  outputs: ImageAsset[];
 };
 
 const STATS = [
-  { value: "7", label: "Datasets" },
-  { value: "6,770+", label: "EGO Hours" },
-  { value: "4", label: "Verticals" },
-  { value: "Patented", label: "EXO → EGO Pipeline", featured: true },
+  { value: "6", label: "Datasets" },
+  { value: "5,570", label: "Hours" },
+  { value: "3", label: "Verticals" },
+  { value: "Patented", label: "EXO -> EGO Pipeline", featured: true },
 ];
 
 const PROCESS_STEPS: StepCard[] = [
   {
-    title: "Exocentric Footage",
+    title: "Input Media",
     description:
-      "External, third-person footage from any fixed camera — overhead, wall-mounted, or stationary.",
+      "Source images and source video provide the real-world task context, geometry, and scene state.",
     accent: "blue",
     icon: "capture",
   },
   {
     title: "RoboAnnotator Engine",
-    description: "Scene reconstruction & view synthesis.",
+    description: "A unified generation pipeline for viewpoint synthesis, segmentation, and scene editing.",
     accent: "teal",
     icon: "engine",
   },
   {
-    title: "Egocentric Datasets",
-    description: "Robot's-eye perspective — labeled, multi-angle, ready for model training.",
+    title: "Generated Outputs",
+    description: "Training-ready image and video outputs that expose the exact transformation applied.",
     accent: "amber",
     icon: "training",
   },
 ];
 
-const SHOWCASE_SECTIONS: ShowcaseSection[] = [
+const EXO_TO_EGO_EXAMPLES: ExoToEgoExample[] = [
   {
-    id: "dc",
-    title: "Data Center",
-    summary: "2 datasets · 2,040 hrs",
-    accent: "blue",
-    cards: [
-      {
-        title: "Server Rack Hardware Swap",
-        description:
-          "Two-technician swap — external surveillance capture → 3 synthesized EGO views",
-        availability: "In Library",
-        sourceImage: "serverrack/exo_serverrack.png",
-        engineDetail: "View Synthesis",
-        outputs: [
-          { image: "serverrack/ego_serverrack.png", label: "Front" },
-          { image: "serverrack/ego_serverrack1.png", label: "Overhead" },
-          { image: "serverrack/2ego_serverrack.png", label: "Side" },
-          { image: "serverrack/2ego_serverrack.png", label: "Low Angle" },
-        ],
-        tags: [
-          { label: "Scene Reconstruction", tone: "teal" },
-          { label: "Depth Estimation", tone: "teal" },
-          { label: "Multi-angle Synthesis", tone: "blue" },
-        ],
-        hours: "1,200 hrs EGO output",
-      },
-      {
-        title: "Server Rack Inspection",
-        description:
-          "Single technician inspection — EXO Data → 3 synthesized robot viewpoints",
-        availability: "In Library",
-        sourceImage: "serverrack/2exo_serverrack.png",
-        engineDetail: "View Synthesis",
-        outputs: [
-          { image: "serverrack/2ego_serverrack1.png", label: "Front" },
-          { image: "serverrack/2ego_serverrack2.png", label: "Overhead" },
-          { image: "serverrack/serverrack5.png", label: "Side" },
-          { image: "serverrack/serverrack5.png", label: "Low Angle" },
-        ],
-        tags: [
-          { label: "Scene Reconstruction", tone: "teal" },
-          { label: "Depth Estimation", tone: "teal" },
-          { label: "Multi-angle Synthesis", tone: "blue" },
-        ],
-        hours: "840 hrs EGO output",
-      },
+    title: "Automotive Assembly",
+    description:
+      "Third-person automotive assembly footage transformed into multiple robot-perspective viewpoints for downstream manipulation training.",
+    engineDetail: "View Synthesis",
+    input: {
+      src: exoCarAutomation,
+      caption: "Automotive EXO source",
+    },
+    outputs: [
+      { src: egoCarAutomationFront, caption: "Front robot view" },
+      { src: egoCarAutomationSide, caption: "Side robot view" },
+      { src: egoCarAutomationLow, caption: "Low-angle robot view" },
     ],
   },
   {
-    id: "wh",
-    title: "Warehouse",
-    summary: "1 dataset · 1,200 hrs",
-    accent: "teal",
-    cards: [
-      {
-        title: "Warehouse Inspection",
-        description:
-          "Wide-angle EXO of warehouse floor operations → synthesized robot-perspective EGO views",
-        availability: "In Library",
-        sourceImage: "warehouse/warehouseinspection.png",
-        engineDetail: "View Synthesis",
-        outputs: [
-          { image: "warehouse/warehouseinspection.png", label: "Front" },
-          { image: "warehouse/warehouseinspection.png", label: "Overhead" },
-          { image: "warehouse/warehouseinspection.png", label: "Side" },
-          { image: "warehouse/warehouseinspection.png", label: "Low Angle" },
-        ],
-        tags: [
-          { label: "Scene Reconstruction", tone: "teal" },
-          { label: "Depth Estimation", tone: "teal" },
-          { label: "Multi-angle Synthesis", tone: "blue" },
-        ],
-        hours: "1,200 hrs EGO output",
-      },
-    ],
-  },
-  {
-    id: "hu",
-    title: "Dexterity",
-    summary: "3 datasets · 1,430 hrs",
-    accent: "teal",
-    cards: [
-      {
-        title: "Kitchen Drawer Manipulation",
-        description:
-          "Full-body EXO of trash bag handling → synthesized robot hand-level EGO view",
-        availability: "On-demand",
-        sourceImage: "humanoid/kitchendrawer.png",
-        engineDetail: "Hand Tracking",
-        outputs: [
-          { image: "humanoid/kitchendrawer.png", label: "Robot Hand-level" },
-          { image: "humanoid/kitchendrawer.png", label: "Side" },
-          { image: "humanoid/kitchendrawer.png", label: "Overhead" },
-          { image: "humanoid/kitchendrawer.png", label: "Low Angle" },
-        ],
-        tags: [
-          { label: "Hand Pose Tracking", tone: "teal" },
-          { label: "Wrist-level Synthesis", tone: "teal" },
-          { label: "Grasp Points", tone: "purple" },
-        ],
-        hours: "380 hrs EGO output",
-      },
-      {
-        title: "Surface Cleaning — Stovetop",
-        description:
-          "Full-body cleaning task EXO → 2 robot-perspective EGO views at different proximities",
-        availability: "In Library",
-        sourceImage: "humanoid/stovetop.png",
-        engineDetail: "Motion Synthesis",
-        outputs: [
-          { image: "humanoid/stovetop.png", label: "Mid-range" },
-          { image: "humanoid/stovetop.png", label: "Close-up" },
-          { image: "humanoid/stovetop.png", label: "Overhead" },
-          { image: "humanoid/stovetop.png", label: "Low Angle" },
-        ],
-        tags: [
-          { label: "Hand Pose Tracking", tone: "teal" },
-          { label: "Surface Segmentation", tone: "teal" },
-          { label: "Multi-distance Views", tone: "blue" },
-        ],
-        hours: "450 hrs EGO output",
-      },
-      {
-        title: "Dishwashing — Sink Manipulation",
-        description:
-          "Wide kitchen scene EXO → synthesized close-up EGO at hand manipulation level",
-        availability: "On-demand",
-        sourceImage: "humanoid/dishwashing.png",
-        engineDetail: "Grasp Synthesis",
-        outputs: [
-          { image: "humanoid/dishwashing.png", label: "Hand-level Grasp" },
-          { image: "humanoid/dishwashing.png", label: "Side" },
-          { image: "humanoid/dishwashing.png", label: "Overhead" },
-          { image: "humanoid/dishwashing.png", label: "Low Angle" },
-        ],
-        tags: [
-          { label: "Grasp Keypoints", tone: "teal" },
-          { label: "Wet Object Handling", tone: "teal" },
-          { label: "Edge Conditions", tone: "purple" },
-        ],
-        hours: "600 hrs EGO output",
-      },
-    ],
-  },
-  {
-    id: "au",
-    title: "Automotive",
-    summary: "1 dataset · 2,100 hrs",
-    accent: "purple",
-    cards: [
-      {
-        title: "BMW Grille Assembly — Production Line",
-        description:
-          "Side-view EXO of assembly worker → 4 synthesized robot viewpoints including rotation and low-angle",
-        availability: "In Library",
-        sourceImage: "carAutomation/exo_carautomation.png",
-        engineDetail: "4 Viewpoints",
-        outputs: [
-          { image: "carAutomation/ego_carautomation.png", label: "Front" },
-          { image: "carAutomation/ego_carautomation1.png", label: "Rotate Left" },
-          { image: "carAutomation/carAutomation.png", label: "Low Angle" },
-          { image: "carAutomation/carAutomation1.png", label: "Studio" },
-        ],
-        tags: [
-          { label: "Scene Reconstruction", tone: "teal" },
-          { label: "Rotation Synthesis", tone: "teal" },
-          { label: "Low-angle Views", tone: "purple" },
-          { label: "4 Viewpoints", tone: "blue" },
-        ],
-        hours: "2,100 hrs EGO output",
-      },
+    title: "Data Center Servicing",
+    description:
+      "Server rack service capture converted from a fixed external viewpoint into robot-ready inspection perspectives.",
+    engineDetail: "Robot Perspective Generation",
+    input: {
+      src: exoServerRack,
+      caption: "Server rack EXO source",
+    },
+    outputs: [
+      { src: egoServerRackFront, caption: "Front inspection view" },
+      { src: egoServerRackOverhead, caption: "Overhead inspection view" },
+      { src: egoServerRackSide, caption: "Side inspection view" },
     ],
   },
 ];
 
-function surfaceImage(path: string) {
-  return frontPageImageUrl(path);
-}
+const CORNER_CASE_INPUT: ImageAsset = {
+  src: cornerCaseInput,
+  caption: "Original driving scene",
+};
 
-function SurfaceImage({
-  path,
-  alt,
-  className,
-}: {
-  path: string;
-  alt: string;
-  className?: string;
-}) {
-  const src = surfaceImage(path);
+const CORNER_CASE_OUTPUTS: ImageAsset[] = [
+  {
+    src: cornerCaseFire,
+    caption: 'Prompt: "Add fire in front of car"',
+  },
+  {
+    src: cornerCaseOil,
+    caption: 'Prompt: "Add oil leak under vehicle"',
+  },
+];
 
-  if (!src) {
-    return (
-      <div
-        className={`flex items-center justify-center bg-slate-100 text-sm text-slate-400 dark:bg-slate-900 dark:text-slate-500 ${className ?? ""}`}
-      >
-        Image unavailable
-      </div>
-    );
-  }
+const MASK_SEGMENTATION_INPUTS: ImageAsset[] = [
+  { src: maskInput000, caption: "Frame 000" },
+  { src: maskInput103, caption: "Frame 103" },
+  { src: maskInput206, caption: "Frame 206" },
+  { src: maskInput310, caption: "Frame 310" },
+];
 
-  return <img src={src} alt={alt} className={className} loading="lazy" decoding="async" />;
-}
+const MASK_SEGMENTATION_OUTPUTS: ImageAsset[] = [
+  { src: maskOutput000, caption: "Mask 000" },
+  { src: maskOutput103, caption: "Mask 103" },
+  { src: maskOutput206, caption: "Mask 206" },
+  { src: maskOutput309, caption: "Mask 309" },
+];
 
-function Badge({
-  tone,
-  children,
-}: {
-  tone: "teal" | "blue" | "purple";
-  children: ReactNode;
-}) {
-  const classes =
-    tone === "teal"
-      ? "border-teal-200 bg-teal-50 text-teal-700 dark:border-teal-900/50 dark:bg-teal-950/40 dark:text-teal-200"
-      : tone === "blue"
-        ? "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-200"
-        : "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900/50 dark:bg-violet-950/40 dark:text-violet-200";
-
-  return (
-    <span
-      className={`rounded-[4px] border px-2 py-1 text-[10px] font-bold tracking-[0.08em] ${classes}`}
-    >
-      {children}
-    </span>
-  );
-}
+const VIDEO_OUTPUTS = {
+  input: {
+    videoSrc: sourceFrontGrilleVideo,
+    posterSrc: sourceFrontGrillePoster,
+    caption: "Original source clip",
+  },
+  occlusionRemoval: {
+    videoSrc: occlusionRemovedVideo,
+    posterSrc: occlusionRemovedPoster,
+    caption: "Occlusion removed output",
+  },
+  newAngleLeft: {
+    videoSrc: frontGrilleLeftVideo,
+    posterSrc: frontGrilleLeftPoster,
+    caption: "Generated left view",
+  },
+  newAngleUp: {
+    videoSrc: frontGrilleUpVideo,
+    posterSrc: frontGrilleUpPoster,
+    caption: "Generated upper view",
+  },
+} satisfies Record<string, VideoAsset>;
 
 function StatStrip() {
   return (
-    <div className="grid gap-px overflow-hidden rounded-[10px] border border-slate-200 bg-slate-200 sm:grid-cols-2 xl:grid-cols-4 dark:border-slate-700 dark:bg-slate-700">
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {STATS.map((stat) => (
         <div
-          key={stat.label}
-          className={`bg-white px-5 py-4 text-center shadow-[0_1px_3px_rgba(0,0,0,0.04)] dark:bg-slate-900 ${
-            "featured" in stat && stat.featured
-              ? "border-0 bg-teal-50 dark:bg-teal-950/20"
-              : ""
+          key={`${stat.value}-${stat.label}`}
+          className={`rounded-[14px] border px-5 py-4 ${
+            stat.featured
+              ? "border-teal-200 bg-gradient-to-br from-teal-50 to-blue-50 dark:border-teal-900/50 dark:from-teal-950/20 dark:to-blue-950/20"
+              : "border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
           }`}
         >
           <p
-            className={`font-black tracking-[-0.04em] text-teal-600 dark:text-teal-300 ${
-              "featured" in stat && stat.featured ? "text-[18px]" : "text-[28px]"
+            className={`text-[22px] font-black tracking-[-0.03em] ${
+              stat.featured ? "text-teal-700 dark:text-teal-200" : "text-slate-950 dark:text-slate-100"
             }`}
           >
             {stat.value}
           </p>
-          <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+          <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
             {stat.label}
           </p>
         </div>
@@ -319,10 +202,9 @@ function StatStrip() {
 function StepIcon({ type }: { type: StepCard["icon"] }) {
   if (type === "capture") {
     return (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-        <rect x="2" y="3" width="20" height="14" rx="2" />
-        <line x1="8" y1="21" x2="16" y2="21" />
-        <line x1="12" y1="17" x2="12" y2="21" />
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
+        <rect x="3" y="5" width="18" height="14" rx="2.5" />
+        <circle cx="12" cy="12" r="3.5" />
       </svg>
     );
   }
@@ -386,121 +268,276 @@ function SectionHeader({
 }: {
   title: string;
   summary: string;
-  accent: ShowcaseSection["accent"];
+  accent: "blue" | "teal" | "purple";
 }) {
-  const dot =
-    accent === "blue" ? "bg-blue-700" : accent === "teal" ? "bg-teal-600" : "bg-violet-600";
-  const line =
-    accent === "blue"
-      ? "from-blue-200"
-      : accent === "teal"
-        ? "from-teal-200"
-        : "from-violet-200";
+  const dot = accent === "blue" ? "bg-blue-700" : accent === "teal" ? "bg-teal-600" : "bg-violet-600";
+  const line = accent === "blue" ? "from-blue-200" : accent === "teal" ? "from-teal-200" : "from-violet-200";
 
   return (
-    <div className="mb-4 flex items-center gap-1">
-      <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 dark:border-slate-700 dark:bg-slate-900">
+    <div className="mb-4 flex items-center gap-2">
+      <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-3 transition-all duration-200 group-hover:scale-[1.02] group-hover:border-slate-300 group-hover:bg-slate-50 group-hover:shadow-[0_10px_28px_rgba(15,23,42,0.08)] dark:border-slate-700 dark:bg-slate-900 dark:group-hover:border-slate-600 dark:group-hover:bg-slate-900/90 dark:group-hover:shadow-[0_10px_28px_rgba(15,23,42,0.22)]">
         <span className={`h-2 w-2 rounded-[2px] ${dot}`} />
         <span className="text-[14px] font-extrabold text-slate-950 dark:text-slate-100">{title}</span>
         <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">{summary}</span>
       </div>
-      <div className={`h-px flex-1 bg-gradient-to-r ${line} to-transparent`} />
+      <div className={`h-px flex-1 bg-gradient-to-r ${line} to-transparent transition-all duration-200 group-hover:opacity-100 group-hover:from-slate-300 dark:group-hover:from-slate-500`} />
     </div>
   );
 }
 
-function AvailabilityPill({ value }: { value: TransformCard["availability"] }) {
+function CollapsibleSection({
+  title,
+  summary,
+  accent,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  summary: string;
+  accent: "blue" | "teal" | "purple";
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+
   return (
-    <span
-      className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.08em] ${
-        value === "In Library"
-          ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-200 dark:ring-emerald-900/50"
-          : "bg-amber-50 text-amber-700 ring-1 ring-amber-200 dark:bg-amber-950/30 dark:text-amber-200 dark:ring-amber-900/50"
-      }`}
-    >
-      {value}
-    </span>
+    <section className="flex flex-col gap-5">
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        aria-expanded={open}
+        className="group flex w-full items-center gap-3 rounded-[18px] p-2 text-left transition-colors"
+      >
+        <div className="min-w-0 flex-1">
+          <SectionHeader title={title} summary={summary} accent={accent} />
+        </div>
+        <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-slate-600 transition-all duration-200 group-hover:scale-105 group-hover:border-slate-300 group-hover:bg-slate-50 group-hover:text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:group-hover:border-slate-600 dark:group-hover:bg-slate-900/90 dark:group-hover:text-slate-100">
+          <ChevronDown className={`h-5 w-5 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+        </div>
+      </button>
+
+      {open ? children : null}
+    </section>
   );
 }
 
-function Pipe({ detail }: { detail: string }) {
+function VerticalFlowArrow() {
   return (
-    <div className="hidden items-center lg:flex">
-      <div className="mx-4 flex w-[110px] flex-col items-center">
-        <div className="mb-2 h-6 w-px bg-slate-200 dark:bg-slate-700" />
-        <div className="w-full rounded-[16px] border-[1.5px] border-teal-300 bg-white px-2 py-4 text-center shadow-[0_8px_20px_rgba(13,148,136,0.06)] dark:border-teal-800/60 dark:bg-slate-900">
-          <div className="mx-auto mb-2 grid h-10 w-10 place-items-center rounded-[10px] border border-teal-300 bg-teal-100 text-teal-700 dark:border-teal-800 dark:bg-teal-950/50 dark:text-teal-200">
-            <Sparkles className="h-4 w-4" />
-          </div>
-          <p className="mb-0.5 text-[8px] font-extrabold uppercase tracking-[0.05em] text-teal-700 dark:text-teal-200">
-            RoboAnnotator
-          </p>
-          <p className="mb-1 text-[12px] font-extrabold text-slate-950 dark:text-slate-100">Engine</p>
-          <p className="text-[8px] text-slate-500 dark:text-slate-400">{detail}</p>
-        </div>
-        <div className="my-2 h-6 w-px bg-slate-200 dark:bg-slate-700" />
-        <svg width="10" height="14" viewBox="0 0 10 14" fill="none" className="text-teal-600">
-          <path d="M1 1l8 6-8 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
+    <div className="flex justify-center py-1">
+      <div className="flex flex-col items-center">
+        <div className="h-14 w-[2px] rounded-[2px] bg-gradient-to-b from-blue-700 to-teal-600 dark:from-blue-300 dark:to-teal-300" />
+        <div className="h-0 w-0 border-x-[7px] border-x-transparent border-t-[11px] border-t-teal-600 dark:border-t-teal-300" />
       </div>
     </div>
   );
 }
 
-function TransformCardView({ card }: { card: TransformCard }) {
+function EngineBlock({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
   return (
-    <article className="rounded-[14px] border border-slate-200 bg-white px-6 py-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700 dark:bg-slate-900">
-      <div className="mb-[14px] flex items-start justify-between gap-4">
+    <div className="rounded-[18px] border border-teal-200 bg-gradient-to-br from-teal-50 via-white to-blue-50 px-6 py-6 text-slate-950 shadow-[0_20px_50px_rgba(13,148,136,0.12)] dark:border-slate-700 dark:bg-[radial-gradient(circle_at_top,_rgba(13,148,136,0.18),_transparent_48%),linear-gradient(180deg,#0f172a_0%,#111827_100%)] dark:text-white dark:shadow-[0_20px_50px_rgba(15,23,42,0.2)]">
+      <div className="mb-4 flex items-center gap-3">
+        <div className="grid h-11 w-11 place-items-center rounded-[12px] border border-teal-200 bg-teal-100 text-teal-700 dark:border-white/20 dark:bg-white/10 dark:text-teal-200">
+          <Sparkles className="h-5 w-5" />
+        </div>
         <div>
-          <p className="mb-0.5 text-[14px] font-bold text-slate-950 dark:text-slate-100">{card.title}</p>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400">{card.description}</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-teal-700 dark:text-teal-200">RoboAnnotator</p>
+          <p className="text-[18px] font-black tracking-[-0.03em]">{title}</p>
         </div>
-        <AvailabilityPill value={card.availability} />
       </div>
+      <p className="max-w-[540px] text-[13px] leading-6 text-slate-600 dark:text-slate-300">{description}</p>
+    </div>
+  );
+}
 
-      <div className="items-center lg:flex">
-        <div className="w-full shrink-0 lg:w-[200px]">
-          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-blue-700 dark:text-blue-200">EXO Source</p>
-          <div className="relative overflow-hidden rounded-[12px] bg-slate-100 dark:bg-slate-800">
-            <SurfaceImage path={card.sourceImage} alt={`${card.title} EXO`} className="h-[176px] w-full object-cover" />
-            <span className="absolute left-2 top-2 rounded-[4px] bg-blue-700 px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-white">
-              EXO
-            </span>
+function InlineEngineCard({ detail }: { detail: string }) {
+  return (
+    <div className="flex justify-center xl:hidden">
+      <div className="rounded-[14px] border border-teal-200 bg-gradient-to-br from-teal-50 via-white to-blue-50 px-5 py-4 text-center shadow-[0_10px_25px_rgba(13,148,136,0.08)] dark:border-slate-700 dark:bg-slate-900">
+        <div className="mx-auto mb-2 grid h-9 w-9 place-items-center rounded-[10px] border border-teal-200 bg-teal-100 text-teal-700 dark:border-white/20 dark:bg-white/10 dark:text-teal-200">
+          <Sparkles className="h-4 w-4" />
+        </div>
+        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-teal-700 dark:text-teal-200">RoboAnnotator</p>
+        <p className="mt-1 text-[13px] font-extrabold text-slate-950 dark:text-slate-100">{detail}</p>
+      </div>
+    </div>
+  );
+}
+
+function HorizontalEngineBridge({ detail }: { detail: string }) {
+  return (
+    <>
+      <InlineEngineCard detail={detail} />
+      <div className="hidden h-full items-center justify-center xl:flex">
+        <div className="flex items-center">
+          <div className="flex items-center">
+            <div className="h-[2px] w-10 rounded-[2px] bg-gradient-to-r from-blue-700 to-teal-600" />
+            <div className="h-0 w-0 border-y-[7px] border-y-transparent border-l-[11px] border-l-teal-600" />
+          </div>
+          <div className="mx-3 w-[118px] rounded-[16px] border border-teal-200 bg-gradient-to-br from-teal-50 via-white to-blue-50 px-3 py-4 text-center shadow-[0_12px_28px_rgba(13,148,136,0.08)] dark:border-slate-700 dark:bg-slate-900">
+            <div className="mx-auto mb-2 grid h-9 w-9 place-items-center rounded-[10px] border border-teal-200 bg-teal-100 text-teal-700 dark:border-white/20 dark:bg-white/10 dark:text-teal-200">
+              <Sparkles className="h-4 w-4" />
+            </div>
+            <p className="text-[9px] font-black uppercase tracking-[0.14em] text-teal-700 dark:text-teal-200">RoboAnnotator</p>
+            <p className="mt-1 text-[11px] font-extrabold text-slate-950 dark:text-slate-100">{detail}</p>
+          </div>
+          <div className="flex items-center">
+            <div className="h-[2px] w-10 rounded-[2px] bg-gradient-to-r from-blue-700 to-teal-600" />
+            <div className="h-0 w-0 border-y-[7px] border-y-transparent border-l-[11px] border-l-teal-600" />
           </div>
         </div>
+      </div>
+    </>
+  );
+}
 
-        <Pipe detail={card.engineDetail} />
+function ImagePreviewTile({
+  asset,
+  aspectClass = "aspect-[4/3]",
+}: {
+  asset: ImageAsset;
+  aspectClass?: string;
+}) {
+  return (
+    <div className={`overflow-hidden ${aspectClass}`}>
+      <img src={asset.src} alt={asset.caption} className="h-full w-full object-contain" loading="lazy" decoding="async" />
+    </div>
+  );
+}
 
-        <div className="mt-4 flex-1 lg:mt-0">
-          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-amber-600 dark:text-amber-300">
-            Generated EGO Views
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            {card.outputs.map((output) => (
-              <div key={`${card.title}-${output.label}`} className="relative overflow-hidden rounded-[8px] bg-slate-100 dark:bg-slate-800">
-                <SurfaceImage
-                  path={output.image}
-                  alt={`${card.title} ${output.label}`}
-                  className="h-[84px] w-full object-cover sm:h-[96px]"
-                />
-                <span className="absolute left-1.5 top-1.5 rounded-[4px] bg-white/90 px-1.5 py-1 text-[8px] font-black uppercase tracking-[0.08em] text-slate-700 backdrop-blur dark:bg-slate-900/85 dark:text-slate-200">
-                  {output.label}
-                </span>
-              </div>
-            ))}
+function ImageMosaic({
+  items,
+  columns,
+  aspectClass = "aspect-[4/3]",
+}: {
+  items: ImageAsset[];
+  columns: 1 | 2;
+  aspectClass?: string;
+}) {
+  const gridClass = columns === 1 ? "grid-cols-1" : "grid-cols-2";
+
+  return (
+    <div className={`grid gap-3 ${gridClass}`}>
+      {items.map((item, index) => {
+        const spanClass = columns === 2 && items.length === 3 && index === 2 ? "sm:col-span-2" : "";
+        return (
+          <div key={`${item.caption}-${index}`} className={spanClass}>
+            <ImagePreviewTile asset={item} aspectClass={aspectClass} />
           </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function I2IRow({
+  eyebrow,
+  title,
+  description,
+  engineDetail,
+  inputTitle,
+  outputTitle,
+  inputItems,
+  outputItems,
+  inputColumns,
+  outputColumns,
+  inputAspectClass = "aspect-[5/4]",
+  outputAspectClass = "aspect-[5/4]",
+  inputNote,
+  outputNote,
+}: {
+  eyebrow: string;
+  title: string;
+  description: string;
+  engineDetail: string;
+  inputTitle: string;
+  outputTitle: string;
+  inputItems: ImageAsset[];
+  outputItems: ImageAsset[];
+  inputColumns: 1 | 2;
+  outputColumns: 1 | 2;
+  inputAspectClass?: string;
+  outputAspectClass?: string;
+  inputNote?: string;
+  outputNote?: string;
+}) {
+  return (
+    <div className="rounded-[16px] border border-slate-200/80 bg-slate-50/70 p-5 dark:border-slate-700 dark:bg-slate-900/50">
+      <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-400">{eyebrow}</p>
+      <p className="mt-2 text-[19px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">{title}</p>
+      <p className="mt-2 max-w-[760px] text-[13px] leading-7 text-slate-500 dark:text-slate-400">{description}</p>
+
+      <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,0.96fr)_146px_minmax(0,1.14fr)] xl:items-center">
+        <div>
+          <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-blue-700 dark:text-blue-200">{inputTitle}</p>
+          <ImageMosaic items={inputItems} columns={inputColumns} aspectClass={inputAspectClass} />
+          {inputNote ? <p className="mt-3 text-[12px] font-semibold leading-6 text-slate-500 dark:text-slate-400">{inputNote}</p> : null}
+        </div>
+
+        <HorizontalEngineBridge detail={engineDetail} />
+
+        <div>
+          <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-teal-700 dark:text-teal-200">{outputTitle}</p>
+          <ImageMosaic items={outputItems} columns={outputColumns} aspectClass={outputAspectClass} />
+          {outputNote ? <p className="mt-3 text-[12px] font-semibold leading-6 text-slate-500 dark:text-slate-400">{outputNote}</p> : null}
         </div>
       </div>
+    </div>
+  );
+}
 
-      <div className="mt-[14px] flex flex-wrap items-center gap-[6px] border-t border-slate-200 pt-3 dark:border-slate-700">
-        {card.tags.map((tag) => (
-          <Badge key={`${card.title}-${tag.label}`} tone={tag.tone}>
-            {tag.label}
-          </Badge>
-        ))}
-        <span className="ml-auto text-[12px] font-bold text-teal-700 dark:text-teal-200">{card.hours}</span>
-      </div>
-    </article>
+function VideoPreviewTile({ asset, aspectClass = "aspect-[16/9]" }: { asset: VideoAsset; aspectClass?: string }) {
+  const [hovered, setHovered] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (hovered) {
+      const playPromise = video.play();
+      if (playPromise) {
+        void playPromise.catch(() => {
+          // Ignore autoplay interruptions until the next hover.
+        });
+      }
+      return;
+    }
+
+    video.pause();
+    if (video.currentTime !== 0) {
+      video.currentTime = 0;
+    }
+  }, [hovered]);
+
+  return (
+    <div
+      className={`group relative overflow-hidden rounded-[14px] bg-slate-950 ${aspectClass}`}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <img
+        src={asset.posterSrc}
+        alt={asset.caption}
+        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${hovered ? "opacity-0" : "opacity-100"}`}
+      />
+      <video
+        ref={videoRef}
+        src={asset.videoSrc}
+        poster={asset.posterSrc}
+        muted
+        loop
+        playsInline
+        preload="metadata"
+        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${hovered ? "opacity-100" : "opacity-0"}`}
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/45 via-transparent to-transparent" />
+    </div>
   );
 }
 
@@ -512,91 +549,173 @@ export default function RoboEyeView() {
       <main className="pt-[88px]">
         <div className="mx-auto max-w-[1320px] bg-white px-4 py-9 sm:px-6 md:px-10 xl:px-12 dark:bg-slate-950">
           <div className="mx-auto max-w-[1280px]">
-              <section className="mb-6">
-                <div className="mb-2 flex flex-wrap items-center gap-3">
-                  <div className="grid h-9 w-9 place-items-center rounded-[9px] border border-teal-200 bg-teal-50 text-teal-700 dark:border-teal-900/50 dark:bg-teal-950/30 dark:text-teal-200">
-                    <Eye className="h-4 w-4" />
-                  </div>
-                  <h1 className="marketing-display-title text-[30px] font-black tracking-[-0.005em] text-slate-950 dark:text-slate-100">
-                    RoboAnnotator
-                  </h1>
-                  <span className="rounded-full border border-teal-200 bg-teal-50 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-teal-700 dark:border-teal-900/50 dark:bg-teal-950/30 dark:text-teal-200">
-                    Patented
-                  </span>
+            <section className="mb-6">
+              <div className="mb-2 flex flex-wrap items-center gap-3">
+                <div className="grid h-9 w-9 place-items-center rounded-[9px] border border-teal-200 bg-teal-50 text-teal-700 dark:border-teal-900/50 dark:bg-teal-950/30 dark:text-teal-200">
+                  <Eye className="h-4 w-4" />
                 </div>
-                <p className="mb-[14px] max-w-[640px] text-[15px] leading-8 text-slate-500 dark:text-slate-400">
-                  Patented pipeline that converts <span className="font-semibold text-blue-700 dark:text-blue-300">EXO</span> footage into{" "}
-                  <span className="font-semibold text-teal-700 dark:text-teal-300">EGO</span> datasets — labeled and ready for robot model training.
+                <h1 className="marketing-display-title text-[30px] font-black tracking-[-0.005em] text-slate-950 dark:text-slate-100">
+                  RoboAnnotator
+                </h1>
+                <span className="rounded-full border border-teal-200 bg-teal-50 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-teal-700 dark:border-teal-900/50 dark:bg-teal-950/30 dark:text-teal-200">
+                  Patented
+                </span>
+              </div>
+              <p className="max-w-[760px] text-[15px] leading-8 text-slate-500 dark:text-slate-400">
+                Patented image-to-image and video-to-video pipeline for robotics data generation.
+              </p>
+            </section>
+
+            <section className="mb-10">
+              <StatStrip />
+            </section>
+
+            <section className="mb-10 rounded-[14px] border border-slate-200 bg-slate-50/80 px-8 py-7 dark:border-slate-800 dark:bg-slate-900/60">
+              <p className="mb-6 text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-400">How It Works</p>
+              <div className="lg:flex lg:items-stretch">
+                <StepCardView step={PROCESS_STEPS[0]} />
+                <FlowArrow />
+                <StepCardView step={PROCESS_STEPS[1]} />
+                <FlowArrow />
+                <StepCardView step={PROCESS_STEPS[2]} />
+              </div>
+            </section>
+
+            <CollapsibleSection
+              title="Image-to-Image"
+              summary="Three generation workflows built from real product outputs"
+              accent="blue"
+            >
+              <div className="rounded-[18px] border border-slate-200 bg-white p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700 dark:bg-slate-900">
+                <p className="text-[24px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">EXO to EGO</p>
+                <p className="mt-3 max-w-[840px] text-[13px] leading-7 text-slate-500 dark:text-slate-400">
+                  Convert a single third-person scene capture into multiple robot-perspective views for inspection, manipulation, and control training.
                 </p>
-                <div className="flex flex-wrap gap-[10px]">
-                  <span className="rounded-[6px] border border-blue-200 bg-blue-50 px-[13px] py-[5px] text-[12px] font-semibold text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-200">
-                    <strong>EXO</strong> — Exocentric: external fixed-camera view of the workspace
-                  </span>
-                  <span className="rounded-[6px] border border-teal-200 bg-teal-50 px-[13px] py-[5px] text-[12px] font-semibold text-teal-700 dark:border-teal-900/50 dark:bg-teal-950/30 dark:text-teal-200">
-                    <strong>EGO</strong> — Egocentric: synthesized robot&apos;s-eye perspective for training
-                  </span>
+
+                <div className="mt-6 flex flex-col gap-5">
+                  {EXO_TO_EGO_EXAMPLES.map((example) => (
+                    <I2IRow
+                      key={example.title}
+                      eyebrow="Conversion Example"
+                      title={example.title}
+                      description={example.description}
+                      engineDetail={example.engineDetail}
+                      inputTitle="EXO Source"
+                      outputTitle="Generated EGO Views"
+                      inputItems={[example.input]}
+                      outputItems={example.outputs}
+                      inputColumns={1}
+                      outputColumns={2}
+                      inputAspectClass="aspect-[5/4]"
+                      outputAspectClass="aspect-[5/4]"
+                    />
+                  ))}
                 </div>
-              </section>
+              </div>
 
-              <section className="mb-10">
-                <StatStrip />
-              </section>
+              <div className="rounded-[18px] border border-slate-200 bg-white p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700 dark:bg-slate-900">
+                <p className="text-[24px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">Corner Case Generation</p>
+                <p className="mt-3 max-w-[840px] text-[13px] leading-7 text-slate-500 dark:text-slate-400">
+                  Starting from a single source frame, RoboAnnotator can synthesize multiple edge-case outcomes to expand coverage for rare but critical scenarios.
+                </p>
 
-              <section className="mb-10 rounded-[14px] border border-slate-200 bg-slate-50/80 px-8 py-7 dark:border-slate-800 dark:bg-slate-900/60">
-                <p className="mb-6 text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-400">How It Works</p>
-                <div className="lg:flex lg:items-stretch">
-                  <StepCardView step={PROCESS_STEPS[0]} />
-                  <FlowArrow />
-                  <StepCardView step={PROCESS_STEPS[1]} />
-                  <FlowArrow />
-                  <StepCardView step={PROCESS_STEPS[2]} />
+                <div className="mt-6">
+                  <I2IRow
+                    eyebrow="Prompt-Driven Editing"
+                    title="Synthetic Edge Cases"
+                    description="One base image becomes multiple generated safety scenarios with prompt-specific scene edits."
+                    engineDetail="Prompted Scene Editing"
+                    inputTitle="Source Frame"
+                    outputTitle="Generated Variants"
+                    inputItems={[CORNER_CASE_INPUT]}
+                    outputItems={CORNER_CASE_OUTPUTS}
+                    inputColumns={1}
+                    outputColumns={2}
+                    inputAspectClass="aspect-[5/4]"
+                    outputAspectClass="aspect-[5/4]"
+                    outputNote='Prompts shown: "Add fire in front of car" and "Add oil leak under vehicle."'
+                  />
                 </div>
-              </section>
+              </div>
 
-              <section className="flex flex-col gap-10">
-                {SHOWCASE_SECTIONS.map((section) => (
-                  <div key={section.id} id={section.id} className="scroll-mt-28">
-                    <SectionHeader title={section.title} summary={section.summary} accent={section.accent} />
-                    <div className="flex flex-col gap-4">
-                      {section.cards.map((card) => (
-                        <TransformCardView key={card.title} card={card} />
-                      ))}
-                    </div>
-                  </div>
-                ))}
+              <div className="rounded-[18px] border border-slate-200 bg-white p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700 dark:bg-slate-900">
+                <p className="text-[24px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">Mask Segmentation</p>
+                <p className="mt-3 max-w-[840px] text-[13px] leading-7 text-slate-500 dark:text-slate-400">
+                  Multi-frame segmentation outputs preserve the original scene context while isolating the exact regions needed for annotation and training workflows.
+                </p>
 
-                <div className="mt-1 flex flex-col justify-between gap-6 rounded-[14px] border-[1.5px] border-dashed border-teal-300 bg-gradient-to-br from-teal-50 to-blue-50 px-8 py-7 lg:flex-row lg:items-center dark:border-teal-900/50 dark:from-teal-950/20 dark:to-blue-950/20">
-                  <div className="flex items-center gap-4">
-                    <div className="grid h-11 w-11 shrink-0 place-items-center rounded-[11px] border border-teal-200 bg-teal-50 text-teal-700 dark:border-teal-900/50 dark:bg-teal-950/30 dark:text-teal-200">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="12" y1="5" x2="12" y2="19" />
-                        <line x1="5" y1="12" x2="19" y2="12" />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="mb-1 text-[15px] font-bold text-slate-950 dark:text-slate-100">
-                        Run RoboAnnotator on Your EXO Footage
-                      </p>
-                      <p className="max-w-[480px] text-[12px] leading-5 text-slate-500 dark:text-slate-400">
-                        Already have EXO footage? We&apos;ll synthesize robot-ready EGO datasets — egocentric robot-perspective viewpoints — across any task, environment, or robot form factor.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex shrink-0 flex-col items-start gap-2 lg:items-center">
-                    <div className="flex gap-[5px]">
-                      <Badge tone="blue">Data Center</Badge>
-                      <Badge tone="teal">Dexterity</Badge>
-                      <Badge tone="purple">Automotive</Badge>
-                    </div>
-                    <Link
-                      to={buildAuthPath("register", "/roboannotator")}
-                      className="inline-flex w-full items-center justify-center rounded-[8px] bg-teal-600 px-6 py-2.5 text-[13px] font-bold text-white transition-opacity hover:opacity-90"
-                    >
-                      Submit Your Footage
-                    </Link>
+                <div className="mt-6">
+                  <I2IRow
+                    eyebrow="Pixel-Level Output"
+                    title="Frame-to-Mask Conversion"
+                    description="Four representative source frames paired with four generated masks to show consistent segmentation behavior across the scene."
+                    engineDetail="Segmentation Pipeline"
+                    inputTitle="Input Frames"
+                    outputTitle="Generated Masks"
+                    inputItems={MASK_SEGMENTATION_INPUTS}
+                    outputItems={MASK_SEGMENTATION_OUTPUTS}
+                    inputColumns={2}
+                    outputColumns={2}
+                    inputAspectClass="aspect-square"
+                    outputAspectClass="aspect-square"
+                  />
+                </div>
+              </div>
+            </CollapsibleSection>
+
+            <CollapsibleSection
+              title="Video-to-Video"
+              summary="Input source video feeding multiple transformations"
+              accent="teal"
+            >
+              <div className="mx-auto w-full max-w-[680px] rounded-[18px] border border-slate-200 bg-white p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700 dark:bg-slate-900">
+                <div className="mb-4">
+                  <p className="text-[18px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">Input Video</p>
+                  <p className="mt-2 max-w-[560px] text-[13px] leading-7 text-slate-500 dark:text-slate-400">
+                    A single front grille source clip feeds the transformations below. Hover to preview the original input before it enters the generation pipeline.
+                  </p>
+                </div>
+                <div className="mx-auto max-w-[390px]">
+                  <VideoPreviewTile asset={VIDEO_OUTPUTS.input} />
+                </div>
+              </div>
+
+              <VerticalFlowArrow />
+
+              <div className="py-1">
+                <div className="mx-auto max-w-[880px]">
+                  <EngineBlock
+                    title="Video Transformation Engine"
+                    description="The same source sequence can be routed through different RoboAnnotator generation paths, producing cleaned footage and entirely new viewpoints without changing the underlying task context."
+                  />
+                </div>
+              </div>
+
+              <VerticalFlowArrow />
+
+              <div className="grid gap-4 lg:grid-cols-[minmax(0,1.22fr)_minmax(0,0.88fr)]">
+                <div className="rounded-[16px] border border-slate-200 bg-white p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700 dark:bg-slate-900">
+                  <p className="text-[22px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">New Angle Video Generation</p>
+                  <p className="mt-3 max-w-[560px] text-[13px] leading-7 text-slate-500 dark:text-slate-400">
+                    Generates multiple alternative perspectives from the same clip so one real capture can feed several robot-view training scenarios.
+                  </p>
+                  <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                    <VideoPreviewTile asset={VIDEO_OUTPUTS.newAngleLeft} />
+                    <VideoPreviewTile asset={VIDEO_OUTPUTS.newAngleUp} />
                   </div>
                 </div>
-              </section>
+
+                <div className="rounded-[16px] border border-slate-200 bg-white p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700 dark:bg-slate-900">
+                  <p className="text-[22px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">Occlusion Removal</p>
+                  <p className="mt-3 max-w-[420px] text-[13px] leading-7 text-slate-500 dark:text-slate-400">
+                    Removes foreground blockers while preserving the scene geometry and the underlying task action.
+                  </p>
+                  <div className="mt-5">
+                    <VideoPreviewTile asset={VIDEO_OUTPUTS.occlusionRemoval} />
+                  </div>
+                </div>
+              </div>
+            </CollapsibleSection>
           </div>
         </div>
       </main>
