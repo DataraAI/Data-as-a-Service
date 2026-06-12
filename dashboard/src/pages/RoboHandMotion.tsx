@@ -1,10 +1,16 @@
-import type { ReactNode } from "react";
-import { Hand } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Hand, Sparkles, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import FooterSection from "@/components/FooterSection";
 import Navigation from "@/components/Navigation";
 import { buildAuthPath } from "@/lib/authLinks";
-import { frontPageImageUrl } from "@/lib/datasetFolderCover";
+import handInputVideo from "@/assets/Products/RoboHandMotion/handinput.mp4";
+import handTrackingOutputVideo from "@/assets/Products/RoboHandMotion/handtrackingoutput.mp4";
+import frame390 from "@/assets/Products/RoboHandMotion/390.png";
+import leftHandMeshOne from "@/assets/Products/RoboHandMotion/left1.png";
+import leftHandMeshTwo from "@/assets/Products/RoboHandMotion/left2.png";
+import rightHandMeshOne from "@/assets/Products/RoboHandMotion/right1.png";
+import rightHandMeshTwo from "@/assets/Products/RoboHandMotion/right2.png";
 
 type StepCard = {
   title: string;
@@ -13,23 +19,20 @@ type StepCard = {
   icon: "capture" | "engine" | "training";
 };
 
-type TransformCard = {
-  title: string;
-  description: string;
-  availability: "In Library" | "On-demand";
-  sourceImage: string;
-  engineDetail: string;
-  outputs: { image: string; label: string }[];
-  tags: { label: string; tone: "purple" | "teal" | "orange" | "blue" }[];
-  hours: string;
+type VideoAsset = {
+  videoSrc: string;
+  posterSrc: string;
+  alt: string;
 };
 
-type GalleryCard = {
-  title: string;
-  description: string;
-  image: string;
-  tags: { label: string; tone: "purple" | "teal" | "orange" | "blue" }[];
-  hours: string;
+type ImageAsset = {
+  src: string;
+  alt: string;
+};
+
+type ExpandedImage = {
+  src: string;
+  alt: string;
 };
 
 const STATS = [
@@ -41,326 +44,71 @@ const STATS = [
 
 const PROCESS_STEPS: StepCard[] = [
   {
-    title: "Raw Video Footage",
+    title: "Input Video",
     description:
-      "Third-person footage of hand tasks: household, kitchen, or manipulation — any fixed or mobile camera.",
+      "Third-person task video captures the full hand motion sequence, object interactions, and scene context.",
     accent: "blue",
     icon: "capture",
   },
   {
     title: "RoboHandMotion Engine",
-    description: "Pose estimation, keypoint tracking & interaction labeling.",
+    description:
+      "Sequence tracking and per-frame reconstruction generate motion-aware hand outputs from real footage.",
     accent: "purple",
     icon: "engine",
   },
   {
-    title: "Labeled Motion Datasets",
+    title: "Tracking & 3D Mesh Outputs",
     description:
-      "Pose sequences, grasp annotations & tool trajectories — ready for dexterous robot model training.",
+      "Hover-ready tracked video plus frame-level left and right hand 3D meshes for downstream learning workflows.",
     accent: "orange",
     icon: "training",
   },
 ];
 
-const DEXTEROUS_DATASETS: TransformCard[] = [
-  {
-    title: "Kitchen Drawer Manipulation",
-    description: "Full-body EXO of trash bag handling → hand-level pose & grasp annotations",
-    availability: "On-demand",
-    sourceImage: "humanoid/kitchendrawer.png",
-    engineDetail: "Hand Tracking",
-    outputs: [
-      { image: "humanoid/kitchendrawer.png", label: "Wrist Pose" },
-      { image: "humanoid/kitchendrawer.png", label: "Finger Joints" },
-      { image: "humanoid/kitchendrawer.png", label: "Grasp Point" },
-      { image: "humanoid/kitchendrawer.png", label: "Motion Path" },
-    ],
-    tags: [
-      { label: "Hand Pose Tracking", tone: "purple" },
-      { label: "Wrist-level Annotations", tone: "purple" },
-      { label: "Grasp Points", tone: "orange" },
-    ],
-    hours: "380 hrs labeled",
+const VIDEO_SHOWCASE = {
+  input: {
+    videoSrc: handInputVideo,
+    posterSrc: frame390,
+    alt: "Source towel manipulation video",
   },
-  {
-    title: "Surface Cleaning — Stovetop",
-    description: "Full-body cleaning EXO → hand skeleton & contact zone annotations at varied proximities",
-    availability: "In Library",
-    sourceImage: "humanoid/stovetop.png",
-    engineDetail: "Motion Synthesis",
-    outputs: [
-      { image: "humanoid/stovetop.png", label: "Hand Path" },
-      { image: "humanoid/stovetop.png", label: "Contact Points" },
-      { image: "humanoid/stovetop.png", label: "Pose Sequence" },
-      { image: "humanoid/stovetop.png", label: "Close-up" },
-    ],
-    tags: [
-      { label: "Hand Pose Tracking", tone: "purple" },
-      { label: "Surface Segmentation", tone: "teal" },
-      { label: "Multi-distance Views", tone: "blue" },
-    ],
-    hours: "450 hrs labeled",
+  output: {
+    videoSrc: handTrackingOutputVideo,
+    posterSrc: frame390,
+    alt: "Hand tracking output video",
   },
-  {
-    title: "Dishwashing — Sink Manipulation",
-    description: "Wide kitchen scene EXO → grasp classification & wet object handling annotations",
-    availability: "On-demand",
-    sourceImage: "humanoid/dishwashing.png",
-    engineDetail: "Grasp Synthesis",
-    outputs: [
-      { image: "humanoid/dishwashing.png", label: "Grasp Type" },
-      { image: "humanoid/dishwashing.png", label: "Object State" },
-      { image: "humanoid/dishwashing.png", label: "Joint Angles" },
-      { image: "humanoid/dishwashing.png", label: "Motion Arc" },
-    ],
-    tags: [
-      { label: "Grasp Keypoints", tone: "purple" },
-      { label: "Wet Object Handling", tone: "teal" },
-      { label: "Edge Conditions", tone: "orange" },
-    ],
-    hours: "600 hrs labeled",
-  },
+} satisfies Record<string, VideoAsset>;
+
+const LEFT_HAND_MESHES: ImageAsset[] = [
+  { src: leftHandMeshOne, alt: "Left hand 3D mesh example one" },
+  { src: leftHandMeshTwo, alt: "Left hand 3D mesh example two" },
 ];
 
-const HOUSEHOLD_DATASETS: GalleryCard[] = [
-  {
-    title: "Surface & Floor Cleaning",
-    description: "Sweeping, scrubbing motions — 3 tool types",
-    image: "humanoid/stovetop.png",
-    tags: [
-      { label: "Arm Trajectory", tone: "purple" },
-      { label: "Tool Grip", tone: "teal" },
-    ],
-    hours: "280 hrs",
-  },
-  {
-    title: "Dishwasher Loading",
-    description: "Object placement, rack navigation, door operation",
-    image: "humanoid/dishawasherload.png",
-    tags: [
-      { label: "Bimanual Grasp", tone: "purple" },
-      { label: "Object Place", tone: "orange" },
-    ],
-    hours: "310 hrs",
-  },
-  {
-    title: "Hand Dish Washing",
-    description: "Scrub, rinse, transfer — wet object sequences",
-    image: "humanoid/dishwashing.png",
-    tags: [
-      { label: "Wet Grasp", tone: "purple" },
-      { label: "Force Est.", tone: "teal" },
-    ],
-    hours: "340 hrs",
-  },
-  {
-    title: "Trash Collection & Sorting",
-    description: "Pick, bag, and bin — varied object sizes & weights",
-    image: "humanoid/trash_1.png",
-    tags: [
-      { label: "Lift & Place", tone: "purple" },
-      { label: "Sort Logic", tone: "blue" },
-    ],
-    hours: "240 hrs",
-  },
-  {
-    title: "Laundry — Washer Operation",
-    description: "Load, sort, and transfer fabric items",
-    image: "humanoid/humanoid6.png",
-    tags: [
-      { label: "Deformable Obj.", tone: "purple" },
-      { label: "Bimanual", tone: "orange" },
-    ],
-    hours: "250 hrs",
-  },
-  {
-    title: "Laundry — Fold & Transfer",
-    description: "Garment folding, hang, and drawer placement",
-    image: "humanoid/laundryfold.png",
-    tags: [
-      { label: "Deformable Obj.", tone: "purple" },
-      { label: "Bimanual", tone: "orange" },
-    ],
-    hours: "250 hrs",
-  },
+const RIGHT_HAND_MESHES: ImageAsset[] = [
+  { src: rightHandMeshOne, alt: "Right hand 3D mesh example one" },
+  { src: rightHandMeshTwo, alt: "Right hand 3D mesh example two" },
 ];
-
-const DATA_CENTER_GALLERY: GalleryCard[] = [
-  {
-    title: "Server Rack Cabling",
-    description: "Cable route, insert & label sequence",
-    image: "serverrack/serverrack1.png",
-    tags: [{ label: "Cable Route", tone: "blue" }],
-    hours: "280 hrs",
-  },
-  {
-    title: "Hardware Swap Protocol",
-    description: "Drive, card & module replacement",
-    image: "serverrack/serverrack2.png",
-    tags: [{ label: "Hot-swap", tone: "blue" }],
-    hours: "260 hrs",
-  },
-  {
-    title: "Component Inspection",
-    description: "Visual scan & probe verification steps",
-    image: "serverrack/serverrack3.png",
-    tags: [{ label: "Visual QA", tone: "blue" }],
-    hours: "260 hrs",
-  },
-  {
-    title: "Cable Management",
-    description: "Bundle, route & secure with label scan",
-    image: "serverrack/serverrack4.png",
-    tags: [{ label: "Bundling", tone: "blue" }],
-    hours: "260 hrs",
-  },
-];
-
-const WAREHOUSE_GALLERY: GalleryCard[] = [
-  {
-    title: "Pallet Jack Navigation",
-    description: "Fork, load & transport — end-to-end route",
-    image: "warehouse/warehouse1.png",
-    tags: [{ label: "Navigation", tone: "orange" }],
-    hours: "340 hrs",
-  },
-  {
-    title: "Shelf Restocking",
-    description: "Pick, carry & place — 3 shelf heights",
-    image: "warehouse/warehouse2.png",
-    tags: [{ label: "Pick & Place", tone: "orange" }],
-    hours: "310 hrs",
-  },
-  {
-    title: "Barcode Scan & Sort",
-    description: "Item scan, verification & bin routing",
-    image: "warehouse/warehouse3.png",
-    tags: [{ label: "Scan & Sort", tone: "orange" }],
-    hours: "280 hrs",
-  },
-  {
-    title: "Bin & Pallet Sorting",
-    description: "Wide-aisle grasp, move & stack sequence",
-    image: "warehouse/warehouse4.png",
-    tags: [{ label: "Sorting", tone: "orange" }],
-    hours: "300 hrs",
-  },
-];
-
-const AUTOMOTIVE_GALLERY: GalleryCard[] = [
-  {
-    title: "Front Grille Assembly",
-    description: "Clip-insert & fastener sequence — 12 sub-steps",
-    image: "carAutomation/carAutomation2.png",
-    tags: [
-      { label: "Precision Insert", tone: "purple" },
-      { label: "Force Feedback", tone: "orange" },
-    ],
-    hours: "420 hrs",
-  },
-  {
-    title: "Rear Bumper Installation",
-    description: "Two-arm alignment, clip-in & torque verification",
-    image: "carAutomation/carAutomation5.png",
-    tags: [
-      { label: "Bimanual", tone: "purple" },
-      { label: "Alignment", tone: "teal" },
-    ],
-    hours: "380 hrs",
-  },
-  {
-    title: "Front Seat Assembly",
-    description: "Rail mount, bolt torque & harness connection sequence",
-    image: "carAutomation/carAutomation3.png",
-    tags: [
-      { label: "Multi-step", tone: "purple" },
-      { label: "Torque Seq.", tone: "blue" },
-    ],
-    hours: "360 hrs",
-  },
-  {
-    title: "Passenger Seat Positioning",
-    description: "Rotation & slide-lock with 45° approach variant",
-    image: "carAutomation/carAutomation4.png",
-    tags: [
-      { label: "Rotation", tone: "purple" },
-      { label: "Slide-lock", tone: "orange" },
-    ],
-    hours: "380 hrs",
-  },
-];
-
-function surfaceImage(path: string) {
-  return frontPageImageUrl(path);
-}
-
-function SurfaceImage({
-  path,
-  alt,
-  className,
-}: {
-  path: string;
-  alt: string;
-  className?: string;
-}) {
-  const src = surfaceImage(path);
-
-  if (!src) {
-    return (
-      <div
-        className={`flex items-center justify-center bg-slate-100 text-sm text-slate-400 dark:bg-slate-900 dark:text-slate-500 ${className ?? ""}`}
-      >
-        Image unavailable
-      </div>
-    );
-  }
-
-  return <img src={src} alt={alt} className={className} loading="lazy" decoding="async" />;
-}
-
-function Badge({
-  tone,
-  children,
-}: {
-  tone: "purple" | "teal" | "orange" | "blue";
-  children: ReactNode;
-}) {
-  const classes =
-    tone === "purple"
-      ? "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900/50 dark:bg-violet-950/30 dark:text-violet-200"
-      : tone === "teal"
-        ? "border-teal-200 bg-teal-50 text-teal-700 dark:border-teal-900/50 dark:bg-teal-950/30 dark:text-teal-200"
-        : tone === "orange"
-          ? "border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-900/50 dark:bg-orange-950/30 dark:text-orange-200"
-          : "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-200";
-
-  return (
-    <span
-      className={`rounded-[4px] border px-2 py-1 text-[10px] font-bold tracking-[0.08em] ${classes}`}
-    >
-      {children}
-    </span>
-  );
-}
 
 function StatStrip() {
   return (
-    <div className="grid gap-px overflow-hidden rounded-[10px] border border-slate-200 bg-slate-200 sm:grid-cols-2 xl:grid-cols-4 dark:border-slate-700 dark:bg-slate-700">
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {STATS.map((stat) => (
         <div
-          key={stat.label}
-          className={`bg-white px-5 py-4 text-center shadow-[0_1px_3px_rgba(0,0,0,0.04)] dark:bg-slate-900 ${
-            "featured" in stat && stat.featured ? "bg-violet-50 dark:bg-violet-950/20" : ""
+          key={`${stat.value}-${stat.label}`}
+          className={`rounded-[14px] border px-5 py-4 ${
+            stat.featured
+              ? "border-violet-200 bg-gradient-to-br from-violet-50 to-orange-50 dark:border-violet-900/50 dark:from-violet-950/20 dark:to-orange-950/20"
+              : "border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
           }`}
         >
           <p
-            className={`font-black tracking-[-0.04em] text-violet-600 dark:text-violet-300 ${
-              "featured" in stat && stat.featured ? "text-[18px]" : "text-[28px]"
+            className={`text-[22px] font-black tracking-[-0.03em] ${
+              stat.featured ? "text-violet-700 dark:text-violet-200" : "text-slate-950 dark:text-slate-100"
             }`}
           >
             {stat.value}
           </p>
-          <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+          <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
             {stat.label}
           </p>
         </div>
@@ -372,18 +120,15 @@ function StatStrip() {
 function StepIcon({ type }: { type: StepCard["icon"] }) {
   if (type === "capture") {
     return (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-        <rect x="2" y="3" width="20" height="14" rx="2" />
-        <line x1="8" y1="21" x2="16" y2="21" />
-        <line x1="12" y1="17" x2="12" y2="21" />
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
+        <rect x="3" y="5" width="18" height="14" rx="2.5" />
+        <circle cx="12" cy="12" r="3.5" />
       </svg>
     );
   }
 
   if (type === "engine") {
-    return (
-      <Hand className="h-4 w-4" />
-    );
+    return <Hand className="h-4 w-4" />;
   }
 
   return (
@@ -437,28 +182,14 @@ function SectionHeader({
 }: {
   title: string;
   summary: string;
-  accent: "purple" | "orange" | "blue" | "teal";
+  accent: "blue" | "purple" | "orange";
 }) {
-  const dot =
-    accent === "purple"
-      ? "bg-violet-600"
-      : accent === "orange"
-        ? "bg-orange-600"
-        : accent === "teal"
-          ? "bg-teal-600"
-          : "bg-blue-700";
-  const line =
-    accent === "purple"
-      ? "from-violet-200"
-      : accent === "orange"
-        ? "from-orange-200"
-        : accent === "teal"
-          ? "from-teal-200"
-          : "from-blue-200";
+  const dot = accent === "blue" ? "bg-blue-700" : accent === "purple" ? "bg-violet-600" : "bg-orange-600";
+  const line = accent === "blue" ? "from-blue-200" : accent === "purple" ? "from-violet-200" : "from-orange-200";
 
   return (
-    <div className="mb-4 flex items-center gap-1">
-      <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 dark:border-slate-700 dark:bg-slate-900">
+    <div className="mb-4 flex items-center gap-2">
+      <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-3 dark:border-slate-700 dark:bg-slate-900">
         <span className={`h-2 w-2 rounded-[2px] ${dot}`} />
         <span className="text-[14px] font-extrabold text-slate-950 dark:text-slate-100">{title}</span>
         <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">{summary}</span>
@@ -468,122 +199,210 @@ function SectionHeader({
   );
 }
 
-function AvailabilityPill({ value }: { value: TransformCard["availability"] }) {
+function InlineFeaturePipe({ detail }: { detail: string }) {
   return (
-    <span
-      className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.08em] ${
-        value === "In Library"
-          ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-200 dark:ring-emerald-900/50"
-          : "bg-amber-50 text-amber-700 ring-1 ring-amber-200 dark:bg-amber-950/30 dark:text-amber-200 dark:ring-amber-900/50"
-      }`}
-    >
-      {value}
-    </span>
-  );
-}
-
-function Pipe({ detail }: { detail: string }) {
-  return (
-    <div className="hidden items-center lg:flex">
-      <div className="mx-4 flex w-[118px] flex-col items-center">
-        <div className="mb-2 h-6 w-px bg-slate-200 dark:bg-slate-700" />
-        <div className="w-full rounded-[16px] border-[1.5px] border-violet-300 bg-white px-2 py-4 text-center shadow-[0_8px_20px_rgba(124,58,237,0.06)] dark:border-violet-800/60 dark:bg-slate-900">
-          <div className="mx-auto mb-2 grid h-10 w-10 place-items-center rounded-[10px] border border-violet-300 bg-violet-100 text-violet-700 dark:border-violet-800 dark:bg-violet-950/50 dark:text-violet-200">
-            <Hand className="h-4 w-4" />
-          </div>
-          <p className="mb-0.5 text-[8px] font-extrabold uppercase tracking-[0.05em] text-violet-700 dark:text-violet-200">
-            RoboHandMotion
-          </p>
-          <p className="mb-1 text-[12px] font-extrabold text-slate-950 dark:text-slate-100">Engine</p>
-          <p className="text-[8px] text-slate-500 dark:text-slate-400">{detail}</p>
+    <div className="flex justify-center xl:hidden">
+      <div className="rounded-[14px] border border-violet-200 bg-gradient-to-br from-violet-50 via-white to-orange-50 px-5 py-4 text-center shadow-[0_10px_25px_rgba(124,58,237,0.08)] dark:border-slate-700 dark:bg-slate-900">
+        <div className="mx-auto mb-2 grid h-9 w-9 place-items-center rounded-[10px] border border-violet-200 bg-violet-100 text-violet-700 dark:border-white/20 dark:bg-white/10 dark:text-violet-200">
+          <Hand className="h-4 w-4" />
         </div>
-        <div className="my-2 h-6 w-px bg-slate-200 dark:bg-slate-700" />
-        <svg width="10" height="14" viewBox="0 0 10 14" fill="none" className="text-violet-600">
-          <path d="M1 1l8 6-8 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
+        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-violet-700 dark:text-violet-200">RoboHandMotion</p>
+        <p className="mt-1 text-[13px] font-extrabold text-slate-950 dark:text-slate-100">{detail}</p>
       </div>
     </div>
   );
 }
 
-function TransformCardView({ card }: { card: TransformCard }) {
+function FeaturePipe({ detail }: { detail: string }) {
   return (
-    <article className="rounded-[14px] border border-slate-200 bg-white px-6 py-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700 dark:bg-slate-900">
-      <div className="mb-[14px] flex items-start justify-between gap-4">
-        <div>
-          <p className="mb-0.5 text-[14px] font-bold text-slate-950 dark:text-slate-100">{card.title}</p>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400">{card.description}</p>
-        </div>
-        <AvailabilityPill value={card.availability} />
-      </div>
-
-      <div className="items-center lg:flex">
-        <div className="w-full shrink-0 lg:w-[200px]">
-          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-blue-700 dark:text-blue-200">EXO Source</p>
-          <div className="relative overflow-hidden rounded-[12px] bg-slate-100 dark:bg-slate-800">
-            <SurfaceImage path={card.sourceImage} alt={`${card.title} EXO`} className="h-[176px] w-full object-cover" />
-            <span className="absolute left-2 top-2 rounded-[4px] bg-blue-700 px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-white">
-              EXO
-            </span>
+    <>
+      <InlineFeaturePipe detail={detail} />
+      <div className="hidden h-full items-center justify-center xl:flex">
+        <div className="mx-1 flex w-[118px] flex-col items-center">
+          <div className="mb-2 h-6 w-px bg-slate-200 dark:bg-slate-700" />
+          <div className="w-full rounded-[16px] border-[1.5px] border-violet-300 bg-white px-3 py-4 text-center shadow-[0_12px_28px_rgba(124,58,237,0.08)] dark:border-violet-800/60 dark:bg-slate-900">
+            <div className="mx-auto mb-2 grid h-9 w-9 place-items-center rounded-[10px] border border-violet-300 bg-violet-100 text-violet-700 dark:border-violet-800 dark:bg-violet-950/50 dark:text-violet-200">
+              <Hand className="h-4 w-4" />
+            </div>
+            <p className="text-[9px] font-black uppercase tracking-[0.14em] text-violet-700 dark:text-violet-200">RoboHandMotion</p>
+            <p className="mt-1 text-[11px] font-extrabold text-slate-950 dark:text-slate-100">Engine</p>
+            <p className="mt-1 text-[8px] text-slate-500 dark:text-slate-400">{detail}</p>
           </div>
-        </div>
-
-        <Pipe detail={card.engineDetail} />
-
-        <div className="mt-4 flex-1 lg:mt-0">
-          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-orange-700 dark:text-orange-300">
-            Labeled Motion Output
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            {card.outputs.map((output) => (
-              <div key={`${card.title}-${output.label}`} className="relative overflow-hidden rounded-[8px] bg-slate-100 dark:bg-slate-800">
-                <SurfaceImage
-                  path={output.image}
-                  alt={`${card.title} ${output.label}`}
-                  className="h-[84px] w-full object-cover sm:h-[96px]"
-                />
-                <span className="absolute left-1.5 top-1.5 rounded-[4px] bg-white/90 px-1.5 py-1 text-[8px] font-black uppercase tracking-[0.08em] text-slate-700 backdrop-blur dark:bg-slate-900/85 dark:text-slate-200">
-                  {output.label}
-                </span>
-              </div>
-            ))}
-          </div>
+          <div className="my-2 h-6 w-px bg-slate-200 dark:bg-slate-700" />
+          <svg width="10" height="14" viewBox="0 0 10 14" fill="none" className="text-violet-600 dark:text-violet-300">
+            <path d="M1 1l8 6-8 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
         </div>
       </div>
-
-      <div className="mt-[14px] flex flex-wrap items-center gap-[6px] border-t border-slate-200 pt-3 dark:border-slate-700">
-        {card.tags.map((tag) => (
-          <Badge key={`${card.title}-${tag.label}`} tone={tag.tone}>
-            {tag.label}
-          </Badge>
-        ))}
-        <span className="ml-auto text-[12px] font-bold text-violet-700 dark:text-violet-200">{card.hours}</span>
-      </div>
-    </article>
+    </>
   );
 }
 
-function HouseholdCardView({ card }: { card: GalleryCard }) {
+function VideoPreviewTile({ asset, aspectClass = "aspect-[16/10]" }: { asset: VideoAsset; aspectClass?: string }) {
+  const [hovered, setHovered] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (hovered) {
+      const playPromise = video.play();
+      if (playPromise) {
+        void playPromise.catch(() => {
+          // Ignore autoplay interruptions until the next hover.
+        });
+      }
+      return;
+    }
+
+    video.pause();
+    if (video.currentTime !== 0) {
+      video.currentTime = 0;
+    }
+  }, [hovered]);
+
   return (
-    <article className="overflow-hidden rounded-[12px] border border-slate-200 bg-white shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700 dark:bg-slate-900">
-      <SurfaceImage path={card.image} alt={card.title} className="h-[150px] w-full object-cover" />
-      <div className="p-4">
-        <p className="text-[13px] font-bold text-slate-950 dark:text-slate-100">{card.title}</p>
-        <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">{card.description}</p>
-        <div className="mt-3 flex flex-wrap items-center gap-1.5">
-          {card.tags.map((tag) => (
-            <Badge key={`${card.title}-${tag.label}`} tone={tag.tone}>
-              {tag.label}
-            </Badge>
-          ))}
-          <span className="ml-auto text-[10px] font-bold text-violet-700 dark:text-violet-200">{card.hours}</span>
-        </div>
+    <div
+      className={`group relative overflow-hidden rounded-[14px] bg-slate-950 ${aspectClass}`}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <img
+        src={asset.posterSrc}
+        alt={asset.alt}
+        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${hovered ? "opacity-0" : "opacity-100"}`}
+      />
+      <video
+        ref={videoRef}
+        src={asset.videoSrc}
+        poster={asset.posterSrc}
+        muted
+        loop
+        playsInline
+        preload="metadata"
+        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${hovered ? "opacity-100" : "opacity-0"}`}
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/40 via-transparent to-transparent" />
+    </div>
+  );
+}
+
+function ImagePreviewTile({
+  asset,
+  onOpen,
+}: {
+  asset: ImageAsset;
+  onOpen: (image: ExpandedImage) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen({ src: asset.src, alt: asset.alt })}
+      className="block w-full cursor-zoom-in overflow-hidden rounded-[10px] transition-transform duration-200 hover:scale-[1.01] focus:outline-none focus:ring-2 focus:ring-violet-500/60"
+    >
+      <img src={asset.src} alt={asset.alt} className="block h-auto w-full rounded-[10px]" loading="lazy" decoding="async" />
+    </button>
+  );
+}
+
+function ImageLightbox({
+  image,
+  onClose,
+}: {
+  image: ExpandedImage | null;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    if (!image) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [image, onClose]);
+
+  if (!image) {
+    return null;
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/88 px-4 py-6 backdrop-blur-sm"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Expanded image preview"
+    >
+      <button
+        type="button"
+        onClick={onClose}
+        className="absolute right-4 top-4 grid h-11 w-11 place-items-center rounded-full border border-white/20 bg-white/10 text-white transition-colors hover:bg-white/18 focus:outline-none focus:ring-2 focus:ring-white/60"
+        aria-label="Close image preview"
+      >
+        <X className="h-5 w-5" />
+      </button>
+
+      <div className="max-h-full max-w-[min(96vw,1400px)]" onClick={(event) => event.stopPropagation()}>
+        <img src={image.src} alt={image.alt} className="max-h-[88vh] w-auto max-w-full rounded-[16px] object-contain shadow-[0_18px_50px_rgba(0,0,0,0.35)]" />
       </div>
-    </article>
+    </div>
+  );
+}
+
+function HandMeshGroup({
+  title,
+  images,
+  onOpen,
+}: {
+  title: string;
+  images: ImageAsset[];
+  onOpen: (image: ExpandedImage) => void;
+}) {
+  return (
+    <div>
+      <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-violet-700 dark:text-violet-200">{title}</p>
+      <div className="grid gap-2">
+        {images.map((image) => (
+          <button
+            key={image.alt}
+            type="button"
+            onClick={() => onOpen({ src: image.src, alt: image.alt })}
+            className="relative block aspect-[2/3] w-full cursor-zoom-in overflow-hidden rounded-[10px] border border-white !bg-white p-0 transition-transform duration-200 hover:scale-[1.01] focus:outline-none focus:ring-2 focus:ring-violet-500/60 dark:border-white dark:!bg-white"
+            style={{ backgroundColor: "#ffffff", borderColor: "#ffffff" }}
+          >
+            <div
+              className="absolute inset-[8px] flex items-center justify-center rounded-[8px] !bg-white dark:!bg-white"
+              style={{ backgroundColor: "#ffffff" }}
+            >
+              <img
+                src={image.src}
+                alt={image.alt}
+                className="block max-h-full max-w-full object-contain"
+                loading="lazy"
+                decoding="async"
+              />
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 
 export default function RoboHandMotion() {
+  const [expandedImage, setExpandedImage] = useState<ExpandedImage | null>(null);
+
   return (
     <div className="min-h-screen bg-white text-slate-950 dark:bg-slate-950 dark:text-slate-100">
       <Navigation />
@@ -591,125 +410,130 @@ export default function RoboHandMotion() {
       <main className="pt-[88px]">
         <div className="mx-auto max-w-[1320px] bg-white px-4 py-9 sm:px-6 md:px-10 xl:px-12 dark:bg-slate-950">
           <div className="mx-auto max-w-[1280px]">
-              <section className="mb-6">
-                <div className="mb-2 flex flex-wrap items-center gap-3">
-                  <div className="grid h-9 w-9 place-items-center rounded-[9px] border border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900/50 dark:bg-violet-950/30 dark:text-violet-200">
-                    <Hand className="h-4 w-4" />
-                  </div>
-                  <h1 className="marketing-display-title text-[30px] font-black tracking-[-0.005em] text-slate-950 dark:text-slate-100">
-                    RoboHandMotion
-                  </h1>
-                  <span className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-violet-700 dark:border-violet-900/50 dark:bg-violet-950/30 dark:text-violet-200">
-                    Patented
-                  </span>
+            <section className="mb-6">
+              <div className="mb-2 flex flex-wrap items-center gap-3">
+                <div className="grid h-9 w-9 place-items-center rounded-[9px] border border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900/50 dark:bg-violet-950/30 dark:text-violet-200">
+                  <Hand className="h-4 w-4" />
                 </div>
-                <p className="mb-[14px] max-w-[640px] text-[15px] leading-8 text-slate-500 dark:text-slate-400">
-                  Patented pipeline capturing <span className="font-semibold text-violet-700 dark:text-violet-300">hand pose</span>,{" "}
-                  <span className="font-semibold text-blue-700 dark:text-blue-300">tool interactions</span>, and{" "}
-                  <span className="font-semibold text-orange-700 dark:text-orange-300">object states</span> — labeled and ready for dexterous robot model training.
-                </p>
-                <div className="flex flex-wrap gap-[10px]">
-                  <span className="rounded-[6px] border border-violet-200 bg-violet-50 px-[13px] py-[5px] text-[12px] font-semibold text-violet-700 dark:border-violet-900/50 dark:bg-violet-950/30 dark:text-violet-200">
-                    <strong>Hand Pose</strong> — Per-frame keypoint skeleton, joint angles & finger trajectories
-                  </span>
-                  <span className="rounded-[6px] border border-blue-200 bg-blue-50 px-[13px] py-[5px] text-[12px] font-semibold text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-200">
-                    <strong>Object State</strong> — Grasped object identity, orientation & contact classification
-                  </span>
-                </div>
-              </section>
+                <h1 className="marketing-display-title text-[30px] font-black tracking-[-0.005em] text-slate-950 dark:text-slate-100">
+                  RoboHandMotion
+                </h1>
+                <span className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-violet-700 dark:border-violet-900/50 dark:bg-violet-950/30 dark:text-violet-200">
+                  Patented
+                </span>
+              </div>
+              <p className="max-w-[780px] text-[15px] leading-8 text-slate-500 dark:text-slate-400">
+                Patented pipeline for sequence-level hand tracking and frame-level 3D hand mesh generation from real-world task video.
+              </p>
+            </section>
 
-              <section className="mb-10">
-                <StatStrip />
-              </section>
+            <section className="mb-10">
+              <StatStrip />
+            </section>
 
-              <section className="mb-10 rounded-[14px] border border-slate-200 bg-slate-50/80 px-8 py-7 dark:border-slate-800 dark:bg-slate-900/60">
-                <p className="mb-6 text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-400">How It Works</p>
-                <div className="lg:flex lg:items-stretch">
-                  <StepCardView step={PROCESS_STEPS[0]} />
-                  <FlowArrow />
-                  <StepCardView step={PROCESS_STEPS[1]} />
-                  <FlowArrow />
-                  <StepCardView step={PROCESS_STEPS[2]} />
-                </div>
-              </section>
+            <section className="mb-10 rounded-[14px] border border-slate-200 bg-slate-50/80 px-8 py-7 dark:border-slate-800 dark:bg-slate-900/60">
+              <p className="mb-6 text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-400">How It Works</p>
+              <div className="lg:flex lg:items-stretch">
+                <StepCardView step={PROCESS_STEPS[0]} />
+                <FlowArrow />
+                <StepCardView step={PROCESS_STEPS[1]} />
+                <FlowArrow />
+                <StepCardView step={PROCESS_STEPS[2]} />
+              </div>
+            </section>
 
-              <section className="flex flex-col gap-10">
-                <div id="dc" className="scroll-mt-28">
-                  <SectionHeader title="Data Center" summary="4 datasets · 1,060 hrs" accent="blue" />
-                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                    {DATA_CENTER_GALLERY.map((card) => (
-                      <HouseholdCardView key={card.title} card={card} />
-                    ))}
-                  </div>
-                </div>
+            <section className="flex flex-col gap-10">
+              <div>
+                <SectionHeader title="Sequence Tracking" summary="Input towel video to tracked hand output" accent="purple" />
+                <div className="rounded-[18px] border border-slate-200 bg-white p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700 dark:bg-slate-900">
+                  <p className="text-[24px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">Sequence-Level Hand Tracking</p>
+                  <p className="mt-3 max-w-[860px] text-[13px] leading-7 text-slate-500 dark:text-slate-400">
+                    Hover the source towel manipulation clip to compare the raw sequence against RoboHandMotion&apos;s tracked output of the same action.
+                  </p>
 
-                <div id="wh" className="scroll-mt-28">
-                  <SectionHeader title="Warehouse" summary="4 datasets · 1,230 hrs" accent="orange" />
-                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                    {WAREHOUSE_GALLERY.map((card) => (
-                      <HouseholdCardView key={card.title} card={card} />
-                    ))}
-                  </div>
-                </div>
-
-                <div id="hu" className="scroll-mt-28">
-                  <SectionHeader title="Dexterity" summary="9 datasets · 2,850 hrs" accent="teal" />
-                  <div className="flex flex-col gap-4">
-                    {DEXTEROUS_DATASETS.map((card) => (
-                      <TransformCardView key={card.title} card={card} />
-                    ))}
-                  </div>
-                  <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    {HOUSEHOLD_DATASETS.map((card) => (
-                      <HouseholdCardView key={card.title} card={card} />
-                    ))}
-                  </div>
-                </div>
-
-                <div id="au" className="scroll-mt-28">
-                  <SectionHeader title="Automotive" summary="4 datasets · 1,540 hrs" accent="purple" />
-                  <div className="grid gap-4 md:grid-cols-2">
-                    {AUTOMOTIVE_GALLERY.map((card) => (
-                      <HouseholdCardView key={card.title} card={card} />
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mt-1 flex flex-col justify-between gap-6 rounded-[14px] border-[1.5px] border-dashed border-violet-300 bg-gradient-to-br from-violet-50 to-orange-50 px-8 py-7 lg:flex-row lg:items-center dark:border-violet-900/50 dark:from-violet-950/20 dark:to-orange-950/20">
-                  <div className="flex items-center gap-4">
-                    <div className="grid h-11 w-11 shrink-0 place-items-center rounded-[11px] border border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900/50 dark:bg-violet-950/30 dark:text-violet-200">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="12" y1="5" x2="12" y2="19" />
-                        <line x1="5" y1="12" x2="19" y2="12" />
-                      </svg>
-                    </div>
+                  <div className="mt-6 grid gap-4 xl:grid-cols-[minmax(0,0.98fr)_118px_minmax(0,0.98fr)] xl:items-center">
                     <div>
-                      <p className="mb-1 text-[15px] font-bold text-slate-950 dark:text-slate-100">
-                        Run RoboHandMotion on Your Footage
-                      </p>
-                      <p className="max-w-[480px] text-[12px] leading-5 text-slate-500 dark:text-slate-400">
-                        Already have footage of hand tasks? We&apos;ll generate labeled pose sequences, grasp annotations, and motion trajectories — across any task, environment, or robot form factor.
-                      </p>
+                      <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-blue-700 dark:text-blue-200">Input Video</p>
+                      <VideoPreviewTile asset={VIDEO_SHOWCASE.input} />
                     </div>
-                  </div>
-                  <div className="flex shrink-0 flex-col items-start gap-2 lg:items-center">
-                    <div className="flex gap-[5px]">
-                      <Badge tone="purple">Dexterous</Badge>
-                      <Badge tone="orange">Household</Badge>
-                      <Badge tone="teal">Industrial</Badge>
+
+                    <FeaturePipe detail="Hand Tracking" />
+
+                    <div>
+                      <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-orange-700 dark:text-orange-200">Tracked Output</p>
+                      <VideoPreviewTile asset={VIDEO_SHOWCASE.output} />
                     </div>
-                    <Link
-                      to={buildAuthPath("register", "/robohandmotion")}
-                      className="inline-flex w-full items-center justify-center rounded-[8px] bg-violet-600 px-6 py-2.5 text-[13px] font-bold text-white transition-opacity hover:opacity-90"
-                    >
-                      Submit Your Footage
-                    </Link>
                   </div>
                 </div>
-              </section>
+              </div>
+
+              <div>
+                <SectionHeader title="Frame Reconstruction" summary="Single frame to left and right hand 3D meshes" accent="blue" />
+                <div className="rounded-[18px] border border-slate-200 bg-white p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700 dark:bg-slate-900">
+                  <p className="text-[24px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">Frame-by-Frame 3D Hand Mesh Generation</p>
+                  <p className="mt-3 max-w-[860px] text-[13px] leading-7 text-slate-500 dark:text-slate-400">
+                    A representative frame from the same towel sequence is reconstructed into per-hand 3D mesh outputs, with two 3D mesh views for the left hand and two for the right.
+                  </p>
+
+                  <div className="mt-6 grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_118px_minmax(0,1.1fr)] xl:items-center">
+                    <div>
+                      <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-blue-700 dark:text-blue-200">Source Frame</p>
+                      <ImagePreviewTile asset={{ src: frame390, alt: "Representative towel sequence frame" }} onOpen={setExpandedImage} />
+                    </div>
+
+                    <FeaturePipe detail="3D Hand Mesh Generation" />
+
+                    <div>
+                      <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-orange-700 dark:text-orange-200">Generated 3D Meshes</p>
+                      <div className="grid gap-2 md:grid-cols-2">
+                        <HandMeshGroup title="Left Hand 3D Meshes" images={LEFT_HAND_MESHES} onOpen={setExpandedImage} />
+                        <HandMeshGroup title="Right Hand 3D Meshes" images={RIGHT_HAND_MESHES} onOpen={setExpandedImage} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-1 flex flex-col justify-between gap-6 rounded-[14px] border-[1.5px] border-dashed border-violet-300 bg-gradient-to-br from-violet-50 to-orange-50 px-8 py-7 lg:flex-row lg:items-center dark:border-violet-900/50 dark:from-violet-950/20 dark:to-orange-950/20">
+                <div className="flex items-center gap-4">
+                  <div className="grid h-11 w-11 shrink-0 place-items-center rounded-[11px] border border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900/50 dark:bg-violet-950/30 dark:text-violet-200">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="12" y1="5" x2="12" y2="19" />
+                      <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="mb-1 text-[15px] font-bold text-slate-950 dark:text-slate-100">
+                      Run RoboHandMotion on Your Footage
+                    </p>
+                    <p className="max-w-[480px] text-[12px] leading-5 text-slate-500 dark:text-slate-400">
+                      Already have task footage? We&apos;ll generate tracked hand motion outputs and frame-level 3D mesh reconstructions for dexterous robot learning workflows.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex shrink-0 flex-col items-start gap-2 lg:items-center">
+                  <div className="flex gap-[5px]">
+                    <span className="rounded-[4px] border border-violet-200 bg-violet-50 px-2 py-1 text-[10px] font-bold tracking-[0.08em] text-violet-700 dark:border-violet-900/50 dark:bg-violet-950/30 dark:text-violet-200">
+                      Hand Tracking
+                    </span>
+                    <span className="rounded-[4px] border border-blue-200 bg-blue-50 px-2 py-1 text-[10px] font-bold tracking-[0.08em] text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-200">
+                      3D Mesh Generation
+                    </span>
+                  </div>
+                  <Link
+                    to={buildAuthPath("register", "/robohandmotion")}
+                    className="inline-flex w-full items-center justify-center rounded-[8px] bg-violet-600 px-6 py-2.5 text-[13px] font-bold text-white transition-opacity hover:opacity-90"
+                  >
+                    Submit Your Footage
+                  </Link>
+                </div>
+              </div>
+            </section>
           </div>
         </div>
       </main>
+
+      <ImageLightbox image={expandedImage} onClose={() => setExpandedImage(null)} />
 
       <FooterSection />
     </div>
