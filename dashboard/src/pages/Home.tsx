@@ -7,6 +7,8 @@ import { buildAuthPath } from "@/lib/authLinks";
 import pilotRoadmap from "@/assets/images/pilot-roadmap.png";
 import rackManual from "@/assets/images/rack-manual.png";
 import rackRobot from "@/assets/images/rack-robot.png";
+import solutionBefore from "@/assets/images/serverrack/solutionbefore.png";
+import solutionAfter from "@/assets/images/serverrack/solutionafter.png";
 
 type ProductCard = {
   name: string;
@@ -34,6 +36,8 @@ type SolutionCard = {
   accent: string;
   beforeTone: string;
   afterTone: string;
+  beforeImageClassName?: string;
+  afterImageClassName?: string;
 };
 
 type CustomerCard = {
@@ -165,6 +169,30 @@ const PRODUCT_CARDS: ProductCard[] = [
 
 const SOLUTION_CARDS: SolutionCard[] = [
   {
+    kicker: "Warehouse Automation - Intralogistics",
+    title: "Pellet Transport Automation",
+    description:
+      "Training data for robots moving loaded pellet containers across warehouse lanes, pickup points, and outbound staging zones without slowing downstream operations.",
+    bullets: [
+      "Detect and localize palletized pellet loads",
+      "Navigate shared aisles and dynamic traffic safely",
+      "Align at pickup and drop-off points with repeatable precision",
+      "Track load handoff, route completion, and exceptions in real time",
+    ],
+    metrics: [
+      { value: "2.8x", label: "More throughput" },
+      { value: "41%", label: "Lower handling time" },
+      { value: "99.3%", label: "Route accuracy" },
+    ],
+    beforeLabel: "Before - Manual Hauling",
+    afterLabel: "After - Autonomous Transport",
+    beforeImage: solutionBefore,
+    afterImage: solutionAfter,
+    accent: "text-primary",
+    beforeTone: "border-red-200 bg-red-50/80 text-red-700",
+    afterTone: "border-primary/20 bg-primary/10 text-primary",
+  },
+  {
     kicker: "Data Center - NVL72 Infrastructure",
     title: "Rack Cable Installation",
     description:
@@ -189,6 +217,7 @@ const SOLUTION_CARDS: SolutionCard[] = [
     accent: "text-primary",
     beforeTone: "border-red-200 bg-red-50/80 text-red-700",
     afterTone: "border-primary/20 bg-primary/10 text-primary",
+    afterImageClassName: "scale-[1.04]",
   },
   {
     kicker: "Manufacturing Automation - Rack Assembly",
@@ -266,12 +295,12 @@ function PipelineStepCard({ step }: { step: PipelineStep }) {
   }[step.accent];
 
   return (
-    <div className="relative flex flex-1 flex-col items-center overflow-hidden rounded-[20px] border border-slate-200 bg-white px-5 pb-7 pt-6 text-center shadow-[0_1px_6px_rgba(0,0,0,0.05)]">
-      <p className="mb-2 text-[15px] font-black tracking-[-0.02em] text-slate-950">{step.title}</p>
+    <div className="relative flex flex-1 flex-col items-center overflow-hidden rounded-[20px] border border-slate-200 bg-white px-5 pb-7 pt-6 text-center shadow-[0_1px_6px_rgba(0,0,0,0.05)] dark:border-white/7 dark:bg-[rgba(13,16,20,0.82)] dark:shadow-[0_18px_44px_rgba(0,0,0,0.24)]">
+      <p className="mb-2 text-[15px] font-black tracking-[-0.01em] text-slate-950 dark:text-slate-100">{step.title}</p>
       <span className={`mb-3 inline-flex rounded-md border px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.12em] ${accentClasses.badge}`}>
         {step.badge}
       </span>
-      <p className="text-[12px] leading-5 text-slate-500">{step.description}</p>
+      <p className="text-[12px] leading-5 text-slate-500 dark:text-slate-400">{step.description}</p>
       <div className={`absolute bottom-0 left-0 h-[4px] w-full ${accentClasses.bar}`} />
     </div>
   );
@@ -283,7 +312,7 @@ function ProductTile({ card }: { card: ProductCard }) {
   return (
     <Link
       to={card.to}
-      className={`group flex h-full flex-col rounded-[22px] border bg-white px-6 pb-8 pt-8 text-center shadow-[0_2px_8px_rgba(0,0,0,0.05)] transition-all duration-200 hover:-translate-y-1 ${card.tone}`}
+      className={`group flex h-full flex-col rounded-[22px] border bg-white px-6 pb-8 pt-8 text-center shadow-[0_2px_8px_rgba(0,0,0,0.05)] outline outline-1 outline-transparent transition-all duration-200 hover:-translate-y-1 hover:border-primary/45 hover:outline-primary/20 hover:shadow-[0_18px_42px_rgba(15,23,42,0.12)] ${card.tone}`}
     >
       <div className={`mx-auto flex h-[72px] w-[72px] items-center justify-center rounded-[20px] border ${card.pillTone}`}>
         <Icon className="h-8 w-8" />
@@ -291,14 +320,14 @@ function ProductTile({ card }: { card: ProductCard }) {
       <div className="mt-5 inline-flex self-center rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.14em] text-slate-600">
         {card.badge}
       </div>
-      <h3 className="mt-4 text-[28px] font-black tracking-[-0.05em] text-slate-950">{card.name}</h3>
+      <h3 className="mx-auto mt-4 max-w-full whitespace-nowrap text-center text-[24px] font-black tracking-[-0.05em] text-slate-950">
+        {card.name}
+      </h3>
       <p className="mt-3 text-[15px] leading-6 text-slate-500">{card.tagline}</p>
-      <div className="mt-6 flex flex-col gap-2">
+      <div className="mt-6 divide-y divide-slate-200 border-y border-slate-200 text-left">
         {card.pills.map((pill) => (
-          <span
-            key={pill}
-            className={`inline-flex justify-center rounded-full border px-3 py-2 text-[13px] font-semibold ${card.pillTone}`}
-          >
+          <span key={pill} className="flex items-center gap-3 px-1 py-3 text-[13px] font-semibold text-slate-600">
+            <span className={`h-1 w-3 shrink-0 bg-current ${card.linkTone}`} />
             {pill}
           </span>
         ))}
@@ -325,6 +354,16 @@ function MetricRow({ metrics }: { metrics: SolutionCard["metrics"] }) {
           {index < metrics.length - 1 && <div className="h-10 w-px bg-slate-200" />}
         </div>
       ))}
+    </div>
+  );
+}
+
+function HomeSectionLabel({ children }: { children: string }) {
+  return (
+    <div className="flex items-center justify-center gap-4 text-[18px] font-extrabold uppercase tracking-[0.18em] text-primary sm:text-xl">
+      <span className="h-px w-12 bg-primary/45" />
+      {children}
+      <span className="h-px w-12 bg-primary/45" />
     </div>
   );
 }
@@ -359,12 +398,11 @@ export default function Home() {
       <main className="pt-[88px]">
         <section className="marketing-hero-home overflow-hidden px-4 py-10 text-center sm:px-6 md:min-h-[calc(88vh-88px)] md:py-12 lg:py-14">
           <div className="mx-auto max-w-[860px]">
-            <div className="inline-flex items-center gap-2 rounded-full border border-teal-200 bg-teal-50 px-6 py-2.5 text-[13px] font-semibold text-primary">
-              <span className="h-[7px] w-[7px] rounded-full bg-primary" />
+            <div className="inline-flex border-y border-primary/30 px-5 py-2 text-[11px] font-extrabold uppercase tracking-[0.18em] text-primary">
               NVIDIA Inception Member - 2025
             </div>
 
-            <h1 className="mt-7 text-[clamp(38px,5.5vw,64px)] font-black leading-[1] tracking-[-0.08em] text-slate-950">
+            <h1 className="marketing-display-title mt-7 text-[clamp(38px,5.5vw,64px)] font-black leading-[1] tracking-[-0.045em] text-slate-950">
               The Sim-to-Real Gap
               <br />
               is <span className="bg-gradient-to-r from-primary to-blue-700 bg-clip-text text-transparent">Costing You.</span>
@@ -374,7 +412,7 @@ export default function Home() {
               Robots fail in production because training data does not match the real world.
             </p>
 
-            <div className="mt-16 text-[clamp(38px,5.5vw,64px)] font-black leading-[1] tracking-[-0.08em] text-slate-950 md:mt-20">
+            <div className="marketing-display-title mt-16 text-[clamp(38px,5.5vw,64px)] font-black leading-[1] tracking-[-0.045em] text-slate-950 md:mt-20">
               DataraAI <span className="text-primary">closes the gap.</span>
             </div>
             <p className="mx-auto mt-7 max-w-[560px] text-[17px] leading-[1.7] text-slate-500">
@@ -399,29 +437,16 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="bg-slate-50/60 px-4 py-14 sm:px-6">
+        <section className="bg-slate-50/60 px-4 py-14 dark:bg-slate-950/45 sm:px-6">
           <div className="mx-auto max-w-[1300px]">
             <div className="mb-10 text-center">
-              <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-2 text-[11px] font-extrabold uppercase tracking-[0.16em] text-slate-500 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
-                How It Works
-              </div>
-              <h2 className="mt-4 text-[32px] font-black tracking-[-0.05em] text-slate-950">
+              <HomeSectionLabel>End-to-End</HomeSectionLabel>
+              <h2 className="marketing-display-title mt-4 text-[32px] font-black tracking-[-0.02em] text-slate-950">
                 From Factory Floor to Deployed Robot
               </h2>
-              <p className="mx-auto mt-3 max-w-[500px] text-[15px] leading-7 text-slate-500">
-                Real-world data powering every step — from factory floor to deployed robot.
+              <p className="mx-auto mt-3 max-w-[650px] text-[15px] leading-7 text-slate-500 dark:text-slate-400">
+                Real factory data is transformed into simulation-ready environments, used to train robot policies at scale, then transferred back to physical robots for production deployment.
               </p>
-            </div>
-
-            <div className="mb-3 hidden items-center gap-1.5 lg:flex">
-              <div className="h-2.5 w-2.5 shrink-0 rounded-full bg-teal-400 ring-2 ring-teal-100" />
-              <div className="relative flex h-6 flex-1 items-center">
-                <div className="absolute inset-x-0 top-1/2 h-[2px] -translate-y-1/2 rounded-full bg-gradient-to-r from-teal-400 via-violet-400 to-emerald-400" />
-                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full border border-teal-200/80 bg-white px-4 py-1 text-[10px] font-extrabold uppercase tracking-[0.16em] text-teal-700 shadow-sm">
-                  DataraAI End-to-End
-                </div>
-              </div>
-              <div className="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-400 ring-2 ring-emerald-100" />
             </div>
 
             <div className="flex flex-col gap-3 lg:flex-row lg:items-stretch">
@@ -445,11 +470,8 @@ export default function Home() {
         <section id="products" ref={productsRef} className="scroll-mt-[104px] bg-slate-50 px-4 py-16 sm:px-6">
           <div className="mx-auto max-w-[1300px]">
             <div className="mb-10 text-center">
-              <div className="inline-flex items-center gap-3 rounded-full border border-teal-200 bg-teal-50 px-8 py-3 text-xl font-extrabold uppercase tracking-[0.08em] text-primary">
-                <span className="h-2 w-2 rounded-full bg-primary" />
-                Products
-              </div>
-              <h2 className="mt-6 text-[36px] font-black tracking-[-0.05em] text-slate-950">
+              <HomeSectionLabel>Products</HomeSectionLabel>
+              <h2 className="marketing-display-title mt-6 text-[36px] font-black tracking-[-0.02em] text-slate-950">
                 The Full Physical AI Data Stack
               </h2>
               <p className="mx-auto mt-3 max-w-[480px] text-[15px] leading-7 text-slate-500">
@@ -468,11 +490,8 @@ export default function Home() {
         <section id="solutions" ref={solutionsRef} className="scroll-mt-[104px] bg-white px-4 py-16 sm:px-6">
           <div className="mx-auto max-w-[1300px]">
             <div className="mb-10 text-center">
-              <div className="inline-flex items-center gap-3 rounded-full border border-teal-200 bg-teal-50 px-8 py-3 text-xl font-extrabold uppercase tracking-[0.08em] text-primary">
-                <span className="h-2 w-2 rounded-full bg-primary" />
-                Solutions
-              </div>
-              <h2 className="mt-6 text-[36px] font-black tracking-[-0.05em] text-slate-950">
+              <HomeSectionLabel>Solutions</HomeSectionLabel>
+              <h2 className="marketing-display-title mt-6 text-[36px] font-black tracking-[-0.02em] text-slate-950">
                 Real-World Automation, Ready to Deploy
               </h2>
               <p className="mx-auto mt-3 max-w-[480px] text-[15px] leading-7 text-slate-500">
@@ -495,7 +514,7 @@ export default function Home() {
                     </div>
                     <div className="grid gap-8 xl:grid-cols-2">
                       <div>
-                        <h3 className="text-[38px] font-black leading-[1.08] tracking-[-0.05em] text-slate-950">
+                        <h3 className="marketing-display-title text-[38px] font-black leading-[1.08] tracking-[-0.02em] text-slate-950">
                           {card.title}
                         </h3>
                       </div>
@@ -532,9 +551,7 @@ export default function Home() {
                       <img
                         src={card.afterImage}
                         alt={card.afterLabel}
-                        className={`h-full w-full object-cover brightness-[0.92] ${
-                          index === 0 ? "scale-[1.04]" : ""
-                        }`}
+                        className={`h-full w-full object-cover brightness-[0.92] ${card.afterImageClassName ?? ""}`}
                       />
                       <div className={`absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full border px-4 py-2 text-xs font-bold whitespace-nowrap backdrop-blur-md ${card.afterTone}`}>
                         {card.afterLabel}
@@ -549,7 +566,7 @@ export default function Home() {
                   <div className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-primary">
                     From Use Case to Production
                   </div>
-                  <h3 className="mt-4 text-[32px] font-black tracking-[-0.05em] text-slate-950">
+                  <h3 className="marketing-display-title mt-4 text-[32px] font-black tracking-[-0.02em] text-slate-950">
                     How We Work With Data Centers
                   </h3>
                   <p className="mx-auto mt-3 max-w-[560px] text-[15px] leading-7 text-slate-500">
@@ -571,11 +588,8 @@ export default function Home() {
         <section id="customers" ref={customersRef} className="scroll-mt-[104px] border-y border-slate-200 bg-slate-50 px-4 py-16 sm:px-6">
           <div className="mx-auto max-w-[1300px]">
             <div className="text-center">
-              <div className="inline-flex items-center gap-3 rounded-full border border-blue-200 bg-blue-50 px-8 py-3 text-xl font-extrabold uppercase tracking-[0.08em] text-blue-700">
-                <span className="h-2 w-2 rounded-full bg-blue-700" />
-                Customers
-              </div>
-              <h2 className="mt-6 text-[36px] font-black tracking-[-0.05em] text-slate-950">
+              <HomeSectionLabel>Customers</HomeSectionLabel>
+              <h2 className="marketing-display-title mt-6 text-[36px] font-black tracking-[-0.02em] text-slate-950">
                 Real Results in Production
               </h2>
               <p className="mx-auto mt-3 max-w-[480px] text-[15px] leading-7 text-slate-500">
@@ -615,7 +629,7 @@ export default function Home() {
 
         <section className="marketing-cta-shared px-4 py-16 text-center sm:px-6">
           <div className="mx-auto max-w-4xl">
-            <h2 className="text-[clamp(24px,2.8vw,36px)] font-black tracking-[-0.04em] text-slate-950">
+            <h2 className="marketing-display-title text-[clamp(24px,2.8vw,36px)] font-black tracking-[-0.015em] text-slate-950">
               Ready to close the Sim-to-Real gap?
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-slate-600">

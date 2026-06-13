@@ -68,8 +68,12 @@ export default function Company() {
 
       <main className="pt-[88px]">
         <section className="mx-auto max-w-[1300px] border-b border-slate-200 px-4 py-16 sm:px-6">
-          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">Company</div>
-          <h1 className="mt-4 text-[clamp(36px,4vw,52px)] font-black leading-[1.08] tracking-[-0.06em] text-slate-950">
+          <div className="flex items-center gap-4 text-[18px] font-extrabold uppercase tracking-[0.18em] text-primary sm:text-xl">
+            <span className="h-px w-12 bg-primary/45" />
+            Company
+            <span className="h-px w-12 bg-primary/45" />
+          </div>
+          <h1 className="marketing-display-title mt-4 text-[clamp(36px,4vw,52px)] font-black leading-[1.08] tracking-[-0.03em] text-slate-950">
             Built by PhysicalAI
             <br />
             <span className="bg-gradient-to-r from-primary to-sky-600 bg-clip-text text-transparent">Veterans.</span>
@@ -79,32 +83,23 @@ export default function Company() {
           </p>
         </section>
 
-        <section className="border-b border-slate-200 bg-slate-50 px-4 py-10 sm:px-6">
-          <div className="mx-auto grid max-w-[1300px] gap-6 md:grid-cols-3">
-            <div className="flex flex-col gap-2">
-              <div className="mb-1 inline-flex h-9 w-9 items-center justify-center rounded-[10px] border border-teal-300 bg-teal-50">
-                <span className="h-4 w-4 rounded-full border-2 border-primary border-t-transparent" />
-              </div>
-              <div className="text-[15px] font-extrabold text-slate-950">Real-World First</div>
-              <p className="text-[13px] leading-6 text-slate-500">
+        <section className="border-b border-slate-200 bg-slate-50 px-4 py-9 sm:px-6">
+          <div className="mx-auto grid max-w-[1300px] md:grid-cols-3">
+            <div className="py-5 md:pr-8">
+              <div className="text-[17px] font-extrabold tracking-[-0.01em] text-slate-950">Real-World First</div>
+              <p className="mt-2 max-w-sm text-[13px] leading-6 text-slate-500">
                 Authentic multi-modal datasets captured in operating environments — not simulated proxies.
               </p>
             </div>
-            <div className="flex flex-col gap-2">
-              <div className="mb-1 inline-flex h-9 w-9 items-center justify-center rounded-[10px] border border-blue-300 bg-blue-50">
-                <span className="h-4 w-4 rounded-sm border-2 border-blue-700" />
-              </div>
-              <div className="text-[15px] font-extrabold text-slate-950">Data Infrastructure</div>
-              <p className="text-[13px] leading-6 text-slate-500">
+            <div className="border-t border-slate-200 py-5 md:border-l md:border-t-0 md:px-8">
+              <div className="text-[17px] font-extrabold tracking-[-0.01em] text-slate-950">Data Infrastructure</div>
+              <p className="mt-2 max-w-sm text-[13px] leading-6 text-slate-500">
                 End-to-end pipelines from capture to policy-ready training data across four industry verticals.
               </p>
             </div>
-            <div className="flex flex-col gap-2">
-              <div className="mb-1 inline-flex h-9 w-9 items-center justify-center rounded-[10px] border border-violet-300 bg-violet-50">
-                <span className="h-4 w-4 rounded-full border-2 border-violet-700" />
-              </div>
-              <div className="text-[15px] font-extrabold text-slate-950">Partnership-Driven</div>
-              <p className="text-[13px] leading-6 text-slate-500">
+            <div className="border-t border-slate-200 py-5 md:border-l md:border-t-0 md:pl-8">
+              <div className="text-[17px] font-extrabold tracking-[-0.01em] text-slate-950">Partnership-Driven</div>
+              <p className="mt-2 max-w-sm text-[13px] leading-6 text-slate-500">
                 Co-developed with industry leaders — Figure AI, BMW, Foxconn — to ensure real production fidelity.
               </p>
             </div>
@@ -191,7 +186,7 @@ export default function Company() {
 
         <section className="marketing-cta-shared px-4 py-16 text-center sm:px-6">
           <div className="mx-auto max-w-4xl">
-            <h2 className="text-[clamp(22px,2.5vw,32px)] font-extrabold tracking-[-0.04em] text-slate-950">
+            <h2 className="marketing-display-title text-[clamp(22px,2.5vw,32px)] font-extrabold tracking-[-0.015em] text-slate-950">
               Ready to close the Sim-to-Real gap?
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-[15px] leading-7 text-slate-600">

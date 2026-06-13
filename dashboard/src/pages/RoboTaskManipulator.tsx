@@ -7,7 +7,6 @@ import { buildAuthPath } from "@/lib/authLinks";
 import { frontPageImageUrl } from "@/lib/datasetFolderCover";
 
 type StepCard = {
-  step: string;
   title: string;
   description: string;
   accent: "blue" | "orange" | "teal";
@@ -42,7 +41,6 @@ const STATS = [
 
 const PROCESS_STEPS: StepCard[] = [
   {
-    step: "Step 01 · Capture",
     title: "Task Demonstration",
     description:
       "Human or robot demonstration of pick-place, assembly, or cabling — any workspace or form factor.",
@@ -50,14 +48,12 @@ const PROCESS_STEPS: StepCard[] = [
     icon: "capture",
   },
   {
-    step: "Step 02",
     title: "RoboTaskManipulator Engine",
     description: "Step segmentation, grasp classification & trajectory extraction.",
     accent: "orange",
     icon: "engine",
   },
   {
-    step: "Step 03 · Policy Data",
     title: "Task Sequences",
     description:
       "Labeled step sequences with grasp primitives and waypoints — ready for imitation learning.",
@@ -339,11 +335,10 @@ function StepCardView({ step }: { step: StepCard }) {
         : "border-teal-300 bg-teal-100 dark:border-teal-800 dark:bg-teal-950/50";
 
   return (
-    <div className={`flex-1 rounded-[12px] border px-[22px] py-5 ${classes}`}>
+    <div className={`flex min-h-[176px] flex-1 flex-col rounded-[12px] border px-[22px] py-5 ${classes}`}>
       <div className={`mb-3 grid h-9 w-9 place-items-center rounded-[8px] border ${iconClasses}`}>
         <StepIcon type={step.icon} />
       </div>
-      <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.12em]">{step.step}</p>
       <p className="mb-2 text-[16px] font-extrabold text-slate-950 dark:text-slate-100">{step.title}</p>
       <p className="text-[11px] leading-6 text-slate-500 dark:text-slate-400">{step.description}</p>
     </div>
@@ -512,61 +507,14 @@ export default function RoboTaskManipulator() {
       <Navigation />
 
       <main className="pt-[88px]">
-        <div className="mx-auto flex max-w-[1440px]">
-          <aside className="hidden min-h-[calc(100vh-88px)] w-[220px] shrink-0 border-r border-slate-200 bg-slate-50/90 xl:flex xl:flex-col dark:border-slate-800 dark:bg-slate-950/80">
-            <div className="border-b border-slate-200 px-5 py-6 dark:border-slate-800">
-              <p className="text-[18px] font-extrabold tracking-[0.04em] text-primary">DataraAI</p>
-              <p className="mt-1 text-[16px] font-bold text-slate-950 dark:text-slate-100">Task Manipulator</p>
-            </div>
-            <div className="flex-1 px-3 py-4">
-              <p className="mb-3 px-2 text-[16px] font-extrabold text-slate-950 dark:text-slate-100">Verticals</p>
-              <a
-                href="#dc"
-                className="mb-1 flex items-center gap-3 rounded-[9px] border border-blue-200 bg-blue-50 px-4 py-3 dark:border-blue-900/50 dark:bg-blue-950/30"
-              >
-                <span className="h-3 w-3 rounded-[3px] bg-blue-700" />
-                <span className="text-[16px] font-extrabold text-slate-950 dark:text-slate-100">Data Center</span>
-              </a>
-              <a
-                href="#wh"
-                className="mb-1 flex items-center gap-3 rounded-[9px] px-4 py-3 text-slate-600 transition-colors hover:bg-orange-50/60 hover:text-orange-700 dark:text-slate-300 dark:hover:bg-orange-950/20 dark:hover:text-orange-200"
-              >
-                <span className="h-3 w-3 rounded-[3px] bg-orange-500" />
-                <span className="text-[16px] font-extrabold">Warehouse</span>
-              </a>
-              <a
-                href="#hu"
-                className="mb-1 flex items-center gap-3 rounded-[9px] px-4 py-3 text-slate-600 transition-colors hover:bg-teal-50/60 hover:text-teal-700 dark:text-slate-300 dark:hover:bg-teal-950/20 dark:hover:text-teal-200"
-              >
-                <span className="h-3 w-3 rounded-[3px] bg-teal-600" />
-                <span className="text-[16px] font-extrabold">Dexterity</span>
-              </a>
-              <a
-                href="#au"
-                className="mb-1 flex items-center gap-3 rounded-[9px] px-4 py-3 text-slate-600 transition-colors hover:bg-violet-50/60 hover:text-violet-700 dark:text-slate-300 dark:hover:bg-violet-950/20 dark:hover:text-violet-200"
-              >
-                <span className="h-3 w-3 rounded-[3px] bg-violet-600" />
-                <span className="text-[16px] font-extrabold">Automotive</span>
-              </a>
-            </div>
-            <div className="border-t border-slate-200 px-5 py-4 dark:border-slate-800">
-              <Link
-                to={buildAuthPath("register", "/robotaskmanipulator")}
-                className="inline-flex h-10 w-full items-center justify-center rounded-[8px] bg-orange-600 px-4 text-[12px] font-bold text-white transition-opacity hover:opacity-90"
-              >
-                Get Access
-              </Link>
-            </div>
-          </aside>
-
-          <div className="flex-1 overflow-hidden bg-white px-4 py-9 sm:px-6 md:px-10 xl:px-11 dark:bg-slate-950">
-            <div className="mx-auto max-w-[1180px]">
+        <div className="mx-auto max-w-[1320px] bg-white px-4 py-9 sm:px-6 md:px-10 xl:px-12 dark:bg-slate-950">
+          <div className="mx-auto max-w-[1280px]">
               <section className="mb-6">
                 <div className="mb-2 flex flex-wrap items-center gap-3">
                   <div className="grid h-9 w-9 place-items-center rounded-[9px] border border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-900/50 dark:bg-orange-950/30 dark:text-orange-200">
                     <Boxes className="h-4 w-4" />
                   </div>
-                  <h1 className="text-[30px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">
+                  <h1 className="marketing-display-title text-[30px] font-black tracking-[-0.005em] text-slate-950 dark:text-slate-100">
                     RoboTaskManipulator
                   </h1>
                   <span className="rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-orange-700 dark:border-orange-900/50 dark:bg-orange-950/30 dark:text-orange-200">
@@ -594,7 +542,7 @@ export default function RoboTaskManipulator() {
 
               <section className="mb-10 rounded-[14px] border border-slate-200 bg-slate-50/80 px-8 py-7 dark:border-slate-800 dark:bg-slate-900/60">
                 <p className="mb-6 text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-400">How It Works</p>
-                <div className="lg:flex lg:items-center">
+                <div className="lg:flex lg:items-stretch">
                   <StepCardView step={PROCESS_STEPS[0]} />
                   <FlowArrow />
                   <StepCardView step={PROCESS_STEPS[1]} />
@@ -672,7 +620,6 @@ export default function RoboTaskManipulator() {
                   </div>
                 </div>
               </section>
-            </div>
           </div>
         </div>
       </main>

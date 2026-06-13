@@ -1,8 +1,17 @@
-import { useMemo, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { Menu, Moon, Sun, X } from "lucide-react";
+import { useEffect, useMemo, useState, type MouseEvent } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Check, ChevronDown, Database, LogOut, Menu, Moon, Shield, Sun, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/auth/useAuth";
+import type { AuthUser } from "@/auth/AuthProvider";
+import dataraAILogo from "@/assets/images/logo/DataraAILogo.png";
 import { buildAuthPath } from "@/lib/authLinks";
 import { useAppTheme } from "@/theme/AppThemeProvider";
 
@@ -13,12 +22,15 @@ type NavItem = {
   key: string;
 };
 
-const MARKETING_NAV_ITEMS: NavItem[] = [
+const GLOBAL_NAV_ITEMS: NavItem[] = [
   { key: "products", label: "Products", subtitle: "AI Data", href: "/#products" },
   { key: "solutions", label: "Solutions", subtitle: "Use Cases", href: "/#solutions" },
   { key: "customers", label: "Customers", subtitle: "Case Studies", href: "/#customers" },
   { key: "company", label: "Company", subtitle: "Team · Mission", href: "/company" },
 ];
+
+const HOME_SECTION_KEYS = ["products", "solutions", "customers"] as const;
+type HomeSectionKey = (typeof HOME_SECTION_KEYS)[number];
 
 const PRODUCT_NAV_ITEMS: NavItem[] = [
   {
@@ -47,38 +59,270 @@ const PRODUCT_NAV_ITEMS: NavItem[] = [
   },
 ];
 
+function ProductMenu({
+  activeProductKey,
+  align = "start",
+  onNavigate,
+  triggerClassName,
+}: {
+  activeProductKey: string | null;
+  align?: "start" | "end";
+  onNavigate?: () => void;
+  triggerClassName: string;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className={`group/product-menu ${triggerClassName}`}
+          aria-label="Open product menu"
+          title="Explore products"
+        >
+          <ChevronDown className="h-4 w-4 transition-transform group-data-[state=open]/product-menu:rotate-180" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align={align}
+        sideOffset={10}
+        className="w-[calc(100vw-2rem)] max-w-[320px] rounded-2xl border-slate-200 bg-white p-2 shadow-[0_22px_55px_rgba(15,23,42,0.16)]"
+      >
+        <div className="px-3 pb-2 pt-3">
+          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">
+            Products
+          </div>
+          <div className="mt-1 text-xs leading-relaxed text-slate-500">
+            Move directly between DataraAI products.
+          </div>
+        </div>
+
+        <DropdownMenuSeparator className="my-1 bg-slate-200" />
+
+        {PRODUCT_NAV_ITEMS.map((product) => {
+          const isCurrent = activeProductKey === product.key;
+
+          return (
+            <DropdownMenuItem
+              key={product.key}
+              asChild
+              className={`cursor-pointer rounded-xl px-3 py-2.5 ${
+                isCurrent
+                  ? "bg-primary/6 text-primary focus:bg-primary/10 focus:text-primary"
+                  : "text-slate-600 focus:bg-slate-50 focus:text-slate-950"
+              }`}
+            >
+              <Link to={product.href} onClick={onNavigate} aria-current={isCurrent ? "page" : undefined}>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-bold">{product.label}</span>
+                  <span className="mt-0.5 block truncate text-[10px] uppercase tracking-[0.14em] opacity-65">
+                    {product.subtitle}
+                  </span>
+                </span>
+                {isCurrent && <Check className="ml-3 h-4 w-4 shrink-0" />}
+              </Link>
+            </DropdownMenuItem>
+          );
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function getUserInitials(user: AuthUser | null) {
+  const displayName = user?.displayName?.trim();
+  const source = displayName || user?.email?.split("@")[0] || "User";
+  const parts = source.split(/\s+/).filter(Boolean);
+
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+}
+
+function AccountMenu({
+  canManageUsers,
+  hasPrivateData,
+}: {
+  canManageUsers: boolean;
+  hasPrivateData: boolean | null;
+}) {
+  const { isApproved, user, logout } = useAuth();
+  const privateDataAvailable = isApproved && hasPrivateData !== false;
+  const roleLabel = isApproved ? user?.role ?? "customer" : "pending approval";
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-primary/25 bg-primary p-0 text-[12px] font-black tracking-[0.04em] text-primary-foreground shadow-[0_12px_26px_rgba(13,148,136,0.22)] hover:bg-primary hover:text-primary-foreground"
+          aria-label="Open account menu"
+          title="Account menu"
+        >
+          {getUserInitials(user)}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="end"
+        sideOffset={10}
+        className="w-[280px] rounded-2xl border-slate-200 bg-white p-2 shadow-[0_22px_55px_rgba(15,23,42,0.16)]"
+      >
+        <div className="px-3 py-3">
+          <div className="truncate text-sm font-extrabold text-slate-950">
+            {user?.displayName ?? user?.email}
+          </div>
+          <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
+            {roleLabel}
+          </div>
+        </div>
+
+        <DropdownMenuSeparator className="my-1 bg-slate-200" />
+
+        {canManageUsers && (
+          <DropdownMenuItem asChild className="cursor-pointer rounded-xl px-3 py-2.5 font-semibold text-slate-600">
+            <Link to="/admin/users">
+              <Shield className="mr-3 h-4 w-4 text-primary" />
+              User Access
+            </Link>
+          </DropdownMenuItem>
+        )}
+
+        {privateDataAvailable ? (
+          <DropdownMenuItem asChild className="cursor-pointer rounded-xl px-3 py-2.5 font-semibold text-slate-600">
+            <Link to="/viewer/my">
+              <Database className="mr-3 h-4 w-4 text-primary" />
+              Private data
+            </Link>
+          </DropdownMenuItem>
+        ) : (
+          <DropdownMenuItem disabled className="rounded-xl px-3 py-2.5 font-semibold text-slate-500">
+            <Database className="mr-3 h-4 w-4" />
+            No private data yet
+          </DropdownMenuItem>
+        )}
+
+        <DropdownMenuSeparator className="my-1 bg-slate-200" />
+
+        <DropdownMenuItem
+          className="cursor-pointer rounded-xl px-3 py-2.5 font-semibold text-slate-600 focus:bg-red-50 focus:text-red-700"
+          onSelect={() => void logout()}
+        >
+          <LogOut className="mr-3 h-4 w-4" />
+          Sign Out
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 export default function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [activeHomeSectionKey, setActiveHomeSectionKey] = useState<HomeSectionKey | null>(null);
   const location = useLocation();
+  const navigate = useNavigate();
   const { isDarkMode, toggleTheme } = useAppTheme();
-  const { isAuthenticated, isApproved, user, logout } = useAuth();
+  const { isAuthenticated, isApproved, user } = useAuth();
 
   const currentPath = `${location.pathname}${location.search}`;
   const loginHref = buildAuthPath("login", currentPath);
   const registerHref = buildAuthPath("register", currentPath);
   const canManageUsers =
-    isAuthenticated && isApproved && (user?.role === "admin" || user?.role === "analyst");
-  const isMarketingNav = location.pathname === "/" || location.pathname === "/company";
+    isAuthenticated && isApproved && user?.role === "admin";
+  const isMarketingPage = location.pathname === "/" || location.pathname === "/company";
+  const [hasPrivateData, setHasPrivateData] = useState<boolean | null>(null);
 
-  const navItems = useMemo(
-    () => (isMarketingNav ? MARKETING_NAV_ITEMS : PRODUCT_NAV_ITEMS),
-    [isMarketingNav],
-  );
-  const desktopNavDisplayClass = isMarketingNav ? "min-[1120px]:flex" : "min-[1220px]:flex";
-  const desktopActionsClass = isMarketingNav ? "min-[1120px]:flex" : "min-[1220px]:flex";
-  const mobileControlsClass = isMarketingNav ? "min-[1120px]:hidden" : "min-[1220px]:hidden";
-  const tabSpacingClass = isMarketingNav ? "px-4 xl:px-5" : "px-3 xl:px-4";
-  const tabLabelClass = isMarketingNav ? "text-[14px]" : "text-[13px] xl:text-[14px]";
-
-  const activeNavKey = useMemo(() => {
-    if (isMarketingNav) {
-      if (location.pathname === "/company") return "company";
-      if (location.hash === "#solutions") return "solutions";
-      if (location.hash === "#customers") return "customers";
-      if (location.hash === "#products" || location.pathname === "/") return "products";
-      return null;
+  useEffect(() => {
+    if (!isAuthenticated || !isApproved) {
+      setHasPrivateData(false);
+      return;
     }
 
+    let cancelled = false;
+
+    async function checkPrivateData() {
+      try {
+        const response = await fetch("/api/datasets?path=my", { credentials: "same-origin" });
+        if (!response.ok) return;
+        const data = await response.json();
+        if (!cancelled) {
+          setHasPrivateData(Array.isArray(data) && data.length > 0);
+        }
+      } catch {
+        if (!cancelled) {
+          setHasPrivateData(null);
+        }
+      }
+    }
+
+    setHasPrivateData(null);
+    void checkPrivateData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isApproved, isAuthenticated, user?.id]);
+
+  useEffect(() => {
+    if (location.pathname !== "/") {
+      setActiveHomeSectionKey(null);
+      return;
+    }
+
+    let animationFrame = 0;
+
+    const updateActiveHomeSection = () => {
+      animationFrame = 0;
+      const headerMarker = 112;
+      const activeSection = HOME_SECTION_KEYS.find((sectionKey) => {
+        const section = document.getElementById(sectionKey);
+        if (!section) return false;
+        const bounds = section.getBoundingClientRect();
+        return bounds.top <= headerMarker && bounds.bottom > headerMarker;
+      });
+
+      setActiveHomeSectionKey(activeSection ?? null);
+    };
+
+    const scheduleUpdate = () => {
+      if (animationFrame) return;
+      animationFrame = window.requestAnimationFrame(updateActiveHomeSection);
+    };
+
+    scheduleUpdate();
+    window.addEventListener("scroll", scheduleUpdate, { passive: true });
+    window.addEventListener("resize", scheduleUpdate);
+
+    return () => {
+      window.removeEventListener("scroll", scheduleUpdate);
+      window.removeEventListener("resize", scheduleUpdate);
+      if (animationFrame) window.cancelAnimationFrame(animationFrame);
+    };
+  }, [location.pathname]);
+
+  const handleGlobalNavClick = (event: MouseEvent<HTMLAnchorElement>, href: string) => {
+    if (href.startsWith("/#") && location.pathname === "/") {
+      event.preventDefault();
+      const sectionId = href.slice(2);
+      const target = document.getElementById(sectionId);
+
+      if (location.hash !== `#${sectionId}`) {
+        navigate(href);
+      }
+      target?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+
+    if (href === "/company" && location.pathname === "/company") {
+      event.preventDefault();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
+  const activeProductKey = useMemo(() => {
     if (location.pathname.startsWith("/viewer") || location.pathname.startsWith("/robodatahub")) {
       return "robodatahub";
     }
@@ -94,7 +338,19 @@ export default function Navigation() {
       return "robotaskmanipulator";
     }
     return null;
-  }, [isMarketingNav, location.hash, location.pathname]);
+  }, [location.hash, location.pathname]);
+
+  const activeNavKey = useMemo(() => {
+    if (location.pathname === "/company") return "company";
+    if (location.pathname === "/") return activeHomeSectionKey;
+    if (
+      activeProductKey ||
+      location.pathname === "/product"
+    ) {
+      return "products";
+    }
+    return null;
+  }, [activeHomeSectionKey, activeProductKey, location.pathname]);
 
   return (
     <nav className="fixed inset-x-0 top-0 z-50 border-b border-slate-200/80 bg-white/92 text-foreground backdrop-blur-xl">
@@ -105,34 +361,82 @@ export default function Navigation() {
             className="relative z-10 flex min-w-0 items-center gap-3"
             onClick={() => setIsMenuOpen(false)}
           >
-            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-primary/20 bg-primary text-[15px] font-black text-primary-foreground shadow-[0_14px_30px_rgba(13,148,136,0.18)]">
-              D
-            </div>
+            <img
+              src={dataraAILogo}
+              alt=""
+              width={44}
+              height={44}
+              loading="eager"
+              fetchPriority="high"
+              decoding="async"
+              className="h-11 w-11 shrink-0 rounded-full border border-primary/20 object-cover shadow-[0_14px_30px_rgba(13,148,136,0.18)]"
+            />
             <div className="min-w-0">
               <div className="truncate font-sans-tech text-lg font-extrabold tracking-[0.04em] text-primary">
                 DataraAI
               </div>
-              <div className="truncate text-[11px] font-medium text-slate-500">
-                {isMarketingNav ? "Data-as-a-Service" : "Back to Home"}
-              </div>
+              {!isMarketingPage ? (
+                <div className="truncate text-[11px] font-medium text-slate-500">
+                  Back to Home
+                </div>
+              ) : null}
             </div>
           </Link>
 
-          <div className={`hidden min-w-0 flex-1 items-stretch px-4 ${desktopNavDisplayClass}`}>
+          <div className="hidden min-w-0 flex-1 items-stretch px-4 min-[1120px]:flex">
             <div className="flex min-w-0 flex-1 items-stretch">
-              {navItems.map((item) => {
+              {GLOBAL_NAV_ITEMS.map((item) => {
                 const isActive = activeNavKey === item.key;
+
+                if (item.key === "products") {
+                  return (
+                    <div
+                      key={item.key}
+                      className={`relative flex min-w-0 flex-1 items-stretch border-x border-slate-200/80 text-center transition-colors ${
+                        isActive
+                          ? "bg-primary/5 text-primary"
+                          : "text-slate-500 hover:bg-slate-50 hover:text-foreground"
+                      }`}
+                    >
+                      <Link
+                        to={item.href}
+                        className="flex min-w-0 flex-1 flex-col items-center justify-center py-2 pl-4 pr-1"
+                        onClick={(event) => handleGlobalNavClick(event, item.href)}
+                      >
+                        <span className="truncate text-[14px] font-bold leading-none">{item.label}</span>
+                        <span className="mt-1 text-[10px] uppercase tracking-[0.18em] opacity-70">
+                          {item.subtitle}
+                        </span>
+                      </Link>
+                      <div className="flex items-stretch py-1.5 pr-2">
+                        <ProductMenu
+                          activeProductKey={activeProductKey}
+                          triggerClassName="h-full min-h-[52px] w-10 rounded-[14px] text-current hover:bg-white/80 hover:text-primary data-[state=open]:bg-white data-[state=open]:text-primary"
+                        />
+                      </div>
+                      <span
+                        className={`pointer-events-none absolute inset-x-[20%] bottom-0 h-0.5 rounded-t-full ${
+                          isActive
+                            ? "bg-primary shadow-[0_0_14px_rgba(13,148,136,0.3)]"
+                            : "bg-transparent"
+                        }`}
+                      />
+                    </div>
+                  );
+                }
+
                 return (
                   <Link
-                    key={item.href}
+                    key={item.key}
                     to={item.href}
-                    className={`relative flex min-w-0 flex-1 ${tabSpacingClass} flex-col items-center justify-center border-x border-slate-200/80 text-center transition-colors ${
+                    onClick={(event) => handleGlobalNavClick(event, item.href)}
+                    className={`relative flex min-w-0 flex-1 flex-col items-center justify-center border-x border-slate-200/80 px-4 text-center transition-colors xl:px-5 ${
                       isActive
                         ? "bg-primary/5 text-primary"
                         : "text-slate-500 hover:bg-slate-50 hover:text-foreground"
-                    }`}
+                      }`}
                   >
-                    <span className={`truncate font-bold leading-none ${tabLabelClass}`}>{item.label}</span>
+                    <span className="truncate text-[14px] font-bold leading-none">{item.label}</span>
                     <span className="mt-1 text-[10px] uppercase tracking-[0.18em] opacity-70">
                       {item.subtitle}
                     </span>
@@ -149,7 +453,7 @@ export default function Navigation() {
             </div>
           </div>
 
-          <div className={`relative z-10 hidden items-center gap-3 ${desktopActionsClass}`}>
+          <div className="relative z-10 hidden items-center gap-3 min-[1120px]:flex">
             <Button
               type="button"
               variant="ghost"
@@ -162,31 +466,7 @@ export default function Navigation() {
               {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
             {isAuthenticated ? (
-              <>
-                {canManageUsers && (
-                  <Link
-                    to="/admin/users"
-                    className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-500 transition-colors hover:border-primary/30 hover:text-primary"
-                  >
-                    User Access
-                  </Link>
-                )}
-                <div className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-right shadow-[0_12px_28px_rgba(15,23,42,0.05)]">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
-                    {isApproved ? user?.role ?? "customer" : "pending"}
-                  </div>
-                  <div className="max-w-[220px] truncate text-sm text-foreground">
-                    {user?.displayName ?? user?.email}
-                  </div>
-                </div>
-                <Button
-                  variant="ghost"
-                  className="h-10 rounded-full border border-slate-200 px-5 text-sm font-semibold text-slate-500 hover:border-primary/30 hover:bg-primary/5 hover:text-primary"
-                  onClick={() => void logout()}
-                >
-                  Sign Out
-                </Button>
-              </>
+              <AccountMenu canManageUsers={canManageUsers} hasPrivateData={hasPrivateData} />
             ) : (
               <>
                 <Link
@@ -205,7 +485,7 @@ export default function Navigation() {
             )}
           </div>
 
-          <div className={`flex items-center gap-2 ${mobileControlsClass}`}>
+          <div className="flex items-center gap-2 min-[1120px]:hidden">
             <Button
               type="button"
               variant="ghost"
@@ -217,6 +497,11 @@ export default function Navigation() {
             >
               {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
+            {isAuthenticated ? (
+              <AccountMenu canManageUsers={canManageUsers} hasPrivateData={hasPrivateData} />
+            ) : (
+              null
+            )}
 
             <Button
               type="button"
@@ -232,20 +517,59 @@ export default function Navigation() {
         </div>
 
         {isMenuOpen && (
-          <div className={`border-t border-slate-200 pb-5 pt-4 ${mobileControlsClass}`}>
+          <div className="border-t border-slate-200 pb-5 pt-4 min-[1120px]:hidden">
             <div className="space-y-2">
-              {navItems.map((item) => {
+              {GLOBAL_NAV_ITEMS.map((item) => {
                 const isActive = activeNavKey === item.key;
+
+                if (item.key === "products") {
+                  return (
+                    <div
+                      key={item.key}
+                      className={`flex items-stretch overflow-hidden rounded-2xl border ${
+                        isActive
+                          ? "border-primary/20 bg-primary/6 text-primary"
+                          : "border-slate-200 bg-white text-slate-500"
+                      }`}
+                    >
+                      <Link
+                        to={item.href}
+                        className="block min-w-0 flex-1 px-4 py-3"
+                        onClick={(event) => {
+                          setIsMenuOpen(false);
+                          handleGlobalNavClick(event, item.href);
+                        }}
+                      >
+                        <div className="text-sm font-semibold">{item.label}</div>
+                        <div className="mt-1 text-[10px] uppercase tracking-[0.18em] opacity-60">
+                          {item.subtitle}
+                        </div>
+                      </Link>
+                      <div className="flex items-stretch border-l border-current/10 px-2 py-1">
+                        <ProductMenu
+                          activeProductKey={activeProductKey}
+                          align="end"
+                          onNavigate={() => setIsMenuOpen(false)}
+                          triggerClassName="h-full min-h-[48px] w-10 rounded-[14px] text-current hover:bg-white/80 hover:text-primary data-[state=open]:bg-white data-[state=open]:text-primary"
+                        />
+                      </div>
+                    </div>
+                  );
+                }
+
                 return (
                   <Link
-                    key={item.href}
+                    key={item.key}
                     to={item.href}
                     className={`block rounded-2xl border px-4 py-3 ${
                       isActive
                         ? "border-primary/20 bg-primary/6 text-primary"
                         : "border-slate-200 bg-white text-slate-500"
                     }`}
-                    onClick={() => setIsMenuOpen(false)}
+                    onClick={(event) => {
+                      setIsMenuOpen(false);
+                      handleGlobalNavClick(event, item.href);
+                    }}
                   >
                     <div className="text-sm font-semibold">{item.label}</div>
                     <div className="mt-1 text-[10px] uppercase tracking-[0.18em] opacity-60">
@@ -256,55 +580,24 @@ export default function Navigation() {
               })}
             </div>
 
-            <div className="mt-4 space-y-3 border-t border-slate-200 pt-4">
-              {isAuthenticated ? (
-                <>
-                  <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
-                      {isApproved ? user?.role ?? "customer" : "pending"}
-                    </div>
-                    <div className="mt-1 truncate text-sm text-foreground">
-                      {user?.displayName ?? user?.email}
-                    </div>
-                  </div>
-
-                  {canManageUsers && (
-                    <Link
-                      to="/admin/users"
-                      className="block rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-500"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      User Access
-                    </Link>
-                  )}
-
-                  <Button
-                    variant="ghost"
-                    className="h-11 w-full justify-start rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-500 hover:text-primary"
-                    onClick={() => void logout()}
-                  >
-                    Sign Out
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Link
-                    to={loginHref}
-                    className="flex h-11 items-center rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-500"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    Sign In
-                  </Link>
-                  <Link
-                    to={registerHref}
-                    className="flex h-11 items-center rounded-2xl bg-primary px-4 text-sm font-bold text-primary-foreground"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    Get Access
-                  </Link>
-                </>
-              )}
-            </div>
+            {!isAuthenticated && (
+              <div className="mt-4 space-y-3 border-t border-slate-200 pt-4">
+                <Link
+                  to={loginHref}
+                  className="flex h-11 items-center rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-500"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Sign In
+                </Link>
+                <Link
+                  to={registerHref}
+                  className="flex h-11 items-center rounded-2xl bg-primary px-4 text-sm font-bold text-primary-foreground"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Get Access
+                </Link>
+              </div>
+            )}
           </div>
         )}
       </div>

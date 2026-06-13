@@ -272,6 +272,11 @@
     background: linear-gradient(180deg, rgba(248, 250, 252, 0.92), rgba(255, 255, 255, 1));
   }
 
+  .marketing-display-title {
+    word-spacing: 0.12em;
+    text-wrap: balance;
+  }
+
   .marketing-cta-shared {
     background: linear-gradient(135deg, #f8fafc 0%, #eef6f5 50%, #eff6ff 100%);
   }

@@ -20,7 +20,6 @@ import {
   Database,
   Folder,
   Loader2,
-  LockKeyhole,
   MoreVertical,
   RefreshCw,
   Search,
@@ -50,6 +49,9 @@ interface FolderItem {
   viewer_path?: string;
   type?: string;
 }
+
+const pathSearchCache = new Map<string, FolderItem[]>();
+const pathSearchRequestCache = new Map<string, Promise<FolderItem[]>>();
 
 interface VlmRun {
   effective_prompt?: string;
@@ -300,6 +302,54 @@ function uniqueFolderItems(items: FolderItem[]) {
     seen.add(item.full_path);
     return true;
   });
+}
+
+function loadSearchPaths(cacheKey: string, category?: CategoryKey | null) {
+  const cachedPaths = pathSearchCache.get(cacheKey);
+  if (cachedPaths) {
+    return Promise.resolve(cachedPaths);
+  }
+
+  const pendingRequest = pathSearchRequestCache.get(cacheKey);
+  if (pendingRequest) {
+    return pendingRequest;
+  }
+
+  const params = category
+    ? new URLSearchParams({
+        category,
+        public_only: "true",
+      })
+    : null;
+  const requestUrl = params ? `/api/dataset-paths?${params.toString()}` : "/api/dataset-paths";
+  const requestInit = {
+    credentials: "same-origin",
+    priority: "low",
+  } as RequestInit & { priority: "low" };
+
+  const request = fetch(requestUrl, requestInit)
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(`Failed to load dataset paths (${response.status})`);
+      }
+      return response.json() as Promise<unknown[]>;
+    })
+    .then((payload) =>
+      uniqueFolderItems(
+        normalizeFolderResults(payload)
+          .sort((a, b) => a.full_path.localeCompare(b.full_path)),
+      ),
+    )
+    .then((paths) => {
+      pathSearchCache.set(cacheKey, paths);
+      return paths;
+    })
+    .finally(() => {
+      pathSearchRequestCache.delete(cacheKey);
+    });
+
+  pathSearchRequestCache.set(cacheKey, request);
+  return request;
 }
 
 const EXCLUDED_DATASET_PANEL_NAMES = new Set(["test", "short-test", "washing-test"]);
@@ -1098,11 +1148,9 @@ function CompactPathSearch({
   loading,
   suggestions,
   placeholder,
-  submitDisabled,
   className,
   onFocus,
   onChange,
-  onSubmit,
   onSuggestionClick,
   renderHighlightedPath,
 }: {
@@ -1110,45 +1158,33 @@ function CompactPathSearch({
   loading: boolean;
   suggestions: FolderItem[];
   placeholder: string;
-  submitDisabled: boolean;
   className?: string;
   onFocus: () => void;
   onChange: (value: string) => void;
-  onSubmit: () => void;
   onSuggestionClick: (fullPath: string) => void;
   renderHighlightedPath: (fullPath: string) => ReactNode;
 }) {
   return (
     <div className={`relative w-full ${className ?? "max-w-xl"}`}>
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          onSubmit();
-        }}
-        className="flex flex-col gap-3 sm:flex-row"
-      >
-        <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            value={value}
-            onFocus={onFocus}
-            onChange={(event) => onChange(event.target.value)}
-            placeholder={placeholder}
-            className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-10 font-sans-tech text-sm text-slate-900 shadow-[0_10px_24px_rgba(15,23,42,0.06)] placeholder:text-slate-400 focus:border-primary/30 focus:outline-none"
-          />
-          {loading && (
-            <Loader2 className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-primary" />
-          )}
-        </div>
-        <button
-          type="submit"
-          disabled={submitDisabled}
-          className="inline-flex h-11 shrink-0 items-center justify-center rounded-xl bg-primary px-5 font-sans-tech text-sm font-bold text-primary-foreground transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          Search
-        </button>
-      </form>
+      <div className="relative">
+        <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <input
+          type="text"
+          value={value}
+          onFocus={onFocus}
+          onChange={(event) => onChange(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+            }
+          }}
+          placeholder={placeholder}
+          className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-10 font-sans-tech text-sm text-slate-900 shadow-[0_10px_24px_rgba(15,23,42,0.06)] placeholder:text-slate-400 focus:border-primary/30 focus:outline-none"
+        />
+        {loading && (
+          <Loader2 className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-primary" />
+        )}
+      </div>
 
       {value.trim() !== "" && (
         <div className="absolute left-0 right-0 top-[calc(100%+0.75rem)] z-30 overflow-hidden rounded-[20px] border border-slate-200 bg-white/95 text-left shadow-[0_24px_60px_rgba(15,23,42,0.14)] backdrop-blur-sm dark:bg-card/95 dark:shadow-[0_24px_60px_rgba(0,0,0,0.3)]">
@@ -1327,6 +1363,7 @@ export default function DataViewer() {
   const sectionAnchorRefs = useRef<Record<string, HTMLElement | null>>({});
   const landingTopRef = useRef<HTMLDivElement | null>(null);
   const contentScrollRef = useRef<HTMLDivElement | null>(null);
+  const previousPathSearchReloadTickRef = useRef(reloadTick);
 
   const pathSegments = useMemo(
     () => location.pathname.split("/").filter((part) => part && part !== "viewer" && part !== "robodatahub"),
@@ -1418,28 +1455,12 @@ export default function DataViewer() {
     });
   }, [localCategoryPreviewPlaceholdersByRoute, rootCategoryPreviews]);
   const pathSearchScopeKey = activeCategory?.routeKey ?? "global";
+  const pathSearchCacheKey = `${user?.id ?? "guest"}:${pathSearchScopeKey}`;
 
   const isRootLanding = pathSegments.length === 0;
   const isCategoryLanding = Boolean(activeCategory) && pathSegments.length === 1;
   const isCatalogLanding = isRootLanding || isCategoryLanding;
   const showCatalogFooter = isRootLanding;
-  const visibleRootRouteKeys = useMemo(
-    () =>
-      (Object.entries(visibleRootSectionKeys) as [CategoryKey, boolean][])
-        .filter(([, isVisible]) => isVisible)
-        .map(([routeKey]) => routeKey),
-    [visibleRootSectionKeys],
-  );
-  const initialRootCatalogContentReady = useMemo(() => {
-    if (!isRootLanding || visibleRootRouteKeys.length === 0) return false;
-    return visibleRootRouteKeys.every((routeKey) => rootCategoryPreviews[routeKey] !== undefined);
-  }, [isRootLanding, rootCategoryPreviews, visibleRootRouteKeys]);
-  const initialCategoryCatalogContentReady =
-    isCategoryLanding &&
-    Boolean(activeCategory) &&
-    !categoryPreviewsLoading &&
-    loadedCategoryPreviewKey === activeCategory.routeKey;
-
   useEffect(() => {
     setActiveLandingFilterId(activeLandingContent?.filters[0]?.id ?? "all");
     sectionAnchorRefs.current = {};
@@ -1693,9 +1714,6 @@ export default function DataViewer() {
   useEffect(() => {
     if (!canUseCatalogSearch || !isCatalogLanding || pathSearchLoaded || pathSearchPrimed) return;
 
-    const readyForWarmup = initialRootCatalogContentReady || initialCategoryCatalogContentReady;
-    if (!readyForWarmup) return;
-
     let cancelled = false;
     let timeoutId: number | null = null;
     let idleId: number | null = null;
@@ -1712,9 +1730,9 @@ export default function DataViewer() {
     };
 
     if (typeof idleWindow.requestIdleCallback === "function") {
-      idleId = idleWindow.requestIdleCallback(primeSearch, { timeout: 1200 });
+      idleId = idleWindow.requestIdleCallback(primeSearch, { timeout: 700 });
     } else {
-      timeoutId = window.setTimeout(primeSearch, 700);
+      timeoutId = window.setTimeout(primeSearch, 300);
     }
 
     return () => {
@@ -1727,13 +1745,8 @@ export default function DataViewer() {
       }
     };
   }, [
-    activeCategory,
     canUseCatalogSearch,
-    categoryPreviewsLoading,
-    initialCategoryCatalogContentReady,
-    initialRootCatalogContentReady,
     isCatalogLanding,
-    loadedCategoryPreviewKey,
     pathSearchLoaded,
     pathSearchPrimed,
   ]);
@@ -1748,21 +1761,8 @@ export default function DataViewer() {
     async function loadAllPaths() {
       setPathSearchLoading(true);
       try {
-        const params = activeCategory
-          ? {
-            category: activeCategory.routeKey,
-            public_only: "true",
-          }
-          : undefined;
-        const response = await axios.get<unknown[]>("/api/dataset-paths", {
-          params,
-        });
+        const nextPaths = await loadSearchPaths(pathSearchCacheKey, activeCategory?.routeKey);
         if (cancelled) return;
-
-        const nextPaths = uniqueFolderItems(
-          normalizeFolderResults(response.data)
-            .sort((a, b) => a.full_path.localeCompare(b.full_path)),
-        );
 
         setAllFolderPaths(nextPaths);
         setPathSearchLoaded(true);
@@ -1783,15 +1783,31 @@ export default function DataViewer() {
     return () => {
       cancelled = true;
     };
-  }, [activeCategory, canUseCatalogSearch, pathSearchLoaded, pathSearchPrimed, pathSearchText, pathSearchTouched]);
+  }, [
+    activeCategory,
+    canUseCatalogSearch,
+    pathSearchCacheKey,
+    pathSearchLoaded,
+    pathSearchPrimed,
+    pathSearchText,
+    pathSearchTouched,
+  ]);
 
   useEffect(() => {
-    setAllFolderPaths([]);
+    const isManualReload = previousPathSearchReloadTickRef.current !== reloadTick;
+    previousPathSearchReloadTickRef.current = reloadTick;
+    if (isManualReload) {
+      pathSearchCache.delete(pathSearchCacheKey);
+      pathSearchRequestCache.delete(pathSearchCacheKey);
+    }
+
+    const cachedPaths = pathSearchCache.get(pathSearchCacheKey);
+    setAllFolderPaths(cachedPaths ?? []);
     setPathSearchLoading(false);
-    setPathSearchLoaded(false);
-    setPathSearchPrimed(false);
+    setPathSearchLoaded(Boolean(cachedPaths));
+    setPathSearchPrimed(Boolean(cachedPaths));
     setPathSearchTouched(false);
-  }, [reloadTick, pathSearchScopeKey]);
+  }, [pathSearchCacheKey, reloadTick]);
 
   useEffect(() => {
     if (!imageQueryParam || images.length === 0) return;
@@ -1969,11 +1985,6 @@ export default function DataViewer() {
 
   function promptGuestSignIn(nextPath = viewerBasePath) {
     navigate(buildAuthPath("login", nextPath));
-  }
-
-  function handlePathSearchSubmit() {
-    if (pathSuggestions.length === 0) return;
-    handlePathSuggestionClick(pathSuggestions[0].full_path);
   }
 
   function handleCategoryPreviewClick(item: CategoryDatasetPreview) {
@@ -2233,7 +2244,7 @@ export default function DataViewer() {
           <div className="min-w-0 p-6 md:p-8">
             <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-6">
               <div>
-                <h1 className="text-[24px] font-extrabold tracking-[-0.03em] text-slate-950">
+                <h1 className="marketing-display-title text-[24px] font-extrabold tracking-[-0.005em] text-slate-950">
                   RoboDataHub
                 </h1>
                 <p className="mt-1 text-[13px] text-slate-500">
@@ -2247,7 +2258,6 @@ export default function DataViewer() {
                   loading={isAuthenticated ? pathSearchLoading : false}
                   suggestions={isAuthenticated ? pathSuggestions : []}
                   placeholder={isAuthenticated ? "Search datasets..." : "Sign in to search datasets"}
-                  submitDisabled={isAuthenticated ? pathSuggestions.length === 0 : false}
                   className="max-w-[760px]"
                   onFocus={() => {
                     if (!isAuthenticated) {
@@ -2263,13 +2273,6 @@ export default function DataViewer() {
                     }
                     setPathSearchTouched(true);
                     setPathSearchText(value);
-                  }}
-                  onSubmit={() => {
-                    if (!isAuthenticated) {
-                      promptGuestSignIn(viewerBasePath);
-                      return;
-                    }
-                    handlePathSearchSubmit();
                   }}
                   onSuggestionClick={handlePathSuggestionClick}
                   renderHighlightedPath={renderHighlightedPath}
@@ -2306,10 +2309,6 @@ export default function DataViewer() {
                             liveItem={entry.liveItem}
                             placeholderItem={entry.placeholderItem}
                             onOpen={() => {
-                              if (previewItem) {
-                                handleCategoryPreviewClick(previewItem);
-                                return;
-                              }
                               const nextPath = buildCategoryLandingPath(category, viewerBasePath);
                               if (!isAuthenticated) {
                                 promptGuestSignIn(nextPath);
@@ -2328,7 +2327,7 @@ export default function DataViewer() {
               <section className="rounded-[20px] border border-primary/15 bg-[linear-gradient(135deg,rgba(13,148,136,0.05),rgba(29,78,216,0.03))] p-8">
                 <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
                   <div className="max-w-3xl">
-                    <h2 className="text-2xl font-black tracking-[-0.03em] text-slate-950">
+                    <h2 className="marketing-display-title text-2xl font-black tracking-[-0.005em] text-slate-950">
                       Request a Custom Dataset
                     </h2>
                     <p className="mt-3 text-sm leading-7 text-slate-600">
@@ -2386,81 +2385,84 @@ export default function DataViewer() {
         <div className="overflow-hidden rounded-[30px] border border-slate-200 bg-white shadow-[0_30px_70px_rgba(15,23,42,0.1)]">
           <section className="relative overflow-hidden border-b border-slate-200">
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(13,148,136,0.06),transparent_52%),radial-gradient(ellipse_at_bottom_left,rgba(15,23,42,0.03),transparent_46%)]" />
-            <div className="relative grid gap-10 p-6 md:p-8 lg:grid-cols-2 lg:items-center">
-              <div>
-                <div className={`mb-5 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] ${getCategoryAccent(category.routeKey).chip}`}>
-                  <span className={`h-2 w-2 rounded-full ${getCategoryAccent(category.routeKey).dot}`} />
-                  {landing.heroEyebrow}
-                </div>
-                <h1 className="text-[clamp(2.4rem,4.8vw,4.5rem)] font-black tracking-[-0.06em] text-slate-950">
+            <div className="relative p-6 md:p-8">
+              <div className="mx-auto max-w-4xl text-center">
+                <h1 className="marketing-display-title text-[clamp(2rem,4vw,3.25rem)] font-black tracking-[-0.025em] text-slate-950">
                   {landing.heroTitle}
                 </h1>
-                <p className="mt-5 max-w-2xl text-sm leading-8 text-slate-600 md:text-base">
-                  {landing.heroDescription}
-                </p>
 
-                <div className="mt-8 grid gap-px overflow-hidden rounded-[14px] border border-slate-300 bg-slate-200 sm:grid-cols-4">
+                <div className="mx-auto mt-6 max-w-[760px]">
+                  <div className="mb-3 text-[12px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
+                    Search {category.label.toLowerCase()} datasets
+                  </div>
+                  <CompactPathSearch
+                    value={pathSearchText}
+                    loading={pathSearchLoading}
+                    suggestions={pathSuggestions}
+                    placeholder={`Search ${category.label.toLowerCase()} datasets...`}
+                    className="max-w-none"
+                    onFocus={() => setPathSearchTouched(true)}
+                    onChange={(value) => {
+                      setPathSearchTouched(true);
+                      setPathSearchText(value);
+                    }}
+                    onSuggestionClick={handlePathSuggestionClick}
+                    renderHighlightedPath={renderHighlightedPath}
+                  />
+                </div>
+              </div>
+
+              <div className="mx-auto mt-8 grid max-w-5xl gap-4 lg:grid-cols-[minmax(0,1fr)_260px] lg:items-stretch">
+                <div className="relative overflow-hidden rounded-[18px] border border-slate-300 shadow-[0_20px_48px_rgba(15,23,42,0.1)]">
+                  {heroVideoUrl ? (
+                    <video
+                      key={`${category.routeKey}-hero-video-${heroVideoUrl}`}
+                      src={heroVideoUrl}
+                      poster={heroPosterUrl}
+                      aria-label={`${landing.heroTitle} hero`}
+                      className="h-[300px] w-full object-cover"
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      preload="metadata"
+                    />
+                  ) : (
+                    <img
+                      key={`${category.routeKey}-hero-image-${heroPosterUrl ?? "fallback"}`}
+                      src={heroPosterUrl}
+                      alt={`${landing.heroTitle} hero`}
+                      className="h-[300px] w-full object-cover"
+                    />
+                  )}
+                  <div className="absolute inset-0 bg-[linear-gradient(160deg,rgba(255,255,255,0.12),transparent_45%,rgba(15,23,42,0.08))]" />
+                  <div className="absolute bottom-4 left-4 rounded-[10px] border border-slate-200 bg-white/90 px-3 py-2 backdrop-blur-sm">
+                    <div className="text-[8px] font-black uppercase tracking-[0.18em] text-primary">
+                      {landing.heroBadge}
+                    </div>
+                    <div className="mt-0.5 text-[12px] font-bold text-slate-950">{landing.heroTitle}</div>
+                  </div>
+                  <div className="absolute right-4 top-4 rounded-[8px] border border-slate-200 bg-white/90 px-3 py-1.5 text-[11px] font-semibold text-slate-500 backdrop-blur-sm">
+                    <strong className="text-primary">{landing.heroPill}</strong>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 lg:grid-cols-1">
                   {heroStats.map((stat) => (
-                    <div key={`${landing.routeKey}-${stat.label}`} className="bg-slate-50 px-4 py-4">
-                      <div className="text-[22px] font-extrabold tracking-[-0.03em] text-slate-950">
+                    <div
+                      key={`${landing.routeKey}-${stat.label}`}
+                      className="flex min-h-[68px] flex-col justify-center rounded-[12px] border border-slate-200 bg-slate-50 px-4 py-3"
+                    >
+                      <div className="text-[20px] font-extrabold tracking-[-0.03em] text-slate-950">
                         {stat.value}
                       </div>
-                      <div className="mt-1 text-[9px] font-bold uppercase tracking-[0.16em] text-slate-400">
+                      <div className="mt-1 text-[9px] font-bold uppercase tracking-[0.14em] text-slate-400">
                         {stat.label}
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
-
-              <div className="relative overflow-hidden rounded-[20px] border border-slate-300 shadow-[0_28px_64px_rgba(15,23,42,0.12)]">
-                {heroVideoUrl ? (
-                  <video
-                    key={`${category.routeKey}-hero-video-${heroVideoUrl}`}
-                    src={heroVideoUrl}
-                    poster={heroPosterUrl}
-                    aria-label={`${landing.heroTitle} hero`}
-                    className="h-[390px] w-full object-cover"
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                    preload="metadata"
-                  />
-                ) : (
-                  <img
-                    key={`${category.routeKey}-hero-image-${heroPosterUrl ?? "fallback"}`}
-                    src={heroPosterUrl}
-                    alt={`${landing.heroTitle} hero`}
-                    className="h-[390px] w-full object-cover"
-                  />
-                )}
-                <div className="absolute inset-0 bg-[linear-gradient(160deg,rgba(255,255,255,0.15),transparent_45%,rgba(15,23,42,0.06))]" />
-                <div className="absolute bottom-5 left-5 rounded-[12px] border border-slate-200 bg-white/90 px-4 py-3 backdrop-blur-sm">
-                  <div className="text-[8px] font-black uppercase tracking-[0.18em] text-primary">
-                    {landing.heroBadge}
-                  </div>
-                  <div className="mt-1 text-[13px] font-bold text-slate-950">{landing.heroTitle}</div>
-                </div>
-                <div className="absolute right-4 top-4 rounded-[8px] border border-slate-200 bg-white/90 px-3 py-1.5 text-[11px] font-semibold text-slate-500 backdrop-blur-sm">
-                  <strong className="text-primary">{landing.heroPill}</strong>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="border-b border-slate-200 bg-slate-50/80 px-6 py-5 md:px-8">
-            <div className="grid gap-px overflow-hidden rounded-[16px] border border-slate-300 bg-slate-200 md:grid-cols-5">
-              {landing.stats.map((stat) => (
-                <div key={`${landing.routeKey}-band-${stat.label}`} className="bg-slate-50 px-5 py-4">
-                  <div className="text-[26px] font-black tracking-[-0.04em] text-slate-950">
-                    {stat.value}
-                  </div>
-                  <div className="mt-1 text-[9px] font-bold uppercase tracking-[0.16em] text-slate-400">
-                    {stat.label}
-                  </div>
-                </div>
-              ))}
             </div>
           </section>
 
@@ -2531,38 +2533,6 @@ export default function DataViewer() {
             <div className="min-w-0 p-6 md:p-8">
               <div ref={landingTopRef} className="scroll-mt-32" />
               <div className="space-y-9">
-                <section className="rounded-[22px] border border-slate-200 bg-slate-50/70 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.05)]">
-                  <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-                    <div className="max-w-2xl">
-                      <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
-                        Search library
-                      </div>
-                      <h2 className="mt-2 text-[18px] font-extrabold tracking-[-0.03em] text-slate-950">
-                        Search real {category.label.toLowerCase()} datasets
-                      </h2>
-                      <p className="mt-1 text-sm leading-6 text-slate-500">
-                        Search by dataset, task, or brand and jump straight into the live folder structure.
-                      </p>
-                    </div>
-                    <CompactPathSearch
-                      value={pathSearchText}
-                      loading={pathSearchLoading}
-                      suggestions={pathSuggestions}
-                      placeholder={`Search ${category.label.toLowerCase()} datasets...`}
-                      submitDisabled={pathSuggestions.length === 0}
-                      className="max-w-none xl:w-[640px]"
-                      onFocus={() => setPathSearchTouched(true)}
-                      onChange={(value) => {
-                        setPathSearchTouched(true);
-                        setPathSearchText(value);
-                      }}
-                      onSubmit={handlePathSearchSubmit}
-                      onSuggestionClick={handlePathSuggestionClick}
-                      renderHighlightedPath={renderHighlightedPath}
-                    />
-                  </div>
-                </section>
-
                 {resolvedCategorySections.map((section) => (
                   <section
                     key={`${landing.routeKey}-${section.id}`}
@@ -2604,7 +2574,7 @@ export default function DataViewer() {
                 <section className="rounded-[20px] border border-primary/15 bg-[linear-gradient(128deg,rgba(13,148,136,0.05),rgba(15,23,42,0.02)_55%,transparent)] p-8">
                   <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
                     <div className="max-w-3xl">
-                      <h2 className="text-[28px] font-black tracking-[-0.04em] text-slate-950">
+                  <h2 className="marketing-display-title text-[28px] font-black tracking-[-0.015em] text-slate-950">
                         {landing.ctaTitle}
                       </h2>
                       <p className="mt-3 text-sm leading-7 text-slate-600">
@@ -2661,19 +2631,6 @@ export default function DataViewer() {
               </Link>
               <Breadcrumbs />
             </div>
-          </div>
-          <div className="ml-auto flex items-center gap-4 font-sans-tech text-[11px] font-medium text-slate-500 sm:ml-0 sm:gap-6 sm:text-xs">
-            {isAuthenticated && isApproved ? (
-              <span className="flex items-center gap-2 text-primary">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
-                Live Connection
-              </span>
-            ) : (
-              <span className="flex items-center gap-2">
-                <LockKeyhole className="h-3.5 w-3.5" />
-                Signed out
-              </span>
-            )}
           </div>
         </div>
 
