@@ -20,6 +20,7 @@ export function HandMeshGenerationPanel({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastOutputPath, setLastOutputPath] = useState<string | null>(null);
+  const [mcapDownloadUrls, setMcapDownloadUrls] = useState<{ name: string; url: string }[]>([]);
 
   const generateHandMesh = async () => {
     if (!videoUrl.trim()) {
@@ -29,6 +30,7 @@ export function HandMeshGenerationPanel({
 
     setLoading(true);
     setError(null);
+    setMcapDownloadUrls([]);
 
     try {
       const response = await fetch("/api/generate_hand_mesh", {
@@ -47,18 +49,34 @@ export function HandMeshGenerationPanel({
         throw new Error(result.error || "Hand mesh generation failed");
       }
 
+      const mcapDownloadUrls: { name: string; url: string }[] =
+        Array.isArray(result.output_mcap_download_urls) && result.output_mcap_download_urls.length > 0
+          ? [{
+            name: (result.output_mcaps?.[0] as string | undefined)?.split("/").pop() ?? "output.mcap",
+            url: result.output_mcap_download_urls[0] as string,
+          }]
+          : [];
+      setMcapDownloadUrls(mcapDownloadUrls);
+
       const outputViewerPath =
         typeof result.output_viewer_path === "string" ? result.output_viewer_path : "";
       const videoCount = Array.isArray(result.output_videos) ? result.output_videos.length : 0;
       const artifactCount = Array.isArray(result.output_artifacts) ? result.output_artifacts.length : 0;
+      const mcaps: string[] = Array.isArray(result.output_mcaps) ? result.output_mcaps : [];
+      const mcapCount = mcaps.length;
 
       if (outputViewerPath) {
         setLastOutputPath(outputViewerPath);
       }
 
+      if (mcaps.length > 0) {
+        setMcapDownloadUrls([{ name: mcaps[0].split("/").pop() || "output.mcap", url: mcaps[0] }]);
+      }
+
       const outputSummary = [
         videoCount > 0 ? `${videoCount} video${videoCount === 1 ? "" : "s"}` : "",
         artifactCount > 0 ? `${artifactCount} file${artifactCount === 1 ? "" : "s"}` : "",
+        mcapCount > 0 ? `${mcapCount} MCAP${mcapCount === 1 ? "" : "s"} for Foxglove` : "",
       ]
         .filter(Boolean)
         .join(" and ");
@@ -100,7 +118,7 @@ export function HandMeshGenerationPanel({
 
       <button
         type="button"
-        onClick={generateHandMesh}
+        onClick={() => void generateHandMesh()}
         disabled={loading || !videoUrl.trim()}
         className="flex w-full items-center justify-center gap-2 rounded-sm bg-primary px-6 py-2 text-xs font-bold uppercase text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:opacity-90 disabled:opacity-50"
       >
@@ -108,13 +126,13 @@ export function HandMeshGenerationPanel({
         {loading ? "Generating hand mesh..." : "Generate hand mesh"}
       </button>
 
-      {error && (
+      {error !== null && (
         <div className="mt-3 rounded-sm border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">
           {error}
         </div>
       )}
 
-      {lastOutputPath && !loading && (
+      {lastOutputPath !== null && !loading && (
         <button
           type="button"
           onClick={() => onGenerated?.(lastOutputPath)}
@@ -122,6 +140,17 @@ export function HandMeshGenerationPanel({
         >
           Open hand mesh results folder
         </button>
+      )}
+
+      {mcapDownloadUrls.length > 0 && !loading && (
+        <a
+          href={mcapDownloadUrls[0].url}
+          download={mcapDownloadUrls[0].name}
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-sm border border-border bg-muted/40 px-3 py-2 text-[11px] font-sans-tech font-semibold text-foreground transition-colors hover:bg-muted"
+        >
+          <Box className="h-3.5 w-3.5" />
+          Download MCAP
+        </a>
       )}
     </div>
   );
