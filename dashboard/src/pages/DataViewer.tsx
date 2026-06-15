@@ -2,7 +2,6 @@ import { useAuth } from "@/auth/useAuth";
 import AuthRequiredState from "@/components/AuthRequiredState";
 import { buildAuthPath } from "@/lib/authLinks";
 import { getLocalFolderPreviewSnapshots } from "@/lib/datasetFolderCover";
-import { ROOT_SHOWCASE_SECTIONS } from "@/lib/roboDataHubCatalog";
 import type {
   CategoryConfig,
   CategoryDatasetPreview,
@@ -12,16 +11,17 @@ import type {
   VlmPromptGroup,
 } from "@/lib/dataViewerTypes";
 import {
-  CATEGORIES,
   buildCategoryLandingPath,
   buildLocalPlaceholderPreview,
   buildViewerPath,
   canonicalizeDatasetPathForRoute,
+  CATEGORIES,
   CATEGORY_LANDING_CONTENT,
-  getCategoryByRouteKey,
   getBestMatchingSegmentIndex,
   getCatalogFilterTargetSectionId,
+  getCategoryByRouteKey,
   getPathSearchTerms,
+  getSuggestionScore,
   groupVlmPromptTags,
   isExcludedDatasetPath,
   normalizeCategoryValue,
@@ -30,10 +30,10 @@ import {
   parseFrameIdValue,
   pathBelongsToCategory,
   resolveCatalogSectionsForCategory,
-  getSuggestionScore,
   uniqueFolderItems,
   withViewerBase,
 } from "@/lib/dataViewerUtils";
+import { ROOT_SHOWCASE_SECTIONS } from "@/lib/roboDataHubCatalog";
 import axios from "axios";
 import {
   AlertCircle,
@@ -50,11 +50,11 @@ import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Breadcrumbs } from "../components/Breadcrumbs";
 import { CategoryLanding } from "../components/CategoryLanding";
 import { DatasetFolderCover } from "../components/DatasetFolderCover";
+import FooterSection from "../components/FooterSection";
 import { ImageGrid } from "../components/ImageGrid";
 import { ImageModal } from "../components/ImageModal";
 import { MaskGenerationPanel } from "../components/MaskGenerationPanel";
 import Navigation from "../components/Navigation";
-import FooterSection from "../components/FooterSection";
 import { RootLanding } from "../components/RootLanding";
 import { Sidebar } from "../components/Sidebar";
 import { UploadModal } from "../components/UploadModal";
