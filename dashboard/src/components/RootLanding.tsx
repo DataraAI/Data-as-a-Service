@@ -1,5 +1,5 @@
 import { buildAuthPath } from "@/lib/authLinks";
-import type { CategoryDatasetPreview, CategoryKey, FolderItem, ResolvedCatalogCardEntry } from "@/lib/dataViewerTypes";
+import type { CategoryKey, FolderItem, ResolvedCatalogCardEntry } from "@/lib/dataViewerTypes";
 import { CATEGORIES, buildCategoryLandingPath, getCategoryAccent } from "@/lib/dataViewerUtils";
 import { ROOT_SHOWCASE_SECTIONS } from "@/lib/roboDataHubCatalog";
 import type { ReactNode } from "react";
@@ -28,11 +28,9 @@ interface RootLandingProps {
   onUploadOpen: () => void;
   onPathSearchFocus: () => void;
   onPathSearchChange: (value: string) => void;
-  onPathSearchSubmit: () => void;
   onPathSuggestionClick: (fullPath: string) => void;
   renderHighlightedPath: (fullPath: string) => ReactNode;
   onGuestSignIn: (path?: string) => void;
-  onCategoryPreviewClick: (item: CategoryDatasetPreview) => void;
 }
 
 export function RootLanding({
@@ -48,11 +46,9 @@ export function RootLanding({
   onUploadOpen,
   onPathSearchFocus,
   onPathSearchChange,
-  onPathSearchSubmit,
   onPathSuggestionClick,
   renderHighlightedPath,
   onGuestSignIn,
-  onCategoryPreviewClick,
 }: RootLandingProps) {
   return (
     <div className="mx-auto w-full max-w-[1440px] px-4 py-10 sm:px-6 md:py-14">
@@ -129,11 +125,11 @@ export function RootLanding({
           <div className="min-w-0 p-6 md:p-8">
             <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-6">
               <div>
-                <h1 className="text-[24px] font-extrabold tracking-[-0.03em] text-slate-950">
+                <h1 className="marketing-display-title text-[24px] font-extrabold tracking-[-0.005em] text-slate-950">
                   RoboDataHub
                 </h1>
                 <p className="mt-1 text-[13px] text-slate-500">
-                  100+ datasets · Physical AI training data
+                  100+ datasets &middot; Physical AI training data
                 </p>
               </div>
 
@@ -143,7 +139,6 @@ export function RootLanding({
                   loading={isAuthenticated ? pathSearchLoading : false}
                   suggestions={isAuthenticated ? pathSuggestions : []}
                   placeholder={isAuthenticated ? "Search datasets..." : "Sign in to search datasets"}
-                  submitDisabled={isAuthenticated ? pathSuggestions.length === 0 : false}
                   className="max-w-[760px]"
                   onFocus={() => {
                     if (!isAuthenticated) {
@@ -158,13 +153,6 @@ export function RootLanding({
                       return;
                     }
                     onPathSearchChange(value);
-                  }}
-                  onSubmit={() => {
-                    if (!isAuthenticated) {
-                      onGuestSignIn(viewerBasePath);
-                      return;
-                    }
-                    onPathSearchSubmit();
                   }}
                   onSuggestionClick={onPathSuggestionClick}
                   renderHighlightedPath={renderHighlightedPath}
@@ -203,10 +191,6 @@ export function RootLanding({
                             liveItem={entry.liveItem}
                             placeholderItem={entry.placeholderItem}
                             onOpen={() => {
-                              if (previewItem) {
-                                onCategoryPreviewClick(previewItem);
-                                return;
-                              }
                               const nextPath = buildCategoryLandingPath(category, viewerBasePath);
                               if (!isAuthenticated) {
                                 onGuestSignIn(nextPath);
@@ -225,12 +209,12 @@ export function RootLanding({
               <section className="rounded-[20px] border border-primary/15 bg-[linear-gradient(135deg,rgba(13,148,136,0.05),rgba(29,78,216,0.03))] p-8">
                 <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
                   <div className="max-w-3xl">
-                    <h2 className="text-2xl font-black tracking-[-0.03em] text-slate-950">
+                    <h2 className="marketing-display-title text-2xl font-black tracking-[-0.005em] text-slate-950">
                       Request a Custom Dataset
                     </h2>
                     <p className="mt-3 text-sm leading-7 text-slate-600">
-                      Don&apos;t see what you need? Our team captures any task, environment, or robot
-                      workflow on demand.
+                      Don&apos;t see what you need? Our team captures any task, environment, or
+                      robot workflow on demand.
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-3">

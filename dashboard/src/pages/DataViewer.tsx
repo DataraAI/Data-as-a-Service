@@ -820,11 +820,6 @@ export default function DataViewer() {
     navigate(buildAuthPath("login", nextPath));
   }
 
-  function handlePathSearchSubmit() {
-    if (pathSuggestions.length === 0) return;
-    handlePathSuggestionClick(pathSuggestions[0].full_path);
-  }
-
   function handleCategoryPreviewClick(item: CategoryDatasetPreview) {
     const nextPath = item.viewer_path
       ? withViewerBase(item.viewer_path, viewerBasePath)
@@ -1026,7 +1021,6 @@ export default function DataViewer() {
       setPathSearchTouched(true);
       setPathSearchText(value);
     },
-    onPathSearchSubmit: handlePathSearchSubmit,
     onPathSuggestionClick: handlePathSuggestionClick,
     renderHighlightedPath,
     onGuestSignIn: promptGuestSignIn,
