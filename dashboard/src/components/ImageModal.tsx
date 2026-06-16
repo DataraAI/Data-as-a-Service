@@ -59,6 +59,7 @@ export function ImageModal({
   const sourceVisibility = image?.dataset?.visibility ?? image?.metadata?.visibility ?? "public";
   const isVideo = image?.type === "video";
   const isStillImage = image?.type === "image";
+  const isMcap = image?.type === "mcap" || typeof image?.name === "string" && image.name.toLowerCase().endsWith(".mcap");
   const assetUrl = image?.proxy_url || image?.url;
 
   useEffect(() => {
@@ -197,6 +198,14 @@ export function ImageModal({
             preload="metadata"
             className="max-h-full max-w-full rounded-sm border border-border bg-black/50 shadow-2xl"
           />
+        ) : isMcap ? (
+          <div className="flex h-64 w-full max-w-md flex-col items-center justify-center rounded-xl border border-border bg-card/40 p-8 text-center shadow-2xl">
+            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Film className="h-6 w-6" />
+            </div>
+            <h3 className="font-sans-tech text-sm font-bold text-foreground">{image.name}</h3>
+            <p className="mt-1 font-sans-tech text-xs text-muted-foreground">MCAP Robotics Data Container</p>
+          </div>
         ) : (
           <img
             src={assetUrl}
@@ -258,6 +267,16 @@ export function ImageModal({
                 Download video
               </a>
             )}
+            {isMcap && (
+              <a
+                href={assetUrl}
+                download={image.name}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-sm bg-primary px-4 py-2.5 text-xs font-sans-tech font-bold uppercase tracking-wider text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:opacity-90"
+              >
+                <Download className="h-4 w-4" />
+                Download Raw MCAP File
+              </a>
+            )}
           </div>
 
           <div>
@@ -283,7 +302,7 @@ export function ImageModal({
               <div className="flex justify-between gap-3 p-3">
                 <span className="font-medium text-muted-foreground">Asset Type</span>
                 <span className="text-right text-foreground">
-                  {image.type === "3d" ? "3D model" : isVideo ? "Video" : "Image"}
+                  {image.type === "3d" ? "3D model" : isVideo ? "Video" : isMcap ? "MCAP File" : "Image"}
                 </span>
               </div>
               {isVideo && (
