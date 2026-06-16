@@ -51,6 +51,8 @@ export function HandMeshGenerationPanel({
         typeof result.output_viewer_path === "string" ? result.output_viewer_path : "";
       const videoCount = Array.isArray(result.output_videos) ? result.output_videos.length : 0;
       const artifactCount = Array.isArray(result.output_artifacts) ? result.output_artifacts.length : 0;
+      const mcaps: string[] = Array.isArray(result.output_mcaps) ? result.output_mcaps : [];
+      const mcapCount = mcaps.length;
 
       if (outputViewerPath) {
         setLastOutputPath(outputViewerPath);
@@ -59,6 +61,7 @@ export function HandMeshGenerationPanel({
       const outputSummary = [
         videoCount > 0 ? `${videoCount} video${videoCount === 1 ? "" : "s"}` : "",
         artifactCount > 0 ? `${artifactCount} file${artifactCount === 1 ? "" : "s"}` : "",
+        mcapCount > 0 ? `${mcapCount} MCAP${mcapCount === 1 ? "" : "s"} for Foxglove` : "",
       ]
         .filter(Boolean)
         .join(" and ");
@@ -100,7 +103,7 @@ export function HandMeshGenerationPanel({
 
       <button
         type="button"
-        onClick={generateHandMesh}
+        onClick={() => void generateHandMesh()}
         disabled={loading || !videoUrl.trim()}
         className="flex w-full items-center justify-center gap-2 rounded-sm bg-primary px-6 py-2 text-xs font-bold uppercase text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:opacity-90 disabled:opacity-50"
       >
@@ -108,13 +111,13 @@ export function HandMeshGenerationPanel({
         {loading ? "Generating hand mesh..." : "Generate hand mesh"}
       </button>
 
-      {error && (
+      {error !== null && (
         <div className="mt-3 rounded-sm border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">
           {error}
         </div>
       )}
 
-      {lastOutputPath && !loading && (
+      {lastOutputPath !== null && !loading && (
         <button
           type="button"
           onClick={() => onGenerated?.(lastOutputPath)}
