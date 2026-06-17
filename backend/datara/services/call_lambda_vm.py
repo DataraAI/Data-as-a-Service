@@ -171,6 +171,14 @@ def _ssh_session():
             allow_agent=False,
             timeout=15
         )
+        # Keep the TCP connection alive during long, output-silent remote
+        # commands (e.g. gen3c, which can run for many minutes with no data on
+        # the channel). Without this, idle NAT/firewall timeouts silently drop
+        # the connection and stdout.read() blocks forever after the command
+        # actually finishes on the VM.
+        transport = client.get_transport()
+        if transport is not None:
+            transport.set_keepalive(30)
         yield client
     except paramiko.AuthenticationException:
         logger.error(f"Authentication failed for {username}@{hostname} using key {key_filename}")
@@ -860,49 +868,49 @@ def generate_video_to_video(*, video_url: str, local_output_video: str, vipe_zip
 
     try:
         with _ssh_session() as ssh_client:
-            # Build the lyra_v2v.py invocation
-            script_args = (
-                f'--video_url "{_shell_escape(video_url)}" '
-                f'--output_dir "{_shell_escape(remote_output_dir)}" '
-                f'--trajectory {trajectory}'
-            )
-            if vipe_zip_url:
-                script_args += f' --vipe_zip_url "{_shell_escape(vipe_zip_url)}"'
-
-            run_lyra_v2v = f'python3 {REMOTE_LYRA_V2V_SCRIPT} {script_args}'
-
-            logger.info("Invoking lyra_v2v.py on Lambda VM (job %s)", job_id)
-            stdout, stderr, status = _run_bash_script(ssh_client, run_lyra_v2v)
-
-            if status != 0:
-                logger.error("lyra_v2v.py failed (exit %s): %s", status, stderr or stdout)
-                _run_command(ssh_client, f"rm -rf {remote_root}")
-                return None, 500
-
-            # The script prints a single JSON line as its last stdout line
-            last_line = (stdout.strip().splitlines() or [""])[-1].strip()
             try:
-                result = _json.loads(last_line)
-                remote_gen3c_video = result["gen3c_video"]
-                remote_vipe_zip = result["vipe_zip"]
-            except (ValueError, KeyError) as exc:
-                logger.error("Could not parse lyra_v2v.py output JSON (%s): %r", exc, last_line)
-                _run_command(ssh_client, f"rm -rf {remote_root}")
-                return None, 500
+                # Build the lyra_v2v.py invocation
+                script_args = (
+                    f'--video_url "{_shell_escape(video_url)}" '
+                    f'--output_dir "{_shell_escape(remote_output_dir)}" '
+                    f'--trajectory {trajectory}'
+                )
+                if vipe_zip_url:
+                    script_args += f' --vipe_zip_url "{_shell_escape(vipe_zip_url)}"'
 
-            # SFTP results back locally
-            sftp = ssh_client.open_sftp()
-            try:
-                sftp.get(remote_gen3c_video, local_output_video)
-                sftp.get(remote_vipe_zip, f"{output_dir}/vipe_output.zip")
+                run_lyra_v2v = f'python3 {REMOTE_LYRA_V2V_SCRIPT} {script_args}'
+
+                logger.info("Invoking lyra_v2v.py on Lambda VM (job %s)", job_id)
+                stdout, stderr, status = _run_bash_script(ssh_client, run_lyra_v2v)
+                logger.info("lyra_v2v.py has completed (job %s) with exit status %s", job_id, status)
+
+                if status != 0:
+                    logger.error("lyra_v2v.py failed (exit %s): %s", status, stderr or stdout)
+                    return None, 500
+
+                # The script prints a single JSON line as its last stdout line
+                last_line = (stdout.strip().splitlines() or [""])[-1].strip()
+                try:
+                    result = _json.loads(last_line)
+                    remote_gen3c_video = result["gen3c_video"]
+                    remote_vipe_zip = result["vipe_zip"]
+                except (ValueError, KeyError) as exc:
+                    logger.error("Could not parse lyra_v2v.py output JSON (%s): %r", exc, last_line)
+                    return None, 500
+
+                # SFTP results back locally
+                sftp = ssh_client.open_sftp()
+                try:
+                    sftp.get(remote_gen3c_video, local_output_video)
+                    sftp.get(remote_vipe_zip, f"{output_dir}/vipe_output.zip")
+                finally:
+                    sftp.close()
+
+                if os.path.isfile(local_output_video):
+                    return local_output_video, 200
+                return None, 500
             finally:
-                sftp.close()
-
-            _run_command(ssh_client, f"rm -rf {remote_root}")
-
-            if os.path.isfile(local_output_video):
-                return local_output_video, 200
-            return None, 500
+                _cleanup_remote_job_root(ssh_client, remote_root)
     except Exception as exc:
         logger.error("generate_video_to_video error: %s", exc, exc_info=True)
         return None, 500
