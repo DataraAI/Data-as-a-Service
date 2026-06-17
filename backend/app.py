@@ -61,6 +61,12 @@ def register_routes(app: Flask) -> None:
         current_user = auth_service.get_current_user_or_raise()
         return auth_service.assert_admin(current_user)
 
+    def _require_staff_user() -> dict[str, object]:
+        current_user = auth_service.get_current_user_or_raise()
+        if current_user.get("role") not in {"admin", "analyst"}:
+            raise PermissionError("staff_required")
+        return current_user
+
     @app.route("/health", methods=["GET"])
     def health_check():
         return jsonify(
@@ -200,6 +206,12 @@ def register_routes(app: Flask) -> None:
         current_user = auth_service.get_current_user_or_raise()
         return jsonify(dataset_service.get_dataset_images(route_path, current_user))
 
+    @app.route("/api/dataset-manifest/<path:route_path>", methods=["GET"])
+    @auth_service.require_approved_user
+    def get_dataset_manifest(route_path: str):
+        current_user = auth_service.get_current_user_or_raise()
+        return jsonify(dataset_service.get_dataset_manifest(route_path, current_user))
+
     @app.route("/api/proxy/<asset_id>", methods=["GET", "HEAD"])
     @auth_service.require_approved_user
     def proxy_blob(asset_id: str):
@@ -252,7 +264,7 @@ def register_routes(app: Flask) -> None:
     @app.route("/api/process_video", methods=["POST"])
     @auth_service.require_approved_user
     def process_video():
-        current_user = auth_service.get_current_user_or_raise()
+        current_user = _require_staff_user()
         if request.content_type and "multipart/form-data" in request.content_type:
             return _process_video_multipart(current_user)
 
@@ -329,7 +341,7 @@ def register_routes(app: Flask) -> None:
     @app.route("/api/generate_ego", methods=["POST"])
     @auth_service.require_approved_user
     def generate_ego():
-        current_user = auth_service.get_current_user_or_raise()
+        current_user = _require_staff_user()
         data = request.get_json()
         if not data:
             return jsonify({"error": "Invalid JSON body"}), 400
@@ -339,7 +351,7 @@ def register_routes(app: Flask) -> None:
     @app.route("/api/generate_corner_case", methods=["POST"])
     @auth_service.require_approved_user
     def generate_corner_case():
-        current_user = auth_service.get_current_user_or_raise()
+        current_user = _require_staff_user()
         data = request.get_json()
         if not data:
             return jsonify({"error": "Invalid JSON body"}), 400
@@ -349,7 +361,7 @@ def register_routes(app: Flask) -> None:
     @app.route("/api/create_vlm_tags", methods=["POST"])
     @auth_service.require_approved_user
     def create_vlm_tags():
-        current_user = auth_service.get_current_user_or_raise()
+        current_user = _require_staff_user()
         data = request.get_json()
         if not data:
             return jsonify({"error": "Invalid JSON body"}), 400
@@ -359,7 +371,7 @@ def register_routes(app: Flask) -> None:
     @app.route("/api/generate_masks", methods=["POST"])
     @auth_service.require_approved_user
     def generate_masks():
-        current_user = auth_service.get_current_user_or_raise()
+        current_user = _require_staff_user()
         data = request.get_json()
         if not data:
             return jsonify({"error": "Invalid JSON body"}), 400
@@ -369,7 +381,7 @@ def register_routes(app: Flask) -> None:
     @app.route("/api/occlusion-mask-options", methods=["GET"])
     @auth_service.require_approved_user
     def get_occlusion_mask_options():
-        current_user = auth_service.get_current_user_or_raise()
+        current_user = _require_staff_user()
         route_path = str(request.args.get("route_path") or "").strip()
         if not route_path:
             return jsonify({"error": "Missing route_path"}), 400
@@ -379,7 +391,7 @@ def register_routes(app: Flask) -> None:
     @app.route("/api/remove_occlusion", methods=["POST"])
     @auth_service.require_approved_user
     def remove_occlusion():
-        current_user = auth_service.get_current_user_or_raise()
+        current_user = _require_staff_user()
         data = request.get_json()
         if not data:
             return jsonify({"error": "Invalid JSON body"}), 400
@@ -398,13 +410,12 @@ def register_routes(app: Flask) -> None:
 
     @app.route("/api/stats", methods=["GET"])
     def get_stats():
-        all_rows = sql_store._fetchone("SELECT COUNT(*) AS count FROM datasets WHERE deleted_at IS NULL AND visibility = 'public'")
         return jsonify(
             {
                 "app": settings.app_name,
                 "environment": settings.environment,
                 "public_container": settings.azure_public_container,
-                "datasets_count": int(all_rows["count"]) if all_rows else 0,
+                "datasets_count": sql_store.count_datasets(visibility="public"),
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         )
@@ -412,7 +423,7 @@ def register_routes(app: Flask) -> None:
     @app.route("/api/generate_task_intelligence", methods=["POST"])
     @auth_service.require_approved_user
     def generate_task_intelligence():
-        current_user = auth_service.get_current_user_or_raise()
+        current_user = _require_staff_user()
         data = request.get_json()
         if not data:
             return jsonify({"error": "Invalid JSON body"}), 400
@@ -426,7 +437,7 @@ def register_routes(app: Flask) -> None:
     @app.route("/api/generate_video_to_video_views", methods=["POST"])
     @auth_service.require_approved_user
     def generate_video_to_video_views():
-        current_user = auth_service.get_current_user_or_raise()
+        current_user = _require_staff_user()
         data = request.get_json()
         if not data:
             return jsonify({"error": "Invalid JSON body"}), 400
@@ -440,7 +451,7 @@ def register_routes(app: Flask) -> None:
     @app.route("/api/generate_hand_mesh", methods=["POST"])
     @auth_service.require_approved_user
     def generate_hand_mesh():
-        current_user = auth_service.get_current_user_or_raise()
+        current_user = _require_staff_user()
         data = request.get_json()
         if not data:
             return jsonify({"error": "Invalid JSON body"}), 400

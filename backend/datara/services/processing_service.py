@@ -76,17 +76,52 @@ class ProcessingService:
         value = value.replace("\\", "-").replace(" ", "-")
         return value
 
+    @staticmethod
+    def _normalize_task_slug(value: str, field_name: str = "dataset_name") -> str:
+        raw = str(value or "").strip().strip("/")
+        if not raw:
+            raise ValueError(f"Missing {field_name}")
+        raw = raw.replace("\\", " ")
+        if re.fullmatch(r"[A-Za-z][A-Za-z0-9]*", raw):
+            return raw
+
+        words = re.findall(r"[A-Za-z0-9]+", raw)
+        if not words:
+            raise ValueError(f"Missing {field_name}")
+        first = words[0][:1].lower() + words[0][1:]
+        rest = [word[:1].upper() + word[1:] for word in words[1:]]
+        return "".join([first, *rest])
+
+    @staticmethod
+    def _humanize_task_slug(value: str) -> str:
+        text = re.sub(r"[_\-]+", " ", str(value or "").strip())
+        text = re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", text)
+        return re.sub(r"\s+", " ", text).strip()
+
     def _resolve_dataset_identity(self, data: dict[str, Any]) -> tuple[str, str, str]:
         output_name = str(data.get("output_name") or "").strip().strip("/")
         if output_name:
             parts = [segment for segment in output_name.split("/") if segment]
-            if len(parts) != 3:
-                raise ValueError("output_name must be category/brand/dataset")
-            return parts[0], parts[1], parts[2]
+            if len(parts) == 2:
+                return (
+                    self._normalize_path_segment(parts[0], "category"),
+                    "public",
+                    self._normalize_task_slug(parts[1], "task"),
+                )
+            if len(parts) == 3:
+                return (
+                    self._normalize_path_segment(parts[0], "category"),
+                    self._normalize_path_segment(parts[1], "brand"),
+                    self._normalize_task_slug(parts[2], "dataset_name"),
+                )
+            raise ValueError("output_name must be category/task")
 
         category = self._normalize_path_segment(data.get("category"), "category")
-        brand = self._normalize_path_segment(data.get("brand"), "brand")
-        dataset_name = self._normalize_path_segment(data.get("dataset_name"), "dataset_name")
+        brand = self._normalize_path_segment(data.get("brand") or "public", "brand")
+        dataset_name = self._normalize_task_slug(
+            data.get("dataset_name") or data.get("task"),
+            "dataset_name",
+        )
         return category, brand, dataset_name
 
     @staticmethod
@@ -118,7 +153,11 @@ class ProcessingService:
             if visibility == "public"
             else owner_user["private_container_name"]
         )
-        storage_prefix = f"{category}/{brand}/{dataset_name}"
+        storage_prefix = (
+            f"{category}/{dataset_name}"
+            if visibility == "public"
+            else f"{category}/{brand}/{dataset_name}"
+        )
         self.azure_service.ensure_container(storage_container)
         return self.sql_store.create_dataset(
             owner_user=owner_user,
@@ -164,6 +203,9 @@ class ProcessingService:
         date_val = str(data.get("date") or "")
         misc_tags = data.get("tags", [])
         task = str(data.get("task") or "").strip()
+        if not task:
+            task = self._humanize_task_slug(dataset_name)
+
         target_view_dir = "orig" if view == "exo" else "egos"
         dataset = self._build_dataset_row(
             owner_user=current_user,
@@ -211,6 +253,12 @@ class ProcessingService:
                     target_view_dir=target_view_dir,
                 )
 
+            self._write_default_readme(
+                local_process_dir=local_process_dir,
+                category=category,
+                task_slug=dataset_name,
+                task_label=task,
+            )
             self._upload_to_azure(
                 dataset=dataset,
                 local_process_dir=local_process_dir,
@@ -262,7 +310,7 @@ class ProcessingService:
         pad_width = len(str(len(image_files)))
         for index, image_path in enumerate(image_files):
             ext = os.path.splitext(image_path)[1].lower()
-            new_filename = f"{dataset_basename}_{index:0{pad_width}d}{ext}"
+            new_filename = f"frame_{index:0{pad_width}d}{ext}"
             destination = os.path.join(local_process_dir, target_view_dir, new_filename)
             shutil.copy2(image_path, destination)
 
@@ -407,6 +455,44 @@ class ProcessingService:
         ]
         subprocess.check_call(cmd)
 
+    def _write_default_readme(
+        self,
+        *,
+        local_process_dir: str,
+        category: str,
+        task_slug: str,
+        task_label: str,
+    ) -> None:
+        is_dexterity = category.strip().lower() == "dexterity"
+        hand_mesh_section = (
+            "\n"
+            "## Hand Motion Outputs\n\n"
+            "- `misc/handmeshes/` contains OBJ hand mesh files that can be opened in the viewer.\n"
+            f"- `{task_slug}_hand_keypoints.mcap` is the downloadable hand keypoint track.\n"
+            f"- `{task_slug}_overlayed_hands.mp4` is the source-camera hand overlay video.\n"
+            f"- `{task_slug}_hand_keypoints.npz` is the downloadable hand keypoint array.\n"
+            "\n"
+            if is_dexterity
+            else ""
+        )
+        readme = (
+            f"# {task_label or self._humanize_task_slug(task_slug)}\n\n"
+            "This dataset is organized for browsing in RoboDataHub and direct download from Blob-backed assets.\n\n"
+            "## Root Files\n\n"
+            f"- `{task_slug}.mp4` is the primary input video for this task.\n"
+            "- Generated videos and downloadable metadata files appear beside this README when available.\n"
+            f"- `{task_slug}_intelligence.JSON` appears after task intelligence is generated.\n\n"
+            "## Misc\n\n"
+            "- `misc/orig/` contains original/exocentric frame images.\n"
+            "- `misc/egos/` contains egocentric frame images when available.\n"
+            "- `misc/masks/` contains generated mask frame outputs when available.\n"
+            f"{hand_mesh_section}"
+            "Only files that have been generated or uploaded are shown in the site.\n"
+        )
+        os.makedirs(local_process_dir, exist_ok=True)
+        with open(os.path.join(local_process_dir, "README.md"), "w", encoding="utf-8") as handle:
+            handle.write(readme)
+
     def _upload_to_azure(
         self,
         *,
@@ -515,8 +601,8 @@ class ProcessingService:
 
         summary = self.sql_store.build_dataset_summary(dataset, current_user)
         prompt_slug = self._slugify_prompt(prompt)
-        mask_route_path = f"{summary['full_path'].rstrip('/')}/masks/{prompt_slug}"
-        target_storage_prefix = f"{dataset['storage_prefix'].rstrip('/')}/masks/{prompt_slug}"
+        mask_route_path = f"{summary['full_path'].rstrip('/')}/misc/masks/{prompt_slug}"
+        target_storage_prefix = f"{dataset['storage_prefix'].rstrip('/')}/misc/masks/{prompt_slug}"
 
         job_root = tempfile.mkdtemp(prefix="mask_job_", dir=DATASET_LIST_DIR)
         staged_image_dir = os.path.join(job_root, "source_images")
@@ -650,6 +736,16 @@ class ProcessingService:
         return f"Remove the {primary_text} from the scene while preserving the background."
 
     @staticmethod
+    def _occlusion_output_filename(primary_prompt_slug: str, subtract_prompt_slug: str | None = None) -> str:
+        primary = re.sub(r"[^a-z0-9]+", "_", str(primary_prompt_slug or "").strip().lower()).strip("_")
+        primary = primary or "object"
+        if subtract_prompt_slug:
+            keep = re.sub(r"[^a-z0-9]+", "_", str(subtract_prompt_slug or "").strip().lower()).strip("_")
+            keep = keep or "selection"
+            return f"no_{primary}_keep_{keep}.mp4"
+        return f"no_{primary}.mp4"
+
+    @staticmethod
     def _resolve_sample_size(width: int, height: int) -> tuple[int, int]:
         max_width = 720
         max_height = 720
@@ -682,7 +778,7 @@ class ProcessingService:
         current_user: dict[str, Any],
         dataset_summary_path: str,
     ) -> list[dict[str, Any]]:
-        mask_root_path = f"{dataset_summary_path.rstrip('/')}/masks"
+        mask_root_path = f"{dataset_summary_path.rstrip('/')}/misc/masks"
         prompt_folders = self.dataset_service.list_datasets(mask_root_path, current_user)
         options: list[dict[str, Any]] = []
 
@@ -754,7 +850,7 @@ class ProcessingService:
 
         return {
             "route_path": route_path,
-            "mask_root_path": f"{summary['full_path'].rstrip('/')}/masks",
+            "mask_root_path": f"{summary['full_path'].rstrip('/')}/misc/masks",
             "prompts": prompts,
         }, 200
 
@@ -766,7 +862,7 @@ class ProcessingService:
         dataset_summary_path: str,
         prompt_slug: str,
     ) -> dict[str, list[dict[str, Any]]]:
-        prompt_route_path = f"{dataset_summary_path.rstrip('/')}/masks/{prompt_slug}"
+        prompt_route_path = f"{dataset_summary_path.rstrip('/')}/misc/masks/{prompt_slug}"
         prompt_assets = [
             image
             for image in self.dataset_service.get_dataset_images(prompt_route_path, current_user)
@@ -774,7 +870,7 @@ class ProcessingService:
         ]
         prompt_assets.sort(key=self._image_sort_key)
 
-        relative_prefix = f"{dataset['storage_prefix'].rstrip('/')}/masks/{prompt_slug}/"
+        relative_prefix = f"{dataset['storage_prefix'].rstrip('/')}/misc/masks/{prompt_slug}/"
         grouped: dict[str, list[dict[str, Any]]] = {}
         for asset in prompt_assets:
             blob_name = str(asset.get("id") or "")
@@ -1058,7 +1154,8 @@ class ProcessingService:
         width: int,
         height: int,
     ) -> str:
-        blob_name = f"{output_prefix.rstrip('/')}/rose_removed.mp4"
+        filename = self._occlusion_output_filename(prompt_slug, subtract_prompt_slug)
+        blob_name = f"{output_prefix.rstrip('/')}/{filename}"
         container_client = self.azure_service.get_container_client(dataset["storage_container"])
 
         with open(local_video_path, "rb") as handle:
@@ -1084,13 +1181,13 @@ class ProcessingService:
                 "id": existing_doc.get("id", os.urandom(16).hex()),
                 "docType": "video_annotation",
                 "containerName": dataset["storage_container"],
-                "datasetName": output_prefix.rstrip("/"),
+                "datasetName": dataset["storage_prefix"].rstrip("/"),
                 "datasetId": dataset["id"],
                 "ownerUserId": dataset["owner_user_id"],
                 "visibility": dataset["visibility"],
                 "sourceDatasetId": dataset["id"],
                 "view": "occl_del",
-                "frameName": "rose_removed.mp4",
+                "frameName": filename,
                 "blobPath": blob_name,
                 "date": existing_doc.get("date", ""),
                 "frameId": None,
@@ -1209,12 +1306,10 @@ class ProcessingService:
                     f"{include_selection_slug}-minus-{subtract_prompt_slug}-{subtract_selection_slug}"
                 )
 
-            output_route_path = (
-                f"{summary['full_path'].rstrip('/')}/occl_del/{include_prompt_slug}/{output_selection_slug}"
-            )
-            output_storage_prefix = (
-                f"{dataset['storage_prefix'].rstrip('/')}/occl_del/{include_prompt_slug}/{output_selection_slug}"
-            )
+            output_route_path = summary["full_path"].rstrip("/")
+            output_storage_prefix = dataset["storage_prefix"].rstrip("/")
+            output_video_name = self._occlusion_output_filename(include_prompt_slug, subtract_prompt_slug)
+            output_blob_name = f"{output_storage_prefix}/{output_video_name}"
 
             source_task = ""
             for image in route_images:
@@ -1289,8 +1384,7 @@ class ProcessingService:
                     fps=video_metadata["fps"],
                 )
 
-                self.azure_service.delete_blobs_with_prefix(dataset["storage_container"], output_storage_prefix)
-                self.azure_service.delete_cosmos_docs_for_prefix(dataset["storage_container"], output_storage_prefix)
+                self.azure_service.delete_blob(dataset["storage_container"], output_blob_name)
                 self._upload_occlusion_video(
                     dataset=dataset,
                     output_prefix=output_storage_prefix,
@@ -1314,7 +1408,7 @@ class ProcessingService:
             "message": "Occlusion removal finished successfully.",
             "output_route_path": output_route_path,
             "output_viewer_path": f"/viewer/{output_route_path}",
-            "video_name": "rose_removed.mp4",
+            "video_name": output_video_name,
         }, 200
 
     def generate_task_intelligence(self, current_user: dict[str, Any], data: dict[str, Any]) -> tuple[dict[str, Any], int]:
@@ -1389,9 +1483,44 @@ class ProcessingService:
             cosmos_doc["taskIntelligence"] = generated_json
             self.azure_service.upsert_cosmos_item(cosmos_doc)
 
+            task_slug = str(source_dataset.get("dataset_name") or os.path.splitext(os.path.basename(source_blob))[0]).strip()
+            json_blob_name = f"{source_dataset['storage_prefix'].rstrip('/')}/{task_slug}_intelligence.JSON"
+            container_client = self.azure_service.get_container_client(source_dataset["storage_container"])
+            container_client.upload_blob(
+                name=json_blob_name,
+                data=json.dumps(generated_json, indent=2).encode("utf-8"),
+                overwrite=True,
+                content_settings=ContentSettings(content_type="application/json; charset=utf-8"),
+            )
+            existing_json_doc = self.azure_service.get_cosmos_doc_for_blob(
+                source_dataset["storage_container"],
+                json_blob_name,
+            ) or {}
+            self.azure_service.upsert_cosmos_item(
+                {
+                    "id": existing_json_doc.get("id", os.urandom(16).hex()),
+                    "docType": "task_intelligence_json",
+                    "containerName": source_dataset["storage_container"],
+                    "datasetName": source_dataset["storage_prefix"],
+                    "datasetId": source_dataset["id"],
+                    "ownerUserId": source_dataset["owner_user_id"],
+                    "visibility": source_dataset["visibility"],
+                    "sourceDatasetId": source_dataset["id"],
+                    "sourceBlobPath": source_blob,
+                    "view": "task_intelligence",
+                    "frameName": os.path.basename(json_blob_name),
+                    "blobPath": json_blob_name,
+                    "miscTags": ["task_intelligence", "json"],
+                    "task": task_name,
+                    "sourceType": "task_intelligence_json",
+                    "generatedAt": datetime.now(timezone.utc).isoformat(),
+                }
+            )
+
             return {
                 "message": "Task intelligence generated and stored successfully.",
                 "data": generated_json,
+                "download_blob_name": json_blob_name,
                 "cached": False,
             }, 200
 
@@ -1446,7 +1575,9 @@ class ProcessingService:
 
         # Check whether a cached VIPE zip already exists in blob storage for this asset.
         # If found, pass its SAS URL to the lambda so VIPE can be skipped.
-        vipe_zip_blob = f"{source_dataset['storage_prefix'].rstrip('/')}/new_angle_videos/{video_name}_vipe_output.zip"
+        dataset_prefix = source_dataset["storage_prefix"].rstrip("/")
+        task_slug = str(source_dataset.get("dataset_name") or video_name).strip() or video_name
+        vipe_zip_blob = f"{dataset_prefix}/misc/cache/{video_name}_vipe_output.zip"
         vipe_zip_url = None
         try:
             self.azure_service.get_container_client(
@@ -1478,7 +1609,7 @@ class ProcessingService:
             if status_code != 200 or not result_path:
                 return {"error": "Failed to generate video-to-video views on the Lambda VM."}, status_code or 500
 
-            output_blob_name = f"{source_dataset['storage_prefix'].rstrip('/')}/new_angle_videos/{video_name}_{trajectory}_generated.mp4"
+            output_blob_name = f"{dataset_prefix}/{task_slug}_{trajectory}.mp4"
             container_client = self.azure_service.get_container_client(source_dataset["storage_container"])
             with open(local_output_video, "rb") as fh:
                 container_client.upload_blob(
@@ -1724,14 +1855,14 @@ class ProcessingService:
         return blob_name
 
     def _upload_hand_mesh_mcap(
-    self,
-    *,
-    dataset: dict[str, Any],
-    output_prefix: str,
-    local_file_path: str,
-    source_task: str,
-    seq_slug: str,
-    source_asset_id: str,
+        self,
+        *,
+        dataset: dict[str, Any],
+        output_prefix: str,
+        local_file_path: str,
+        source_task: str,
+        seq_slug: str,
+        source_asset_id: str,
     ) -> str:
         filename = os.path.basename(local_file_path)
         blob_name = f"{output_prefix.rstrip('/')}/{filename}"
@@ -1866,11 +1997,12 @@ class ProcessingService:
             str(data.get("seq") or os.path.splitext(video_basename)[0])
         )
         dataset_summary = self.sql_store.build_dataset_summary(dataset, current_user)
-        output_route_path = f"{dataset_summary['full_path'].rstrip('/')}/hand_mesh/{seq_slug}"
-        output_storage_prefix = f"{dataset['storage_prefix'].rstrip('/')}/hand_mesh/{seq_slug}"
-        output_video_prefix = f"{output_storage_prefix}/videos"
-        output_artifact_prefix = f"{output_storage_prefix}/artifacts"
-        output_mcap_prefix = f"{output_storage_prefix}/mcaps"
+        output_route_path = dataset_summary["full_path"].rstrip("/")
+        output_storage_prefix = dataset["storage_prefix"].rstrip("/")
+        output_video_prefix = output_storage_prefix
+        output_artifact_prefix = f"{output_storage_prefix}/misc/handmeshes"
+        legacy_output_artifact_prefix = f"{output_storage_prefix}/hand_meshes"
+        output_download_prefix = output_storage_prefix
         source_task = str(dataset.get("task") or "").strip()
 
         job_root = tempfile.mkdtemp(prefix="hand_mesh_job_", dir=DATASET_LIST_DIR)
@@ -1888,14 +2020,10 @@ class ProcessingService:
             if status_code != 200 or (not local_video_paths and not local_artifact_paths and not local_mcap_paths):
                 return {"error": error_message or "Hand mesh generation failed"}, status_code or 500
 
-            self.azure_service.delete_blobs_with_prefix(
-                dataset["storage_container"],
-                output_storage_prefix,
-            )
-            self.azure_service.delete_cosmos_docs_for_prefix(
-                dataset["storage_container"],
-                output_storage_prefix,
-            )
+            self.azure_service.delete_blobs_with_prefix(dataset["storage_container"], output_artifact_prefix)
+            self.azure_service.delete_cosmos_docs_for_prefix(dataset["storage_container"], output_artifact_prefix)
+            self.azure_service.delete_blobs_with_prefix(dataset["storage_container"], legacy_output_artifact_prefix)
+            self.azure_service.delete_cosmos_docs_for_prefix(dataset["storage_container"], legacy_output_artifact_prefix)
 
             uploaded_videos: list[str] = []
             uploaded_artifacts: list[str] = []
@@ -1912,9 +2040,11 @@ class ProcessingService:
                 uploaded_videos.append(os.path.basename(blob_name))
 
             for local_artifact_path in local_artifact_paths:
+                artifact_ext = os.path.splitext(local_artifact_path)[1].lower()
+                artifact_prefix = output_artifact_prefix if artifact_ext == ".obj" else output_download_prefix
                 blob_name = self._upload_hand_mesh_artifact(
                     dataset=dataset,
-                    output_prefix=output_artifact_prefix,
+                    output_prefix=artifact_prefix,
                     local_file_path=local_artifact_path,
                     source_task=source_task,
                     seq_slug=seq_slug,
@@ -1925,16 +2055,16 @@ class ProcessingService:
             for local_mcap_path in local_mcap_paths:
                 blob_name = self._upload_hand_mesh_mcap(
                     dataset=dataset,
-                    output_prefix=output_mcap_prefix,
+                    output_prefix=output_download_prefix,
                     local_file_path=local_mcap_path,
                     source_task=source_task,
                     seq_slug=seq_slug,
                     source_asset_id=source_asset_id,
                 )
                 uploaded_mcaps.append(blob_name)
-            
+
             mcap_download_urls: list[str] = []
-            for blob_name_full in [f"{output_mcap_prefix}/{os.path.basename(p)}" for p in local_mcap_paths]:
+            for blob_name_full in [f"{output_download_prefix}/{os.path.basename(p)}" for p in local_mcap_paths]:
                 sas_url = self.azure_service.generate_sas_url(
                     dataset["storage_container"],
                     blob_name_full,

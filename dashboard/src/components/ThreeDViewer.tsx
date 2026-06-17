@@ -7,6 +7,7 @@ import { GLTFLoader, OBJLoader, STLLoader } from 'three-stdlib';
 
 interface ModelProps {
     url: string;
+    fileName?: string;
 }
 
 function STLModel({ url }: ModelProps) {
@@ -69,9 +70,10 @@ function OBJModel({ url }: ModelProps) {
     return <primitive object={obj} scale={1} />;
 }
 
-function ModelSelector({ url }: ModelProps) {
-    const isGLB = url.toLowerCase().endsWith('.glb') || url.toLowerCase().endsWith('.gltf') || url.toLowerCase().includes('.glb?') || url.toLowerCase().includes('.gltf?');
-    const isOBJ = url.toLowerCase().endsWith(".obj");
+function ModelSelector({ url, fileName }: ModelProps) {
+    const formatSource = (fileName || url).toLowerCase();
+    const isGLB = formatSource.endsWith('.glb') || formatSource.endsWith('.gltf') || formatSource.includes('.glb?') || formatSource.includes('.gltf?');
+    const isOBJ = formatSource.endsWith(".obj") || formatSource.includes(".obj?");
 
     if (isGLB) {
         return <GLBModel url={url} />;
@@ -100,9 +102,10 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, fallbac
 
 interface ThreeDViewerProps {
     url: string;
+    fileName?: string;
 }
 
-export function ThreeDViewer({ url }: ThreeDViewerProps) {
+export function ThreeDViewer({ url, fileName }: ThreeDViewerProps) {
     return (
         <div className="w-full h-full relative">
             <Canvas shadows gl={{ antialias: true }} camera={{ position: [0, 0, .3], fov: 50 }}>
@@ -127,7 +130,7 @@ export function ThreeDViewer({ url }: ThreeDViewerProps) {
                         }
                     >
                         <Stage environment="city" intensity={0.6} adjustCamera={false}>
-                            <ModelSelector url={url} />
+                            <ModelSelector url={url} fileName={fileName} />
                         </Stage>
                     </Suspense>
                 </ErrorBoundary>

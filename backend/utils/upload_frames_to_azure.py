@@ -24,7 +24,7 @@ from utils import azure_client
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Upload dataset images to Azure Blob Storage")
     parser.add_argument("--container_name", required=True)
-    parser.add_argument("--output_name", required=True, help="Storage prefix (category/brand/dataset)")
+    parser.add_argument("--output_name", required=True, help="Storage prefix (vertical/task)")
     parser.add_argument(
         "--input_dir",
         required=True,
@@ -163,7 +163,7 @@ def _upload_video_assets(
             continue
 
         local_path = os.path.join(video_dir, filename)
-        blob_name = f"{dataset_prefix}/video/{filename}"
+        blob_name = f"{dataset_prefix}/{filename}"
         with open(local_path, "rb") as handle:
             container_client.upload_blob(
                 name=blob_name,
@@ -212,6 +212,28 @@ def _upload_video_assets(
         raise FileNotFoundError(f"No staged video files were found in {video_dir}")
 
     return uploaded_count
+
+
+def _upload_readme_asset(
+    *,
+    base_input_dir: str,
+    dataset_prefix: str,
+    container_client,
+) -> int:
+    readme_path = os.path.join(base_input_dir, "README.md")
+    if not os.path.isfile(readme_path):
+        return 0
+
+    blob_name = f"{dataset_prefix}/README.md"
+    with open(readme_path, "rb") as handle:
+        container_client.upload_blob(
+            name=blob_name,
+            data=handle,
+            overwrite=True,
+            content_settings=ContentSettings(content_type="text/markdown; charset=utf-8"),
+        )
+    print(f"Uploaded README: {blob_name}")
+    return 1
 
 
 def _upload_preview_assets(
@@ -288,7 +310,7 @@ def main() -> None:
             is_clear = sharpness_score >= 100.0
             height, width = img.shape[:2]
 
-        blob_name = f"{dataset_prefix}/{view}/{filename}"
+        blob_name = f"{dataset_prefix}/misc/{view}/{filename}"
         with open(local_path, "rb") as handle:
             container_client.upload_blob(
                 name=blob_name,
@@ -347,10 +369,15 @@ def main() -> None:
             dataset_prefix=dataset_prefix,
             container_client=container_client,
         )
+    _upload_readme_asset(
+        base_input_dir=base_input_dir,
+        dataset_prefix=dataset_prefix,
+        container_client=container_client,
+    )
 
     print(
         f"Upload complete - {uploaded_count} images uploaded "
-        f"from '{dataset_prefix}/{view}' to '{args.container_name}'"
+        f"from '{dataset_prefix}/misc/{view}' to '{args.container_name}'"
     )
 
 

@@ -1,5 +1,5 @@
 import type { CategoryDatasetPreview, CategoryPreviewAsset, ResolvedCatalogCardEntry } from "@/lib/dataViewerTypes";
-import { getCategoryBadge } from "@/lib/dataViewerUtils";
+import { formatPublicDatasetPathLabel, getCategoryBadge } from "@/lib/dataViewerUtils";
 import { frontPageImageUrl } from "@/lib/datasetFolderCover";
 import type { CatalogCard } from "@/lib/roboDataHubCatalog";
 import { ArrowRight } from "lucide-react";
@@ -27,7 +27,7 @@ export function CuratedCatalogCard({
     previewItem || card.availability === "In Library"
       ? "border-emerald-200 bg-emerald-50 text-emerald-700"
       : "border-amber-200 bg-amber-50 text-amber-700";
-  const footerLabel = previewItem ? previewItem.full_path : card.pathLabel;
+  const footerLabel = formatPublicDatasetPathLabel(previewItem ? previewItem.full_path : card.pathLabel);
   const previewAssets = previewItem
     ? ([previewItem.main_image, ...previewItem.thumbnails].filter(
         (asset): asset is CategoryPreviewAsset => Boolean(asset),

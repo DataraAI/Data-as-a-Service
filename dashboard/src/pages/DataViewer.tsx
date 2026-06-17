@@ -6,6 +6,8 @@ import type {
   CategoryConfig,
   CategoryDatasetPreview,
   CategoryKey,
+  DatasetAsset,
+  DatasetManifest,
   FolderItem,
   ImageItem,
   VlmPromptGroup,
@@ -49,6 +51,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Breadcrumbs } from "../components/Breadcrumbs";
 import { CategoryLanding } from "../components/CategoryLanding";
+import { DatasetLanding } from "../components/DatasetLanding";
 import { DatasetFolderCover } from "../components/DatasetFolderCover";
 import FooterSection from "../components/FooterSection";
 import { ImageGrid } from "../components/ImageGrid";
@@ -58,7 +61,6 @@ import Navigation from "../components/Navigation";
 import { RootLanding } from "../components/RootLanding";
 import { Sidebar } from "../components/Sidebar";
 import { UploadModal } from "../components/UploadModal";
-import { VideoToolsPanel, type VideoFolderAsset } from "../components/VideoToolsPanel";
 
 const pathSearchCache = new Map<string, FolderItem[]>();
 const pathSearchRequestCache = new Map<string, Promise<FolderItem[]>>();
@@ -111,7 +113,7 @@ function isDatasetRoutePath(path: string) {
   const parts = path.split("/").filter(Boolean);
   if (parts[0] === "my") return parts.length === 4;
   if (parts[0] === "admin") return parts.length === 5;
-  return parts.length === 3;
+  return parts.length === 2;
 }
 
 export default function DataViewer() {
@@ -128,6 +130,9 @@ export default function DataViewer() {
   );
   const canUseLockedViewerLayout = isAuthenticated && isApproved;
   const canUseCatalogSearch = isAuthenticated && isApproved;
+  const canManageDatasets =
+    isAuthenticated && isApproved && (user?.role === "admin" || user?.role === "analyst");
+  const canDeleteDatasets = isAuthenticated && isApproved && user?.role === "admin";
 
   const [folders, setFolders] = useState<FolderItem[]>([]);
   const [categoryPreviews, setCategoryPreviews] = useState<CategoryDatasetPreview[]>([]);
@@ -140,6 +145,7 @@ export default function DataViewer() {
     Partial<Record<CategoryKey, boolean>>
   >({});
   const [images, setImages] = useState<ImageItem[]>([]);
+  const [datasetManifest, setDatasetManifest] = useState<DatasetManifest | null>(null);
   const [loading, setLoading] = useState(false);
   const [selectedImage, setSelectedImage] = useState<ImageItem | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -266,6 +272,19 @@ export default function DataViewer() {
   const isRootLanding = pathSegments.length === 0;
   const isCategoryLanding = Boolean(activeCategory) && pathSegments.length === 1;
   const isCatalogLanding = isRootLanding || isCategoryLanding;
+  const datasetRootDepth = useMemo(() => {
+    if (pathSegments[0] === "my") return 4;
+    if (pathSegments[0] === "admin") return 5;
+    return 2;
+  }, [pathSegments]);
+  const isDatasetRoot = useMemo(
+    () =>
+      isAuthenticated &&
+      isApproved &&
+      !isCatalogLanding &&
+      pathSegments.length === datasetRootDepth,
+    [datasetRootDepth, isApproved, isAuthenticated, isCatalogLanding, pathSegments.length],
+  );
   const showCatalogFooter = isRootLanding;
   const visibleRootRouteKeys = useMemo(
     () =>
@@ -318,6 +337,7 @@ export default function DataViewer() {
     if (!isAuthenticated || !isApproved || isRootLanding || isCategoryLanding) {
       setFolders([]);
       setImages([]);
+      setDatasetManifest(null);
       setAvailableTags([]);
       setVlmPromptGroups([]);
       return;
@@ -330,6 +350,25 @@ export default function DataViewer() {
       setFolderDropdownOpen(null);
 
       try {
+        setDatasetManifest(null);
+        if (isDatasetRoot) {
+          const encodedPath = currentDisplayPath
+            .split("/")
+            .filter(Boolean)
+            .map((segment) => encodeURIComponent(segment))
+            .join("/");
+          const manifestResponse = await axios.get<DatasetManifest>(
+            `/api/dataset-manifest/${encodedPath}`,
+          );
+          if (cancelled) return;
+          setDatasetManifest(manifestResponse.data);
+          setFolders([]);
+          setImages([]);
+          setAvailableTags([]);
+          setVlmPromptGroups([]);
+          return;
+        }
+
         const folderResponse = await axios.get<unknown[]>("/api/datasets", {
           params: { path: currentDisplayPath },
         });
@@ -372,6 +411,7 @@ export default function DataViewer() {
           console.error("Failed to load viewer data", error);
           setFolders([]);
           setImages([]);
+          setDatasetManifest(null);
           setAvailableTags([]);
           setVlmPromptGroups([]);
         }
@@ -386,7 +426,15 @@ export default function DataViewer() {
     return () => {
       cancelled = true;
     };
-  }, [currentDisplayPath, isAuthenticated, isApproved, isRootLanding, isCategoryLanding, reloadTick]);
+  }, [
+    currentDisplayPath,
+    isAuthenticated,
+    isApproved,
+    isRootLanding,
+    isCategoryLanding,
+    isDatasetRoot,
+    reloadTick,
+  ]);
 
   useEffect(() => {
     if (!isAuthenticated || !isApproved || !isCategoryLanding || !activeCategory) {
@@ -650,14 +698,14 @@ export default function DataViewer() {
 
   const isLeaf = useMemo(
     () =>
-      isAuthenticated && isApproved && !isRootLanding && !isCategoryLanding && folders.length === 0,
-    [folders.length, isAuthenticated, isApproved, isRootLanding, isCategoryLanding],
+      isAuthenticated &&
+      isApproved &&
+      !isRootLanding &&
+      !isCategoryLanding &&
+      !datasetManifest &&
+      folders.length === 0,
+    [datasetManifest, folders.length, isAuthenticated, isApproved, isRootLanding, isCategoryLanding],
   );
-  const datasetRootDepth = useMemo(() => {
-    if (pathSegments[0] === "my") return 4;
-    if (pathSegments[0] === "admin") return 5;
-    return 3;
-  }, [pathSegments]);
   const isMaskPath = useMemo(
     () =>
       pathSegments.slice(datasetRootDepth).some((segment) => segment.toLowerCase() === "masks"),
@@ -668,11 +716,6 @@ export default function DataViewer() {
     [images],
   );
   const maskSourceImageCount = sourceImages.length;
-  const sourceVideos = useMemo(
-    () => images.filter((image) => image.type === "video"),
-    [images],
-  );
-  const videoSourceCount = sourceVideos.length;
   const isEgoPath = useMemo(
     () =>
       pathSegments.slice(datasetRootDepth).some((segment) => segment.toLowerCase() === "egos"),
@@ -697,8 +740,7 @@ export default function DataViewer() {
       return view === "ego" || view === "egos";
     });
   }, [isEgoPath, isLeaf, sourceImages]);
-  const showMaskPanel = isLeaf && !isMaskPath && maskSourceImageCount > 0;
-  const showVideoPanel = isLeaf && !isMaskPath && videoSourceCount > 0;
+  const showMaskPanel = canManageDatasets && isLeaf && !isMaskPath && maskSourceImageCount > 0;
 
   const allSelectableTags = useMemo(
     () =>
@@ -741,20 +783,6 @@ export default function DataViewer() {
       return matchesSearch && matchesTags && matchesMinFrame && matchesMaxFrame;
     });
   }, [filterText, frameRange.max, frameRange.min, images, visibleTags]);
-  const filteredVideos = useMemo(
-    () => filteredImages.filter((image) => image.type === "video"),
-    [filteredImages],
-  );
-  const videoPanelItems = useMemo<VideoFolderAsset[]>(() => {
-    const panelVideos = filteredVideos.length > 0 ? filteredVideos : sourceVideos;
-    return panelVideos.map((video) => ({
-      asset_id: video.asset_id,
-      name: video.name,
-      url: video.url,
-      proxy_url: video.proxy_url,
-      metadata: video.metadata as Record<string, unknown> | undefined,
-    }));
-  }, [filteredVideos, sourceVideos]);
 
   const filteredFolders = useMemo(() => folders, [folders]);
 
@@ -778,11 +806,23 @@ export default function DataViewer() {
       .map((entry) => entry.item);
   }, [activeCategory, allFolderPaths, isRootLanding, pathSearchText]);
 
-  const itemCount = isCategoryLanding
-    ? activeCategoryPreviews.length
-    : isLeaf
-      ? filteredImages.length
-      : filteredFolders.length;
+  const manifestItemCount = useMemo(() => {
+    if (!datasetManifest) return 0;
+    return (
+      (datasetManifest.readme ? 1 : 0) +
+      (datasetManifest.primary_video ? 1 : 0) +
+      datasetManifest.downloads.length +
+      Object.values(datasetManifest.misc).filter((section) => section.exists).length
+    );
+  }, [datasetManifest]);
+
+  const itemCount = datasetManifest
+    ? manifestItemCount
+    : isCategoryLanding
+      ? activeCategoryPreviews.length
+      : isLeaf
+        ? filteredImages.length
+        : filteredFolders.length;
 
   function toggleTag(tag: string) {
     setVisibleTags((previous) => {
@@ -834,7 +874,10 @@ export default function DataViewer() {
   }
 
   function handleCuratedCardOpen(pathLabel: string, category?: CategoryConfig | null) {
-    const normalizedTarget = normalizePathSearchValue(pathLabel);
+    const canonicalTarget = category
+      ? canonicalizeDatasetPathForRoute(pathLabel, category.routeKey)
+      : pathLabel;
+    const normalizedTarget = normalizePathSearchValue(canonicalTarget);
     const match = allFolderPaths.find((item) => {
       const normalizedPath = normalizePathSearchValue(item.full_path);
       return normalizedPath === normalizedTarget || normalizedPath.includes(normalizedTarget);
@@ -864,6 +907,10 @@ export default function DataViewer() {
     } finally {
       setDeleteInProgress(false);
     }
+  }
+
+  function handleOpenDatasetAsset(asset: DatasetAsset) {
+    setSelectedImage(asset);
   }
 
   function renderHighlightedPath(fullPath: string): ReactNode {
@@ -917,7 +964,7 @@ export default function DataViewer() {
                 )
               }
             >
-              {isDataset && (
+              {isDataset && canDeleteDatasets && (
                 <div className="absolute right-4 top-4 z-20">
                   <button
                     type="button"
@@ -995,12 +1042,14 @@ export default function DataViewer() {
           <div className="col-span-full flex flex-col items-center justify-center rounded-[28px] border border-dashed border-slate-300 bg-slate-50 py-20 text-slate-500">
             <AlertCircle className="mb-4 h-12 w-12 text-slate-400" />
             <p className="font-sans-tech text-lg">No data found</p>
-            <button
-              onClick={() => setIsUploadModalOpen(true)}
-              className="mt-6 font-sans-tech text-sm font-medium text-primary underline decoration-dotted underline-offset-4 hover:text-primary-glow"
-            >
-              Upload Data
-            </button>
+            {canManageDatasets && (
+              <button
+                onClick={() => setIsUploadModalOpen(true)}
+                className="mt-6 font-sans-tech text-sm font-medium text-primary underline decoration-dotted underline-offset-4 hover:text-primary-glow"
+              >
+                Upload Data
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -1011,6 +1060,7 @@ export default function DataViewer() {
     viewerBasePath,
     isAuthenticated,
     isApproved,
+    canManageDatasets,
     pathSearchText,
     pathSearchLoading,
     pathSuggestions,
@@ -1124,6 +1174,7 @@ export default function DataViewer() {
                 matchingTagSuggestions={matchingTagSuggestions}
                 onSelectTagSuggestion={handleSelectTagSuggestion}
                 vlmPromptGroups={vlmPromptGroups}
+                canUpload={canManageDatasets}
               />
             )}
 
@@ -1147,7 +1198,7 @@ export default function DataViewer() {
                     </button>
                   </div>
 
-                  {!isLeaf && (
+                  {!isLeaf && canManageDatasets && !datasetManifest && (
                     <button
                       onClick={() => setIsUploadModalOpen(true)}
                       className="flex items-center gap-2 rounded-sm border border-primary/25 bg-primary/10 px-3 py-1 font-sans-tech text-xs font-medium text-primary transition-colors hover:bg-primary/15"
@@ -1197,7 +1248,16 @@ export default function DataViewer() {
                   />
                 )}
 
-                {!isRootLanding && !isCategoryLanding && !isLeaf && (
+                {datasetManifest && (
+                  <DatasetLanding
+                    manifest={datasetManifest}
+                    canUseGenerationTools={canManageDatasets}
+                    onNavigate={(path) => navigate(withViewerBase(path, viewerBasePath))}
+                    onOpenAsset={handleOpenDatasetAsset}
+                  />
+                )}
+
+                {!datasetManifest && !isRootLanding && !isCategoryLanding && !isLeaf && (
                   <div className="flex min-h-full flex-col">
                     <div className="p-4 sm:p-6 lg:p-8">
                       {currentDisplayPath && (
@@ -1235,14 +1295,6 @@ export default function DataViewer() {
               />
             )}
 
-            {showVideoPanel && (
-              <VideoToolsPanel
-                routePath={currentDisplayPath}
-                videos={videoPanelItems}
-                onGenerationSuccess={() => setReloadTick((value) => value + 1)}
-                onOpenViewerPath={(viewerPath) => navigate(viewerPath)}
-              />
-            )}
           </div>
         )}
 
@@ -1265,6 +1317,13 @@ export default function DataViewer() {
             onEgoGenSuccess={() => setReloadTick((value) => value + 1)}
             onCornerCaseSuccess={() => setReloadTick((value) => value + 1)}
             onVlmSuccess={() => setReloadTick((value) => value + 1)}
+            canUseGenerationTools={canManageDatasets}
+            routePath={datasetManifest?.dataset.viewer_path.replace(/^\/viewer\//, "") ?? currentDisplayPath}
+            showHandMeshGeneration={
+              (datasetManifest?.dataset.vertical ?? pathSegments[0])?.toLowerCase() === "dexterity"
+            }
+            onVideoToolSuccess={() => setReloadTick((value) => value + 1)}
+            onOpenViewerPath={(viewerPath) => navigate(withViewerBase(viewerPath, viewerBasePath))}
           />
         )}
 

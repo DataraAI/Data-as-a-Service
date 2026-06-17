@@ -22,7 +22,6 @@ interface UploadModalProps {
 type UploadSource = "gdrive" | "local";
 type UploadType = "video" | "folder";
 type ViewMode = "exo" | "egos";
-type Visibility = "private" | "public";
 
 const IMAGE_EXT = /\.(png|jpe?g|webp|bmp|tiff?)$/i;
 const CATEGORY_OPTIONS = ["carAutomation", "serverrack", "dexterity", "warehouse"];
@@ -34,15 +33,13 @@ function isDirectFileInSelectedFolder(file: File): boolean {
 }
 
 export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
-  const { isAuthenticated, isApproved, login } = useAuth();
+  const { isAuthenticated, isApproved, login, user } = useAuth();
   const [source, setSource] = useState<UploadSource>("gdrive");
   const [gdriveLink, setGdriveLink] = useState("");
   const [selectedCategory, setSelectedCategory] = useState(CATEGORY_OPTIONS[0]);
-  const [brandName, setBrandName] = useState("");
   const [datasetName, setDatasetName] = useState("");
   const [uploadType, setUploadType] = useState<UploadType>("video");
   const [viewMode, setViewMode] = useState<ViewMode>("exo");
-  const [visibility, setVisibility] = useState<Visibility>("private");
   const [isUploading, setIsUploading] = useState(false);
   const [tags, setTags] = useState<string[]>([]);
   const [currentTag, setCurrentTag] = useState("");
@@ -70,7 +67,10 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
 
   if (!isOpen) return null;
 
-  if (!isAuthenticated || !isApproved) {
+  const canImportData =
+    isAuthenticated && isApproved && (user?.role === "admin" || user?.role === "analyst");
+
+  if (!canImportData) {
     return (
       <div className="fixed inset-0 z-[80] overflow-y-auto bg-background/80 px-4 pb-6 pt-24 backdrop-blur-md sm:px-6 sm:pt-28">
         <div className="relative mx-auto w-full max-w-lg rounded-lg border border-border bg-card p-8 shadow-2xl">
@@ -84,11 +84,11 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
             <LockKeyhole className="h-7 w-7 text-primary" />
           </div>
           <h2 className="font-sans-tech text-2xl font-bold text-foreground">
-            Approved sign-in required
+            Staff access required
           </h2>
           <p className="mt-3 font-sans-tech text-sm leading-relaxed text-muted-foreground">
-            Uploading data is only available to signed-in users with approved access, because each
-            dataset is now linked to an account and stored with private/public ownership rules.
+            Importing public datasets is available to Datara staff only. Customer accounts can
+            browse, view, and download approved public datasets.
           </p>
           <div className="mt-6 flex justify-end gap-3">
             <button
@@ -98,13 +98,15 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
             >
               Cancel
             </button>
-            <button
-              type="button"
-              onClick={() => login()}
-              className="rounded-sm bg-primary px-6 py-2 text-xs font-bold uppercase text-primary-foreground"
-            >
-              Sign In
-            </button>
+            {!isAuthenticated && (
+              <button
+                type="button"
+                onClick={() => login()}
+                className="rounded-sm bg-primary px-6 py-2 text-xs font-bold uppercase text-primary-foreground"
+              >
+                Sign In
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -129,7 +131,6 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
 
   const resetFormAfterSuccess = () => {
     setGdriveLink("");
-    setBrandName("");
     setDatasetName("");
     setTags([]);
     setCurrentTag("");
@@ -137,14 +138,13 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
     setUploadType("video");
     setSource("gdrive");
     setViewMode("exo");
-    setVisibility("private");
     clearLocalFiles();
   };
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
 
-    if (!selectedCategory || !brandName.trim() || !datasetName.trim()) return;
+    if (!selectedCategory || !datasetName.trim()) return;
     if (source === "gdrive" && !gdriveLink.trim()) return;
     if (source === "local" && uploadType === "video" && !localVideoFile) {
       alert("Please choose a video file from your computer.");
@@ -172,14 +172,13 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
           body: JSON.stringify({
             gdrive_link: gdriveLink.trim(),
             category: selectedCategory.trim(),
-            brand: brandName.trim(),
             dataset_name: datasetName.trim(),
             upload_type: uploadType,
             date,
             tags,
             task: task.trim(),
             view: viewMode,
-            visibility,
+            visibility: "public",
           }),
         });
         const payload = await response.json().catch(() => ({}));
@@ -188,13 +187,12 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
         const formData = new FormData();
         formData.append("upload_type", uploadType);
         formData.append("category", selectedCategory.trim());
-        formData.append("brand", brandName.trim());
         formData.append("dataset_name", datasetName.trim());
         formData.append("date", date);
         formData.append("tags", JSON.stringify(tags));
         formData.append("task", task.trim());
         formData.append("view", viewMode);
-        formData.append("visibility", visibility);
+        formData.append("visibility", "public");
         if (uploadType === "video" && localVideoFile) {
           formData.append("file", localVideoFile);
         } else {
@@ -236,7 +234,7 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
             Import Data
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Import from Google Drive or upload a video or image folder from this computer.
+            Import public RoboDataHub data into the vertical/task layout.
           </p>
         </div>
 
@@ -344,78 +342,44 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-muted-foreground">Category</label>
-              <input
-                list="dataset-category-options"
-                value={selectedCategory}
-                onChange={(event) => setSelectedCategory(event.target.value)}
-                className="w-full rounded-sm border border-border bg-input px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
-                required
-              />
-              <datalist id="dataset-category-options">
-                {CATEGORY_OPTIONS.map((category) => (
-                  <option key={category} value={category} />
-                ))}
-              </datalist>
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-muted-foreground">Brand / Subdir</label>
-              <input
-                type="text"
-                value={brandName}
-                onChange={(event) => setBrandName(event.target.value)}
-                placeholder="e.g. bmw"
-                className="w-full rounded-sm border border-border bg-input px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
-                required
-              />
-            </div>
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-muted-foreground">Vertical</label>
+            <input
+              list="dataset-category-options"
+              value={selectedCategory}
+              onChange={(event) => setSelectedCategory(event.target.value)}
+              className="w-full rounded-sm border border-border bg-input px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
+              required
+            />
+            <datalist id="dataset-category-options">
+              {CATEGORY_OPTIONS.map((category) => (
+                <option key={category} value={category} />
+              ))}
+            </datalist>
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-bold text-muted-foreground">Dataset Name</label>
+            <label className="text-xs font-bold text-muted-foreground">Task Slug</label>
             <input
               type="text"
               value={datasetName}
               onChange={(event) => setDatasetName(event.target.value)}
-              placeholder="e.g. frontGrille"
+              placeholder="e.g. frontGrille or Front Grille"
               className="w-full rounded-sm border border-border bg-input px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
               required
             />
+            <p className="text-[11px] leading-5 text-muted-foreground">
+              This becomes the dataset path: vertical/taskSlug. Spaces are normalized by the server.
+            </p>
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-bold text-muted-foreground">Visibility</label>
-            <div className="flex gap-4 rounded-sm border border-border bg-input px-3 py-3">
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="radio"
-                  value="private"
-                  checked={visibility === "private"}
-                  onChange={() => setVisibility("private")}
-                />
-                Private
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="radio"
-                  value="public"
-                  checked={visibility === "public"}
-                  onChange={() => setVisibility("public")}
-                />
-                Public to signed-in users
-              </label>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-muted-foreground">Task Context</label>
+            <label className="text-xs font-bold text-muted-foreground">Task Label</label>
             <input
               type="text"
               value={task}
               onChange={(event) => setTask(event.target.value)}
-              placeholder="Optional task context used for metadata and VLM prompts"
+              placeholder="Optional display label, e.g. Front grille inspection"
               className="w-full rounded-sm border border-border bg-input px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
             />
           </div>

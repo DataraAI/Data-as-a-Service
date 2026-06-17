@@ -31,24 +31,63 @@ export interface ImageMetadata {
   view?: string | null;
   task?: string | null;
   visibility?: string | null;
+  frame_count?: number | null;
+  fps?: number | null;
   vlm?: VlmMetadata;
 }
 
 export interface ImageItem {
   id: string;
   asset_id: string;
+  blob_path?: string;
   url: string;
   proxy_url?: string;
   name: string;
   type?: string;
   tags?: string[];
+  downloadable?: boolean;
+  is_primary_input?: boolean;
   metadata?: ImageMetadata;
   dataset?: {
     id: string;
     visibility: "private" | "public";
     owner_slug: string;
     viewer_path: string;
+    vertical?: string;
+    task_slug?: string;
   };
+}
+
+export type DatasetAsset = ImageItem & {
+  blob_path: string;
+  downloadable: boolean;
+  is_primary_input: boolean;
+};
+
+export interface DatasetMiscSection {
+  key: "orig" | "egos" | "masks" | "handmeshes";
+  label: string;
+  exists: boolean;
+  asset_count: number;
+  viewer_path: string;
+}
+
+export interface DatasetManifest {
+  dataset: {
+    id: string;
+    container: string;
+    prefix: string;
+    vertical: string;
+    task_slug: string;
+    task_label: string;
+    visibility: "private" | "public";
+    viewer_path: string;
+  };
+  readme: DatasetAsset | null;
+  primary_video: DatasetAsset | null;
+  downloads: DatasetAsset[];
+  misc: Record<"orig" | "egos" | "masks" | "handmeshes", DatasetMiscSection>;
+  hand_meshes: DatasetAsset[];
 }
 
 export interface VlmPromptGroup {

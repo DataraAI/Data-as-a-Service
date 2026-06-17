@@ -1,4 +1,4 @@
-const CONTAINER_PREFIX = /^roboteyeview\//i;
+const CONTAINER_PREFIX = /^roboteyeview(?:-public)?\//i;
 
 const LOWER_CAMEL_ALIASES: Record<string, string[]> = {
   carautomation: ["carAutomation"],
@@ -244,9 +244,16 @@ const LOCAL_FOLDER_PREVIEW_SNAPSHOTS: LocalFolderPreviewSnapshot[] = (() => {
     const segments = blobPath.split("/").filter(Boolean);
     const directoryIndex = segments.findIndex((segment) => PREVIEW_DATASET_DIRECTORIES.has(segment));
 
-    if (directoryIndex < 3) return;
+    if (directoryIndex < 0) return;
 
-    const datasetRootSegments = segments.slice(0, directoryIndex);
+    const isNewMiscLayout = segments[2]?.toLowerCase() === "misc" && directoryIndex >= 3;
+    const isNewRootLayout = directoryIndex >= 2;
+    const isLegacyLayout = directoryIndex >= 3;
+    if (!isNewMiscLayout && !isNewRootLayout && !isLegacyLayout) return;
+
+    const datasetRootSegments = isNewMiscLayout
+      ? segments.slice(0, 2)
+      : segments.slice(0, directoryIndex);
     const datasetRoot = datasetRootSegments.join("/");
     const directory = segments[directoryIndex];
     const extension = segments[segments.length - 1]?.split(".").pop()?.toLowerCase() ?? "";
@@ -254,8 +261,8 @@ const LOCAL_FOLDER_PREVIEW_SNAPSHOTS: LocalFolderPreviewSnapshot[] = (() => {
     if (!grouped.has(datasetRoot)) {
       grouped.set(datasetRoot, {
         category: datasetRootSegments[0] ?? "",
-        brand: datasetRootSegments[1] ?? "",
-        dataset: datasetRootSegments[2] ?? datasetRootSegments[datasetRootSegments.length - 1] ?? "",
+        brand: datasetRootSegments.length > 2 ? datasetRootSegments[1] ?? "" : "",
+        dataset: datasetRootSegments[datasetRootSegments.length - 1] ?? "",
         images: [],
         previewVideoBlobPath: null,
       });
