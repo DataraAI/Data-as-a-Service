@@ -21,6 +21,13 @@ if _BACKEND not in sys.path:
 from utils import azure_client
 
 
+VIEW_STORAGE_RELATIVE_PREFIXES = {
+    "orig": "misc/orig",
+    "egos": "misc/egos/egos",
+    "corner_images_controlnet": "misc/egos/cornerCases",
+}
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Upload dataset images to Azure Blob Storage")
     parser.add_argument("--container_name", required=True)
@@ -76,6 +83,13 @@ def resolve_task(task: str, output_name: str) -> str:
     if fallback[-1] not in ".!?":
         fallback += "."
     return fallback
+
+
+def storage_relative_prefix_for_view(view: str) -> str:
+    try:
+        return VIEW_STORAGE_RELATIVE_PREFIXES[view]
+    except KeyError as exc:
+        raise ValueError(f"Unsupported view: {view}") from exc
 
 
 def _query_existing_doc(cosmos_container, container_name: str, blob_path: str) -> dict[str, Any]:
@@ -294,6 +308,7 @@ def main() -> None:
     uploaded_count = 0
     resolved_task = resolve_task(args.task, args.output_name)
     dataset_prefix = args.output_name.rstrip("/")
+    storage_relative_prefix = storage_relative_prefix_for_view(view)
 
     for filename in sorted(os.listdir(input_dir)):
         if not filename.lower().endswith(valid_extensions):
@@ -310,7 +325,7 @@ def main() -> None:
             is_clear = sharpness_score >= 100.0
             height, width = img.shape[:2]
 
-        blob_name = f"{dataset_prefix}/misc/{view}/{filename}"
+        blob_name = f"{dataset_prefix}/{storage_relative_prefix}/{filename}"
         with open(local_path, "rb") as handle:
             container_client.upload_blob(
                 name=blob_name,
@@ -377,7 +392,7 @@ def main() -> None:
 
     print(
         f"Upload complete - {uploaded_count} images uploaded "
-        f"from '{dataset_prefix}/misc/{view}' to '{args.container_name}'"
+        f"from '{dataset_prefix}/{storage_relative_prefix}' to '{args.container_name}'"
     )
 
 

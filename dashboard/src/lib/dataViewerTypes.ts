@@ -65,7 +65,7 @@ export type DatasetAsset = ImageItem & {
 };
 
 export interface DatasetMiscSection {
-  key: "orig" | "egos" | "masks" | "handmeshes";
+  key: "orig" | "egoGenerations" | "cornerCases" | "masks" | "handmeshes";
   label: string;
   exists: boolean;
   asset_count: number;
@@ -86,7 +86,7 @@ export interface DatasetManifest {
   readme: DatasetAsset | null;
   primary_video: DatasetAsset | null;
   downloads: DatasetAsset[];
-  misc: Record<"orig" | "egos" | "masks" | "handmeshes", DatasetMiscSection>;
+  misc: Record<"orig" | "egoGenerations" | "cornerCases" | "masks" | "handmeshes", DatasetMiscSection>;
   hand_meshes: DatasetAsset[];
 }
 
