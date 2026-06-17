@@ -2,15 +2,17 @@
 
 Dry-run first:
 
-    python backend/utils/reorganize_public_ego_outputs.py --dataset-prefix dexterity/towel
+    python backend/utils/reorganize_public_ego_outputs.py --dataset-prefix serverrack/dataRackInstall
 
 Apply by copying to the new locations:
 
-    python backend/utils/reorganize_public_ego_outputs.py --dataset-prefix dexterity/towel --apply
+    python backend/utils/reorganize_public_ego_outputs.py --dataset-prefix serverrack/dataRackInstall --apply
 
 Optionally remove the old blobs after successful copies:
 
-    python backend/utils/reorganize_public_ego_outputs.py --dataset-prefix dexterity/towel --apply --delete-source
+    python backend/utils/reorganize_public_ego_outputs.py --dataset-prefix serverrack/dataRackInstall --apply --delete-source
+
+The dexterity vertical is intentionally skipped by this helper.
 """
 
 from __future__ import annotations
@@ -31,6 +33,7 @@ from datara.services.azure_service import AzureService
 
 
 FRAME_EXTENSIONS = (".png", ".jpg", ".jpeg", ".webp")
+SKIPPED_VERTICALS = {"dexterity"}
 
 
 @dataclass(frozen=True)
@@ -73,12 +76,20 @@ def _is_frame(relative_path: str) -> bool:
     return relative_path.lower().endswith(FRAME_EXTENSIONS)
 
 
+def _is_skipped_vertical(dataset_prefix: str) -> bool:
+    vertical = dataset_prefix.strip("/").split("/", 1)[0].strip().lower()
+    return vertical in SKIPPED_VERTICALS
+
+
 def plan_for_blob(blob_name: str) -> ReorganizePlan | None:
     parsed = _dataset_prefix_and_relative(blob_name)
     if not parsed:
         return None
 
     dataset_prefix, relative_path = parsed
+    if _is_skipped_vertical(dataset_prefix):
+        return None
+
     lower_relative = relative_path.lower()
     target_blob = ""
     kind = ""
@@ -128,6 +139,9 @@ def plan_for_blob(blob_name: str) -> ReorganizePlan | None:
 
 def build_plans(blob_names: list[str], *, dataset_prefix: str = "") -> list[ReorganizePlan]:
     normalized_filter = dataset_prefix.strip("/")
+    if normalized_filter and _is_skipped_vertical(normalized_filter):
+        return []
+
     plans: list[ReorganizePlan] = []
     seen_targets: set[str] = set()
 
@@ -192,6 +206,10 @@ def main() -> None:
     args = parse_args()
     azure = AzureService()
     scan_prefix = args.dataset_prefix.strip("/")
+    if scan_prefix and _is_skipped_vertical(scan_prefix):
+        print(f"SKIP {scan_prefix}: this helper does not reorganize the dexterity vertical")
+        return
+
     blob_names = [
         str(getattr(blob, "name", "")).strip()
         for blob in azure.list_blobs(args.container, scan_prefix)
