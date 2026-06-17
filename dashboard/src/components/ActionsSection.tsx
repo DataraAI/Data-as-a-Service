@@ -8,22 +8,27 @@ import { useAuth } from "@/auth/useAuth";
 
 const ActionsSection = () => {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const { isAuthenticated, isApproved, login } = useAuth();
+  const { isAuthenticated, isApproved, login, user } = useAuth();
   const location = useLocation();
 
-  const canImport = isAuthenticated && isApproved;
+  const canImport =
+    isAuthenticated && isApproved && (user?.role === "admin" || user?.role === "analyst");
 
   const actions = [
     {
       icon: canImport ? Upload : LockKeyhole,
       title: "Import Dataset",
       description: canImport
-        ? "Upload a dataset for processing"
-        : "Sign in with an approved account before uploading private or public data",
+        ? "Upload a public dataset for processing"
+        : isAuthenticated
+          ? "Dataset import is available to Datara staff"
+          : "Sign in with an approved staff account before importing data",
       action: () =>
-        canImport ? setIsUploadModalOpen(true) : login(`${location.pathname}${location.search}`),
+        canImport || isAuthenticated
+          ? setIsUploadModalOpen(true)
+          : login(`${location.pathname}${location.search}`),
       variant: "default",
-      cta: canImport ? "IMPORT DATA" : "SIGN IN TO IMPORT",
+      cta: canImport ? "IMPORT DATA" : isAuthenticated ? "STAFF ONLY" : "SIGN IN TO IMPORT",
     },
     {
       icon: Database,

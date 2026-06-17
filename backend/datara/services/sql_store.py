@@ -259,6 +259,10 @@ class SQLStore:
         filters: list[Any] = []
         if visibility:
             filters.append(self.datasets.c.visibility == visibility)
+            if visibility == "public":
+                filters.append(
+                    self.datasets.c.storage_container == str(settings.azure_public_container or "").strip()
+                )
         if not include_deleted:
             filters.append(self.datasets.c.deleted_at.is_(None))
 
@@ -624,9 +628,10 @@ class SQLStore:
         return self.get_user_by_email(username) or payload
 
     def route_path_for_dataset(self, dataset: dict[str, Any], viewer_mode: str = "default") -> str:
-        base = f"{dataset['category']}/{dataset['brand']}/{dataset['dataset_name']}"
         if dataset["visibility"] == "public":
-            return base
+            return f"{dataset['category']}/{dataset['dataset_name']}"
+
+        base = f"{dataset['category']}/{dataset['brand']}/{dataset['dataset_name']}"
         if viewer_mode == "admin":
             return f"admin/{dataset['owner_storage_slug']}/{base}"
         return f"my/{base}"
@@ -640,6 +645,14 @@ class SQLStore:
         filters: list[Any] = []
         if not include_deleted:
             filters.append(self.datasets.c.deleted_at.is_(None))
+
+        public_container = str(settings.azure_public_container or "").strip()
+        filters.append(
+            or_(
+                self.datasets.c.visibility != "public",
+                self.datasets.c.storage_container == public_container,
+            )
+        )
 
         if current_user["role"] != "admin":
             filters.append(
@@ -876,16 +889,15 @@ class SQLStore:
                 "dataset_root": "/".join(dataset_root),
             }
 
-        dataset_root = segments[:3]
-        if len(dataset_root) < 3:
+        dataset_root = segments[:2]
+        if len(dataset_root) < 2:
             return {"scope": "public", "segments": segments}
         return {
             "scope": "public",
             "segments": segments,
             "category": dataset_root[0],
-            "brand": dataset_root[1],
-            "dataset_name": dataset_root[2],
-            "extra_segments": segments[3:],
+            "dataset_name": dataset_root[1],
+            "extra_segments": segments[2:],
             "dataset_root": "/".join(dataset_root),
         }
 
@@ -902,7 +914,6 @@ class SQLStore:
                 if (
                     scope == "public"
                     and dataset["category"] == parsed["category"]
-                    and dataset["brand"] == parsed["brand"]
                     and dataset["dataset_name"] == parsed["dataset_name"]
                 ):
                     return dataset, parsed.get("extra_segments", [])

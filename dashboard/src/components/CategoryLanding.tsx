@@ -36,6 +36,7 @@ interface CategoryLandingProps {
   pathSuggestions: FolderItem[];
   isAuthenticated: boolean;
   isApproved: boolean;
+  canManageDatasets: boolean;
   user: { role?: string; storageSlug?: string } | null | undefined;
   landingTopRef: React.RefObject<HTMLDivElement | null>;
   sectionAnchorRefs: React.MutableRefObject<Record<string, HTMLElement | null>>;
@@ -62,6 +63,7 @@ export function CategoryLanding({
   pathSuggestions,
   isAuthenticated,
   isApproved,
+  canManageDatasets,
   user,
   landingTopRef,
   sectionAnchorRefs,
@@ -211,7 +213,7 @@ export function CategoryLanding({
                 >
                   Get Access
                 </Link>
-              ) : (
+              ) : canManageDatasets ? (
                 <div className="space-y-3">
                   <button
                     type="button"
@@ -237,6 +239,10 @@ export function CategoryLanding({
                       <Shield className="h-4 w-4" />
                     </button>
                   ) : null}
+                </div>
+              ) : (
+                <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-center text-xs font-semibold leading-5 text-slate-500">
+                  Public datasets are ready to browse.
                 </div>
               )}
             </div>

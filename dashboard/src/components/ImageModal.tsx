@@ -1,8 +1,7 @@
 import { ChevronLeft, ChevronRight, Copy, Download, Film, Info, Loader2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import TaskIntelligencePanel from "./TaskIntelligencePanel";
 import { ThreeDViewer } from "./ThreeDViewer";
-import VideoToVideoViewsPanel from "./VideoToVideoViewsPanel";
+import { VideoToolsPanel } from "./VideoToolsPanel";
 
 interface ImageModalProps {
   image: any;
@@ -12,6 +11,11 @@ interface ImageModalProps {
   onEgoGenSuccess?: () => void;
   onCornerCaseSuccess?: () => void;
   onVlmSuccess?: () => void;
+  canUseGenerationTools?: boolean;
+  routePath?: string;
+  showHandMeshGeneration?: boolean;
+  onVideoToolSuccess?: () => void;
+  onOpenViewerPath?: (viewerPath: string) => void;
 }
 
 const VLM_PRESET_OPTIONS = [
@@ -30,14 +34,6 @@ function isExoSourceImage(image: any): boolean {
   return false;
 }
 
-function sourceDatasetName(image: any) {
-  return image?.dataset?.viewer_path?.split("/").filter(Boolean).pop() || image?.name || "dataset";
-}
-
-function defaultDatasetName(image: any, suffix: string) {
-  return `${sourceDatasetName(image)}-${suffix}`;
-}
-
 export function ImageModal({
   image,
   onClose,
@@ -46,6 +42,11 @@ export function ImageModal({
   onEgoGenSuccess,
   onCornerCaseSuccess,
   onVlmSuccess,
+  canUseGenerationTools = false,
+  routePath = "",
+  showHandMeshGeneration = false,
+  onVideoToolSuccess,
+  onOpenViewerPath,
 }: ImageModalProps) {
   const [selectedCameraWork, setSelectedCameraWork] = useState("Rotate right 45 degrees");
   const [isGeneratingEgo, setIsGeneratingEgo] = useState(false);
@@ -59,6 +60,7 @@ export function ImageModal({
   const sourceVisibility = image?.dataset?.visibility ?? image?.metadata?.visibility ?? "public";
   const isVideo = image?.type === "video";
   const isStillImage = image?.type === "image";
+  const canShowVideoTools = Boolean(canUseGenerationTools && isVideo && image?.is_primary_input);
   const isMcap = image?.type === "mcap" || typeof image?.name === "string" && image.name.toLowerCase().endsWith(".mcap");
   const assetUrl = image?.proxy_url || image?.url;
 
@@ -359,7 +361,7 @@ export function ImageModal({
             </div>
           )}
 
-          {isStillImage && (
+          {canUseGenerationTools && isStillImage && (
             <div>
               <label className="mb-2 block font-sans-tech text-xs font-bold uppercase tracking-widest text-muted-foreground">
                 Create VLM tags
@@ -414,7 +416,7 @@ export function ImageModal({
             </div>
           )}
 
-          {image.metadata?.view === "egos" && (
+          {canUseGenerationTools && image.metadata?.view === "egos" && (
             <div>
               <label className="mb-2 block font-sans-tech text-xs font-bold uppercase tracking-widest text-muted-foreground">
                 Add corner case
@@ -439,7 +441,7 @@ export function ImageModal({
             </div>
           )}
 
-          {isExoSourceImage(image) && (
+          {canUseGenerationTools && isExoSourceImage(image) && (
             <div>
               <label className="mb-3 block font-sans-tech text-xs font-bold uppercase tracking-widest text-muted-foreground">
                 Egocentric generation
@@ -471,21 +473,34 @@ export function ImageModal({
             </div>
           )}
 
-          {isVideo && (
-            <TaskIntelligencePanel
-              videoID={image.asset_id}
-              videoURL={image.url}
-              datasetName={sourceDatasetName(image)}
+          {canShowVideoTools && (
+            <VideoToolsPanel
+              routePath={routePath || image.dataset?.viewer_path?.replace(/^\/viewer\//, "") || ""}
+              videos={[
+                {
+                  asset_id: image.asset_id,
+                  name: image.name,
+                  url: image.url,
+                  proxy_url: image.proxy_url,
+                  metadata: image.metadata,
+                },
+              ]}
+              variant="inline"
+              showHandMesh={showHandMeshGeneration}
+              onGenerationSuccess={onVideoToolSuccess}
+              onOpenViewerPath={onOpenViewerPath}
             />
           )}
 
-          {isVideo && (
-            <div className="space-y-3 border-t border-border pt-6">
-              <VideoToVideoViewsPanel
-                videoID={image.asset_id}
-                videoURL={image.url}
-                datasetName={defaultDatasetName(image, "views")}
-              />
+          {isVideo && !canShowVideoTools && canUseGenerationTools && (
+            <div className="rounded-sm border border-border bg-background/40 p-3 text-[11px] leading-relaxed text-muted-foreground">
+              Generation tools are available from the original input video for this dataset.
+            </div>
+          )}
+
+          {isVideo && !canUseGenerationTools && (
+            <div className="rounded-sm border border-border bg-background/40 p-3 text-[11px] leading-relaxed text-muted-foreground">
+              This video is available to view and download.
             </div>
           )}
         </div>

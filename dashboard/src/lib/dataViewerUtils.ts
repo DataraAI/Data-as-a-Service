@@ -257,7 +257,22 @@ export function canonicalizeDatasetPathForRoute(fullPath: string, routeKey: Cate
   }
 
   segments[0] = routeKey;
+  if (segments.length >= 3 && segments[2] !== "misc" && segments[2] !== "hand_meshes") {
+    return [routeKey, segments[segments.length - 1]].join("/");
+  }
+
   return segments.join("/");
+}
+
+export function formatPublicDatasetPathLabel(fullPath: string, routeKey?: CategoryKey | null) {
+  const normalizedPath = String(fullPath ?? "").replace(/\\/g, "/");
+  const segments = normalizedPath.split("/").filter(Boolean);
+  if (segments.length === 0) return normalizedPath;
+
+  const sourceCategory = getCategoryByRouteKey(segments[0]);
+  const resolvedRouteKey = routeKey ?? sourceCategory?.routeKey ?? null;
+  if (!resolvedRouteKey) return segments.join("/");
+  return canonicalizeDatasetPathForRoute([resolvedRouteKey, ...segments.slice(1)].join("/"), resolvedRouteKey);
 }
 
 export function getPreviewDatasetRootFromVideoBlobPath(blobPath?: string | null) {

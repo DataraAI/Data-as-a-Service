@@ -23,6 +23,10 @@ PRESET_VLM_LABELS = [
 ]
 
 IMAGE_PREVIEW_EXTENSIONS = (".png", ".jpg", ".jpeg", ".webp")
+VIDEO_EXTENSIONS = (".mp4", ".mov", ".m4v", ".webm")
+THREE_D_EXTENSIONS = (".stl", ".obj", ".glb", ".gltf")
+DOWNLOAD_EXTENSIONS = (*VIDEO_EXTENSIONS, ".mcap", ".npz", ".json", ".zip")
+MARKDOWN_EXTENSIONS = (".md", ".markdown")
 MASK_PERSON_PRIORITY_SEGMENTS = {"person", "persons", "human", "aperson", "ahuman"}
 MASK_DEPRIORITIZED_SEGMENTS = {"hand", "hands"}
 HIDDEN_CATEGORY_PREVIEW_PATHS = {
@@ -30,6 +34,8 @@ HIDDEN_CATEGORY_PREVIEW_PATHS = {
     "dexteritywashingmachinewashingclothes",
     "dexteritypeelingpeas",
 }
+PUBLIC_LAYOUT_ROOT_FOLDERS = {"misc", "hand_meshes"}
+PUBLIC_LAYOUT_MISC_FOLDERS = {"orig", "egos", "masks"}
 
 
 class DatasetService:
@@ -207,6 +213,7 @@ class DatasetService:
     def get_dataset_images(self, route_path: str, current_user: dict[str, Any]) -> list[dict[str, Any]]:
         dataset, extra_segments = self.sql_store.resolve_dataset_route(route_path, current_user)
         self.sql_store.assert_user_can_access_dataset(dataset, current_user)
+        self._assert_public_layout_path_allowed(dataset, extra_segments)
 
         prefix = dataset["storage_prefix"].rstrip("/")
         if extra_segments:
@@ -231,11 +238,14 @@ class DatasetService:
             lower_name = blob.name.lower()
             if "/preview/" in lower_name:
                 continue
-            is_image = lower_name.endswith((".png", ".jpg", ".jpeg", ".webp"))
-            is_video = lower_name.endswith((".mp4", ".mov", ".m4v", ".webm"))
-            is_3d = lower_name.endswith((".stl", ".obj", ".glb", ".gltf"))
-            is_mcap = lower_name.endswith((".mcap")) # ADDED NEW CODE 
-            if not (is_image or is_video or is_3d or is_mcap):
+            is_image = lower_name.endswith(IMAGE_PREVIEW_EXTENSIONS)
+            is_video = lower_name.endswith(VIDEO_EXTENSIONS)
+            is_3d = lower_name.endswith(THREE_D_EXTENSIONS)
+            is_mcap = lower_name.endswith(".mcap")
+            is_json = lower_name.endswith(".json")
+            is_npz = lower_name.endswith(".npz")
+            is_markdown = lower_name.endswith(MARKDOWN_EXTENSIONS)
+            if not (is_image or is_video or is_3d or is_mcap or is_json or is_npz or is_markdown):
                 continue
 
             cosmos_doc = metadata_map.get(blob.name, {}) or {}
@@ -269,14 +279,16 @@ class DatasetService:
                 inferred_view = inferred_view or "video"
             elif "/occl_del/" in blob.name:
                 inferred_view = inferred_view or "occl_del"
-            elif "/hand_mesh/" in blob.name:
+            elif "/hand_meshes/" in blob.name or "/hand_mesh/" in blob.name:
                 tags.append("hand_mesh")
                 inferred_view = inferred_view or "hand_mesh"
-            # ====== ADD THIS BLOCK TO PROCESS MCAPS ======
-            elif "/mcaps/" in blob.name:
+            elif is_mcap:
                 tags.append("mcap")
                 inferred_view = inferred_view or "mcaps"
-            # =============================================
+            elif is_npz:
+                tags.append("npz")
+            elif is_json:
+                tags.append("json")
             if is_video:
                 tags.append("video")
 
@@ -285,7 +297,7 @@ class DatasetService:
             elif cosmos_doc.get("clear") is False:
                 tags.append("blurry")
 
-            media_type = "3d" if is_3d else "video" if is_video else "mcap" if is_mcap else "image" # CHANGED CODE
+            media_type = self._asset_type_for_blob(blob.name)
             asset_id = self.encode_asset_id(dataset["id"], blob.name)
 
             image_list.append(
@@ -328,6 +340,113 @@ class DatasetService:
         logger.info("Resolved %s assets for %s", len(image_list), route_path)
         return image_list
 
+    def get_dataset_manifest(self, route_path: str, current_user: dict[str, Any]) -> dict[str, Any]:
+        dataset, extra_segments = self.sql_store.resolve_dataset_route(route_path, current_user)
+        self.sql_store.assert_user_can_access_dataset(dataset, current_user)
+        if extra_segments:
+            raise ValueError("Dataset manifest is only available for dataset root paths")
+
+        summary = self.sql_store.build_dataset_summary(dataset, current_user)
+        storage_prefix = dataset["storage_prefix"].rstrip("/")
+
+        try:
+            blobs = self.azure_service.list_blobs(dataset["storage_container"], storage_prefix)
+        except ResourceNotFoundError:
+            logger.warning(
+                "Skipping manifest for %s because container %s was not found",
+                route_path,
+                dataset["storage_container"],
+            )
+            blobs = []
+
+        blob_names = sorted(
+            {
+                str(getattr(blob, "name", "")).strip()
+                for blob in blobs
+                if str(getattr(blob, "name", "")).strip()
+            },
+            key=str.lower,
+        )
+        blob_set = set(blob_names)
+        task_slug = str(dataset.get("dataset_name") or "").strip()
+        primary_video_blob = f"{storage_prefix}/{task_slug}.mp4"
+        if primary_video_blob not in blob_set:
+            primary_video_blob = next(
+                (
+                    blob_name
+                    for blob_name in blob_names
+                    if self._is_root_child_blob(storage_prefix, blob_name)
+                    and blob_name.lower().endswith(VIDEO_EXTENSIONS)
+                ),
+                "",
+            )
+
+        readme_blob = next(
+            (
+                blob_name
+                for blob_name in blob_names
+                if self._is_root_child_blob(storage_prefix, blob_name)
+                and os.path.basename(blob_name).lower() == "readme.md"
+            ),
+            "",
+        )
+
+        download_blobs = [
+            blob_name
+            for blob_name in blob_names
+            if self._is_root_child_blob(storage_prefix, blob_name)
+            and blob_name != primary_video_blob
+            and blob_name != readme_blob
+            and blob_name.lower().endswith(DOWNLOAD_EXTENSIONS)
+        ]
+
+        hand_mesh_blobs = [
+            blob_name
+            for blob_name in blob_names
+            if blob_name.startswith(f"{storage_prefix}/hand_meshes/")
+            and blob_name.lower().endswith(".obj")
+        ]
+
+        misc = {
+            key: self._build_misc_manifest_section(
+                summary=summary,
+                storage_prefix=storage_prefix,
+                blob_names=blob_names,
+                section_key=key,
+                label=label,
+            )
+            for key, label in (
+                ("orig", "Original Frames"),
+                ("egos", "Egocentric Frames"),
+                ("masks", "Masks"),
+            )
+        }
+
+        return {
+            "dataset": {
+                "id": dataset["id"],
+                "container": dataset["storage_container"],
+                "prefix": storage_prefix,
+                "vertical": dataset["category"],
+                "task_slug": task_slug,
+                "task_label": str(dataset.get("task") or "").strip() or self._humanize_dataset_title(task_slug),
+                "visibility": dataset["visibility"],
+                "viewer_path": summary["viewer_path"],
+            },
+            "readme": self._build_dataset_asset(dataset, readme_blob) if readme_blob else None,
+            "primary_video": (
+                self._build_dataset_asset(dataset, primary_video_blob, is_primary_input=True)
+                if primary_video_blob
+                else None
+            ),
+            "downloads": [
+                self._build_dataset_asset(dataset, blob_name)
+                for blob_name in sorted(download_blobs, key=self._download_sort_key)
+            ],
+            "misc": misc,
+            "hand_meshes": [self._build_dataset_asset(dataset, blob_name) for blob_name in hand_mesh_blobs],
+        }
+
     def delete_dataset(self, route_path: str, current_user: dict[str, Any]) -> dict[str, Any]:
         dataset, _ = self.sql_store.resolve_dataset_route(route_path, current_user)
         self.sql_store.assert_user_can_manage_dataset(dataset, current_user)
@@ -349,6 +468,117 @@ class DatasetService:
             "deleted_docs": deleted_docs,
         }
 
+    def _build_dataset_asset(
+        self,
+        dataset: dict[str, Any],
+        blob_name: str,
+        *,
+        is_primary_input: bool = False,
+    ) -> dict[str, Any]:
+        asset_id = self.encode_asset_id(dataset["id"], blob_name)
+        return {
+            "id": blob_name,
+            "asset_id": asset_id,
+            "blob_path": blob_name,
+            "url": self.azure_service.get_blob_url(dataset["storage_container"], blob_name),
+            "proxy_url": f"/api/proxy/{asset_id}",
+            "name": os.path.basename(blob_name),
+            "type": self._asset_type_for_blob(blob_name),
+            "downloadable": True,
+            "is_primary_input": is_primary_input,
+            "dataset": {
+                "id": dataset["id"],
+                "visibility": dataset["visibility"],
+                "owner_slug": dataset["owner_storage_slug"],
+                "viewer_path": self.route_path_to_viewer_path(dataset),
+                "vertical": dataset["category"],
+                "task_slug": dataset["dataset_name"],
+            },
+            "metadata": {
+                "view": self._infer_view_for_blob(blob_name),
+                "task": dataset.get("task"),
+                "visibility": dataset["visibility"],
+            },
+        }
+
+    def route_path_to_viewer_path(self, dataset: dict[str, Any]) -> str:
+        return f"/viewer/{self.sql_store.route_path_for_dataset(dataset)}"
+
+    @staticmethod
+    def _is_root_child_blob(storage_prefix: str, blob_name: str) -> bool:
+        prefix = storage_prefix.rstrip("/")
+        if not blob_name.startswith(f"{prefix}/"):
+            return False
+        relative = blob_name[len(prefix) + 1 :]
+        return bool(relative) and "/" not in relative
+
+    @classmethod
+    def _asset_type_for_blob(cls, blob_name: str) -> str:
+        lower_name = blob_name.lower()
+        if lower_name.endswith(THREE_D_EXTENSIONS):
+            return "3d"
+        if lower_name.endswith(VIDEO_EXTENSIONS):
+            return "video"
+        if lower_name.endswith(".mcap"):
+            return "mcap"
+        if lower_name.endswith(".npz"):
+            return "npz"
+        if lower_name.endswith(".json"):
+            return "json"
+        if lower_name.endswith(MARKDOWN_EXTENSIONS):
+            return "markdown"
+        return "image"
+
+    @staticmethod
+    def _infer_view_for_blob(blob_name: str) -> str | None:
+        lower_name = blob_name.lower()
+        if "/misc/orig/" in lower_name or "/orig/" in lower_name:
+            return "exo"
+        if "/misc/egos/" in lower_name or "/egos/" in lower_name:
+            return "egos"
+        if "/misc/masks/" in lower_name or "/masks/" in lower_name:
+            return "masks"
+        if "/hand_meshes/" in lower_name or "/hand_mesh/" in lower_name:
+            return "hand_mesh"
+        if lower_name.endswith(VIDEO_EXTENSIONS):
+            return "video"
+        return None
+
+    def _build_misc_manifest_section(
+        self,
+        *,
+        summary: dict[str, Any],
+        storage_prefix: str,
+        blob_names: list[str],
+        section_key: str,
+        label: str,
+    ) -> dict[str, Any]:
+        section_prefix = f"{storage_prefix.rstrip('/')}/misc/{section_key}"
+        asset_count = sum(1 for blob_name in blob_names if blob_name.startswith(f"{section_prefix}/"))
+        route_path = f"{summary['full_path'].rstrip('/')}/misc/{section_key}"
+        return {
+            "key": section_key,
+            "label": label,
+            "exists": asset_count > 0,
+            "asset_count": asset_count,
+            "viewer_path": f"/viewer/{route_path}",
+        }
+
+    @classmethod
+    def _download_sort_key(cls, blob_name: str) -> tuple[int, str]:
+        lower_name = blob_name.lower()
+        if lower_name.endswith(VIDEO_EXTENSIONS):
+            rank = 0
+        elif lower_name.endswith(".mcap"):
+            rank = 1
+        elif lower_name.endswith(".npz"):
+            rank = 2
+        elif lower_name.endswith(".json"):
+            rank = 3
+        else:
+            rank = 9
+        return (rank, lower_name)
+
     def _build_category_dataset_preview(
         self,
         *,
@@ -357,34 +587,43 @@ class DatasetService:
     ) -> dict[str, Any]:
         storage_container = dataset["storage_container"]
         storage_prefix = dataset["storage_prefix"].rstrip("/")
+        use_public_layout_only = self._is_current_public_layout_dataset(dataset)
 
-        orig_samples = self._select_diverse_preview_blobs(
-            self._list_preview_blob_names(storage_container, f"{storage_prefix}/orig"),
-            count=4,
-        )
-        ego_samples = self._select_diverse_preview_blobs(
-            self._list_preview_blob_names(storage_container, f"{storage_prefix}/egos"),
-            count=4,
-        )
-        mask_samples = self._select_diverse_preview_blobs(
-            self._list_mask_preview_blob_names(storage_container, f"{storage_prefix}/masks"),
-            count=4,
-        )
+        orig_candidates = self._list_preview_blob_names(storage_container, f"{storage_prefix}/misc/orig")
+        ego_candidates = self._list_preview_blob_names(storage_container, f"{storage_prefix}/misc/egos")
+        mask_candidates = self._list_mask_preview_blob_names(storage_container, f"{storage_prefix}/misc/masks")
+        if not use_public_layout_only:
+            orig_candidates = orig_candidates or self._list_preview_blob_names(storage_container, f"{storage_prefix}/orig")
+            ego_candidates = ego_candidates or self._list_preview_blob_names(storage_container, f"{storage_prefix}/egos")
+            mask_candidates = mask_candidates or self._list_mask_preview_blob_names(
+                storage_container,
+                f"{storage_prefix}/masks",
+            )
 
-        corner_candidates = self._list_preview_blob_names(
-            storage_container,
-            f"{storage_prefix}/corner_images_controlnet",
-        )
-        if not corner_candidates:
+        orig_samples = self._select_diverse_preview_blobs(orig_candidates, count=4)
+        ego_samples = self._select_diverse_preview_blobs(ego_candidates, count=4)
+        mask_samples = self._select_diverse_preview_blobs(mask_candidates, count=4)
+
+        corner_candidates = []
+        if not use_public_layout_only:
             corner_candidates = self._list_preview_blob_names(
                 storage_container,
-                f"{storage_prefix}/occl_del",
+                f"{storage_prefix}/corner_images_controlnet",
             )
+            if not corner_candidates:
+                corner_candidates = self._list_preview_blob_names(
+                    storage_container,
+                    f"{storage_prefix}/occl_del",
+                )
         corner_samples = self._select_diverse_preview_blobs(corner_candidates, count=4)
-        root_samples = self._select_diverse_preview_blobs(
-            self._list_preview_blob_names(storage_container, storage_prefix),
-            count=4,
-        )
+        root_candidates = self._list_preview_blob_names(storage_container, storage_prefix)
+        if use_public_layout_only:
+            root_candidates = [
+                blob_name
+                for blob_name in root_candidates
+                if self._is_root_child_blob(storage_prefix, blob_name)
+            ]
+        root_samples = self._select_diverse_preview_blobs(root_candidates, count=4)
 
         source_samples = {
             "orig": orig_samples,
@@ -543,6 +782,11 @@ class DatasetService:
         except (PermissionError, ValueError):
             return []
 
+        try:
+            self._assert_public_layout_path_allowed(dataset, extra_segments)
+        except ValueError:
+            return []
+
         summary = self.sql_store.build_dataset_summary(dataset, current_user)
         storage_prefix = dataset["storage_prefix"].rstrip("/")
         if extra_segments:
@@ -564,6 +808,8 @@ class DatasetService:
 
         for child_prefix in child_prefixes:
             child_name = child_prefix.rstrip("/").split("/")[-1]
+            if not self._is_public_layout_child_visible(dataset, [*extra_segments, child_name]):
+                continue
             child_route = f"{route_path.rstrip('/')}/{child_name}"
             children[child_route] = self._build_folder_record(
                 summary=summary,
@@ -600,6 +846,8 @@ class DatasetService:
             child_name = child_prefix.rstrip("/").split("/")[-1]
             if not child_name:
                 continue
+            if not self._is_public_layout_child_visible(dataset, [child_name]):
+                continue
 
             nested_full_path = f"{route_root}/{child_name}"
             nested_paths.setdefault(
@@ -615,6 +863,44 @@ class DatasetService:
             nested_paths.values(),
             key=lambda item: item["full_path"].lower(),
         )
+
+    def _is_current_public_layout_dataset(self, dataset: dict[str, Any]) -> bool:
+        return (
+            str(dataset.get("visibility") or "").strip() == "public"
+            and str(dataset.get("storage_container") or "").strip() == settings.azure_public_container
+        )
+
+    def _assert_public_layout_path_allowed(
+        self,
+        dataset: dict[str, Any],
+        extra_segments: list[str],
+    ) -> None:
+        if not self._is_current_public_layout_dataset(dataset) or not extra_segments:
+            return
+        if self._is_public_layout_child_visible(dataset, extra_segments):
+            return
+        raise ValueError("Unsupported public dataset path")
+
+    def _is_public_layout_child_visible(
+        self,
+        dataset: dict[str, Any],
+        extra_segments: list[str],
+    ) -> bool:
+        if not self._is_current_public_layout_dataset(dataset) or not extra_segments:
+            return True
+
+        normalized = [str(segment or "").strip().lower() for segment in extra_segments if str(segment or "").strip()]
+        if not normalized:
+            return True
+
+        root_segment = normalized[0]
+        if root_segment == "hand_meshes":
+            return True
+        if root_segment != "misc":
+            return False
+        if len(normalized) == 1:
+            return True
+        return normalized[1] in PUBLIC_LAYOUT_MISC_FOLDERS
 
     def _find_preview_blob(self, container_name: str, prefix: str) -> str | None:
         try:

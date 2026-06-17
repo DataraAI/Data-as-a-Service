@@ -17,6 +17,7 @@ interface VideoToVideoViewsPanelProps {
     videoID: string;
     videoURL: string;
     datasetName?: string;
+    onGenerated?: () => void;
 }
 
 export default function VideoToVideoViewsPanel({
@@ -24,6 +25,7 @@ export default function VideoToVideoViewsPanel({
     videoID,
     videoURL,
     datasetName = "default_dataset",
+    onGenerated,
 }: VideoToVideoViewsPanelProps) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -65,6 +67,7 @@ export default function VideoToVideoViewsPanel({
 
             setGeneratedVideoUrl(proxyUrl);
             setCached(result.cached ?? false);
+            onGenerated?.();
         } catch (err: any) {
             setError(err.message || "An unexpected error occurred");
         } finally {

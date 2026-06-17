@@ -78,11 +78,10 @@ while True:
     # Only save the frame if it matches our calculated interval
     if frame_id >= (saved_count * hop_interval):
         # Use :0{pad_width}d to pad the number with zeros
-        filename_prefix = os.path.basename(output_name)
         frame_filename = os.path.join(
             output_dir,
             target_view_dir,
-            f"{filename_prefix}_{saved_count:0{pad_width}d}.png",
+            f"frame_{saved_count:0{pad_width}d}.png",
         )
         cv2.imwrite(frame_filename, frame)
         saved_count += 1

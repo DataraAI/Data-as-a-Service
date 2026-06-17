@@ -27,6 +27,7 @@ interface SidebarProps {
   matchingTagSuggestions: string[];
   onSelectTagSuggestion: (tag: string) => void;
   vlmPromptGroups: VlmPromptGroup[];
+  canUpload?: boolean;
 }
 
 type SectionKey = "filter" | "labels" | "primitives" | "frames";
@@ -44,6 +45,7 @@ export function Sidebar({
   matchingTagSuggestions,
   onSelectTagSuggestion,
   vlmPromptGroups,
+  canUpload = true,
 }: SidebarProps) {
   const [expandedSections, setExpandedSections] = useState<Record<SectionKey, boolean>>({
     filter: true,
@@ -115,15 +117,17 @@ export function Sidebar({
                 </div>
               )}
 
-              <Button
-                onClick={onUploadClick}
-                size="sm"
-                variant="outline"
-                className="h-8 w-full border-dashed border-border font-sans-tech text-xs text-muted-foreground hover:border-primary hover:text-primary"
-              >
-                <Plus className="mr-1.5 h-3 w-3" />
-                Add Stage
-              </Button>
+              {canUpload && (
+                <Button
+                  onClick={onUploadClick}
+                  size="sm"
+                  variant="outline"
+                  className="h-8 w-full border-dashed border-border font-sans-tech text-xs text-muted-foreground hover:border-primary hover:text-primary"
+                >
+                  <Plus className="mr-1.5 h-3 w-3" />
+                  Add Stage
+                </Button>
+              )}
             </div>
           )}
         </div>

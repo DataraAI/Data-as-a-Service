@@ -68,8 +68,8 @@ export function HandMeshGenerationPanel({
 
       toast.success(result.message || "Hand mesh outputs are ready.", {
         description: outputSummary
-          ? `${outputSummary} saved under hand_mesh for this sequence.`
-          : "Open the hand_mesh folder to view the results.",
+          ? `${outputSummary} saved to the dataset root and hand_meshes folder.`
+          : "Open the dataset to view the results.",
         action: outputViewerPath
           ? {
             label: "Open results",
@@ -123,7 +123,7 @@ export function HandMeshGenerationPanel({
           onClick={() => onGenerated?.(lastOutputPath)}
           className="mt-3 w-full rounded-sm border border-primary/25 bg-primary/5 px-3 py-2 text-[11px] font-sans-tech font-semibold text-primary transition-colors hover:bg-primary/10"
         >
-          Open hand mesh results folder
+          Open dataset results
         </button>
       )}
     </div>

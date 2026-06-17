@@ -63,7 +63,6 @@ export default function ExploreDatasets() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [searchCategory, setSearchCategory] = useState("");
-  const [searchBrand, setSearchBrand] = useState("");
   const [searchDataset, setSearchDataset] = useState("");
   const [modalities, setModalities] = useState<Set<string>>(new Set());
   const [annotations, setAnnotations] = useState<Set<string>>(new Set());
@@ -100,18 +99,16 @@ export default function ExploreDatasets() {
 
   const filteredPaths = useMemo(() => {
     const searchCategoryValue = searchCategory.trim().toLowerCase();
-    const searchBrandValue = searchBrand.trim().toLowerCase();
     const searchDatasetValue = searchDataset.trim().toLowerCase();
 
     return paths.filter((record) => {
       const parts = record.full_path.split("/").filter(Boolean);
-      const category = parts[parts.length - 3] ?? "";
-      const brand = parts[parts.length - 2] ?? "";
-      const dataset = parts[parts.length - 1] ?? "";
+      const isScopedPrivatePath = parts[0] === "my" || parts[0] === "admin";
+      const category = isScopedPrivatePath ? parts[parts.length - 3] ?? "" : parts[0] ?? "";
+      const dataset = isScopedPrivatePath ? parts[parts.length - 1] ?? "" : parts[1] ?? parts[parts.length - 1] ?? "";
       const loweredPath = record.full_path.toLowerCase();
 
       if (searchCategoryValue && !category.toLowerCase().includes(searchCategoryValue)) return false;
-      if (searchBrandValue && !brand.toLowerCase().includes(searchBrandValue)) return false;
       if (searchDatasetValue && !dataset.toLowerCase().includes(searchDatasetValue)) return false;
 
       if (modalities.size > 0) {
@@ -130,17 +127,16 @@ export default function ExploreDatasets() {
 
       return true;
     });
-  }, [paths, searchCategory, searchBrand, searchDataset, modalities, annotations]);
+  }, [paths, searchCategory, searchDataset, modalities, annotations]);
 
   const clearFilters = () => {
     setModalities(new Set());
     setAnnotations(new Set());
     setSearchCategory("");
-    setSearchBrand("");
     setSearchDataset("");
   };
 
-  const hasSearchInput = searchCategory.trim() || searchBrand.trim() || searchDataset.trim();
+  const hasSearchInput = searchCategory.trim() || searchDataset.trim();
 
   return (
     <div className="relative flex min-h-screen flex-col bg-background font-sans-tech text-foreground">
@@ -202,37 +198,17 @@ export default function ExploreDatasets() {
                     </div>
                     <div className="space-y-1">
                       <Label
-                        htmlFor="explore-search-brand"
-                        className="font-mono-tech text-[10px] uppercase tracking-wide text-muted-foreground"
-                      >
-                        Brand
-                      </Label>
-                      <div className="relative">
-                        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                          id="explore-search-brand"
-                          type="search"
-                          placeholder="Search brand..."
-                          value={searchBrand}
-                          onChange={(event) => setSearchBrand(event.target.value)}
-                          className="h-9 rounded-sm border-border bg-background/80 pl-8 text-sm font-sans-tech"
-                          autoComplete="off"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <Label
                         htmlFor="explore-search-dataset"
                         className="font-mono-tech text-[10px] uppercase tracking-wide text-muted-foreground"
                       >
-                        Dataset name
+                        Task
                       </Label>
                       <div className="relative">
                         <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                         <Input
                           id="explore-search-dataset"
                           type="search"
-                          placeholder="Search dataset..."
+                          placeholder="Search task..."
                           value={searchDataset}
                           onChange={(event) => setSearchDataset(event.target.value)}
                           className="h-9 rounded-sm border-border bg-background/80 pl-8 text-sm font-sans-tech"

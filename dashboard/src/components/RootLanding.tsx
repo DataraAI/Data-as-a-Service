@@ -19,6 +19,7 @@ interface RootLandingProps {
   viewerBasePath: string;
   isAuthenticated: boolean;
   isApproved: boolean;
+  canManageDatasets: boolean;
   pathSearchText: string;
   pathSearchLoading: boolean;
   pathSuggestions: FolderItem[];
@@ -37,6 +38,7 @@ export function RootLanding({
   viewerBasePath,
   isAuthenticated,
   isApproved,
+  canManageDatasets,
   pathSearchText,
   pathSearchLoading,
   pathSuggestions,
@@ -94,7 +96,7 @@ export function RootLanding({
             </div>
 
             <div className="mt-5 border-t border-slate-200 pt-4">
-              {isAuthenticated && isApproved ? (
+              {isAuthenticated && isApproved && canManageDatasets ? (
                 <div className="space-y-3">
                   <button
                     type="button"
@@ -111,13 +113,17 @@ export function RootLanding({
                     Import data
                   </button>
                 </div>
-              ) : (
+              ) : !isAuthenticated || !isApproved ? (
                 <Link
                   to={buildAuthPath("register", viewerBasePath)}
                   className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
                 >
                   Get Access
                 </Link>
+              ) : (
+                <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-center text-xs font-semibold leading-5 text-slate-500">
+                  Public datasets are ready to browse.
+                </div>
               )}
             </div>
           </aside>
