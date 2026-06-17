@@ -60,8 +60,6 @@ DEFAULT_ADDIT_SAM2_PYTHON_BIN = f"/home/{SAAS_USER}/miniconda3/envs/addit-sam2/b
 
 def _resolve_key_path():
     return os.path.join(os.path.expanduser("~"), ".ssh", "azure_to_lambda")
-    # return os.path.expanduser("~/.ssh/azure_to_lambda")
-    # "C:\Users\valer\.ssh\azure_to_lambda"
 
 SAAS_KEY_PATH = _resolve_key_path()
 SAAS_PYTHON_BIN = (
@@ -770,7 +768,7 @@ def generate_hand_mesh(
 
                 for index, remote_npz_path in enumerate(remote_npz):
                     filename = os.path.basename(remote_npz_path) or f"npz_{index + 1}"
-                    local_path = os.path.join(local_mcap_dir, filename)
+                    local_path = os.path.join(local_npz_dir, filename)
                     if os.path.exists(local_path):
                         stem, ext = os.path.splitext(filename)
                         local_path = os.path.join(local_npz_dir, f"{stem}_{index + 1}{ext or ''}")
@@ -784,8 +782,8 @@ def generate_hand_mesh(
                 _run_command(ssh_client, f'rm -rf "{_shell_escape(run_output_dir)}"')
                 logger.info("Cleaned up remote output directory: %s", run_output_dir)
 
-            if local_video_paths or local_artifact_paths or local_mcap_paths:
-                return local_video_paths, local_artifact_paths, local_mcap_paths, 200, ""
+            if local_video_paths or local_artifact_paths or local_mcap_paths or local_npz_paths:
+                return local_video_paths, local_artifact_paths, local_mcap_paths, local_npz_paths, 200, ""
             return [], [], [], [], 500, "Hand mesh outputs could not be downloaded"
 
     except Exception as exc:
