@@ -38,6 +38,14 @@ PUBLIC_LAYOUT_ROOT_FOLDERS = {"misc", "hand_meshes"}
 PUBLIC_LAYOUT_MISC_FOLDERS = {"orig", "egos", "masks", "handmeshes"}
 HAND_MESH_ROUTE_SEGMENTS = {"handmeshes", "hand_meshes", "hand_mesh"}
 HAND_MESH_RELATIVE_PREFIXES = ("hand_meshes", "hand_mesh", "misc/handmeshes", "misc/hand_meshes")
+EGO_GENERATION_RELATIVE_PREFIXES = ("misc/egos/egos", "misc/egos")
+CORNER_CASE_RELATIVE_PREFIXES = (
+    "misc/egos/cornerCases",
+    "misc/egos/cornercases",
+    "misc/egos/corner_images_controlnet",
+    "misc/corner_images_controlnet",
+    "corner_images_controlnet",
+)
 
 
 class DatasetService:
@@ -241,6 +249,8 @@ class DatasetService:
             if blob.name in seen_blob_names:
                 continue
             seen_blob_names.add(blob.name)
+            if not self._blob_belongs_to_route(blob.name, dataset, extra_segments):
+                continue
             lower_name = blob.name.lower()
             if "/preview/" in lower_name:
                 continue
@@ -265,12 +275,15 @@ class DatasetService:
             if "/orig/" in blob.name:
                 tags.append("exocentric")
                 inferred_view = inferred_view or "exo"
-            elif "/egos/" in blob.name:
-                tags.append("ego_view")
-                inferred_view = inferred_view or "egos"
-            elif "/corner_images_controlnet/" in blob.name:
+            elif self._is_corner_case_blob(blob.name, storage_prefix=dataset["storage_prefix"]):
                 tags.append("corner_case")
                 inferred_view = inferred_view or "corner_images_controlnet"
+            elif (
+                self._is_ego_generation_blob(blob.name, storage_prefix=dataset["storage_prefix"])
+                or "/egos/" in blob.name
+            ):
+                tags.append("ego_view")
+                inferred_view = inferred_view or "egos"
             elif "/masks/" in blob.name:
                 tags.append("mask")
                 tags.append("instance_mask")
@@ -423,7 +436,8 @@ class DatasetService:
             )
             for key, label in (
                 ("orig", "Original Frames"),
-                ("egos", "Egocentric Frames"),
+                ("egoGenerations", "Egocentric generations"),
+                ("cornerCases", "Corner case generations"),
                 ("masks", "Masks"),
                 ("handmeshes", "handmeshes"),
             )
@@ -541,6 +555,13 @@ class DatasetService:
         lower_name = blob_name.lower()
         if "/misc/orig/" in lower_name or "/orig/" in lower_name:
             return "exo"
+        if (
+            "/misc/egos/cornercases/" in lower_name
+            or "/misc/egos/corner_images_controlnet/" in lower_name
+            or "/misc/corner_images_controlnet/" in lower_name
+            or "/corner_images_controlnet/" in lower_name
+        ):
+            return "corner_images_controlnet"
         if "/misc/egos/" in lower_name or "/egos/" in lower_name:
             return "egos"
         if "/misc/masks/" in lower_name or "/masks/" in lower_name:
@@ -560,14 +581,17 @@ class DatasetService:
         section_key: str,
         label: str,
     ) -> dict[str, Any]:
-        section_prefixes = self._misc_section_storage_prefixes(storage_prefix, section_key)
-        asset_count = sum(
-            1
-            for blob_name in blob_names
-            if any(blob_name.startswith(f"{section_prefix}/") for section_prefix in section_prefixes)
+        asset_count = self._count_misc_section_assets(
+            storage_prefix=storage_prefix,
+            blob_names=blob_names,
+            section_key=section_key,
         )
         if section_key == "handmeshes":
             route_path = f"{summary['full_path'].rstrip('/')}/hand_meshes"
+        elif section_key == "egoGenerations":
+            route_path = f"{summary['full_path'].rstrip('/')}/misc/egos/egos"
+        elif section_key == "cornerCases":
+            route_path = f"{summary['full_path'].rstrip('/')}/misc/egos/cornerCases"
         else:
             route_path = f"{summary['full_path'].rstrip('/')}/misc/{section_key}"
         return {
@@ -604,7 +628,11 @@ class DatasetService:
         use_public_layout_only = self._is_current_public_layout_dataset(dataset)
 
         orig_candidates = self._list_preview_blob_names(storage_container, f"{storage_prefix}/misc/orig")
-        ego_candidates = self._list_preview_blob_names(storage_container, f"{storage_prefix}/misc/egos")
+        ego_candidates = self._list_logical_preview_blob_names(
+            storage_container,
+            storage_prefix,
+            "egoGenerations",
+        )
         mask_candidates = self._list_mask_preview_blob_names(storage_container, f"{storage_prefix}/misc/masks")
         if not use_public_layout_only:
             orig_candidates = orig_candidates or self._list_preview_blob_names(storage_container, f"{storage_prefix}/orig")
@@ -618,8 +646,12 @@ class DatasetService:
         ego_samples = self._select_diverse_preview_blobs(ego_candidates, count=4)
         mask_samples = self._select_diverse_preview_blobs(mask_candidates, count=4)
 
-        corner_candidates = []
-        if not use_public_layout_only:
+        corner_candidates = self._list_logical_preview_blob_names(
+            storage_container,
+            storage_prefix,
+            "cornerCases",
+        )
+        if not corner_candidates and not use_public_layout_only:
             corner_candidates = self._list_preview_blob_names(
                 storage_container,
                 f"{storage_prefix}/corner_images_controlnet",
@@ -820,6 +852,8 @@ class DatasetService:
 
         for child_prefix in child_prefixes:
             child_name = child_prefix.rstrip("/").split("/")[-1]
+            if self._should_hide_public_layout_child(dataset, extra_segments, child_name):
+                continue
             if not self._is_public_layout_child_visible(dataset, [*extra_segments, child_name]):
                 continue
             child_route = f"{route_path.rstrip('/')}/{child_name}"
@@ -829,6 +863,13 @@ class DatasetService:
                 source_path=child_prefix,
             )
 
+        self._add_virtual_generation_children(
+            children=children,
+            dataset=dataset,
+            summary=summary,
+            route_path=route_path,
+            extra_segments=extra_segments,
+        )
         self._add_virtual_handmeshes_child(
             children=children,
             dataset=dataset,
@@ -899,6 +940,39 @@ class DatasetService:
                 ),
             )
 
+        if self._has_ego_generation_blobs(dataset) or self._has_corner_case_blobs(dataset):
+            misc_full_path = f"{route_root}/misc"
+            nested_paths.setdefault(
+                misc_full_path,
+                self._build_folder_record(
+                    summary=summary,
+                    full_path=misc_full_path,
+                    source_path=f"{storage_root}/misc",
+                ),
+            )
+            if self._has_ego_generation_blobs(dataset):
+                ego_full_path = f"{route_root}/misc/egos/egos"
+                nested_paths.setdefault(
+                    ego_full_path,
+                    self._build_virtual_generation_record(
+                        summary=summary,
+                        full_path=ego_full_path,
+                        source_path=f"{storage_root}/misc/egos/egos",
+                        label="Egocentric generations",
+                    ),
+                )
+            if self._has_corner_case_blobs(dataset):
+                corner_full_path = f"{route_root}/misc/egos/cornerCases"
+                nested_paths.setdefault(
+                    corner_full_path,
+                    self._build_virtual_generation_record(
+                        summary=summary,
+                        full_path=corner_full_path,
+                        source_path=f"{storage_root}/misc/egos/cornerCases",
+                        label="Corner case generations",
+                    ),
+                )
+
         return sorted(
             nested_paths.values(),
             key=lambda item: item["full_path"].lower(),
@@ -940,11 +1014,56 @@ class DatasetService:
             return False
         if len(normalized) == 1:
             return True
+        if normalized[1] == "egos":
+            return len(normalized) >= 3 and normalized[2] in {"egos", "cornercases", "corner_images_controlnet"}
         return normalized[1] in PUBLIC_LAYOUT_MISC_FOLDERS
 
     @staticmethod
     def _normalize_route_segments(extra_segments: list[str]) -> list[str]:
         return [str(segment or "").strip().lower() for segment in extra_segments if str(segment or "").strip()]
+
+    def _should_hide_public_layout_child(
+        self,
+        dataset: dict[str, Any],
+        extra_segments: list[str],
+        child_name: str,
+    ) -> bool:
+        if not self._is_current_public_layout_dataset(dataset):
+            return False
+        normalized = self._normalize_route_segments(extra_segments)
+        return normalized == ["misc"] and str(child_name or "").strip().lower() == "egos"
+
+    def _add_virtual_generation_children(
+        self,
+        *,
+        children: dict[str, dict[str, Any]],
+        dataset: dict[str, Any],
+        summary: dict[str, Any],
+        route_path: str,
+        extra_segments: list[str],
+    ) -> None:
+        if self._normalize_route_segments(extra_segments) != ["misc"]:
+            return
+        dataset_root_route = summary["full_path"].rstrip("/")
+        storage_root = dataset["storage_prefix"].rstrip("/")
+
+        ego_child_route = f"{dataset_root_route}/misc/egos/egos"
+        if ego_child_route not in children and self._has_ego_generation_blobs(dataset):
+            children[ego_child_route] = self._build_virtual_generation_record(
+                summary=summary,
+                full_path=ego_child_route,
+                source_path=f"{storage_root}/misc/egos/egos",
+                label="Egocentric generations",
+            )
+
+        corner_child_route = f"{dataset_root_route}/misc/egos/cornerCases"
+        if corner_child_route not in children and self._has_corner_case_blobs(dataset):
+            children[corner_child_route] = self._build_virtual_generation_record(
+                summary=summary,
+                full_path=corner_child_route,
+                source_path=f"{storage_root}/misc/egos/cornerCases",
+                label="Corner case generations",
+            )
 
     def _add_virtual_handmeshes_child(
         self,
@@ -978,9 +1097,25 @@ class DatasetService:
         record["name"] = "handmeshes"
         return record
 
+    def _build_virtual_generation_record(
+        self,
+        *,
+        summary: dict[str, Any],
+        full_path: str,
+        source_path: str,
+        label: str,
+    ) -> dict[str, Any]:
+        record = self._build_folder_record(summary=summary, full_path=full_path, source_path=source_path)
+        record["name"] = label
+        return record
+
     def _storage_prefixes_for_route(self, dataset: dict[str, Any], extra_segments: list[str]) -> list[str]:
         storage_root = dataset["storage_prefix"].rstrip("/")
         normalized = self._normalize_route_segments(extra_segments)
+        if normalized[:3] == ["misc", "egos", "egos"]:
+            return [f"{storage_root}/{relative_prefix}" for relative_prefix in EGO_GENERATION_RELATIVE_PREFIXES]
+        if normalized[:3] == ["misc", "egos", "cornercases"]:
+            return [f"{storage_root}/{relative_prefix}" for relative_prefix in CORNER_CASE_RELATIVE_PREFIXES]
         if normalized and normalized[0] in HAND_MESH_ROUTE_SEGMENTS:
             return [f"{storage_root}/{relative_prefix}" for relative_prefix in HAND_MESH_RELATIVE_PREFIXES]
         if len(normalized) >= 2 and normalized[0] == "misc" and normalized[1] in HAND_MESH_ROUTE_SEGMENTS:
@@ -994,7 +1129,87 @@ class DatasetService:
         storage_root = storage_prefix.rstrip("/")
         if section_key == "handmeshes":
             return tuple(f"{storage_root}/{relative_prefix}" for relative_prefix in HAND_MESH_RELATIVE_PREFIXES)
+        if section_key == "egoGenerations":
+            return tuple(f"{storage_root}/{relative_prefix}" for relative_prefix in EGO_GENERATION_RELATIVE_PREFIXES)
+        if section_key == "cornerCases":
+            return tuple(f"{storage_root}/{relative_prefix}" for relative_prefix in CORNER_CASE_RELATIVE_PREFIXES)
         return (f"{storage_root}/misc/{section_key}",)
+
+    def _count_misc_section_assets(
+        self,
+        *,
+        storage_prefix: str,
+        blob_names: list[str],
+        section_key: str,
+    ) -> int:
+        if section_key == "egoGenerations":
+            return sum(
+                1
+                for blob_name in blob_names
+                if self._is_ego_generation_blob(blob_name, storage_prefix=storage_prefix)
+            )
+        if section_key == "cornerCases":
+            return sum(
+                1
+                for blob_name in blob_names
+                if self._is_corner_case_blob(blob_name, storage_prefix=storage_prefix)
+            )
+
+        section_prefixes = self._misc_section_storage_prefixes(storage_prefix, section_key)
+        return sum(
+            1
+            for blob_name in blob_names
+            if any(blob_name.startswith(f"{section_prefix}/") for section_prefix in section_prefixes)
+        )
+
+    def _blob_belongs_to_route(
+        self,
+        blob_name: str,
+        dataset: dict[str, Any],
+        extra_segments: list[str],
+    ) -> bool:
+        normalized = self._normalize_route_segments(extra_segments)
+        if normalized[:3] == ["misc", "egos", "egos"]:
+            return self._is_ego_generation_blob(blob_name, storage_prefix=dataset["storage_prefix"])
+        if normalized[:3] == ["misc", "egos", "cornercases"]:
+            return self._is_corner_case_blob(blob_name, storage_prefix=dataset["storage_prefix"])
+        return True
+
+    @staticmethod
+    def _is_blob_under_relative_prefix(blob_name: str, storage_prefix: str, relative_prefix: str) -> bool:
+        normalized = str(blob_name or "").strip().replace("\\", "/").lower()
+        root = storage_prefix.rstrip("/").lower()
+        relative = relative_prefix.strip("/").lower()
+        return normalized.startswith(f"{root}/{relative}/")
+
+    @classmethod
+    def _is_corner_case_blob(cls, blob_name: str, *, storage_prefix: str | None = None) -> bool:
+        normalized = str(blob_name or "").strip().replace("\\", "/").lower()
+        if storage_prefix:
+            return any(
+                cls._is_blob_under_relative_prefix(blob_name, storage_prefix, relative_prefix)
+                for relative_prefix in CORNER_CASE_RELATIVE_PREFIXES
+            )
+        return (
+            "/misc/egos/cornercases/" in normalized
+            or "/misc/egos/corner_images_controlnet/" in normalized
+            or "/misc/corner_images_controlnet/" in normalized
+            or "/corner_images_controlnet/" in normalized
+        )
+
+    @classmethod
+    def _is_ego_generation_blob(cls, blob_name: str, *, storage_prefix: str | None = None) -> bool:
+        normalized = str(blob_name or "").strip().replace("\\", "/").lower()
+        if storage_prefix:
+            root = storage_prefix.rstrip("/").lower()
+            if normalized.startswith(f"{root}/misc/egos/egos/"):
+                return True
+            legacy_prefix = f"{root}/misc/egos/"
+            if normalized.startswith(legacy_prefix):
+                remainder = normalized[len(legacy_prefix) :]
+                return bool(remainder) and "/" not in remainder
+            return False
+        return "/misc/egos/egos/" in normalized or "/egos/" in normalized
 
     @staticmethod
     def _is_hand_mesh_blob(blob_name: str, *, storage_prefix: str | None = None) -> bool:
@@ -1013,6 +1228,34 @@ class DatasetService:
             if any(
                 self._is_hand_mesh_blob(str(getattr(blob, "name", "")), storage_prefix=dataset["storage_prefix"])
                 and str(getattr(blob, "name", "")).lower().endswith(".obj")
+                for blob in blobs
+            ):
+                return True
+        return False
+
+    def _has_ego_generation_blobs(self, dataset: dict[str, Any]) -> bool:
+        for prefix in self._misc_section_storage_prefixes(dataset["storage_prefix"], "egoGenerations"):
+            try:
+                blobs = self.azure_service.list_blobs(dataset["storage_container"], prefix)
+            except ResourceNotFoundError:
+                return False
+            if any(
+                self._is_ego_generation_blob(str(getattr(blob, "name", "")), storage_prefix=dataset["storage_prefix"])
+                and str(getattr(blob, "name", "")).lower().endswith(IMAGE_PREVIEW_EXTENSIONS)
+                for blob in blobs
+            ):
+                return True
+        return False
+
+    def _has_corner_case_blobs(self, dataset: dict[str, Any]) -> bool:
+        for prefix in self._misc_section_storage_prefixes(dataset["storage_prefix"], "cornerCases"):
+            try:
+                blobs = self.azure_service.list_blobs(dataset["storage_container"], prefix)
+            except ResourceNotFoundError:
+                return False
+            if any(
+                self._is_corner_case_blob(str(getattr(blob, "name", "")), storage_prefix=dataset["storage_prefix"])
+                and str(getattr(blob, "name", "")).lower().endswith(IMAGE_PREVIEW_EXTENSIONS)
                 for blob in blobs
             ):
                 return True
@@ -1045,6 +1288,32 @@ class DatasetService:
             for blob in blobs
             if str(getattr(blob, "name", "")).lower().endswith(IMAGE_PREVIEW_EXTENSIONS)
         ]
+        unique_names = list(dict.fromkeys(names))
+        return sorted(unique_names, key=self._preview_blob_sort_key)
+
+    def _list_logical_preview_blob_names(
+        self,
+        container_name: str,
+        storage_prefix: str,
+        section_key: str,
+    ) -> list[str]:
+        names: list[str] = []
+        for prefix in self._misc_section_storage_prefixes(storage_prefix, section_key):
+            names.extend(self._list_preview_blob_names(container_name, prefix))
+
+        if section_key == "egoGenerations":
+            names = [
+                blob_name
+                for blob_name in names
+                if self._is_ego_generation_blob(blob_name, storage_prefix=storage_prefix)
+            ]
+        elif section_key == "cornerCases":
+            names = [
+                blob_name
+                for blob_name in names
+                if self._is_corner_case_blob(blob_name, storage_prefix=storage_prefix)
+            ]
+
         unique_names = list(dict.fromkeys(names))
         return sorted(unique_names, key=self._preview_blob_sort_key)
 

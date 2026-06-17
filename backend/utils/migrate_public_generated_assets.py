@@ -7,7 +7,8 @@ owns:
     <vertical>/<task>/README.md
     <vertical>/<task>/<task>.mp4
     <vertical>/<task>/misc/orig/**
-    <vertical>/<task>/misc/egos/**
+    <vertical>/<task>/misc/egos/egos/**
+    <vertical>/<task>/misc/egos/cornerCases/**
     <vertical>/<task>/misc/masks/**
     SQL dataset catalog rows
 
