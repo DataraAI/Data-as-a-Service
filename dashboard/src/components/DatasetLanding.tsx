@@ -1,5 +1,5 @@
 import type { DatasetAsset, DatasetManifest, DatasetMiscSection } from "@/lib/dataViewerTypes";
-import { Box, ChevronRight, Download, FileJson, FileText, Film, FolderOpen } from "lucide-react";
+import { ChevronDown, ChevronRight, Download, FileJson, FileText, Film, FolderOpen } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 interface DatasetLandingProps {
@@ -75,20 +75,24 @@ function MiscCard({
     <button
       type="button"
       onClick={() => onNavigate(section.viewer_path)}
-      className="group rounded-[22px] border border-slate-200 bg-slate-50 p-5 text-left transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:bg-white hover:shadow-[0_22px_45px_rgba(15,23,42,0.08)]"
+      className="group rounded-[18px] border border-slate-200 bg-white p-4 text-left shadow-[0_12px_30px_rgba(15,23,42,0.04)] transition-all hover:border-primary/25 hover:shadow-[0_18px_38px_rgba(15,23,42,0.08)]"
     >
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-          <FolderOpen className="h-5 w-5" />
+      <div className="flex items-start gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <FolderOpen className="h-4 w-4" />
         </div>
-        <ChevronRight className="mt-2 h-4 w-4 text-slate-400 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm font-extrabold text-slate-950">{section.label}</div>
+          <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+            Misc folder - {section.asset_count} asset{section.asset_count === 1 ? "" : "s"}
+          </div>
+        </div>
+        <ChevronRight className="mt-3 h-4 w-4 shrink-0 text-slate-400 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
       </div>
-      <div className="mt-4 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
-        Misc
-      </div>
-      <div className="mt-1 text-lg font-black text-slate-950">{section.label}</div>
-      <div className="mt-2 text-sm text-slate-500">
-        {section.asset_count} asset{section.asset_count === 1 ? "" : "s"}
+      <div className="mt-4">
+        <span className="inline-flex h-9 items-center rounded-xl border border-primary/20 bg-primary/8 px-3 text-xs font-bold text-primary transition-colors group-hover:bg-primary/12">
+          Open folder
+        </span>
       </div>
     </button>
   );
@@ -96,9 +100,11 @@ function MiscCard({
 
 function DownloadCard({
   asset,
+  label,
   onOpenAsset,
 }: {
   asset: DatasetAsset;
+  label?: string;
   onOpenAsset: (asset: DatasetAsset) => void;
 }) {
   const isPlayable = asset.type === "video" || asset.type === "3d";
@@ -115,7 +121,7 @@ function DownloadCard({
             {asset.name}
           </div>
           <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
-            {fileTypeLabel(asset)}
+            {label ?? fileTypeLabel(asset)}
           </div>
         </div>
       </div>
@@ -144,16 +150,37 @@ function DownloadCard({
 
 export function DatasetLanding({
   manifest,
-  canUseGenerationTools = false,
   onNavigate,
   onOpenAsset,
 }: DatasetLandingProps) {
+  const [readmeOpen, setReadmeOpen] = useState(false);
   const [readmeText, setReadmeText] = useState("");
   const [readmeError, setReadmeError] = useState("");
 
   const visibleMiscSections = useMemo(
-    () => Object.values(manifest.misc).filter((section) => section.exists),
-    [manifest.misc],
+    () => {
+      const sections = Object.values(manifest.misc).filter((section) => section.exists);
+      const hasHandmeshesSection = sections.some((section) => section.key === "handmeshes");
+      if (manifest.hand_meshes.length > 0 && !hasHandmeshesSection) {
+        sections.push({
+          key: "handmeshes",
+          label: "handmeshes",
+          exists: true,
+          asset_count: manifest.hand_meshes.length,
+          viewer_path: `${manifest.dataset.viewer_path.replace(/\/$/, "")}/hand_meshes`,
+        });
+      }
+      return sections;
+    },
+    [manifest.dataset.viewer_path, manifest.hand_meshes.length, manifest.misc],
+  );
+
+  const downloadableAssets = useMemo(
+    () => [
+      ...(manifest.primary_video ? [{ asset: manifest.primary_video, label: "Original input video" }] : []),
+      ...manifest.downloads.map((asset) => ({ asset, label: undefined })),
+    ],
+    [manifest.downloads, manifest.primary_video],
   );
 
   useEffect(() => {
@@ -162,7 +189,7 @@ export function DatasetLanding({
     async function loadReadme() {
       setReadmeError("");
       setReadmeText("");
-      if (!manifest.readme) return;
+      if (!readmeOpen || !manifest.readme) return;
 
       try {
         const response = await fetch(assetUrl(manifest.readme), { credentials: "include" });
@@ -180,114 +207,78 @@ export function DatasetLanding({
     return () => {
       cancelled = true;
     };
-  }, [manifest.readme]);
+  }, [manifest.readme, readmeOpen]);
 
   return (
     <div className="mx-auto flex min-h-full w-full max-w-[1320px] flex-col gap-6 p-4 sm:p-6 lg:p-8">
-      <section className="overflow-hidden rounded-[30px] border border-slate-200 bg-white shadow-[0_30px_70px_rgba(15,23,42,0.08)]">
-        <div className="grid gap-0 lg:grid-cols-[minmax(0,1.08fr)_minmax(360px,0.92fr)]">
-          <div className="p-6 md:p-8">
-            <div className="text-[10px] font-black uppercase tracking-[0.22em] text-primary">
-              {manifest.dataset.vertical}
+      <section className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(340px,0.9fr)]">
+        <div className="space-y-6">
+          <section>
+            <div className="mb-3 flex items-center gap-3">
+              <span className="h-3 w-3 rounded-[4px] bg-slate-950" />
+              <h2 className="text-lg font-black text-slate-950">Downloadable Files</h2>
+              <div className="h-px flex-1 bg-gradient-to-r from-slate-300 to-transparent" />
             </div>
-            <h1 className="marketing-display-title mt-2 text-[clamp(2rem,5vw,4rem)] font-black tracking-[-0.035em] text-slate-950">
-              {manifest.dataset.task_label}
-            </h1>
-            <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600">
-              Dataset files are organized by generated asset type. Use README for navigation,
-              Misc for frame-by-frame data, and the root downloads for videos and structured files.
-            </p>
-
-            <div className="mt-6 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
-                  Container
-                </div>
-                <div className="mt-1 truncate text-sm font-bold text-slate-950">
-                  {manifest.dataset.container}
-                </div>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
-                  Task slug
-                </div>
-                <div className="mt-1 truncate text-sm font-bold text-slate-950">
-                  {manifest.dataset.task_slug}
-                </div>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
-                  Assets
-                </div>
-                <div className="mt-1 text-sm font-bold text-slate-950">
-                  {manifest.downloads.length + visibleMiscSections.length + manifest.hand_meshes.length}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t border-slate-200 bg-slate-950 p-5 lg:border-l lg:border-t-0">
-            {manifest.primary_video ? (
-              <div className="flex h-full flex-col">
-                <video
-                  src={assetUrl(manifest.primary_video)}
-                  controls
-                  playsInline
-                  preload="metadata"
-                  className="aspect-video w-full rounded-[22px] border border-white/10 bg-black object-contain"
-                />
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-extrabold text-white">
-                      {manifest.primary_video.name}
-                    </div>
-                    <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">
-                      Original input video
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => onOpenAsset(manifest.primary_video!)}
-                    className="rounded-xl bg-white px-4 py-2 text-xs font-black text-slate-950 transition-opacity hover:opacity-90"
-                  >
-                    {canUseGenerationTools ? "Open tools" : "Open video"}
-                  </button>
-                </div>
+            {downloadableAssets.length > 0 ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {downloadableAssets.map(({ asset, label }) => (
+                  <DownloadCard
+                    key={asset.asset_id}
+                    asset={asset}
+                    label={label}
+                    onOpenAsset={onOpenAsset}
+                  />
+                ))}
               </div>
             ) : (
-              <div className="flex h-full min-h-[260px] items-center justify-center rounded-[22px] border border-dashed border-white/15 text-sm text-white/50">
-                No root video uploaded yet.
+              <div className="rounded-[18px] border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-500">
+                No downloadable files have been generated yet.
               </div>
             )}
-          </div>
-        </div>
-      </section>
+          </section>
 
-      <section className="grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-        <div className="rounded-[26px] border border-slate-200 bg-white p-6 shadow-[0_18px_50px_rgba(15,23,42,0.05)]">
-          <div className="mb-4 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-              <FileText className="h-4 w-4" />
-            </div>
-            <div>
-              <h2 className="text-lg font-black text-slate-950">README</h2>
-              <p className="text-xs text-slate-500">How to navigate this dataset</p>
-            </div>
-          </div>
-          <div className="space-y-4 rounded-[18px] border border-slate-200 bg-slate-50 p-5">
-            {readmeText ? (
-              renderMarkdown(readmeText)
-            ) : readmeError ? (
-              <p className="text-sm text-slate-500">{readmeError}</p>
-            ) : manifest.readme ? (
-              <p className="text-sm text-slate-500">Loading README...</p>
-            ) : (
-              <p className="text-sm text-slate-500">No README has been uploaded yet.</p>
-            )}
-          </div>
         </div>
 
         <div className="space-y-6">
+          <section className="rounded-[22px] border border-slate-200 bg-white p-5 shadow-[0_14px_38px_rgba(15,23,42,0.05)]">
+            <button
+              type="button"
+              onClick={() => setReadmeOpen((open) => !open)}
+              className="flex w-full items-center justify-between gap-4 text-left"
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                  <FileText className="h-4 w-4" />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-lg font-black text-slate-950">README</h2>
+                  <p className="truncate text-xs text-slate-500">
+                    {readmeOpen ? "Hide navigation guide" : "Open navigation guide"}
+                  </p>
+                </div>
+              </div>
+              {readmeOpen ? (
+                <ChevronDown className="h-4 w-4 shrink-0 text-primary" />
+              ) : (
+                <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
+              )}
+            </button>
+
+            {readmeOpen && (
+              <div className="mt-4 space-y-4 rounded-[18px] border border-slate-200 bg-slate-50 p-5">
+                {readmeText ? (
+                  renderMarkdown(readmeText)
+                ) : readmeError ? (
+                  <p className="text-sm text-slate-500">{readmeError}</p>
+                ) : manifest.readme ? (
+                  <p className="text-sm text-slate-500">Loading README...</p>
+                ) : (
+                  <p className="text-sm text-slate-500">No README has been uploaded yet.</p>
+                )}
+              </div>
+            )}
+          </section>
+
           {visibleMiscSections.length > 0 && (
             <section>
               <div className="mb-3 flex items-center gap-3">
@@ -295,57 +286,9 @@ export function DatasetLanding({
                 <h2 className="text-lg font-black text-slate-950">Misc</h2>
                 <div className="h-px flex-1 bg-gradient-to-r from-primary/20 to-transparent" />
               </div>
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="grid gap-4">
                 {visibleMiscSections.map((section) => (
                   <MiscCard key={section.key} section={section} onNavigate={onNavigate} />
-                ))}
-              </div>
-            </section>
-          )}
-
-          {manifest.downloads.length > 0 && (
-            <section>
-              <div className="mb-3 flex items-center gap-3">
-                <span className="h-3 w-3 rounded-[4px] bg-slate-950" />
-                <h2 className="text-lg font-black text-slate-950">Downloadable Files</h2>
-                <div className="h-px flex-1 bg-gradient-to-r from-slate-300 to-transparent" />
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                {manifest.downloads.map((asset) => (
-                  <DownloadCard key={asset.asset_id} asset={asset} onOpenAsset={onOpenAsset} />
-                ))}
-              </div>
-            </section>
-          )}
-
-          {manifest.hand_meshes.length > 0 && (
-            <section>
-              <div className="mb-3 flex items-center gap-3">
-                <span className="h-3 w-3 rounded-[4px] bg-amber-500" />
-                <h2 className="text-lg font-black text-slate-950">Hand Meshes</h2>
-                <div className="h-px flex-1 bg-gradient-to-r from-amber-200 to-transparent" />
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                {manifest.hand_meshes.map((asset) => (
-                  <button
-                    key={asset.asset_id}
-                    type="button"
-                    onClick={() => onOpenAsset(asset)}
-                    className="flex items-center gap-3 rounded-[18px] border border-slate-200 bg-white p-4 text-left shadow-[0_12px_30px_rgba(15,23,42,0.04)] transition-all hover:border-amber-300 hover:shadow-[0_20px_42px_rgba(15,23,42,0.08)]"
-                  >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
-                      <Box className="h-4 w-4" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-extrabold text-slate-950">
-                        {asset.name}
-                      </div>
-                      <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
-                        View OBJ mesh
-                      </div>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-slate-400" />
-                  </button>
                 ))}
               </div>
             </section>

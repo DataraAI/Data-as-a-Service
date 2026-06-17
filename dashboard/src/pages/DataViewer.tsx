@@ -812,8 +812,7 @@ export default function DataViewer() {
       (datasetManifest.readme ? 1 : 0) +
       (datasetManifest.primary_video ? 1 : 0) +
       datasetManifest.downloads.length +
-      Object.values(datasetManifest.misc).filter((section) => section.exists).length +
-      datasetManifest.hand_meshes.length
+      Object.values(datasetManifest.misc).filter((section) => section.exists).length
     );
   }, [datasetManifest]);
 

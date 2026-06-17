@@ -190,7 +190,7 @@ export function ImageModal({
       <div className="relative flex flex-1 items-center justify-center overflow-hidden p-8">
         {image.type === "3d" ? (
           <div className="relative h-full w-full max-w-4xl rounded-lg border border-border bg-card/50">
-            <ThreeDViewer url={image?.url} />
+            <ThreeDViewer key={`${assetUrl}-${image.name}`} url={assetUrl} fileName={image.name} />
           </div>
         ) : isVideo ? (
           <video

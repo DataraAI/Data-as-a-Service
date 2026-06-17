@@ -39,7 +39,7 @@ export function VideoToolsPanel({
   const [selectedAssetId, setSelectedAssetId] = useState("");
   const [expandedSections, setExpandedSections] = useState<Record<ToolSectionKey, boolean>>({
     task: true,
-    views: false,
+    views: true,
     hand: false,
   });
 

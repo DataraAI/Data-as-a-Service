@@ -35,7 +35,9 @@ HIDDEN_CATEGORY_PREVIEW_PATHS = {
     "dexteritypeelingpeas",
 }
 PUBLIC_LAYOUT_ROOT_FOLDERS = {"misc", "hand_meshes"}
-PUBLIC_LAYOUT_MISC_FOLDERS = {"orig", "egos", "masks"}
+PUBLIC_LAYOUT_MISC_FOLDERS = {"orig", "egos", "masks", "handmeshes"}
+HAND_MESH_ROUTE_SEGMENTS = {"handmeshes", "hand_meshes", "hand_mesh"}
+HAND_MESH_RELATIVE_PREFIXES = ("hand_meshes", "hand_mesh", "misc/handmeshes", "misc/hand_meshes")
 
 
 class DatasetService:
@@ -215,26 +217,30 @@ class DatasetService:
         self.sql_store.assert_user_can_access_dataset(dataset, current_user)
         self._assert_public_layout_path_allowed(dataset, extra_segments)
 
-        prefix = dataset["storage_prefix"].rstrip("/")
-        if extra_segments:
-            prefix = f"{prefix}/{'/'.join(extra_segments).strip('/')}"
+        prefixes = self._storage_prefixes_for_route(dataset, extra_segments)
 
         metadata_map = self.azure_service.get_cosmos_metadata_for_prefix(
             dataset["storage_container"],
             dataset["storage_prefix"],
         )
-        try:
-            blobs = self.azure_service.list_blobs(dataset["storage_container"], prefix)
-        except ResourceNotFoundError:
-            logger.warning(
-                "Skipping asset listing for %s because container %s was not found",
-                route_path,
-                dataset["storage_container"],
-            )
-            return []
+        blobs = []
+        for prefix in prefixes:
+            try:
+                blobs.extend(self.azure_service.list_blobs(dataset["storage_container"], prefix))
+            except ResourceNotFoundError:
+                logger.warning(
+                    "Skipping asset listing for %s because container %s was not found",
+                    route_path,
+                    dataset["storage_container"],
+                )
+                return []
         image_list: list[dict[str, Any]] = []
+        seen_blob_names: set[str] = set()
 
         for blob in blobs:
+            if blob.name in seen_blob_names:
+                continue
+            seen_blob_names.add(blob.name)
             lower_name = blob.name.lower()
             if "/preview/" in lower_name:
                 continue
@@ -279,7 +285,7 @@ class DatasetService:
                 inferred_view = inferred_view or "video"
             elif "/occl_del/" in blob.name:
                 inferred_view = inferred_view or "occl_del"
-            elif "/hand_meshes/" in blob.name or "/hand_mesh/" in blob.name:
+            elif self._is_hand_mesh_blob(blob.name):
                 tags.append("hand_mesh")
                 inferred_view = inferred_view or "hand_mesh"
             elif is_mcap:
@@ -403,7 +409,7 @@ class DatasetService:
         hand_mesh_blobs = [
             blob_name
             for blob_name in blob_names
-            if blob_name.startswith(f"{storage_prefix}/hand_meshes/")
+            if self._is_hand_mesh_blob(blob_name, storage_prefix=storage_prefix)
             and blob_name.lower().endswith(".obj")
         ]
 
@@ -419,6 +425,7 @@ class DatasetService:
                 ("orig", "Original Frames"),
                 ("egos", "Egocentric Frames"),
                 ("masks", "Masks"),
+                ("handmeshes", "handmeshes"),
             )
         }
 
@@ -538,7 +545,7 @@ class DatasetService:
             return "egos"
         if "/misc/masks/" in lower_name or "/masks/" in lower_name:
             return "masks"
-        if "/hand_meshes/" in lower_name or "/hand_mesh/" in lower_name:
+        if "/misc/handmeshes/" in lower_name or "/hand_meshes/" in lower_name or "/hand_mesh/" in lower_name:
             return "hand_mesh"
         if lower_name.endswith(VIDEO_EXTENSIONS):
             return "video"
@@ -553,9 +560,16 @@ class DatasetService:
         section_key: str,
         label: str,
     ) -> dict[str, Any]:
-        section_prefix = f"{storage_prefix.rstrip('/')}/misc/{section_key}"
-        asset_count = sum(1 for blob_name in blob_names if blob_name.startswith(f"{section_prefix}/"))
-        route_path = f"{summary['full_path'].rstrip('/')}/misc/{section_key}"
+        section_prefixes = self._misc_section_storage_prefixes(storage_prefix, section_key)
+        asset_count = sum(
+            1
+            for blob_name in blob_names
+            if any(blob_name.startswith(f"{section_prefix}/") for section_prefix in section_prefixes)
+        )
+        if section_key == "handmeshes":
+            route_path = f"{summary['full_path'].rstrip('/')}/hand_meshes"
+        else:
+            route_path = f"{summary['full_path'].rstrip('/')}/misc/{section_key}"
         return {
             "key": section_key,
             "label": label,
@@ -788,9 +802,7 @@ class DatasetService:
             return []
 
         summary = self.sql_store.build_dataset_summary(dataset, current_user)
-        storage_prefix = dataset["storage_prefix"].rstrip("/")
-        if extra_segments:
-            storage_prefix = f"{storage_prefix}/{'/'.join(extra_segments).strip('/')}"
+        storage_prefix = self._storage_prefixes_for_route(dataset, extra_segments)[0]
 
         children: dict[str, dict[str, Any]] = {}
         try:
@@ -816,6 +828,14 @@ class DatasetService:
                 full_path=child_route,
                 source_path=child_prefix,
             )
+
+        self._add_virtual_handmeshes_child(
+            children=children,
+            dataset=dataset,
+            summary=summary,
+            route_path=route_path,
+            extra_segments=extra_segments,
+        )
 
         return sorted(children.values(), key=lambda item: item["full_path"].lower())
 
@@ -859,6 +879,26 @@ class DatasetService:
                 ),
             )
 
+        if self._has_hand_mesh_blobs(dataset):
+            misc_full_path = f"{route_root}/misc"
+            nested_paths.setdefault(
+                misc_full_path,
+                self._build_folder_record(
+                    summary=summary,
+                    full_path=misc_full_path,
+                    source_path=f"{storage_root}/misc",
+                ),
+            )
+            handmeshes_full_path = f"{route_root}/hand_meshes"
+            nested_paths.setdefault(
+                handmeshes_full_path,
+                self._build_virtual_handmeshes_record(
+                    summary=summary,
+                    full_path=handmeshes_full_path,
+                    source_path=f"{storage_root}/hand_meshes",
+                ),
+            )
+
         return sorted(
             nested_paths.values(),
             key=lambda item: item["full_path"].lower(),
@@ -894,13 +934,89 @@ class DatasetService:
             return True
 
         root_segment = normalized[0]
-        if root_segment == "hand_meshes":
+        if root_segment in {"hand_meshes", "hand_mesh"}:
             return True
         if root_segment != "misc":
             return False
         if len(normalized) == 1:
             return True
         return normalized[1] in PUBLIC_LAYOUT_MISC_FOLDERS
+
+    @staticmethod
+    def _normalize_route_segments(extra_segments: list[str]) -> list[str]:
+        return [str(segment or "").strip().lower() for segment in extra_segments if str(segment or "").strip()]
+
+    def _add_virtual_handmeshes_child(
+        self,
+        *,
+        children: dict[str, dict[str, Any]],
+        dataset: dict[str, Any],
+        summary: dict[str, Any],
+        route_path: str,
+        extra_segments: list[str],
+    ) -> None:
+        if self._normalize_route_segments(extra_segments) != ["misc"]:
+            return
+        dataset_root_route = summary["full_path"].rstrip("/")
+        child_route = f"{dataset_root_route.rstrip('/')}/hand_meshes"
+        if child_route in children or not self._has_hand_mesh_blobs(dataset):
+            return
+        children[child_route] = self._build_virtual_handmeshes_record(
+            summary=summary,
+            full_path=child_route,
+            source_path=f"{dataset['storage_prefix'].rstrip('/')}/hand_meshes",
+        )
+
+    def _build_virtual_handmeshes_record(
+        self,
+        *,
+        summary: dict[str, Any],
+        full_path: str,
+        source_path: str,
+    ) -> dict[str, Any]:
+        record = self._build_folder_record(summary=summary, full_path=full_path, source_path=source_path)
+        record["name"] = "handmeshes"
+        return record
+
+    def _storage_prefixes_for_route(self, dataset: dict[str, Any], extra_segments: list[str]) -> list[str]:
+        storage_root = dataset["storage_prefix"].rstrip("/")
+        normalized = self._normalize_route_segments(extra_segments)
+        if normalized and normalized[0] in HAND_MESH_ROUTE_SEGMENTS:
+            return [f"{storage_root}/{relative_prefix}" for relative_prefix in HAND_MESH_RELATIVE_PREFIXES]
+        if len(normalized) >= 2 and normalized[0] == "misc" and normalized[1] in HAND_MESH_ROUTE_SEGMENTS:
+            return [f"{storage_root}/{relative_prefix}" for relative_prefix in HAND_MESH_RELATIVE_PREFIXES]
+        if extra_segments:
+            return [f"{storage_root}/{'/'.join(extra_segments).strip('/')}"]
+        return [storage_root]
+
+    @staticmethod
+    def _misc_section_storage_prefixes(storage_prefix: str, section_key: str) -> tuple[str, ...]:
+        storage_root = storage_prefix.rstrip("/")
+        if section_key == "handmeshes":
+            return tuple(f"{storage_root}/{relative_prefix}" for relative_prefix in HAND_MESH_RELATIVE_PREFIXES)
+        return (f"{storage_root}/misc/{section_key}",)
+
+    @staticmethod
+    def _is_hand_mesh_blob(blob_name: str, *, storage_prefix: str | None = None) -> bool:
+        normalized = str(blob_name or "").strip().replace("\\", "/").lower()
+        if storage_prefix:
+            root = storage_prefix.rstrip("/").lower()
+            return any(normalized.startswith(f"{root}/{relative_prefix}/") for relative_prefix in HAND_MESH_RELATIVE_PREFIXES)
+        return "/misc/handmeshes/" in normalized or "/hand_meshes/" in normalized or "/hand_mesh/" in normalized
+
+    def _has_hand_mesh_blobs(self, dataset: dict[str, Any]) -> bool:
+        for prefix in self._misc_section_storage_prefixes(dataset["storage_prefix"], "handmeshes"):
+            try:
+                blobs = self.azure_service.list_blobs(dataset["storage_container"], prefix)
+            except ResourceNotFoundError:
+                return False
+            if any(
+                self._is_hand_mesh_blob(str(getattr(blob, "name", "")), storage_prefix=dataset["storage_prefix"])
+                and str(getattr(blob, "name", "")).lower().endswith(".obj")
+                for blob in blobs
+            ):
+                return True
+        return False
 
     def _find_preview_blob(self, container_name: str, prefix: str) -> str | None:
         try:

@@ -68,7 +68,7 @@ export function HandMeshGenerationPanel({
 
       toast.success(result.message || "Hand mesh outputs are ready.", {
         description: outputSummary
-          ? `${outputSummary} saved to the dataset root and hand_meshes folder.`
+          ? `${outputSummary} saved to the dataset root and misc/handmeshes folder.`
           : "Open the dataset to view the results.",
         action: outputViewerPath
           ? {

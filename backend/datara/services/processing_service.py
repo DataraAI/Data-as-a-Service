@@ -467,7 +467,7 @@ class ProcessingService:
         hand_mesh_section = (
             "\n"
             "## Hand Motion Outputs\n\n"
-            "- `hand_meshes/` contains OBJ hand mesh files that can be opened in the viewer.\n"
+            "- `misc/handmeshes/` contains OBJ hand mesh files that can be opened in the viewer.\n"
             f"- `{task_slug}_hand_keypoints.mcap` is the downloadable hand keypoint track.\n"
             f"- `{task_slug}_overlayed_hands.mp4` is the source-camera hand overlay video.\n"
             f"- `{task_slug}_hand_keypoints.npz` is the downloadable hand keypoint array.\n"
@@ -2000,7 +2000,8 @@ class ProcessingService:
         output_route_path = dataset_summary["full_path"].rstrip("/")
         output_storage_prefix = dataset["storage_prefix"].rstrip("/")
         output_video_prefix = output_storage_prefix
-        output_artifact_prefix = f"{output_storage_prefix}/hand_meshes"
+        output_artifact_prefix = f"{output_storage_prefix}/misc/handmeshes"
+        legacy_output_artifact_prefix = f"{output_storage_prefix}/hand_meshes"
         output_download_prefix = output_storage_prefix
         source_task = str(dataset.get("task") or "").strip()
 
@@ -2021,6 +2022,8 @@ class ProcessingService:
 
             self.azure_service.delete_blobs_with_prefix(dataset["storage_container"], output_artifact_prefix)
             self.azure_service.delete_cosmos_docs_for_prefix(dataset["storage_container"], output_artifact_prefix)
+            self.azure_service.delete_blobs_with_prefix(dataset["storage_container"], legacy_output_artifact_prefix)
+            self.azure_service.delete_cosmos_docs_for_prefix(dataset["storage_container"], legacy_output_artifact_prefix)
 
             uploaded_videos: list[str] = []
             uploaded_artifacts: list[str] = []
