@@ -646,16 +646,18 @@ def generate_hand_mesh(
     Returns (local_video_paths, local_artifact_paths, status_code, error_message).
     """
     if not seq_name:
-        return [], [], [], 400, "Missing sequence name"
+        return [], [], [], [], 400, "Missing sequence name"
     if not video_url:
-        return [], [], [], 400, "Missing video URL"
+        return [], [], [], [], 400, "Missing video URL"
 
     local_videos_dir = os.path.join(local_output_dir, "videos")
     local_artifacts_dir = os.path.join(local_output_dir, "artifacts")
     local_mcap_dir = os.path.join(local_output_dir, "mcaps")
+    local_npz_dir = os.path.join(local_output_dir, "npz")
     os.makedirs(local_videos_dir, exist_ok=True)
     os.makedirs(local_artifacts_dir, exist_ok=True)
     os.makedirs(local_mcap_dir, exist_ok=True)
+    os.makedirs(local_npz_dir, exist_ok=True)
 
     safe_seq = _shell_escape(seq_name)
     safe_pipeline = _shell_escape(pipeline or "default")
@@ -673,7 +675,7 @@ def generate_hand_mesh(
                     REMOTE_VIPE_RUNNER_SCRIPT,
                     runner_err,
                 )
-                return [], [], [], 500, "VIPE hand mesh runner script was not found on the SaaS VM"
+                return [], [], [], [], 500, "VIPE hand mesh runner script was not found on the SaaS VM"
 
             runner_script = (
                 f'cd "{_shell_escape(REMOTE_DYN_HAMR_ROOT)}" && '
@@ -686,15 +688,17 @@ def generate_hand_mesh(
             stdout, stderr, runner_status = _run_bash_script(ssh_client, runner_script)
             if runner_status != 0:
                 logger.error("VIPE hand mesh runner failed: %s", stderr or stdout)
-                return [], [], [], 500, stderr or stdout or "Hand mesh generation failed on the SaaS VM"
+                return [], [], [], [], 500, stderr or stdout or "Hand mesh generation failed on the SaaS VM"
 
             # Parse sentinel lines emitted by run_vipe_dynhamr.py:
-            #   OUTPUT_VIDEO: /path/to/foo_src_cam.mp4
-            #   OUTPUT_OBJ:   /path/to/foo folder to .obj files
-            #   OUTPUT_MCAP: /path/to/foo.mcap
+            #   OUTPUT_VIDEO:   /path/to/foo_src_cam.mp4
+            #   OUTPUT_OBJ:     /path/to/foo folder to .obj files
+            #   OUTPUT_MCAP:    /path/to/foo.mcap
+            #   OUTPUT_NPZ:     /path/to/foo.npz
             remote_videos: list[str] = []
             remote_artifacts: list[str] = []
             remote_mcap: list[str] = []
+            remote_npz: list[str] = []
             sftp = ssh_client.open_sftp()
             for line in stdout.splitlines():
                 line = line.strip()
@@ -709,19 +713,21 @@ def generate_hand_mesh(
                             remote_artifacts.append(full_path)
                 elif line.startswith("OUTPUT_MCAP: "):
                     remote_mcap.append(line[len("OUTPUT_MCAP: "):].strip())
+                elif line.startswith("OUTPUT_NPZ: "):
+                    remote_npz.append(line[len("OUTPUT_NPZ: "):].strip())
             sftp.close()
 
-            if not remote_videos and not remote_artifacts and not remote_mcap:
+            if not remote_videos and not remote_artifacts and not remote_mcap and not remote_npz:
                 logger.error(
-                    "VIPE completed but emitted no OUTPUT_VIDEO/OUTPUT_OBJ/OUTPUT_MCAP sentinels: stdout=%s stderr=%s",
+                    "VIPE completed but emitted no OUTPUT_VIDEO/OUTPUT_OBJ/OUTPUT_MCAP/OUTPUT_NPZ sentinels: stdout=%s stderr=%s",
                     stdout,
                     stderr,
                 )
-                return [], [], [], 500, "Hand mesh pipeline completed without outputs"
+                return [], [], [], [], 500, "Hand mesh pipeline completed without outputs"
 
             # Determine the run output dir from any sentinel path so we can clean it up
             run_output_dir = ""
-            for path in remote_videos + remote_artifacts + remote_mcap:
+            for path in remote_videos + remote_artifacts + remote_mcap + remote_npz:
                 run_output_dir = _extract_hand_mesh_run_dir_from_path(path)
                 if run_output_dir:
                     break
@@ -729,6 +735,7 @@ def generate_hand_mesh(
             local_video_paths: list[str] = []
             local_artifact_paths: list[str] = []
             local_mcap_paths: list[str] = []
+            local_npz_paths: list[str] = []
             sftp = ssh_client.open_sftp()
             try:
                 for index, remote_video_path in enumerate(remote_videos):
@@ -760,6 +767,16 @@ def generate_hand_mesh(
                     sftp.get(remote_mcap_path, local_path)
                     if os.path.isfile(local_path):
                         local_mcap_paths.append(local_path)
+
+                for index, remote_npz_path in enumerate(remote_npz):
+                    filename = os.path.basename(remote_npz_path) or f"npz_{index + 1}"
+                    local_path = os.path.join(local_mcap_dir, filename)
+                    if os.path.exists(local_path):
+                        stem, ext = os.path.splitext(filename)
+                        local_path = os.path.join(local_npz_dir, f"{stem}_{index + 1}{ext or ''}")
+                    sftp.get(remote_npz_path, local_path)
+                    if os.path.isfile(local_path):
+                        local_npz_paths.append(local_path)
             finally:
                 sftp.close()
 
@@ -769,11 +786,11 @@ def generate_hand_mesh(
 
             if local_video_paths or local_artifact_paths or local_mcap_paths:
                 return local_video_paths, local_artifact_paths, local_mcap_paths, 200, ""
-            return [], [], [], 500, "Hand mesh outputs could not be downloaded"
+            return [], [], [], [], 500, "Hand mesh outputs could not be downloaded"
 
     except Exception as exc:
         logger.error("generate_hand_mesh error: %s", exc, exc_info=True)
-        return [], [], [], 500, str(exc)
+        return [], [], [], [], 500, str(exc)
 
 def generate_task_intelligence(video_url: str):
     """
