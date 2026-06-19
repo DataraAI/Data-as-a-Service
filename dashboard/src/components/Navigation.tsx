@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type MouseEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Check, ChevronDown, Database, LogOut, Menu, Moon, Shield, Sun, X } from "lucide-react";
+import { BriefcaseBusiness, Check, ChevronDown, Database, LogOut, Menu, Moon, Shield, Sun, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -14,6 +14,7 @@ import type { AuthUser } from "@/auth/AuthProvider";
 import dataraAILogo from "@/assets/images/logo/DataraAILogo.png";
 import { buildAuthPath } from "@/lib/authLinks";
 import { useAppTheme } from "@/theme/AppThemeProvider";
+import { JobsPanel } from "./JobsPanel";
 
 type NavItem = {
   label: string;
@@ -145,9 +146,13 @@ function getUserInitials(user: AuthUser | null) {
 function AccountMenu({
   canManageUsers,
   hasPrivateData,
+  canViewJobs,
+  onOpenJobs,
 }: {
   canManageUsers: boolean;
   hasPrivateData: boolean | null;
+  canViewJobs: boolean;
+  onOpenJobs: () => void;
 }) {
   const { isApproved, user, logout } = useAuth();
   const privateDataAvailable = isApproved && hasPrivateData !== false;
@@ -188,6 +193,16 @@ function AccountMenu({
               <Shield className="mr-3 h-4 w-4 text-primary" />
               User Access
             </Link>
+          </DropdownMenuItem>
+        )}
+
+        {canViewJobs && (
+          <DropdownMenuItem
+            className="cursor-pointer rounded-xl px-3 py-2.5 font-semibold text-slate-600"
+            onSelect={onOpenJobs}
+          >
+            <BriefcaseBusiness className="mr-3 h-4 w-4 text-primary" />
+            Jobs
           </DropdownMenuItem>
         )}
 
@@ -232,8 +247,11 @@ export default function Navigation() {
   const registerHref = buildAuthPath("register", currentPath);
   const canManageUsers =
     isAuthenticated && isApproved && user?.role === "admin";
+  const canViewJobs = isAuthenticated && isApproved;
+  const canViewJobHistory = user?.role === "admin" || user?.role === "analyst";
   const isMarketingPage = location.pathname === "/" || location.pathname === "/company";
   const [hasPrivateData, setHasPrivateData] = useState<boolean | null>(null);
+  const [jobsOpen, setJobsOpen] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated || !isApproved) {
@@ -353,6 +371,7 @@ export default function Navigation() {
   }, [activeHomeSectionKey, activeProductKey, location.pathname]);
 
   return (
+    <>
     <nav className="fixed inset-x-0 top-0 z-50 border-b border-slate-200/80 bg-white/92 text-foreground backdrop-blur-xl">
       <div className="mx-auto max-w-[1440px] px-4 sm:px-6">
         <div className="relative flex h-[88px] items-center justify-between gap-4">
@@ -466,7 +485,12 @@ export default function Navigation() {
               {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
             {isAuthenticated ? (
-              <AccountMenu canManageUsers={canManageUsers} hasPrivateData={hasPrivateData} />
+              <AccountMenu
+                canManageUsers={canManageUsers}
+                hasPrivateData={hasPrivateData}
+                canViewJobs={canViewJobs}
+                onOpenJobs={() => setJobsOpen(true)}
+              />
             ) : (
               <>
                 <Link
@@ -498,7 +522,12 @@ export default function Navigation() {
               {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
             {isAuthenticated ? (
-              <AccountMenu canManageUsers={canManageUsers} hasPrivateData={hasPrivateData} />
+              <AccountMenu
+                canManageUsers={canManageUsers}
+                hasPrivateData={hasPrivateData}
+                canViewJobs={canViewJobs}
+                onOpenJobs={() => setJobsOpen(true)}
+              />
             ) : (
               null
             )}
@@ -602,5 +631,13 @@ export default function Navigation() {
         )}
       </div>
     </nav>
+    {canViewJobs && (
+      <JobsPanel
+        open={jobsOpen}
+        onOpenChange={setJobsOpen}
+        canViewHistory={canViewJobHistory}
+      />
+    )}
+    </>
   );
 }

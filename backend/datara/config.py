@@ -187,6 +187,15 @@ class Settings:
     azure_sql_database: str | None = field(default_factory=lambda: os.getenv("AZURE_SQL_DATABASE"))
     azure_sql_username: str | None = field(default_factory=lambda: os.getenv("AZURE_SQL_USERNAME"))
     azure_sql_password: str | None = field(default_factory=lambda: os.getenv("AZURE_SQL_PASSWORD"))
+    celery_broker_url: str = field(
+        repr=False,
+        default_factory=lambda: os.getenv("CELERY_BROKER_URL", "amqp://guest:guest@localhost:5672//")
+    )
+    celery_queue_name: str = field(default_factory=lambda: os.getenv("CELERY_QUEUE_NAME", "lambda_jobs"))
+    generation_worker_token: str = field(
+        repr=False,
+        default_factory=lambda: os.getenv("GENERATION_WORKER_TOKEN", ""),
+    )
 
     @property
     def auth_database_url(self) -> str:

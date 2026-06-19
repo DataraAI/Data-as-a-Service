@@ -21,6 +21,7 @@ from azure.storage.blob import ContentSettings
 
 from datara.config import settings
 from datara.logging import logger
+from datara.services.lambda_job_store import LambdaJobStore
 from datara.services.sql_store import SQLStore
 
 
@@ -38,10 +39,18 @@ class ProcessingService:
         "sensor_modalities": "What are the sensor modalities detected?",
     }
 
-    def __init__(self, azure_service, dataset_service, sql_store: SQLStore) -> None:
+    def __init__(
+        self,
+        azure_service,
+        dataset_service,
+        sql_store: SQLStore,
+        *,
+        lambda_job_store: LambdaJobStore | None = None,
+    ) -> None:
         self.azure_service = azure_service
         self.dataset_service = dataset_service
         self.sql_store = sql_store
+        self.lambda_job_store = lambda_job_store or LambdaJobStore(sql_store)
         self.upload_folder = settings.upload_folder
         os.makedirs(self.upload_folder, exist_ok=True)
         os.makedirs(DATASET_LIST_DIR, exist_ok=True)
@@ -2338,3 +2347,950 @@ class ProcessingService:
                     pass
 
         return {"message": "VLM tags created and appended successfully"}, 200
+
+    def prepare_remote_generation(
+        self,
+        current_user: dict[str, Any],
+        job_type: str,
+        data: dict[str, Any],
+        job_id: str,
+    ) -> dict[str, Any]:
+        from datara.services.remote_generation_contracts import RemoteGenerationContracts
+
+        return RemoteGenerationContracts(self).prepare(current_user, job_type, data, job_id)
+
+    def complete_remote_generation(
+        self,
+        current_user: dict[str, Any],
+        job_type: str,
+        data: dict[str, Any],
+        job_id: str,
+        manifest: dict[str, Any],
+    ) -> tuple[dict[str, Any], int]:
+        from datara.services.remote_generation_contracts import RemoteGenerationContracts
+
+        return RemoteGenerationContracts(self).complete(current_user, job_type, data, job_id, manifest)
+
+    def cleanup_remote_generation(self, job_id: str) -> None:
+        self.azure_service.delete_generation_transfer(self.remote_generation_transfer_id(job_id))
+
+    def remote_generation_transfer_id(self, job_id: str, *, offset: int = 0) -> str:
+        record = self.lambda_job_store.get_lambda_job(job_id)
+        if not record:
+            return job_id
+        attempt = max(0, int(record.get("retry_count") or 0) + offset)
+        return f"{job_id}-{attempt}"
+
+    def _prepare_remote_generate_masks(
+        self,
+        current_user: dict[str, Any],
+        data: dict[str, Any],
+        _job_id: str,
+    ) -> dict[str, Any]:
+        route_path = str(data.get("route_path") or "").strip().strip("/")
+        prompt = str(data.get("prompt") or "").strip()
+        dataset, extra_segments = self.sql_store.resolve_dataset_route(route_path, current_user)
+        self.sql_store.assert_user_can_access_dataset(dataset, current_user)
+        if any(str(segment).lower() == "masks" for segment in extra_segments):
+            raise ValueError("Mask generation is unavailable inside existing mask folders")
+        images = [
+            image
+            for image in self.dataset_service.get_dataset_images(route_path, current_user)
+            if image.get("type") == "image"
+        ]
+        images.sort(key=lambda image: str(image.get("name") or "").lower())
+        if not images:
+            raise ValueError("No images found in this folder")
+        return {
+            "prompt": prompt,
+            "input_files": [
+                {
+                    "name": str(image["name"]),
+                    "url": self.azure_service.generate_sas_url(
+                        dataset["storage_container"],
+                        image["id"],
+                        expiry_hours=6,
+                    ),
+                }
+                for image in images
+            ],
+        }
+
+    def _prepare_remote_generate_ego(
+        self,
+        current_user: dict[str, Any],
+        data: dict[str, Any],
+        _job_id: str,
+    ) -> dict[str, Any]:
+        source = self._resolve_source_asset(current_user, str(data.get("asset_id") or ""))
+        return {
+            "prompt": str(data.get("prompt") or "").strip(),
+            "image_url": self.azure_service.generate_sas_url(
+                source["dataset"]["storage_container"],
+                source["blob_name"],
+                expiry_hours=6,
+            ),
+            "container_name": source["dataset"]["storage_container"],
+        }
+
+    def _prepare_remote_generate_corner_case(
+        self,
+        current_user: dict[str, Any],
+        data: dict[str, Any],
+        _job_id: str,
+    ) -> dict[str, Any]:
+        prepared = self._prepare_remote_generate_ego(current_user, data, _job_id)
+        prepared.update(
+            {
+                "localization_model": "attention_points_sam",
+                "out_root": "corner_images_controlnet",
+            }
+        )
+        return prepared
+
+    def _prepare_remote_create_vlm_tags(
+        self,
+        current_user: dict[str, Any],
+        data: dict[str, Any],
+        _job_id: str,
+    ) -> dict[str, Any]:
+        source = self._resolve_source_asset(current_user, str(data.get("asset_id") or ""))
+        _prompt_label, effective_prompt = self._resolve_vlm_prompt(data, source["metadata"])
+        return {
+            "prompt": effective_prompt,
+            "image_url": self.azure_service.generate_sas_url(
+                source["dataset"]["storage_container"],
+                source["blob_name"],
+                expiry_hours=6,
+            ),
+        }
+
+    def _prepare_remote_generate_task_intelligence(
+        self,
+        current_user: dict[str, Any],
+        data: dict[str, Any],
+        _job_id: str,
+    ) -> dict[str, Any]:
+        source = self._resolve_source_asset(current_user, str(data.get("asset_id") or ""))
+        return {
+            "video_url": self.azure_service.generate_sas_url(
+                source["dataset"]["storage_container"],
+                source["blob_name"],
+                expiry_hours=6,
+            )
+        }
+
+    def _prepare_remote_generate_video_to_video_views(
+        self,
+        current_user: dict[str, Any],
+        data: dict[str, Any],
+        _job_id: str,
+    ) -> dict[str, Any]:
+        source = self._resolve_source_asset(current_user, str(data.get("asset_id") or ""))
+        trajectory = str(data.get("trajectory") or "left").strip()
+        if trajectory not in ("up", "down", "left", "right", "zoom_in", "zoom_out"):
+            raise ValueError("Invalid video trajectory")
+        source_dataset = source["dataset"]
+        source_blob = source["blob_name"]
+        video_name = os.path.splitext(os.path.basename(source_blob))[0]
+        vipe_zip_blob = f"{source_dataset['storage_prefix'].rstrip('/')}/misc/cache/{video_name}_vipe_output.zip"
+        vipe_zip_url = ""
+        try:
+            if self.azure_service.blob_exists(source_dataset["storage_container"], vipe_zip_blob):
+                vipe_zip_url = self.azure_service.generate_sas_url(
+                    source_dataset["storage_container"],
+                    vipe_zip_blob,
+                    expiry_hours=6,
+                )
+        except Exception:
+            vipe_zip_url = ""
+        return {
+            "video_url": self.azure_service.generate_sas_url(
+                source_dataset["storage_container"],
+                source_blob,
+                expiry_hours=6,
+            ),
+            "trajectory": trajectory,
+            "vipe_zip_url": vipe_zip_url,
+        }
+
+    def _prepare_remote_generate_hand_mesh(
+        self,
+        current_user: dict[str, Any],
+        data: dict[str, Any],
+        _job_id: str,
+    ) -> dict[str, Any]:
+        asset_id = str(data.get("asset_id") or "").strip()
+        if asset_id:
+            source = self._resolve_source_asset(current_user, asset_id)
+            video_url = self.azure_service.generate_sas_url(
+                source["dataset"]["storage_container"],
+                source["blob_name"],
+                expiry_hours=6,
+            )
+            video_basename = os.path.basename(source["blob_name"])
+        else:
+            video_url = self._resolve_hand_mesh_video_url(str(data.get("video_url") or ""), current_user)
+            video_basename = os.path.basename(urlparse(video_url).path)
+        return {
+            "video_url": video_url,
+            "seq": self._slugify_sequence_name(str(data.get("seq") or os.path.splitext(video_basename)[0])),
+            "pipeline": str(data.get("pipeline") or "default").strip() or "default",
+        }
+
+    def _prepare_remote_remove_occlusion(
+        self,
+        current_user: dict[str, Any],
+        data: dict[str, Any],
+        job_id: str,
+    ) -> dict[str, Any]:
+        route_path = str(data.get("route_path") or "").strip().strip("/")
+        include = data.get("include")
+        subtract = data.get("subtract")
+        if not isinstance(include, dict):
+            raise ValueError("Missing include selection")
+        if subtract is not None and not isinstance(subtract, dict):
+            raise ValueError("subtract must be an object when provided")
+
+        dataset, _extra_segments, summary = self._validate_occlusion_route(
+            current_user=current_user,
+            route_path=route_path,
+        )
+        prompt_options = {
+            option["prompt_slug"]: option
+            for option in self._build_mask_prompt_options(
+                current_user=current_user,
+                dataset_summary_path=summary["full_path"],
+            )
+        }
+        include_prompt_slug = str(include.get("prompt_slug") or "").strip()
+        if include_prompt_slug not in prompt_options:
+            raise ValueError("Primary mask prompt was not found")
+        route_images = [
+            image
+            for image in self.dataset_service.get_dataset_images(route_path, current_user)
+            if image.get("type") == "image"
+        ]
+        route_images.sort(key=self._image_sort_key)
+        if not route_images:
+            raise ValueError("No source images were found in this folder")
+
+        include_assets = self._collect_prompt_mask_assets(
+            current_user=current_user,
+            dataset=dataset,
+            dataset_summary_path=summary["full_path"],
+            prompt_slug=include_prompt_slug,
+        )
+        include_instances = self._resolve_selected_instance_names(
+            selection=include,
+            prompt_options=prompt_options[include_prompt_slug],
+            prompt_assets=include_assets,
+        )
+        include_mode = str(include.get("mode") or "").strip().lower()
+        include_selection_slug = self._selection_slug(
+            include_prompt_slug,
+            include_mode,
+            include_instances[0] if include_mode == "instance" else None,
+        )
+
+        subtract_prompt_slug = None
+        subtract_assets: dict[str, list[dict[str, Any]]] = {}
+        subtract_instances: list[str] = []
+        subtract_selection_slug = ""
+        if subtract:
+            subtract_prompt_slug = str(subtract.get("prompt_slug") or "").strip()
+            if subtract_prompt_slug not in prompt_options:
+                raise ValueError("Subtraction mask prompt was not found")
+            subtract_assets = self._collect_prompt_mask_assets(
+                current_user=current_user,
+                dataset=dataset,
+                dataset_summary_path=summary["full_path"],
+                prompt_slug=subtract_prompt_slug,
+            )
+            subtract_instances = self._resolve_selected_instance_names(
+                selection=subtract,
+                prompt_options=prompt_options[subtract_prompt_slug],
+                prompt_assets=subtract_assets,
+            )
+            subtract_mode = str(subtract.get("mode") or "").strip().lower()
+            subtract_selection_slug = self._selection_slug(
+                subtract_prompt_slug,
+                subtract_mode,
+                subtract_instances[0] if subtract_mode == "instance" else None,
+            )
+
+        output_selection_slug = include_selection_slug
+        if subtract_prompt_slug:
+            output_selection_slug = (
+                f"{include_selection_slug}-minus-{subtract_prompt_slug}-{subtract_selection_slug}"
+            )
+        output_route_path = summary["full_path"].rstrip("/")
+        output_storage_prefix = dataset["storage_prefix"].rstrip("/")
+        output_video_name = self._occlusion_output_filename(include_prompt_slug, subtract_prompt_slug)
+        output_blob_name = f"{output_storage_prefix}/{output_video_name}"
+        source_task = next(
+            (
+                str((image.get("metadata") or {}).get("task") or "").strip()
+                for image in route_images
+                if str((image.get("metadata") or {}).get("task") or "").strip()
+            ),
+            str(dataset.get("task") or ""),
+        )
+
+        job_root = tempfile.mkdtemp(prefix="remote_occlusion_", dir=DATASET_LIST_DIR)
+        try:
+            source_dir = os.path.join(job_root, "source_frames")
+            include_dir = os.path.join(job_root, "include_masks")
+            subtract_dir = os.path.join(job_root, "subtract_masks")
+            source_video = os.path.join(job_root, "source.mp4")
+            mask_video = os.path.join(job_root, "mask.mp4")
+            self._download_route_images(dataset=dataset, images=route_images, destination_dir=source_dir)
+            include_masks = self._download_mask_selection(
+                dataset=dataset,
+                prompt_assets=include_assets,
+                selected_instance_names=include_instances,
+                destination_dir=include_dir,
+            )
+            subtract_masks = {}
+            if subtract_prompt_slug:
+                subtract_masks = self._download_mask_selection(
+                    dataset=dataset,
+                    prompt_assets=subtract_assets,
+                    selected_instance_names=subtract_instances,
+                    destination_dir=subtract_dir,
+                )
+            video_metadata = self._compose_occlusion_videos(
+                route_images=route_images,
+                source_dir=source_dir,
+                include_masks=include_masks,
+                subtract_masks=subtract_masks,
+                source_video_path=source_video,
+                mask_video_path=mask_video,
+            )
+            sample_height, sample_width = self._resolve_sample_size(
+                video_metadata["width"],
+                video_metadata["height"],
+            )
+            transfer_id = self.remote_generation_transfer_id(job_id)
+            source_video_url = self.azure_service.upload_generation_input(
+                transfer_id,
+                local_path=source_video,
+                blob_name="inputs/source.mp4",
+                content_type="video/mp4",
+            )
+            mask_video_url = self.azure_service.upload_generation_input(
+                transfer_id,
+                local_path=mask_video,
+                blob_name="inputs/mask.mp4",
+                content_type="video/mp4",
+            )
+        finally:
+            shutil.rmtree(job_root, ignore_errors=True)
+
+        self.lambda_job_store.update_lambda_job(
+            job_id,
+            execution_context_json=json.dumps(
+                {
+                    "output_route_path": output_route_path,
+                    "output_storage_prefix": output_storage_prefix,
+                    "output_blob_name": output_blob_name,
+                    "output_video_name": output_video_name,
+                    "source_task": source_task,
+                    "include_prompt_slug": include_prompt_slug,
+                    "output_selection_slug": output_selection_slug,
+                    "subtract_prompt_slug": subtract_prompt_slug,
+                    "video_metadata": video_metadata,
+                },
+                sort_keys=True,
+                separators=(",", ":"),
+            ),
+        )
+        return {
+            "source_video_url": source_video_url,
+            "mask_video_url": mask_video_url,
+            "prompt": self._build_occlusion_prompt(include_prompt_slug, subtract_prompt_slug),
+            "sample_height": sample_height,
+            "sample_width": sample_width,
+            "video_length": 49,
+        }
+
+    @staticmethod
+    def _remote_artifacts(
+        artifact_paths: list[str],
+        *,
+        marker: str = "",
+        extensions: tuple[str, ...] = (),
+    ) -> list[str]:
+        normalized_marker = marker.replace("\\", "/").strip("/")
+        matches = []
+        for path in artifact_paths:
+            normalized = str(path).replace("\\", "/")
+            if normalized_marker and f"/{normalized_marker}/" not in f"/{normalized.lstrip('/')}":
+                continue
+            if extensions and not normalized.lower().endswith(extensions):
+                continue
+            matches.append(path)
+        return sorted(matches)
+
+    def _complete_remote_generate_task_intelligence(
+        self,
+        current_user: dict[str, Any],
+        data: dict[str, Any],
+        _job_id: str,
+        _artifact_root: str,
+        artifact_paths: list[str],
+    ) -> tuple[dict[str, Any], int]:
+        json_paths = self._remote_artifacts(artifact_paths, extensions=(".json",))
+        if len(json_paths) != 1:
+            raise ValueError("Task analysis must return exactly one JSON artifact")
+        with open(json_paths[0], encoding="utf-8") as handle:
+            raw_subtasks = json.load(handle)
+        if not isinstance(raw_subtasks, list):
+            raise ValueError("Task analysis returned invalid JSON")
+
+        source = self._resolve_source_asset(current_user, str(data.get("asset_id") or ""))
+        formatted_subtasks = [
+            {
+                "subtask_name": str(subtask.get("sub_task", "unknown")).title(),
+                "start_time": f"Frame {subtask.get('start_frame', 0)}",
+                "end_time": f"Frame {subtask.get('end_frame', 0)}",
+                "description": "Identified during task analysis.",
+            }
+            for subtask in raw_subtasks
+            if isinstance(subtask, dict)
+        ]
+        dataset_summary = self.sql_store.build_dataset_summary(source["dataset"], current_user) if hasattr(
+            self.sql_store, "build_dataset_summary"
+        ) else {"full_path": source["dataset"].get("storage_prefix", "")}
+        task_name = str(source["metadata"].get("task") or "Automated Video Breakdown").strip()
+        generated_json = {
+            "tasks": [
+                {
+                    "task_name": task_name,
+                    "description": f"Extracted from {dataset_summary['full_path']}",
+                    "start_time": f"Frame {raw_subtasks[0].get('start_frame', 0)}" if raw_subtasks else "Start",
+                    "end_time": f"Frame {raw_subtasks[-1].get('end_frame', 0)}" if raw_subtasks else "End",
+                    "subtasks": formatted_subtasks,
+                }
+            ]
+        }
+        cosmos_doc = source["metadata"]
+        cosmos_doc["taskIntelligence"] = generated_json
+        self.azure_service.upsert_cosmos_item(cosmos_doc)
+
+        source_dataset = source["dataset"]
+        source_blob = source["blob_name"]
+        task_slug = str(
+            source_dataset.get("dataset_name") or os.path.splitext(os.path.basename(source_blob))[0]
+        ).strip()
+        json_blob_name = f"{source_dataset['storage_prefix'].rstrip('/')}/{task_slug}_intelligence.JSON"
+        container_client = self.azure_service.get_container_client(source_dataset["storage_container"])
+        container_client.upload_blob(
+            name=json_blob_name,
+            data=json.dumps(generated_json, indent=2).encode("utf-8"),
+            overwrite=True,
+            content_settings=ContentSettings(content_type="application/json; charset=utf-8"),
+        )
+        existing_json_doc = self.azure_service.get_cosmos_doc_for_blob(
+            source_dataset["storage_container"],
+            json_blob_name,
+        ) or {}
+        self.azure_service.upsert_cosmos_item(
+            {
+                "id": existing_json_doc.get("id", os.urandom(16).hex()),
+                "docType": "task_intelligence_json",
+                "containerName": source_dataset["storage_container"],
+                "datasetName": source_dataset["storage_prefix"],
+                "datasetId": source_dataset["id"],
+                "ownerUserId": source_dataset["owner_user_id"],
+                "visibility": source_dataset["visibility"],
+                "sourceDatasetId": source_dataset["id"],
+                "sourceBlobPath": source_blob,
+                "view": "task_intelligence",
+                "frameName": os.path.basename(json_blob_name),
+                "blobPath": json_blob_name,
+                "miscTags": ["task_intelligence", "json"],
+                "task": task_name,
+                "sourceType": "task_intelligence_json",
+                "generatedAt": datetime.now(timezone.utc).isoformat(),
+            }
+        )
+        return {
+            "message": "Task intelligence generated and stored successfully.",
+            "data": generated_json,
+            "download_blob_name": json_blob_name,
+            "cached": False,
+        }, 200
+
+    def _complete_remote_generate_masks(
+        self,
+        current_user: dict[str, Any],
+        data: dict[str, Any],
+        _job_id: str,
+        artifact_root: str,
+        artifact_paths: list[str],
+    ) -> tuple[dict[str, Any], int]:
+        prompt = str(data.get("prompt") or "").strip()
+        route_path = str(data.get("route_path") or "").strip().strip("/")
+        dataset, _extra_segments = self.sql_store.resolve_dataset_route(route_path, current_user)
+        self.sql_store.assert_user_can_access_dataset(dataset, current_user)
+        if not artifact_paths:
+            raise ValueError("Mask generation returned no artifacts")
+
+        summary = self.sql_store.build_dataset_summary(dataset, current_user)
+        prompt_slug = self._slugify_prompt(prompt)
+        mask_route_path = f"{summary['full_path'].rstrip('/')}/misc/masks/{prompt_slug}"
+        target_storage_prefix = f"{dataset['storage_prefix'].rstrip('/')}/misc/masks/{prompt_slug}"
+        output_dir = os.path.join(artifact_root, "outputs", "result")
+        if not os.path.isdir(output_dir):
+            raise ValueError("Mask generation returned an invalid output tree")
+
+        self.azure_service.delete_blobs_with_prefix(dataset["storage_container"], target_storage_prefix)
+        self.azure_service.delete_cosmos_docs_for_prefix(dataset["storage_container"], target_storage_prefix)
+        subprocess.check_call(
+            [
+                sys.executable,
+                os.path.join(UTILS_DIR, "upload_mask_tree_to_azure.py"),
+                "--container_name",
+                str(dataset["storage_container"]),
+                "--target_prefix",
+                str(target_storage_prefix),
+                "--dataset_prefix",
+                str(dataset["storage_prefix"]),
+                "--input_dir",
+                str(output_dir),
+                "--prompt",
+                prompt,
+                "--dataset_id",
+                str(dataset["id"]),
+                "--owner_user_id",
+                str(dataset["owner_user_id"]),
+                "--visibility",
+                str(dataset["visibility"]),
+                "--task",
+                str(dataset.get("task") or ""),
+                "--source_dataset_id",
+                str(dataset["id"]),
+            ],
+            cwd=BACKEND_DIR,
+        )
+        return {
+            "message": "Mask generation finished successfully.",
+            "mask_route_path": mask_route_path,
+            "mask_viewer_path": f"/viewer/{mask_route_path}",
+            "prompt_slug": prompt_slug,
+        }, 200
+
+    def _complete_remote_image_generation(
+        self,
+        current_user: dict[str, Any],
+        data: dict[str, Any],
+        artifact_paths: list[str],
+        *,
+        upload_view: str,
+        misc_tags: list[str],
+        message: str,
+    ) -> tuple[dict[str, Any], int]:
+        image_paths = self._remote_artifacts(
+            artifact_paths,
+            extensions=(".png", ".jpg", ".jpeg", ".webp"),
+        )
+        if len(image_paths) != 1:
+            raise ValueError("Image generation must return exactly one image")
+        source = self._resolve_source_asset(current_user, str(data.get("asset_id") or ""))
+        dataset = source["dataset"]
+        local_root = tempfile.mkdtemp(prefix="remote_image_", dir=DATASET_LIST_DIR)
+        try:
+            view_dir = os.path.join(local_root, upload_view)
+            os.makedirs(view_dir, exist_ok=True)
+            shutil.copy2(image_paths[0], os.path.join(view_dir, os.path.basename(image_paths[0])))
+            self._upload_to_azure(
+                dataset=dataset,
+                local_process_dir=local_root,
+                date_val=str(data.get("date") or ""),
+                misc_tags=misc_tags,
+                task=str(source["metadata"].get("task") or dataset.get("task") or ""),
+                create_video_annotation=False,
+                upload_view=upload_view,
+                source_dataset_id=dataset["id"],
+            )
+        finally:
+            shutil.rmtree(local_root, ignore_errors=True)
+        return {
+            "message": message,
+            "dataset": self.sql_store.build_dataset_summary(dataset, current_user),
+        }, 200
+
+    def _complete_remote_generate_ego(
+        self,
+        current_user: dict[str, Any],
+        data: dict[str, Any],
+        _job_id: str,
+        _artifact_root: str,
+        artifact_paths: list[str],
+    ) -> tuple[dict[str, Any], int]:
+        return self._complete_remote_image_generation(
+            current_user,
+            data,
+            artifact_paths,
+            upload_view="egos",
+            misc_tags=list(data.get("tags", [])) if isinstance(data.get("tags"), list) else [],
+            message="Ego view processed and uploaded successfully",
+        )
+
+    def _complete_remote_generate_corner_case(
+        self,
+        current_user: dict[str, Any],
+        data: dict[str, Any],
+        _job_id: str,
+        _artifact_root: str,
+        artifact_paths: list[str],
+    ) -> tuple[dict[str, Any], int]:
+        requested_tags = list(data.get("tags", [])) if isinstance(data.get("tags"), list) else []
+        tags = []
+        for tag in requested_tags + ["corner_case", "addit", "sam2", "attention_points_sam"]:
+            normalized = str(tag or "").strip()
+            if normalized and normalized not in tags:
+                tags.append(normalized)
+        return self._complete_remote_image_generation(
+            current_user,
+            data,
+            artifact_paths,
+            upload_view="corner_images_controlnet",
+            misc_tags=tags,
+            message="Corner case generation completed successfully",
+        )
+
+    def _complete_remote_create_vlm_tags(
+        self,
+        current_user: dict[str, Any],
+        data: dict[str, Any],
+        _job_id: str,
+        _artifact_root: str,
+        artifact_paths: list[str],
+    ) -> tuple[dict[str, Any], int]:
+        json_paths = self._remote_artifacts(artifact_paths, extensions=(".json",))
+        if len(json_paths) != 1:
+            raise ValueError("Automated tagging must return exactly one JSON artifact")
+        source = self._resolve_source_asset(current_user, str(data.get("asset_id") or ""))
+        prompt_label, effective_prompt = self._resolve_vlm_prompt(data, source["metadata"])
+        subprocess.check_call(
+            [
+                sys.executable,
+                os.path.join(UTILS_DIR, "append_tags_to_image.py"),
+                "--container_name",
+                source["dataset"]["storage_container"],
+                "--blob_path",
+                source["blob_name"],
+                "--json_path",
+                json_paths[0],
+                "--prompt_label",
+                prompt_label,
+                "--effective_prompt",
+                effective_prompt,
+            ],
+            cwd=BACKEND_DIR,
+        )
+        return {"message": "VLM tags created and appended successfully"}, 200
+
+    def _complete_remote_generate_video_to_video_views(
+        self,
+        current_user: dict[str, Any],
+        data: dict[str, Any],
+        _job_id: str,
+        _artifact_root: str,
+        artifact_paths: list[str],
+    ) -> tuple[dict[str, Any], int]:
+        videos = self._remote_artifacts(artifact_paths, marker="outputs/video", extensions=(".mp4", ".mov", ".m4v", ".webm"))
+        if len(videos) != 1:
+            raise ValueError("Video perspective generation must return exactly one video")
+        vipe_zips = self._remote_artifacts(artifact_paths, marker="outputs/vipe", extensions=(".zip",))
+        source = self._resolve_source_asset(current_user, str(data.get("asset_id") or ""))
+        dataset = source["dataset"]
+        source_blob = source["blob_name"]
+        video_name = os.path.splitext(os.path.basename(source_blob))[0]
+        trajectory = str(data.get("trajectory") or "left").strip()
+        dataset_prefix = dataset["storage_prefix"].rstrip("/")
+        task_slug = str(dataset.get("dataset_name") or video_name).strip() or video_name
+        output_blob = f"{dataset_prefix}/{task_slug}_{trajectory}.mp4"
+        vipe_blob = f"{dataset_prefix}/misc/cache/{video_name}_vipe_output.zip"
+        container = self.azure_service.get_container_client(dataset["storage_container"])
+        with open(videos[0], "rb") as handle:
+            container.upload_blob(
+                name=output_blob,
+                data=handle,
+                overwrite=True,
+                content_settings=ContentSettings(content_type="video/mp4"),
+            )
+        if vipe_zips:
+            with open(vipe_zips[0], "rb") as handle:
+                container.upload_blob(
+                    name=vipe_blob,
+                    data=handle,
+                    overwrite=True,
+                    content_settings=ContentSettings(content_type="application/zip"),
+                )
+
+        generated_at = datetime.now(timezone.utc).isoformat()
+        source_meta = source["metadata"]
+        output_existing = self.azure_service.get_cosmos_doc_for_blob(
+            dataset["storage_container"],
+            output_blob,
+        ) or {}
+        self.azure_service.upsert_cosmos_item(
+            {
+                "id": output_existing.get("id", os.urandom(16).hex()),
+                "docType": "gen3c_v2v_output",
+                "containerName": dataset["storage_container"],
+                "datasetName": dataset["storage_prefix"],
+                "datasetId": dataset["id"],
+                "ownerUserId": dataset["owner_user_id"],
+                "visibility": dataset["visibility"],
+                "sourceDatasetId": dataset["id"],
+                "sourceBlobPath": source_blob,
+                "view": "gen3c",
+                "frameName": os.path.basename(output_blob),
+                "blobPath": output_blob,
+                "date": source_meta.get("date", ""),
+                "frameId": None,
+                "width": source_meta.get("width"),
+                "height": source_meta.get("height"),
+                "fps": source_meta.get("fps"),
+                "frameCount": source_meta.get("frameCount"),
+                "miscTags": ["gen3c", "new_angle_video"],
+                "task": source_meta.get("task", ""),
+                "sourceType": "gen3c_output",
+                "generatedAt": generated_at,
+            }
+        )
+        if vipe_zips:
+            vipe_existing = self.azure_service.get_cosmos_doc_for_blob(
+                dataset["storage_container"],
+                vipe_blob,
+            ) or {}
+            self.azure_service.upsert_cosmos_item(
+                {
+                    "id": vipe_existing.get("id", os.urandom(16).hex()),
+                    "docType": "vipe",
+                    "containerName": dataset["storage_container"],
+                    "datasetName": dataset["storage_prefix"],
+                    "datasetId": dataset["id"],
+                    "ownerUserId": dataset["owner_user_id"],
+                    "visibility": dataset["visibility"],
+                    "sourceDatasetId": dataset["id"],
+                    "sourceBlobPath": source_blob,
+                    "view": "vipe",
+                    "frameName": os.path.basename(vipe_blob),
+                    "blobPath": vipe_blob,
+                    "date": source_meta.get("date", ""),
+                    "frameId": None,
+                    "miscTags": ["gen3c", "vipe", "new_angle_video"],
+                    "task": source_meta.get("task", ""),
+                    "sourceType": "vipe_output",
+                    "generatedAt": generated_at,
+                }
+            )
+        output_asset_id = self.dataset_service.encode_asset_id(dataset["id"], output_blob)
+        result = {
+            "blob_name": output_blob,
+            "container": dataset["storage_container"],
+            "generated_at": generated_at,
+            "proxy_url": f"/api/proxy/{output_asset_id}",
+        }
+        source_meta["NewAngleViews"] = result
+        self.azure_service.upsert_cosmos_item(source_meta)
+        return {
+            "message": "Video-to-video generation completed successfully.",
+            "data": result,
+            "cached": False,
+        }, 200
+
+    def _complete_remote_generate_hand_mesh(
+        self,
+        current_user: dict[str, Any],
+        data: dict[str, Any],
+        _job_id: str,
+        _artifact_root: str,
+        artifact_paths: list[str],
+    ) -> tuple[dict[str, Any], int]:
+        asset_id = str(data.get("asset_id") or "").strip()
+        source_asset_id = asset_id
+        if asset_id:
+            source = self._resolve_source_asset(current_user, asset_id)
+            dataset = source["dataset"]
+            video_basename = os.path.basename(source["blob_name"])
+        else:
+            route_path = str(data.get("route_path") or "").strip().strip("/")
+            dataset, _extra_segments = self.sql_store.resolve_dataset_route(route_path, current_user)
+            self.sql_store.assert_user_can_access_dataset(dataset, current_user)
+            video_url = str(data.get("video_url") or "").strip()
+            if video_url.startswith("/api/proxy/"):
+                source_asset_id = video_url.split("/api/proxy/", 1)[1].split("?", 1)[0].strip()
+            video_basename = os.path.basename(urlparse(video_url).path)
+        seq_slug = self._slugify_sequence_name(
+            str(data.get("seq") or os.path.splitext(video_basename)[0])
+        )
+        summary = self.sql_store.build_dataset_summary(dataset, current_user)
+        output_route_path = summary["full_path"].rstrip("/")
+        output_storage_prefix = dataset["storage_prefix"].rstrip("/")
+        output_video_prefix = output_storage_prefix
+        output_artifact_prefix = f"{output_storage_prefix}/misc/handmeshes"
+        legacy_output_artifact_prefix = f"{output_storage_prefix}/hand_meshes"
+        output_download_prefix = output_storage_prefix
+
+        videos = self._remote_artifacts(
+            artifact_paths,
+            extensions=(".mp4", ".mov", ".m4v", ".webm"),
+        )
+        mcaps = self._remote_artifacts(artifact_paths, extensions=(".mcap",))
+        npz_files = self._remote_artifacts(artifact_paths, extensions=(".npz",))
+        artifacts = [
+            path
+            for path in artifact_paths
+            if path not in set(videos) | set(mcaps) | set(npz_files)
+        ]
+        if not videos and not artifacts and not mcaps and not npz_files:
+            raise ValueError("Hand mesh generation returned no artifacts")
+
+        self.azure_service.delete_blobs_with_prefix(dataset["storage_container"], output_artifact_prefix)
+        self.azure_service.delete_cosmos_docs_for_prefix(dataset["storage_container"], output_artifact_prefix)
+        self.azure_service.delete_blobs_with_prefix(dataset["storage_container"], legacy_output_artifact_prefix)
+        self.azure_service.delete_cosmos_docs_for_prefix(dataset["storage_container"], legacy_output_artifact_prefix)
+
+        source_task = str(dataset.get("task") or "").strip()
+        uploaded_videos = [
+            os.path.basename(
+                self._upload_hand_mesh_video(
+                    dataset=dataset,
+                    output_prefix=output_video_prefix,
+                    local_video_path=path,
+                    source_task=source_task,
+                    seq_slug=seq_slug,
+                    source_asset_id=source_asset_id,
+                )
+            )
+            for path in videos
+        ]
+        uploaded_artifacts = [
+            os.path.basename(
+                self._upload_hand_mesh_artifact(
+                    dataset=dataset,
+                    output_prefix=(
+                        output_artifact_prefix
+                        if os.path.splitext(path)[1].lower() == ".obj"
+                        else output_download_prefix
+                    ),
+                    local_file_path=path,
+                    source_task=source_task,
+                    seq_slug=seq_slug,
+                    source_asset_id=source_asset_id,
+                )
+            )
+            for path in artifacts
+        ]
+        uploaded_mcaps = [
+            self._upload_hand_mesh_mcap(
+                dataset=dataset,
+                output_prefix=output_download_prefix,
+                local_file_path=path,
+                source_task=source_task,
+                seq_slug=seq_slug,
+                source_asset_id=source_asset_id,
+            )
+            for path in mcaps
+        ]
+        uploaded_npz = [
+            self._upload_hand_mesh_npz(
+                dataset=dataset,
+                output_prefix=output_download_prefix,
+                local_file_path=path,
+                source_task=source_task,
+                seq_slug=seq_slug,
+                source_asset_id=source_asset_id,
+            )
+            for path in npz_files
+        ]
+        mcap_download_urls = [
+            self.azure_service.generate_sas_url(
+                dataset["storage_container"],
+                blob_name,
+                expiry_hours=24,
+            )
+            for blob_name in uploaded_mcaps
+        ]
+        return {
+            "message": "Hand mesh outputs generated and uploaded successfully.",
+            "output_route_path": output_route_path,
+            "output_viewer_path": f"/viewer/{output_route_path}",
+            "output_videos": uploaded_videos,
+            "output_artifacts": uploaded_artifacts,
+            "output_mcaps": uploaded_mcaps,
+            "output_mcap_download_urls": mcap_download_urls,
+            "output_npz": uploaded_npz,
+            "seq": seq_slug,
+        }, 200
+
+    def _complete_remote_remove_occlusion(
+        self,
+        current_user: dict[str, Any],
+        data: dict[str, Any],
+        job_id: str,
+        artifact_root: str,
+        artifact_paths: list[str],
+    ) -> tuple[dict[str, Any], int]:
+        videos = self._remote_artifacts(
+            artifact_paths,
+            extensions=(".mp4", ".mov", ".m4v", ".webm"),
+        )
+        if len(videos) != 1:
+            raise ValueError("Occlusion removal must return exactly one video")
+        record = self.lambda_job_store.get_lambda_job(job_id)
+        if not record or not record.get("execution_context_json"):
+            raise ValueError("Occlusion finalization context is unavailable")
+        context = json.loads(record["execution_context_json"])
+        video_metadata = context.get("video_metadata")
+        if not isinstance(video_metadata, dict):
+            raise ValueError("Occlusion finalization context is invalid")
+
+        route_path = str(data.get("route_path") or "").strip().strip("/")
+        dataset, _extra_segments, _summary = self._validate_occlusion_route(
+            current_user=current_user,
+            route_path=route_path,
+        )
+        final_video = os.path.join(artifact_root, "finalized", "rose_removed.mp4")
+        os.makedirs(os.path.dirname(final_video), exist_ok=True)
+        self._resize_video_to_dimensions(
+            input_path=videos[0],
+            output_path=final_video,
+            width=int(video_metadata["width"]),
+            height=int(video_metadata["height"]),
+            fps=float(video_metadata["fps"]),
+        )
+        output_prefix = str(context["output_storage_prefix"])
+        output_blob_name = str(
+            context.get("output_blob_name")
+            or f"{output_prefix.rstrip('/')}/{self._occlusion_output_filename(str(context['include_prompt_slug']), str(context['subtract_prompt_slug']) if context.get('subtract_prompt_slug') else None)}"
+        )
+        self.azure_service.delete_blob(dataset["storage_container"], output_blob_name)
+        self._upload_occlusion_video(
+            dataset=dataset,
+            output_prefix=output_prefix,
+            local_video_path=final_video,
+            source_task=str(context.get("source_task") or ""),
+            prompt_slug=str(context["include_prompt_slug"]),
+            selection_slug=str(context["output_selection_slug"]),
+            subtract_prompt_slug=(
+                str(context["subtract_prompt_slug"]) if context.get("subtract_prompt_slug") else None
+            ),
+            fps=float(video_metadata["fps"]),
+            frame_count=int(video_metadata["frame_count"]),
+            width=int(video_metadata["width"]),
+            height=int(video_metadata["height"]),
+        )
+        output_route_path = str(context["output_route_path"])
+        return {
+            "message": "Occlusion removal finished successfully.",
+            "output_route_path": output_route_path,
+            "output_viewer_path": f"/viewer/{output_route_path}",
+            "video_name": str(context.get("output_video_name") or os.path.basename(output_blob_name)),
+        }, 200

@@ -18,17 +18,37 @@ from datara.logging import logger
 from datara.services.auth_service import AuthService
 from datara.services.azure_service import AzureService
 from datara.services.dataset_service import DatasetService
+from datara.services.lambda_job_publisher import LambdaJobPublisher
+from datara.services.lambda_job_service import (
+    DuplicateActiveJob,
+    LambdaJobService,
+    PublishFailed,
+    QueueLimitExceeded,
+)
+from datara.services.lambda_job_store import LambdaJobStore
 from datara.services.processing_service import ProcessingService
 from datara.services.sql_store import SQLStore
+from datara.services.worker_auth import require_generation_worker
 
 sql_store = SQLStore()
+lambda_job_store = LambdaJobStore(sql_store)
 azure_service = AzureService()
 auth_service = AuthService(sql_store)
 dataset_service = DatasetService(azure_service, sql_store)
-processing_service = ProcessingService(azure_service, dataset_service, sql_store)
+processing_service = ProcessingService(
+    azure_service,
+    dataset_service,
+    sql_store,
+    lambda_job_store=lambda_job_store,
+)
 
 
 def create_app() -> Flask:
+    global lambda_job_store
+
+    lambda_job_store = LambdaJobStore(sql_store)
+    processing_service.lambda_job_store = lambda_job_store
+
     app = Flask(__name__)
     app.config.update(
         DEBUG=settings.debug,
@@ -47,12 +67,41 @@ def create_app() -> Flask:
         supports_credentials=True,
     )
 
+    app.extensions["lambda_job_service"] = LambdaJobService(
+        sql_store,
+        lambda_job_store=lambda_job_store,
+        publisher=LambdaJobPublisher(),
+        processing_service=processing_service,
+    )
+    app.extensions["lambda_job_store"] = lambda_job_store
     register_routes(app)
     register_error_handlers(app)
     return app
 
 
 def register_routes(app: Flask) -> None:
+    def _job_service() -> LambdaJobService:
+        return app.extensions["lambda_job_service"]
+
+    def _enqueue_generation(job_type: str):
+        current_user = _require_staff_user()
+        data = request.get_json(silent=True)
+        if not data:
+            return jsonify({"error": "Invalid JSON body"}), 400
+        try:
+            receipt = _job_service().enqueue(
+                current_user=current_user,
+                job_type=job_type,
+                payload=data,
+            )
+            return jsonify(receipt), 202
+        except DuplicateActiveJob as exc:
+            return jsonify({"error": str(exc), **exc.receipt}), 409
+        except QueueLimitExceeded as exc:
+            return jsonify({"error": str(exc)}), 429
+        except PublishFailed as exc:
+            return jsonify({"error": str(exc)}), 503
+
     def _require_account_manager() -> dict[str, object]:
         current_user = auth_service.get_current_user_or_raise()
         return auth_service.assert_account_manager(current_user)
@@ -66,6 +115,9 @@ def register_routes(app: Flask) -> None:
         if current_user.get("role") not in {"admin", "analyst"}:
             raise PermissionError("staff_required")
         return current_user
+
+    def _worker_auth_error():
+        return require_generation_worker()
 
     @app.route("/health", methods=["GET"])
     def health_check():
@@ -341,42 +393,22 @@ def register_routes(app: Flask) -> None:
     @app.route("/api/generate_ego", methods=["POST"])
     @auth_service.require_approved_user
     def generate_ego():
-        current_user = _require_staff_user()
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "Invalid JSON body"}), 400
-        payload, status_code = processing_service.generate_ego(current_user, data)
-        return jsonify(payload), status_code
+        return _enqueue_generation("generate_ego")
 
     @app.route("/api/generate_corner_case", methods=["POST"])
     @auth_service.require_approved_user
     def generate_corner_case():
-        current_user = _require_staff_user()
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "Invalid JSON body"}), 400
-        payload, status_code = processing_service.generate_corner_case(current_user, data)
-        return jsonify(payload), status_code
+        return _enqueue_generation("generate_corner_case")
 
     @app.route("/api/create_vlm_tags", methods=["POST"])
     @auth_service.require_approved_user
     def create_vlm_tags():
-        current_user = _require_staff_user()
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "Invalid JSON body"}), 400
-        payload, status_code = processing_service.create_vlm_tags(current_user, data)
-        return jsonify(payload), status_code
+        return _enqueue_generation("create_vlm_tags")
 
     @app.route("/api/generate_masks", methods=["POST"])
     @auth_service.require_approved_user
     def generate_masks():
-        current_user = _require_staff_user()
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "Invalid JSON body"}), 400
-        payload, status_code = processing_service.generate_masks(current_user, data)
-        return jsonify(payload), status_code
+        return _enqueue_generation("generate_masks")
 
     @app.route("/api/occlusion-mask-options", methods=["GET"])
     @auth_service.require_approved_user
@@ -391,12 +423,7 @@ def register_routes(app: Flask) -> None:
     @app.route("/api/remove_occlusion", methods=["POST"])
     @auth_service.require_approved_user
     def remove_occlusion():
-        current_user = _require_staff_user()
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "Invalid JSON body"}), 400
-        payload, status_code = processing_service.remove_occlusion(current_user, data)
-        return jsonify(payload), status_code
+        return _enqueue_generation("remove_occlusion")
 
     @app.route("/api/delete_dataset", methods=["POST"])
     @auth_service.require_approved_user
@@ -423,46 +450,102 @@ def register_routes(app: Flask) -> None:
     @app.route("/api/generate_task_intelligence", methods=["POST"])
     @auth_service.require_approved_user
     def generate_task_intelligence():
-        current_user = _require_staff_user()
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "Invalid JSON body"}), 400
-
-        if not data.get("asset_id"):
-            return jsonify({"error": "Missing 'asset_id' in request body"}), 400
-
-        payload, status_code = processing_service.generate_task_intelligence(current_user, data)
-        return jsonify(payload), status_code
+        return _enqueue_generation("generate_task_intelligence")
 
     @app.route("/api/generate_video_to_video_views", methods=["POST"])
     @auth_service.require_approved_user
     def generate_video_to_video_views():
-        current_user = _require_staff_user()
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "Invalid JSON body"}), 400
-
-        if not data.get("asset_id"):
-            return jsonify({"error": "Missing 'asset_id' in request body"}), 400
-
-        payload, status_code = processing_service.generate_video_to_video_views(current_user, data)
-        return jsonify(payload), status_code
+        return _enqueue_generation("generate_video_to_video_views")
 
     @app.route("/api/generate_hand_mesh", methods=["POST"])
     @auth_service.require_approved_user
     def generate_hand_mesh():
-        current_user = _require_staff_user()
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "Invalid JSON body"}), 400
+        return _enqueue_generation("generate_hand_mesh")
 
-        if not data.get("video_url") and not data.get("asset_id"):
-            return jsonify({"error": "Missing 'video_url' or 'asset_id' in request body"}), 400
-        if not data.get("route_path") and not data.get("asset_id"):
-            return jsonify({"error": "Missing 'route_path' in request body"}), 400
+    @app.route("/api/jobs/<job_id>", methods=["GET"])
+    @auth_service.require_approved_user
+    def get_generation_job(job_id: str):
+        current_user = auth_service.get_current_user_or_raise()
+        return jsonify(_job_service().get_job_for_user(job_id, current_user))
 
-        payload, status_code = processing_service.generate_hand_mesh(current_user, data)
-        return jsonify(payload), status_code
+    @app.route("/api/jobs/active", methods=["GET"])
+    @auth_service.require_approved_user
+    def get_active_generation_jobs():
+        current_user = auth_service.get_current_user_or_raise()
+        return jsonify({"jobs": _job_service().list_active_for_user(current_user)})
+
+    @app.route("/api/jobs", methods=["GET"])
+    @auth_service.require_account_manager
+    def get_generation_jobs():
+        current_user = _require_account_manager()
+        return jsonify(_job_service().list_staff_jobs(current_user))
+
+    @app.route("/api/internal/generation-jobs/<job_id>/claim", methods=["POST"])
+    def claim_generation_job(job_id: str):
+        if auth_error := _worker_auth_error():
+            return auth_error
+        data = request.get_json(silent=True) or {}
+        payload, status = _job_service().claim_for_remote_worker(
+            job_id,
+            worker_id=str(data.get("worker_id") or ""),
+            job_type=str(data.get("job_type") or ""),
+            schema_version=int(data.get("schema_version") or 0),
+        )
+        return jsonify(payload), status
+
+    @app.route("/api/internal/generation-jobs/<job_id>/heartbeat", methods=["POST"])
+    def heartbeat_generation_job(job_id: str):
+        if auth_error := _worker_auth_error():
+            return auth_error
+        data = request.get_json(silent=True) or {}
+        renewed = _job_service().heartbeat_remote_worker(
+            job_id,
+            worker_id=str(data.get("worker_id") or ""),
+        )
+        if not renewed:
+            return jsonify({"error": "Worker lease is not active"}), 409
+        return jsonify({"ok": True})
+
+    @app.route("/api/internal/generation-jobs/<job_id>/stage", methods=["POST"])
+    def stage_generation_job(job_id: str):
+        if auth_error := _worker_auth_error():
+            return auth_error
+        data = request.get_json(silent=True) or {}
+        updated = _job_service().stage_remote_worker(
+            job_id,
+            worker_id=str(data.get("worker_id") or ""),
+            stage=str(data.get("stage") or ""),
+        )
+        if not updated:
+            return jsonify({"error": "Worker lease is not active"}), 409
+        return jsonify({"ok": True})
+
+    @app.route("/api/internal/generation-jobs/<job_id>/complete", methods=["POST"])
+    def complete_generation_job(job_id: str):
+        if auth_error := _worker_auth_error():
+            return auth_error
+        data = request.get_json(silent=True) or {}
+        result = data.get("result")
+        outcome = _job_service().complete_remote_worker(
+            job_id,
+            worker_id=str(data.get("worker_id") or ""),
+            result=result if isinstance(result, dict) else None,
+        )
+        status = 404 if outcome == "missing" else 409 if outcome == "leased" else 200
+        return jsonify({"outcome": outcome}), status
+
+    @app.route("/api/internal/generation-jobs/<job_id>/fail", methods=["POST"])
+    def fail_generation_job(job_id: str):
+        if auth_error := _worker_auth_error():
+            return auth_error
+        data = request.get_json(silent=True) or {}
+        outcome = _job_service().fail_remote_worker(
+            job_id,
+            worker_id=str(data.get("worker_id") or ""),
+            private_error=str(data.get("error") or "Generation request failed"),
+        )
+        status = 404 if outcome == "missing" else 409 if outcome == "leased" else 200
+        return jsonify({"outcome": outcome}), status
 
 def register_error_handlers(app: Flask) -> None:
     @app.errorhandler(PermissionError)
@@ -493,7 +576,7 @@ def register_error_handlers(app: Flask) -> None:
     @app.errorhandler(Exception)
     def handle_exception(error):
         logger.error("Unhandled exception: %s: %s", type(error).__name__, error, exc_info=True)
-        return jsonify({"error": str(error), "type": type(error).__name__, "status": 500}), 500
+        return jsonify({"error": "Internal Server Error", "status": 500}), 500
 
 
 def main() -> None:

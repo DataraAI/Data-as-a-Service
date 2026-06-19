@@ -2,6 +2,8 @@ import { ChevronLeft, ChevronRight, Copy, Download, Film, Info, Loader2, X } fro
 import { useEffect, useMemo, useState } from "react";
 import { ThreeDViewer } from "./ThreeDViewer";
 import { VideoToolsPanel } from "./VideoToolsPanel";
+import { QueuedJobStatus } from "./QueuedJobStatus";
+import { submitGenerationRequest, useQueuedJob, type LambdaJob } from "@/lib/lambdaJobs";
 
 interface ImageModalProps {
   image: any;
@@ -56,6 +58,15 @@ export function ImageModal({
   const [selectedVlmPreset, setSelectedVlmPreset] = useState("describe_image");
   const [customVlmPrompt, setCustomVlmPrompt] = useState("");
   const [isCreatingVlmTags, setIsCreatingVlmTags] = useState(false);
+  const automatedTagsJob = useQueuedJob(`datara-job:automated-tags:${image?.asset_id ?? "none"}`, (completedJob) => {
+    if (completedJob.status === "succeeded") onVlmSuccess?.();
+  });
+  const cornerCaseJob = useQueuedJob(`datara-job:scene-variation:${image?.asset_id ?? "none"}`, (completedJob) => {
+    if (completedJob.status === "succeeded") onCornerCaseSuccess?.();
+  });
+  const perspectiveJob = useQueuedJob(`datara-job:perspective:${image?.asset_id ?? "none"}`, (completedJob) => {
+    if (completedJob.status === "succeeded") onEgoGenSuccess?.();
+  });
 
   const sourceVisibility = image?.dataset?.visibility ?? image?.metadata?.visibility ?? "public";
   const isVideo = image?.type === "video";
@@ -94,22 +105,12 @@ export function ImageModal({
     endpoint: "/api/generate_ego" | "/api/generate_corner_case",
     payload: Record<string, unknown>,
     setLoading: (value: boolean) => void,
-    onSuccess?: () => void,
+    trackJob: (job: LambdaJob) => void,
   ) => {
     setLoading(true);
     try {
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(data.error || "Request failed");
-      }
-      alert(data.message || "Request completed successfully.");
-      onSuccess?.();
-      onClose();
+      const data = await submitGenerationRequest(endpoint, payload);
+      trackJob(data);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Request failed";
       alert(`Error: ${message}`);
@@ -128,18 +129,10 @@ export function ImageModal({
 
     setIsCreatingVlmTags(true);
     try {
-      const response = await fetch("/api/create_vlm_tags", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error || "Create VLM tags failed");
-      alert(data.message || "VLM tags created successfully.");
-      onVlmSuccess?.();
-      onClose();
+      const data = await submitGenerationRequest("/api/create_vlm_tags", payload);
+      automatedTagsJob.trackJob(data);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Create VLM tags failed";
+      const message = error instanceof Error ? error.message : "Automated tagging failed";
       alert(`Error: ${message}`);
     } finally {
       setIsCreatingVlmTags(false);
@@ -158,7 +151,7 @@ export function ImageModal({
         tags: ["egocentric", selectedCameraWork, "no human"],
       },
       setIsGeneratingEgo,
-      onEgoGenSuccess,
+      perspectiveJob.trackJob,
     );
   };
 
@@ -175,7 +168,7 @@ export function ImageModal({
         tags: ["corner_case", prompt],
       },
       setIsAddingCornerCase,
-      onCornerCaseSuccess,
+      cornerCaseJob.trackJob,
     );
   };
 
@@ -332,7 +325,7 @@ export function ImageModal({
           {existingVlmRuns.length > 0 && (
             <div>
               <label className="mb-2 block font-sans-tech text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                Existing VLM annotations
+                Existing automated annotations
               </label>
               <div className="space-y-3">
                 {existingVlmRuns.map(([promptLabel, run]) => (
@@ -364,7 +357,7 @@ export function ImageModal({
           {canUseGenerationTools && isStillImage && (
             <div>
               <label className="mb-2 block font-sans-tech text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                Create VLM tags
+                Create automated tags
               </label>
               <form onSubmit={createVlmTags} className="space-y-3">
                 <div className="flex rounded-sm border border-border bg-input p-1">
@@ -400,7 +393,7 @@ export function ImageModal({
                     type="text"
                     value={customVlmPrompt}
                     onChange={(event) => setCustomVlmPrompt(event.target.value)}
-                    placeholder="Enter custom prompt for VLM tagging"
+                    placeholder="Enter a custom tagging prompt"
                     className="w-full rounded-sm border border-border bg-input px-3 py-2 text-sm placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none"
                   />
                 )}
@@ -410,9 +403,10 @@ export function ImageModal({
                   className="flex items-center gap-2 rounded-sm bg-primary px-6 py-2 text-xs font-bold uppercase text-primary-foreground shadow-lg shadow-primary/20 disabled:opacity-50"
                 >
                   {isCreatingVlmTags && <Loader2 className="h-3 w-3 animate-spin" />}
-                  {isCreatingVlmTags ? "Creating..." : "Create VLM tags"}
+                  {isCreatingVlmTags ? "Submitting..." : "Create automated tags"}
                 </button>
               </form>
+              <QueuedJobStatus jobs={automatedTagsJob.jobs} onClear={automatedTagsJob.clearJob} />
             </div>
           )}
 
@@ -438,6 +432,7 @@ export function ImageModal({
                   {isAddingCornerCase ? "Submitting..." : "Add corner case"}
                 </button>
               </form>
+              <QueuedJobStatus jobs={cornerCaseJob.jobs} onClear={cornerCaseJob.clearJob} />
             </div>
           )}
 
@@ -467,9 +462,14 @@ export function ImageModal({
                   className="flex items-center gap-2 rounded-sm bg-primary px-6 py-2 text-xs font-bold uppercase text-primary-foreground shadow-lg shadow-primary/20 disabled:opacity-50"
                 >
                   {isGeneratingEgo && <Loader2 className="h-3 w-3 animate-spin" />}
-                  {isGeneratingEgo ? "Processing..." : "Generate Ego View"}
+                  {isGeneratingEgo ? "Submitting..." : "Generate Ego View"}
                 </button>
               </form>
+              <QueuedJobStatus
+                jobs={perspectiveJob.jobs}
+                onOpenViewerPath={(viewerPath) => window.location.assign(viewerPath)}
+                onClear={perspectiveJob.clearJob}
+              />
             </div>
           )}
 
