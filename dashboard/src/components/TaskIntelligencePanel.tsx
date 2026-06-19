@@ -1,5 +1,7 @@
 import { Clock, Loader2, Workflow } from "lucide-react";
 import { useEffect, useState } from "react";
+import { QueuedJobStatus } from "./QueuedJobStatus";
+import { submitGenerationRequest, useQueuedJob } from "@/lib/lambdaJobs";
 
 export interface Subtask {
   subtask_name: string;
@@ -86,6 +88,12 @@ export default function TaskIntelligencePanel({
   const [loading, setLoading] = useState(false);
   const [tasks, setTasks] = useState<Task[] | null>(initialTasks);
   const [error, setError] = useState<string | null>(null);
+  const queuedJob = useQueuedJob(`datara-job:task-analysis:${assetId || videoID}`, (completedJob) => {
+    if (completedJob.status === "succeeded" && Array.isArray(completedJob.result?.tasks)) {
+      setTasks(completedJob.result.tasks as Task[]);
+      onGenerated?.();
+    }
+  });
 
   useEffect(() => {
     setTasks(initialTasks);
@@ -97,27 +105,13 @@ export default function TaskIntelligencePanel({
     setError(null);
 
     try {
-      const response = await fetch("/api/generate_task_intelligence", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+      const result = await submitGenerationRequest("/api/generate_task_intelligence", {
           asset_id: assetId || videoID,
           videoID,
           videoURL,
           datasetName,
-        }),
       });
-
-      const result = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to generate task intelligence");
-      }
-
-      setTasks(result.data.tasks);
-      onGenerated?.();
+      queuedJob.trackJob(result);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "An unexpected error occurred";
       setError(message);
@@ -137,16 +131,16 @@ export default function TaskIntelligencePanel({
         <div className={`flex flex-col gap-3 ${tasks ? "mb-4" : ""}`}>
           {!tasks && (
             <p className="font-sans-tech text-[11px] leading-relaxed text-muted-foreground">
-              Automatically analyze this video to extract sequential tasks and subtasks using our
-              Vision-Language Model.
+              Automatically analyze this video to extract sequential tasks and subtasks.
             </p>
           )}
           <button
             type="button"
             onClick={generateIntelligence}
+            disabled={loading || queuedJob.isActive}
             className="flex w-full items-center justify-center gap-2 rounded-sm bg-primary px-6 py-2 text-xs font-bold uppercase text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:opacity-90 disabled:opacity-50"
           >
-            {tasks ? "Regenerate Task Intelligence" : "Generate Task Intelligence"}
+            {queuedJob.isActive ? "Request in progress" : tasks ? "Regenerate Task Intelligence" : "Generate Task Intelligence"}
           </button>
         </div>
       )}
@@ -163,6 +157,8 @@ export default function TaskIntelligencePanel({
           <span className="font-sans-tech text-xs text-muted-foreground">Analyzing video frames...</span>
         </div>
       )}
+
+      <QueuedJobStatus jobs={queuedJob.jobs} onClear={queuedJob.clearJob} />
 
       {!loading && tasks && <TaskIntelligenceResults tasks={tasks} />}
     </div>

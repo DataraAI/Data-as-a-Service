@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+import posixpath
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -10,7 +12,14 @@ from urllib.parse import quote
 from azure.cosmos import CosmosClient
 from azure.core.exceptions import HttpResponseError, ResourceExistsError, ResourceNotFoundError
 from azure.identity import DefaultAzureCredential
-from azure.storage.blob import BlobSasPermissions, BlobServiceClient, generate_blob_sas
+from azure.storage.blob import (
+    BlobSasPermissions,
+    BlobServiceClient,
+    ContentSettings,
+    ContainerSasPermissions,
+    generate_blob_sas,
+    generate_container_sas,
+)
 
 from datara.config import settings
 from datara.logging import logger
@@ -193,6 +202,101 @@ class AzureService:
             expiry=datetime.now(timezone.utc) + timedelta(hours=expiry_hours),
         )
         return f"{self.account_url}{container_name}/{encoded_blob_name}?{token}"
+
+    @staticmethod
+    def generation_container_name(job_id: str) -> str:
+        normalized = str(job_id or "").strip().lower()
+        if not normalized or not normalized.replace("-", "").isalnum():
+            raise ValueError("Invalid generation job ID")
+        return f"generation-{normalized}"[:63].rstrip("-")
+
+    def create_generation_transfer(self, job_id: str, expiry_hours: int = 6) -> str:
+        if not self.account_key:
+            raise RuntimeError("Azure storage account key is required for generation transfers")
+        container_name = self.generation_container_name(job_id)
+        self.ensure_container(container_name)
+        token = generate_container_sas(
+            account_name=self.account_name,
+            container_name=container_name,
+            account_key=self.account_key,
+            permission=ContainerSasPermissions(create=True, write=True),
+            expiry=datetime.now(timezone.utc) + timedelta(hours=expiry_hours),
+        )
+        return f"{self.account_url}{container_name}?{token}"
+
+    def upload_generation_input(
+        self,
+        job_id: str,
+        *,
+        local_path: str,
+        blob_name: str,
+        content_type: str = "application/octet-stream",
+    ) -> str:
+        container_name = self.generation_container_name(job_id)
+        normalized_name = posixpath.normpath(str(blob_name or "").replace("\\", "/")).lstrip("/")
+        if not normalized_name.startswith("inputs/") or ".." in normalized_name.split("/"):
+            raise ValueError("Invalid generation input name")
+        with open(local_path, "rb") as handle:
+            self.get_container_client(container_name).upload_blob(
+                name=normalized_name,
+                data=handle,
+                overwrite=True,
+                content_settings=ContentSettings(content_type=content_type),
+            )
+        return self.generate_sas_url(container_name, normalized_name, expiry_hours=6)
+
+    def download_generation_artifacts(
+        self,
+        job_id: str,
+        manifest: dict[str, Any],
+        destination_dir: str,
+    ) -> list[str]:
+        artifacts = manifest.get("artifacts")
+        if not isinstance(artifacts, list) or not artifacts or len(artifacts) > 5000:
+            raise ValueError("Artifact manifest must contain between 1 and 5000 files")
+
+        container = self.get_container_client(self.generation_container_name(job_id))
+        destination_root = os.path.realpath(destination_dir)
+        downloaded: list[str] = []
+        total_size = 0
+        for artifact in artifacts:
+            if not isinstance(artifact, dict):
+                raise ValueError("Invalid artifact manifest entry")
+            raw_name = str(artifact.get("name") or "").replace("\\", "/")
+            normalized_name = posixpath.normpath(raw_name).lstrip("/")
+            if (
+                not normalized_name.startswith("outputs/")
+                or normalized_name != raw_name.lstrip("/")
+                or ".." in normalized_name.split("/")
+            ):
+                raise ValueError("Invalid artifact name")
+            expected_size = int(artifact.get("size") or -1)
+            if expected_size < 0:
+                raise ValueError("Invalid artifact size")
+            total_size += expected_size
+            if total_size > 20 * 1024 * 1024 * 1024:
+                raise ValueError("Artifact manifest is too large")
+
+            blob = container.get_blob_client(normalized_name)
+            actual_size = int(blob.get_blob_properties().size)
+            if actual_size != expected_size:
+                raise ValueError("Artifact size does not match the uploaded blob")
+
+            local_path = os.path.realpath(os.path.join(destination_root, *normalized_name.split("/")))
+            if os.path.commonpath([destination_root, local_path]) != destination_root:
+                raise ValueError("Invalid artifact name")
+            os.makedirs(os.path.dirname(local_path), exist_ok=True)
+            with open(local_path, "wb") as handle:
+                blob.download_blob().readinto(handle)
+            downloaded.append(local_path)
+        return downloaded
+
+    def delete_generation_transfer(self, job_id: str) -> None:
+        container = self.get_container_client(self.generation_container_name(job_id))
+        try:
+            container.delete_container()
+        except ResourceNotFoundError:
+            pass
 
     def get_blob_url(self, container_name: str, blob_name: str) -> str:
         encoded_blob_name = quote(blob_name, safe="/")

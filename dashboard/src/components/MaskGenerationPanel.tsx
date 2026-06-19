@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { Box, ChevronDown, ChevronRight, Images, Loader2, Search, WandSparkles } from "lucide-react";
+import { ChevronDown, ChevronRight, Images, Loader2, Search, WandSparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
+import { submitGenerationRequest, useQueuedJob } from "@/lib/lambdaJobs";
+import { QueuedJobStatus } from "./QueuedJobStatus";
 
-type SectionKey = "maskGeneration" | "occlusionRemoval" | "egocentricGeneration" | "handMotion";
+type SectionKey = "maskGeneration" | "occlusionRemoval" | "egocentricGeneration";
 
 const EGO_CAMERA_WORK_OPTIONS = [
   "Rotate right 45 degrees",
@@ -38,7 +40,6 @@ interface MaskGenerationPanelProps {
   imageCount: number;
   refreshKey?: number;
   showEgocentricGeneration?: boolean;
-  showHandMotionGeneration?: boolean;
   onGenerationSuccess?: () => void;
   onOcclusionSuccess?: () => void;
   onOpenViewerPath: (viewerPath: string) => void;
@@ -53,7 +54,6 @@ export function MaskGenerationPanel({
   imageCount,
   refreshKey = 0,
   showEgocentricGeneration = false,
-  showHandMotionGeneration = false,
   onGenerationSuccess,
   onOcclusionSuccess,
   onOpenViewerPath,
@@ -62,7 +62,6 @@ export function MaskGenerationPanel({
     maskGeneration: true,
     occlusionRemoval: true,
     egocentricGeneration: true,
-    handMotion: true,
   });
 
   const [prompt, setPrompt] = useState("");
@@ -87,6 +86,12 @@ export function MaskGenerationPanel({
   const [selectedSubtractInstance, setSelectedSubtractInstance] = useState("");
 
   const [isSubmittingOcclusion, setIsSubmittingOcclusion] = useState(false);
+  const maskJob = useQueuedJob(`datara-job:masks:${routePath}`, (completedJob) => {
+    if (completedJob.status === "succeeded") onGenerationSuccess?.();
+  });
+  const occlusionJob = useQueuedJob(`datara-job:occlusion:${routePath}`, (completedJob) => {
+    if (completedJob.status === "succeeded") onOcclusionSuccess?.();
+  });
 
   const canSubmitMask = prompt.trim().length > 0 && !isSubmittingMask;
 
@@ -258,40 +263,16 @@ export function MaskGenerationPanel({
 
     setIsSubmittingMask(true);
     try {
-      const response = await fetch("/api/generate_masks", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const data = await submitGenerationRequest("/api/generate_masks", {
           route_path: routePath,
           prompt: prompt.trim(),
-        }),
       });
-
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(data.error || "Mask generation failed");
-      }
-
-      const message =
-        typeof data.message === "string" && data.message.trim()
-          ? data.message
-          : "Mask folders are ready to explore.";
-
-      toast.success(message, {
-        description:
-          "Open the new prompt folder to browse the separate instance folders created for this run.",
-        action:
-          typeof data.mask_viewer_path === "string" && data.mask_viewer_path.trim()
-            ? {
-                label: "Open mask folders",
-                onClick: () => onOpenViewerPath(data.mask_viewer_path),
-              }
-            : undefined,
+      maskJob.trackJob(data);
+      toast.success(`Ticket #${data.ticket_number} is queued.`, {
+        description: "You can follow its position and estimated wait below.",
       });
 
       setPrompt("");
-      onGenerationSuccess?.();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Mask generation failed";
       toast.error("Mask generation did not complete", {
@@ -307,11 +288,7 @@ export function MaskGenerationPanel({
 
     setIsSubmittingOcclusion(true);
     try {
-      const response = await fetch("/api/remove_occlusion", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const data = await submitGenerationRequest("/api/remove_occlusion", {
           route_path: routePath,
           include: {
             prompt_slug: selectedPrimaryPrompt,
@@ -325,34 +302,11 @@ export function MaskGenerationPanel({
                 instance_name: combineSubtractInstances ? undefined : selectedSubtractInstance,
               }
             : undefined,
-        }),
       });
-
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(data.error || "Occlusion removal failed");
-      }
-
-      toast.success(
-        typeof data.message === "string" && data.message.trim()
-          ? data.message
-          : "Occlusion removal finished successfully.",
-        {
-          description: "A new video was saved under occl_del for this selection.",
-          action:
-            typeof data.output_viewer_path === "string" && data.output_viewer_path.trim()
-              ? {
-                  label: "Open result",
-                  onClick: () => onOpenViewerPath(data.output_viewer_path),
-                }
-              : undefined,
-        },
-      );
-
-      onOcclusionSuccess?.();
-      if (typeof data.output_viewer_path === "string" && data.output_viewer_path.trim()) {
-        onOpenViewerPath(data.output_viewer_path);
-      }
+      occlusionJob.trackJob(data);
+      toast.success(`Ticket #${data.ticket_number} is queued.`, {
+        description: "You can follow its position and estimated wait below.",
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Occlusion removal failed";
       toast.error("Occlusion removal did not complete", {
@@ -361,12 +315,6 @@ export function MaskGenerationPanel({
     } finally {
       setIsSubmittingOcclusion(false);
     }
-  }
-
-  function handleHandMotionPlaceholder() {
-    toast.info("Hand motion generation UI is ready", {
-      description: "Backend execution will be connected separately.",
-    });
   }
 
   return (
@@ -419,8 +367,13 @@ export function MaskGenerationPanel({
                 className="h-10 w-full font-sans-tech text-xs text-primary-foreground"
               >
                 {isSubmittingMask && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                {isSubmittingMask ? "Creating masks..." : "Create masks for this folder"}
+                {isSubmittingMask ? "Submitting..." : "Create masks for this folder"}
               </Button>
+              <QueuedJobStatus
+                jobs={maskJob.jobs}
+                onOpenViewerPath={onOpenViewerPath}
+                onClear={maskJob.clearJob}
+              />
             </form>
           )}
         </div>
@@ -444,7 +397,7 @@ export function MaskGenerationPanel({
             <div className="space-y-4 bg-background/30 px-4 pb-4">
               <p className="text-[11px] leading-relaxed text-muted-foreground">
                 Pick a mask folder, choose one instance or combine them all, and we will remove
-                that object into a new occl_del result video.
+                that object into a new result video.
               </p>
 
               <div className="space-y-2">
@@ -639,8 +592,13 @@ export function MaskGenerationPanel({
                 className="h-10 w-full font-sans-tech text-xs text-primary-foreground"
               >
                 {isSubmittingOcclusion && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                {isSubmittingOcclusion ? "Running model..." : "Remove occlusion"}
+                {isSubmittingOcclusion ? "Submitting..." : "Remove occlusion"}
               </Button>
+              <QueuedJobStatus
+                jobs={occlusionJob.jobs}
+                onOpenViewerPath={onOpenViewerPath}
+                onClear={occlusionJob.clearJob}
+              />
             </div>
           )}
         </div>
@@ -685,39 +643,6 @@ export function MaskGenerationPanel({
           </div>
         )}
 
-        {showHandMotionGeneration && (
-          <div className="border-b border-border">
-            <button
-              type="button"
-              onClick={() => toggleSection("handMotion")}
-              className="group flex w-full items-center px-4 py-3 transition-colors hover:bg-background/80"
-            >
-              {expandedSections.handMotion ? (
-                <ChevronDown className="mr-2 h-3 w-3 text-primary" />
-              ) : (
-                <ChevronRight className="mr-2 h-3 w-3" />
-              )}
-              <span className="font-sans-tech font-bold tracking-wider text-foreground transition-colors group-hover:text-primary">
-                Hand Motion Generation
-              </span>
-            </button>
-            {expandedSections.handMotion && (
-              <div className="space-y-3 bg-background/30 px-4 pb-4">
-                <p className="text-[11px] leading-relaxed text-muted-foreground">
-                  Create 3D hand meshes from this egocentric frame sequence.
-                </p>
-                <Button
-                  type="button"
-                  onClick={handleHandMotionPlaceholder}
-                  className="h-10 w-full font-sans-tech text-xs text-primary-foreground"
-                >
-                  <Box className="h-3.5 w-3.5" />
-                  Create hand mesh
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
       <div className="flex justify-between border-t border-border bg-background p-3 font-sans-tech text-[10px] select-none text-muted-foreground">

@@ -1,4 +1,24 @@
 services:
+  rabbitmq:
+    image: rabbitmq:3.13
+    container_name: datara-rabbitmq
+    env_file:
+      - ../config/.env
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-datara-producer}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_DEFAULT_VHOST:-datara}
+    ports:
+      - "${RABBITMQ_BIND_IP:-127.0.0.1}:5672:5672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   backend:
     build:
       context: ..
@@ -10,12 +30,11 @@ services:
     environment:
       - FLASK_ENV=staging
       - PYTHONUNBUFFERED=1
-      - SAAS_KEY_PATH=/run/secrets/azure_to_lambda
+      - CELERY_BROKER_URL=amqp://${RABBITMQ_DEFAULT_USER:-datara-producer}:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672/${RABBITMQ_DEFAULT_VHOST:-datara}
     volumes:
       - ../config:/app/config:ro
       - ./uploads:/app/backend/uploads
       - ./logs:/app/backend/logs
-      - /home/roboteyeview/.ssh/azure_to_lambda:/run/secrets/azure_to_lambda:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:5151/health')"]
@@ -23,6 +42,9 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
 
   dashboard:
     build:
@@ -55,5 +77,6 @@ services:
     restart: unless-stopped
 
 volumes:
+  rabbitmq_data:
   uploads:
   logs:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import threading
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -93,6 +94,54 @@ Index("idx_datasets_visibility", datasets_table.c.visibility)
 Index("idx_datasets_storage", datasets_table.c.storage_container, datasets_table.c.storage_prefix)
 Index("idx_datasets_route", datasets_table.c.category, datasets_table.c.brand, datasets_table.c.dataset_name)
 
+lambda_jobs_table = Table(
+    "lambda_jobs",
+    metadata,
+    Column("job_id", String(32), primary_key=True),
+    Column("ticket_number", Integer, nullable=False, unique=True),
+    Column("job_type", String(64), nullable=False),
+    Column("job_label", String(128), nullable=False),
+    Column("owner_user_id", Integer, ForeignKey("users.user_id"), nullable=False),
+    Column("dataset_id", String(32), ForeignKey("datasets.id"), nullable=True),
+    Column("asset_id", Text, nullable=True),
+    Column("scope_key", Text, nullable=False),
+    Column("payload_json", Text, nullable=False),
+    Column("execution_context_json", Text, nullable=True),
+    Column("request_fingerprint", String(64), nullable=False),
+    Column("active_dedupe_key", String(128), nullable=True),
+    Column("status", String(16), nullable=False),
+    Column("stage", String(32), nullable=False),
+    Column("user_message", Text, nullable=False),
+    Column("result_json", Text, nullable=True),
+    Column("error_message", Text, nullable=True),
+    Column("retry_count", Integer, nullable=False, server_default=text("0")),
+    Column("celery_task_id", String(255), nullable=True),
+    Column("worker_id", String(255), nullable=True),
+    Column("lease_expires_at", String(64), nullable=True),
+    Column("heartbeat_at", String(64), nullable=True),
+    Column("estimated_duration_seconds", Integer, nullable=False),
+    Column("created_at", String(64), nullable=False),
+    Column("queued_at", String(64), nullable=False),
+    Column("started_at", String(64), nullable=True),
+    Column("completed_at", String(64), nullable=True),
+    Column("updated_at", String(64), nullable=False),
+    CheckConstraint("status IN ('queued', 'running', 'succeeded', 'failed')", name="ck_lambda_jobs_status"),
+    CheckConstraint(
+        "stage IN ('Queued', 'Preparing', 'Processing', 'Finalizing', 'Complete', 'Failed')",
+        name="ck_lambda_jobs_stage",
+    ),
+)
+
+Index("idx_lambda_jobs_owner_status", lambda_jobs_table.c.owner_user_id, lambda_jobs_table.c.status)
+Index("idx_lambda_jobs_ticket", lambda_jobs_table.c.ticket_number)
+Index(
+    "idx_lambda_jobs_active_dedupe",
+    lambda_jobs_table.c.active_dedupe_key,
+    unique=True,
+    mssql_where=lambda_jobs_table.c.active_dedupe_key.is_not(None),
+    sqlite_where=lambda_jobs_table.c.active_dedupe_key.is_not(None),
+)
+
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -120,8 +169,10 @@ class SQLStore:
         self._ensure_sqlite_parent_dir(self.database_url)
         self.engine: Engine = create_engine(self.database_url, future=True, pool_pre_ping=True)
         self.session_factory = sessionmaker(bind=self.engine, future=True, expire_on_commit=False)
+        self._lambda_job_lock = threading.RLock()
         self.users = users_table
         self.datasets = datasets_table
+        self.lambda_jobs = lambda_jobs_table
         self.initialize()
 
     @staticmethod
@@ -174,6 +225,9 @@ class SQLStore:
     def initialize(self) -> None:
         self._assert_supported_schema()
         metadata.create_all(self.engine)
+        from datara.services.lambda_job_store import LambdaJobStore
+
+        LambdaJobStore(self).migrate_schema()
 
     def _assert_supported_schema(self) -> None:
         inspector = inspect(self.engine)
@@ -306,6 +360,18 @@ class SQLStore:
         with self.session_factory() as session:
             value = session.execute(
                 select(func.count()).select_from(self.datasets).where(and_(*filters))
+            ).scalar_one()
+        return int(value)
+
+    def count_lambda_jobs_for_user(self, user_id: int | str) -> int:
+        normalized_user_id = self._coerce_user_id(user_id)
+        if normalized_user_id is None:
+            return 0
+        with self.session_factory() as session:
+            value = session.execute(
+                select(func.count())
+                .select_from(self.lambda_jobs)
+                .where(self.lambda_jobs.c.owner_user_id == normalized_user_id)
             ).scalar_one()
         return int(value)
 
@@ -568,6 +634,8 @@ class SQLStore:
 
         if self.count_dataset_user_references(user["id"], include_deleted=True) > 0:
             raise ValueError("Cannot delete a user who still has dataset records.")
+        if self.count_lambda_jobs_for_user(user["id"]) > 0:
+            raise ValueError("Cannot delete a user who still has request records.")
 
         with self.session_factory.begin() as session:
             session.execute(

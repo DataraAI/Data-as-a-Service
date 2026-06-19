@@ -1,6 +1,27 @@
 version: '3.8'
 
 services:
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: datara-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-datara-producer}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-datara-dev-only}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_DEFAULT_VHOST:-datara}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - datara-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
   # MongoDB - Document Database
   mongodb:
     image: mongo:7.0
@@ -38,6 +59,7 @@ services:
       FLASK_ENV: development
       FLASK_DEBUG: 1
       MONGODB_URI: mongodb://admin:password@mongodb:27017/datara_db
+      CELERY_BROKER_URL: amqp://${RABBITMQ_DEFAULT_USER:-datara-producer}:${RABBITMQ_DEFAULT_PASS:-datara-dev-only}@rabbitmq:5672/${RABBITMQ_DEFAULT_VHOST:-datara}
     volumes:
       - ../backend:/app/backend
       - ../uploads:/app/backend/uploads
@@ -45,6 +67,8 @@ services:
       - ../models:/app/backend/models
     depends_on:
       mongodb:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     networks:
       - datara-network
@@ -106,7 +130,6 @@ services:
     depends_on:
       - dashboard
       - backend
-      - robotics
     networks:
       - datara-network
     restart: unless-stopped
@@ -130,6 +153,8 @@ networks:
     driver: bridge
 
 volumes:
+  rabbitmq_data:
+    driver: local
   mongo_data:
     driver: local
   mongo_config:
