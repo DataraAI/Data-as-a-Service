@@ -41,7 +41,6 @@ import {
   AlertCircle,
   Folder,
   Loader2,
-  LockKeyhole,
   MoreVertical,
   RefreshCw,
   Terminal,
@@ -716,30 +715,6 @@ export default function DataViewer() {
     [images],
   );
   const maskSourceImageCount = sourceImages.length;
-  const isEgoPath = useMemo(
-    () =>
-      pathSegments.slice(datasetRootDepth).some((segment) => segment.toLowerCase() === "egos"),
-    [datasetRootDepth, pathSegments],
-  );
-  const isOrigPath = useMemo(
-    () =>
-      pathSegments.slice(datasetRootDepth).some((segment) => segment.toLowerCase() === "orig"),
-    [datasetRootDepth, pathSegments],
-  );
-  const showEgocentricGeneration = useMemo(() => {
-    if (!isLeaf || !isOrigPath || sourceImages.length === 0) return false;
-    return sourceImages.every((image) => {
-      const view = String(image.metadata?.view ?? "").trim().toLowerCase();
-      return view === "exo";
-    });
-  }, [isLeaf, isOrigPath, sourceImages]);
-  const showHandMotionGeneration = useMemo(() => {
-    if (!isLeaf || !isEgoPath || sourceImages.length === 0) return false;
-    return sourceImages.every((image) => {
-      const view = String(image.metadata?.view ?? "").trim().toLowerCase();
-      return view === "ego" || view === "egos";
-    });
-  }, [isEgoPath, isLeaf, sourceImages]);
   const showMaskPanel = canManageDatasets && isLeaf && !isMaskPath && maskSourceImageCount > 0;
 
   const allSelectableTags = useMemo(
@@ -1103,19 +1078,6 @@ export default function DataViewer() {
               <Breadcrumbs />
             </div>
           </div>
-          <div className="ml-auto flex items-center gap-4 font-sans-tech text-[11px] font-medium text-slate-500 sm:ml-0 sm:gap-6 sm:text-xs">
-            {isAuthenticated && isApproved ? (
-              <span className="flex items-center gap-2 text-primary">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
-                Live Connection
-              </span>
-            ) : (
-              <span className="flex items-center gap-2">
-                <LockKeyhole className="h-3.5 w-3.5" />
-                Signed out
-              </span>
-            )}
-          </div>
         </div>
 
         {authLoading ? (
@@ -1288,8 +1250,6 @@ export default function DataViewer() {
               <MaskGenerationPanel
                 routePath={currentDisplayPath}
                 imageCount={maskSourceImageCount}
-                showEgocentricGeneration={showEgocentricGeneration}
-                showHandMotionGeneration={showHandMotionGeneration}
                 onGenerationSuccess={() => setReloadTick((value) => value + 1)}
                 onOpenViewerPath={(viewerPath) => navigate(viewerPath)}
               />

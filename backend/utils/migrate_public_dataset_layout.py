@@ -12,7 +12,8 @@ The new public layout is:
     <vertical>/<task>/README.md
     <vertical>/<task>/<task>.mp4
     <vertical>/<task>/misc/orig/*.png
-    <vertical>/<task>/misc/egos/*.png
+    <vertical>/<task>/misc/egos/egos/*.png
+    <vertical>/<task>/misc/egos/cornerCases/*.png
     <vertical>/<task>/misc/masks/**
 
 Generated assets are copied when they already exist. The script never deletes
@@ -517,7 +518,8 @@ This dataset is stored in the public DataraAI dataset layout.
 
 - `{task_slug}.mp4`: original input video.
 - `misc/orig/`: original frame sequence when available.
-- `misc/egos/`: ego-view frame outputs when available.
+- `misc/egos/egos/`: ego-view frame outputs when available.
+- `misc/egos/cornerCases/`: corner-case frame outputs when available.
 - `misc/masks/`: generated masks when available.
 - `hand_meshes/`: OBJ hand mesh files when available.
 
@@ -700,9 +702,33 @@ def migrated_copy_plans(
             target_blob = f"{target_prefix}/{suffix}"
             kind = "frame"
 
-        elif include_frames and lower.startswith("misc/egos/") and lower.endswith(FRAME_EXTENSIONS):
+        elif include_frames and lower.startswith("misc/egos/egos/") and lower.endswith(FRAME_EXTENSIONS):
             target_blob = f"{target_prefix}/{suffix}"
             kind = "frame"
+
+        elif include_frames and lower.startswith("misc/egos/cornercases/") and lower.endswith(FRAME_EXTENSIONS):
+            target_blob = f"{target_prefix}/misc/egos/cornerCases/{suffix[len('misc/egos/cornerCases/'):]}"
+            kind = "corner_case_frame"
+            doc_updates = {"view": "corner_images_controlnet", "sourceType": "corner_case"}
+
+        elif (
+            include_frames
+            and lower.startswith("misc/egos/corner_images_controlnet/")
+            and lower.endswith(FRAME_EXTENSIONS)
+        ):
+            target_blob = f"{target_prefix}/misc/egos/cornerCases/{suffix[len('misc/egos/corner_images_controlnet/'):]}"
+            kind = "corner_case_frame"
+            doc_updates = {"view": "corner_images_controlnet", "sourceType": "corner_case"}
+
+        elif include_frames and lower.startswith("misc/egos/") and lower.endswith(FRAME_EXTENSIONS):
+            ego_suffix = suffix[len("misc/egos/") :]
+            if "/" in ego_suffix:
+                target_blob = f"{target_prefix}/misc/egos/cornerCases/{ego_suffix}"
+                kind = "corner_case_frame"
+                doc_updates = {"view": "corner_images_controlnet", "sourceType": "corner_case"}
+            else:
+                target_blob = f"{target_prefix}/misc/egos/egos/{ego_suffix}"
+                kind = "frame"
 
         elif include_frames and lower.startswith("misc/masks/") and lower.endswith(FRAME_EXTENSIONS):
             target_blob = f"{target_prefix}/{suffix}"
@@ -713,7 +739,7 @@ def migrated_copy_plans(
             kind = "frame"
 
         elif include_frames and lower.startswith("egos/") and lower.endswith(FRAME_EXTENSIONS):
-            target_blob = f"{target_prefix}/misc/egos/{suffix[len('egos/'):]}"
+            target_blob = f"{target_prefix}/misc/egos/egos/{suffix[len('egos/'):]}"
             kind = "frame"
 
         elif include_frames and lower.startswith("masks/") and lower.endswith(FRAME_EXTENSIONS):
@@ -721,12 +747,12 @@ def migrated_copy_plans(
             kind = "mask_frame"
 
         elif include_frames and lower.startswith("corner_images_controlnet/") and lower.endswith(FRAME_EXTENSIONS):
-            target_blob = f"{target_prefix}/misc/egos/corner_images_controlnet/{suffix[len('corner_images_controlnet/'):]}"
+            target_blob = f"{target_prefix}/misc/egos/cornerCases/{suffix[len('corner_images_controlnet/'):]}"
             kind = "corner_case_frame"
             doc_updates = {"view": "corner_images_controlnet", "sourceType": "corner_case"}
 
         elif include_frames and lower.startswith("misc/corner_images_controlnet/") and lower.endswith(FRAME_EXTENSIONS):
-            target_blob = f"{target_prefix}/misc/egos/corner_images_controlnet/{suffix[len('misc/corner_images_controlnet/'):]}"
+            target_blob = f"{target_prefix}/misc/egos/cornerCases/{suffix[len('misc/corner_images_controlnet/'):]}"
             kind = "corner_case_frame"
             doc_updates = {"view": "corner_images_controlnet", "sourceType": "corner_case"}
 
