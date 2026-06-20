@@ -715,6 +715,18 @@ export default function DataViewer() {
     [images],
   );
   const maskSourceImageCount = sourceImages.length;
+  const isOrigPath = useMemo(
+    () =>
+      pathSegments.slice(datasetRootDepth).some((segment) => segment.toLowerCase() === "orig"),
+    [datasetRootDepth, pathSegments],
+  );
+  const showEgocentricGeneration = useMemo(() => {
+    if (!isLeaf || !isOrigPath || sourceImages.length === 0) return false;
+    return sourceImages.every((image) => {
+      const view = String(image.metadata?.view ?? "").trim().toLowerCase();
+      return view === "exo";
+    });
+  }, [isLeaf, isOrigPath, sourceImages]);
   const showMaskPanel = canManageDatasets && isLeaf && !isMaskPath && maskSourceImageCount > 0;
 
   const allSelectableTags = useMemo(
@@ -1250,8 +1262,9 @@ export default function DataViewer() {
               <MaskGenerationPanel
                 routePath={currentDisplayPath}
                 imageCount={maskSourceImageCount}
+                showEgocentricGeneration={showEgocentricGeneration}
                 onGenerationSuccess={() => setReloadTick((value) => value + 1)}
-                onOpenViewerPath={(viewerPath) => navigate(viewerPath)}
+                onOpenViewerPath={(viewerPath) => navigate(withViewerBase(viewerPath, viewerBasePath))}
               />
             )}
 

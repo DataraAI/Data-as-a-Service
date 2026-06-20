@@ -1,6 +1,8 @@
 import { toast } from "@/components/ui/sonner";
 import { Box, Loader2 } from "lucide-react";
 import { useState } from "react";
+import { QueuedJobStatus } from "./QueuedJobStatus";
+import { submitGenerationRequest, useQueuedJob } from "@/lib/lambdaJobs";
 
 interface HandMeshGenerationPanelProps {
   assetId: string;
@@ -20,6 +22,13 @@ export function HandMeshGenerationPanel({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastOutputPath, setLastOutputPath] = useState<string | null>(null);
+  const queuedJob = useQueuedJob(`datara-job:hand-motion:${assetId}`, (completedJob) => {
+    const outputViewerPath = completedJob.result?.viewer_path ?? "";
+    if (completedJob.status === "succeeded" && outputViewerPath) {
+      setLastOutputPath(outputViewerPath);
+      onGenerated?.(outputViewerPath);
+    }
+  });
 
   const generateHandMesh = async () => {
     if (!videoUrl.trim()) {
@@ -31,54 +40,15 @@ export function HandMeshGenerationPanel({
     setError(null);
 
     try {
-      const response = await fetch("/api/generate_hand_mesh", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const result = await submitGenerationRequest("/api/generate_hand_mesh", {
           video_url: videoUrl,
           route_path: routePath,
           asset_id: assetId,
-        }),
       });
-
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(result.error || "Hand mesh generation failed");
-      }
-
-      const outputViewerPath =
-        typeof result.output_viewer_path === "string" ? result.output_viewer_path : "";
-      const videoCount = Array.isArray(result.output_videos) ? result.output_videos.length : 0;
-      const artifactCount = Array.isArray(result.output_artifacts) ? result.output_artifacts.length : 0;
-      const mcaps: string[] = Array.isArray(result.output_mcaps) ? result.output_mcaps : [];
-      const mcapCount = mcaps.length;
-
-      if (outputViewerPath) {
-        setLastOutputPath(outputViewerPath);
-      }
-
-      const outputSummary = [
-        videoCount > 0 ? `${videoCount} video${videoCount === 1 ? "" : "s"}` : "",
-        artifactCount > 0 ? `${artifactCount} file${artifactCount === 1 ? "" : "s"}` : "",
-        mcapCount > 0 ? `${mcapCount} MCAP${mcapCount === 1 ? "" : "s"} for Foxglove` : "",
-      ]
-        .filter(Boolean)
-        .join(" and ");
-
-      toast.success(result.message || "Hand mesh outputs are ready.", {
-        description: outputSummary
-          ? `${outputSummary} saved to the dataset root and misc/handmeshes folder.`
-          : "Open the dataset to view the results.",
-        action: outputViewerPath
-          ? {
-            label: "Open results",
-            onClick: () => onGenerated?.(outputViewerPath),
-          }
-          : undefined,
+      queuedJob.trackJob(result);
+      toast.success(`Ticket #${result.ticket_number} is queued.`, {
+        description: "You can follow its position and estimated wait below.",
       });
-
-      onGenerated?.(outputViewerPath);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Hand mesh generation failed";
       setError(message);
@@ -104,11 +74,11 @@ export function HandMeshGenerationPanel({
       <button
         type="button"
         onClick={() => void generateHandMesh()}
-        disabled={loading || !videoUrl.trim()}
+        disabled={loading || queuedJob.isActive || !videoUrl.trim()}
         className="flex w-full items-center justify-center gap-2 rounded-sm bg-primary px-6 py-2 text-xs font-bold uppercase text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:opacity-90 disabled:opacity-50"
       >
         {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-        {loading ? "Generating hand mesh..." : "Generate hand mesh"}
+        {queuedJob.isActive ? "Request in progress" : loading ? "Submitting..." : "Generate hand mesh"}
       </button>
 
       {error !== null && (
@@ -117,7 +87,13 @@ export function HandMeshGenerationPanel({
         </div>
       )}
 
-      {lastOutputPath !== null && !loading && (
+      <QueuedJobStatus
+        jobs={queuedJob.jobs}
+        onOpenViewerPath={(viewerPath) => onGenerated?.(viewerPath)}
+        onClear={queuedJob.clearJob}
+      />
+
+      {lastOutputPath && !loading && (
         <button
           type="button"
           onClick={() => onGenerated?.(lastOutputPath)}

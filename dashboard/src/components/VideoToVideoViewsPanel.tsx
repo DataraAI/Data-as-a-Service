@@ -1,5 +1,7 @@
 import { Loader2, Video } from "lucide-react";
 import { useState } from "react";
+import { QueuedJobStatus } from "./QueuedJobStatus";
+import { submitGenerationRequest, useQueuedJob } from "@/lib/lambdaJobs";
 
 type Trajectory = "up" | "down" | "left" | "right" | "zoom_in" | "zoom_out";
 
@@ -34,40 +36,27 @@ export default function VideoToVideoViewsPanel({
     );
     const [cached, setCached] = useState(false);
     const [trajectory, setTrajectory] = useState<Trajectory>("left");
+    const queuedJob = useQueuedJob(`datara-job:video-perspective:${assetId || videoID}:${trajectory}`, (completedJob) => {
+        if (completedJob.status === "succeeded" && completedJob.result?.proxy_url) {
+            setGeneratedVideoUrl(completedJob.result.proxy_url);
+            setCached(false);
+            onGenerated?.();
+        }
+    });
 
     const generateViews = async () => {
         setLoading(true);
         setError(null);
 
         try {
-            const response = await fetch("/api/generate_video_to_video_views", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
+            const result = await submitGenerationRequest("/api/generate_video_to_video_views", {
                     asset_id: assetId || videoID,
                     videoID,
                     videoURL,
                     datasetName,
                     trajectory,
-                }),
             });
-
-            const result = await response.json().catch(() => ({}));
-
-            if (!response.ok) {
-                throw new Error(
-                    result.error || "Failed to generate video views",
-                );
-            }
-
-            const proxyUrl = result.data?.proxy_url;
-            if (!proxyUrl) {
-                throw new Error("Server did not return a video URL");
-            }
-
-            setGeneratedVideoUrl(proxyUrl);
-            setCached(result.cached ?? false);
-            onGenerated?.();
+            queuedJob.trackJob(result);
         } catch (err: any) {
             setError(err.message || "An unexpected error occurred");
         } finally {
@@ -119,9 +108,10 @@ export default function VideoToVideoViewsPanel({
                     <button
                         type="button"
                         onClick={generateViews}
+                        disabled={loading || queuedJob.isActive}
                         className="flex w-full items-center justify-center gap-2 rounded-sm bg-primary px-6 py-2 text-xs font-bold uppercase text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:opacity-90 disabled:opacity-50"
                     >
-                        Generate Views
+                        {queuedJob.isActive ? "Request in progress" : "Generate Views"}
                     </button>
                 </div>
             )}
@@ -152,6 +142,8 @@ export default function VideoToVideoViewsPanel({
                     </span>
                 </div>
             )}
+
+            <QueuedJobStatus jobs={queuedJob.jobs} onClear={queuedJob.clearJob} />
 
             {/* Success: generated video player */}
             {generatedVideoUrl && !loading && (
