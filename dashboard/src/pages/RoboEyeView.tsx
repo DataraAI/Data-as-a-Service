@@ -200,40 +200,6 @@ function CollapsibleSection({
   );
 }
 
-function VerticalFlowArrow() {
-  return (
-    <div className="flex justify-center py-1">
-      <div className="flex flex-col items-center">
-        <div className="h-14 w-[2px] rounded-[2px] bg-gradient-to-b from-blue-700 to-teal-600 dark:from-blue-300 dark:to-teal-300" />
-        <div className="h-0 w-0 border-x-[7px] border-x-transparent border-t-[11px] border-t-teal-600 dark:border-t-teal-300" />
-      </div>
-    </div>
-  );
-}
-
-function EngineBlock({
-  title,
-  description,
-}: {
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="rounded-[18px] border border-teal-200 bg-gradient-to-br from-teal-50 via-white to-blue-50 px-6 py-6 text-slate-950 shadow-[0_20px_50px_rgba(13,148,136,0.12)] dark:border-slate-700 dark:bg-[radial-gradient(circle_at_top,_rgba(13,148,136,0.18),_transparent_48%),linear-gradient(180deg,#0f172a_0%,#111827_100%)] dark:text-white dark:shadow-[0_20px_50px_rgba(15,23,42,0.2)]">
-      <div className="mb-4 flex items-center gap-3">
-        <div className="grid h-11 w-11 place-items-center rounded-[12px] border border-teal-200 bg-teal-100 text-teal-700 dark:border-white/20 dark:bg-white/10 dark:text-teal-200">
-          <Sparkles className="h-5 w-5" />
-        </div>
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-teal-700 dark:text-teal-200">RoboAnnotator</p>
-          <p className="text-[18px] font-black tracking-[-0.03em]">{title}</p>
-        </div>
-      </div>
-      <p className="max-w-[540px] text-[13px] leading-6 text-slate-600 dark:text-slate-300">{description}</p>
-    </div>
-  );
-}
-
 function InlineEngineCard({ detail }: { detail: string }) {
   return (
     <div className="flex justify-center xl:hidden">
@@ -483,6 +449,44 @@ function VideoPreviewTile({ asset, aspectClass = "aspect-[16/9]" }: { asset: Vid
   );
 }
 
+function V2VRow({
+  title,
+  description,
+  engineDetail,
+  outputAssets,
+}: {
+  title: string;
+  description: string;
+  engineDetail: string;
+  outputAssets: VideoAsset[];
+}) {
+  return (
+    <div className="rounded-[16px] border border-slate-200/80 bg-slate-50/70 p-5 dark:border-slate-700 dark:bg-slate-900/50">
+      <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-400">Video transformation</p>
+      <p className="mt-2 text-[19px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">{title}</p>
+      <p className="mt-2 max-w-[760px] text-[13px] leading-7 text-slate-500 dark:text-slate-400">{description}</p>
+
+      <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,0.98fr)_118px_minmax(0,1.12fr)] xl:items-center">
+        <div>
+          <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-blue-700 dark:text-blue-200">Input video</p>
+          <VideoPreviewTile asset={VIDEO_OUTPUTS.input} />
+        </div>
+
+        <I2IPipe detail={engineDetail} />
+
+        <div>
+          <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-teal-700 dark:text-teal-200">Output video</p>
+          <div className="grid grid-cols-1 gap-3">
+            {outputAssets.map((asset) => (
+              <VideoPreviewTile key={asset.caption} asset={asset} />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function RoboEyeView() {
   const [expandedImage, setExpandedImage] = useState<ExpandedImage | null>(null);
 
@@ -517,52 +521,19 @@ export default function RoboEyeView() {
               accent="teal"
               defaultOpen
             >
-              <div className="mx-auto w-full max-w-[680px] rounded-[18px] border border-slate-200 bg-white p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700 dark:bg-slate-900">
-                <div className="mb-4">
-                  <p className="text-[18px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">Input Video</p>
-                  <p className="mt-2 max-w-[560px] text-[13px] leading-7 text-slate-500 dark:text-slate-400">
-                    A single front grille source clip feeds the transformations below. Hover to preview the original input before it enters the generation pipeline.
-                  </p>
-                </div>
-                <div className="mx-auto max-w-[390px]">
-                  <VideoPreviewTile asset={VIDEO_OUTPUTS.input} />
-                </div>
-              </div>
-
-              <VerticalFlowArrow />
-
-              <div className="py-1">
-                <div className="mx-auto max-w-[880px]">
-                  <EngineBlock
-                    title="Video Transformation Engine"
-                    description="The same source sequence can be routed through different RoboAnnotator generation paths, producing cleaned footage and entirely new viewpoints without changing the underlying task context."
-                  />
-                </div>
-              </div>
-
-              <VerticalFlowArrow />
-
-              <div className="grid gap-4 lg:grid-cols-[minmax(0,1.22fr)_minmax(0,0.88fr)]">
-                <div className="rounded-[16px] border border-slate-200 bg-white p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700 dark:bg-slate-900">
-                  <p className="text-[22px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">New Angle Video Generation</p>
-                  <p className="mt-3 max-w-[560px] text-[13px] leading-7 text-slate-500 dark:text-slate-400">
-                    Generates multiple alternative perspectives from the same clip so one real capture can feed several robot-view training scenarios.
-                  </p>
-                  <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                    <VideoPreviewTile asset={VIDEO_OUTPUTS.newAngleLeft} />
-                    <VideoPreviewTile asset={VIDEO_OUTPUTS.newAngleUp} />
-                  </div>
-                </div>
-
-                <div className="rounded-[16px] border border-slate-200 bg-white p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700 dark:bg-slate-900">
-                  <p className="text-[22px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">Occlusion Removal</p>
-                  <p className="mt-3 max-w-[420px] text-[13px] leading-7 text-slate-500 dark:text-slate-400">
-                    Removes foreground blockers while preserving the scene geometry and the underlying task action.
-                  </p>
-                  <div className="mt-5">
-                    <VideoPreviewTile asset={VIDEO_OUTPUTS.occlusionRemoval} />
-                  </div>
-                </div>
+              <div className="flex flex-col gap-4 rounded-[18px] border border-slate-200 bg-white p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700 dark:bg-slate-900 sm:p-6">
+                <V2VRow
+                  title="Occlusion Removal"
+                  description="Removes foreground blockers while preserving the scene geometry and the underlying task action."
+                  engineDetail="Occlusion Removal"
+                  outputAssets={[VIDEO_OUTPUTS.occlusionRemoval]}
+                />
+                <V2VRow
+                  title="New Angle Video Generation"
+                  description="Generates multiple alternative perspectives from the same clip so one real capture can feed several robot-view training scenarios."
+                  engineDetail="New Angle Generation"
+                  outputAssets={[VIDEO_OUTPUTS.newAngleLeft, VIDEO_OUTPUTS.newAngleUp]}
+                />
               </div>
             </CollapsibleSection>
 
