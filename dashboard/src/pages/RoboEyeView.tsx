@@ -2,14 +2,16 @@ import { useEffect, useRef, useState } from "react";
 import { ChevronDown, Eye, Sparkles, X } from "lucide-react";
 import FooterSection from "@/components/FooterSection";
 import Navigation from "@/components/Navigation";
+import pduInstallationVideo from "@/assets/Products/RoboAnnotator/v2v/input/pduInstallation.mp4";
+import pduInstallationPoster from "@/assets/Products/RoboAnnotator/v2v/input/pduInstallation-poster.jpg";
 import sourceFrontGrilleVideo from "@/assets/Products/RoboAnnotator/v2v/input/source-front-grille.mp4";
 import sourceFrontGrillePoster from "@/assets/Products/RoboAnnotator/v2v/input/source-front-grille-poster.jpg";
 import frontGrilleLeftVideo from "@/assets/Products/RoboAnnotator/v2v/newangles/front-grille-left.mp4";
 import frontGrilleLeftPoster from "@/assets/Products/RoboAnnotator/v2v/newangles/front-grille-left-poster.jpg";
 import frontGrilleUpVideo from "@/assets/Products/RoboAnnotator/v2v/newangles/front-grille-up.mp4";
 import frontGrilleUpPoster from "@/assets/Products/RoboAnnotator/v2v/newangles/front-grille-up-poster.jpg";
-import occlusionRemovedVideo from "@/assets/Products/RoboAnnotator/v2v/occl_removal/occlusion-removed.mp4";
-import occlusionRemovedPoster from "@/assets/Products/RoboAnnotator/v2v/occl_removal/occlusion-removed-poster.jpg";
+import noPersonVideo from "@/assets/Products/RoboAnnotator/v2v/occl_removal/no_person.mp4";
+import noPersonPoster from "@/assets/Products/RoboAnnotator/v2v/occl_removal/no_person-poster.jpg";
 import exoCarAutomation from "@/assets/Products/RoboAnnotator/i2i/exo2ego/2exo_carautomation.png";
 import egoCarAutomationFront from "@/assets/Products/RoboAnnotator/i2i/exo2ego/2ego_carautomation.png";
 import egoCarAutomationSide from "@/assets/Products/RoboAnnotator/i2i/exo2ego/2ego_carautomation1.png";
@@ -118,15 +120,20 @@ const MASK_SEGMENTATION_OUTPUTS: ImageAsset[] = [
 ];
 
 const VIDEO_OUTPUTS = {
-  input: {
+  pduInstallationInput: {
+    videoSrc: pduInstallationVideo,
+    posterSrc: pduInstallationPoster,
+    caption: "PDU installation source clip",
+  },
+  frontGrilleInput: {
     videoSrc: sourceFrontGrilleVideo,
     posterSrc: sourceFrontGrillePoster,
-    caption: "Original source clip",
+    caption: "Front grille source clip",
   },
   occlusionRemoval: {
-    videoSrc: occlusionRemovedVideo,
-    posterSrc: occlusionRemovedPoster,
-    caption: "Occlusion removed output",
+    videoSrc: noPersonVideo,
+    posterSrc: noPersonPoster,
+    caption: "PDU installation with installer removed",
   },
   newAngleLeft: {
     videoSrc: frontGrilleLeftVideo,
@@ -453,11 +460,13 @@ function V2VRow({
   title,
   description,
   engineDetail,
+  inputAsset,
   outputAssets,
 }: {
   title: string;
   description: string;
   engineDetail: string;
+  inputAsset: VideoAsset;
   outputAssets: VideoAsset[];
 }) {
   return (
@@ -469,7 +478,7 @@ function V2VRow({
       <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,0.98fr)_118px_minmax(0,1.12fr)] xl:items-center">
         <div>
           <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-blue-700 dark:text-blue-200">Input video</p>
-          <VideoPreviewTile asset={VIDEO_OUTPUTS.input} />
+          <VideoPreviewTile asset={inputAsset} />
         </div>
 
         <I2IPipe detail={engineDetail} />
@@ -524,14 +533,16 @@ export default function RoboEyeView() {
               <div className="flex flex-col gap-4 rounded-[18px] border border-slate-200 bg-white p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700 dark:bg-slate-900 sm:p-6">
                 <V2VRow
                   title="Occlusion Removal"
-                  description="Removes foreground blockers while preserving the scene geometry and the underlying task action."
+                  description="Removes the installer from PDU installation footage while preserving the data-center rack, equipment, and underlying task context."
                   engineDetail="Occlusion Removal"
+                  inputAsset={VIDEO_OUTPUTS.pduInstallationInput}
                   outputAssets={[VIDEO_OUTPUTS.occlusionRemoval]}
                 />
                 <V2VRow
                   title="New Angle Video Generation"
                   description="Generates multiple alternative perspectives from the same clip so one real capture can feed several robot-view training scenarios."
                   engineDetail="New Angle Generation"
+                  inputAsset={VIDEO_OUTPUTS.frontGrilleInput}
                   outputAssets={[VIDEO_OUTPUTS.newAngleLeft, VIDEO_OUTPUTS.newAngleUp]}
                 />
               </div>
