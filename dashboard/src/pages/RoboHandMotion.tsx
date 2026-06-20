@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Hand, X } from "lucide-react";
+import { ChevronDown, Hand, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import FooterSection from "@/components/FooterSection";
 import Navigation from "@/components/Navigation";
@@ -65,13 +65,49 @@ function SectionHeader({
 
   return (
     <div className="mb-4 flex items-center gap-2">
-      <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-3 dark:border-slate-700 dark:bg-slate-900">
+      <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-3 transition-all duration-200 group-hover:scale-[1.02] group-hover:border-slate-300 group-hover:bg-slate-50 group-hover:shadow-[0_10px_28px_rgba(15,23,42,0.08)] dark:border-slate-700 dark:bg-slate-900 dark:group-hover:border-slate-600 dark:group-hover:bg-slate-900/90 dark:group-hover:shadow-[0_10px_28px_rgba(15,23,42,0.22)]">
         <span className={`h-2 w-2 rounded-[2px] ${dot}`} />
         <span className="text-[14px] font-extrabold text-slate-950 dark:text-slate-100">{title}</span>
         <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">{summary}</span>
       </div>
-      <div className={`h-px flex-1 bg-gradient-to-r ${line} to-transparent`} />
+      <div className={`h-px flex-1 bg-gradient-to-r ${line} to-transparent transition-all duration-200 group-hover:opacity-100 group-hover:from-slate-300 dark:group-hover:from-slate-500`} />
     </div>
+  );
+}
+
+function CollapsibleSection({
+  title,
+  summary,
+  accent,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  summary: string;
+  accent: "blue" | "purple" | "orange";
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+
+  return (
+    <section className="flex flex-col gap-5">
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        aria-expanded={open}
+        className="group flex w-full items-center gap-3 rounded-[18px] p-2 text-left transition-colors"
+      >
+        <div className="min-w-0 flex-1">
+          <SectionHeader title={title} summary={summary} accent={accent} />
+        </div>
+        <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-slate-600 transition-all duration-200 group-hover:scale-105 group-hover:border-slate-300 group-hover:bg-slate-50 group-hover:text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:group-hover:border-slate-600 dark:group-hover:bg-slate-900/90 dark:group-hover:text-slate-100">
+          <ChevronDown className={`h-5 w-5 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+        </div>
+      </button>
+
+      {open ? children : null}
+    </section>
   );
 }
 
@@ -305,8 +341,12 @@ export default function RoboHandMotion() {
             </section>
 
             <section className="flex flex-col gap-10">
-              <div>
-                <SectionHeader title="Sequence Tracking" summary="Input towel video to tracked hand output" accent="purple" />
+              <CollapsibleSection
+                title="Sequence Tracking"
+                summary="Input towel video to tracked hand output"
+                accent="purple"
+                defaultOpen
+              >
                 <div className="rounded-[18px] border border-slate-200 bg-white p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700 dark:bg-slate-900">
                   <p className="text-[24px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">Sequence-Level Hand Tracking</p>
                   <p className="mt-3 max-w-[860px] text-[13px] leading-7 text-slate-500 dark:text-slate-400">
@@ -327,10 +367,14 @@ export default function RoboHandMotion() {
                     </div>
                   </div>
                 </div>
-              </div>
+              </CollapsibleSection>
 
-              <div>
-                <SectionHeader title="Frame Reconstruction" summary="Single frame to left and right hand 3D meshes" accent="blue" />
+              <CollapsibleSection
+                title="Frame Reconstruction"
+                summary="Single frame to left and right hand 3D meshes"
+                accent="blue"
+                defaultOpen
+              >
                 <div className="rounded-[18px] border border-slate-200 bg-white p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700 dark:bg-slate-900">
                   <p className="text-[24px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">Frame-by-Frame 3D Hand Mesh Generation</p>
                   <p className="mt-3 max-w-[860px] text-[13px] leading-7 text-slate-500 dark:text-slate-400">
@@ -354,7 +398,7 @@ export default function RoboHandMotion() {
                     </div>
                   </div>
                 </div>
-              </div>
+              </CollapsibleSection>
 
               <div className="mt-1 flex flex-col justify-between gap-6 rounded-[14px] border-[1.5px] border-dashed border-violet-300 bg-gradient-to-br from-violet-50 to-orange-50 px-8 py-7 lg:flex-row lg:items-center dark:border-violet-900/50 dark:from-violet-950/20 dark:to-orange-950/20">
                 <div className="flex items-center gap-4">
