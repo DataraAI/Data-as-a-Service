@@ -1,6 +1,8 @@
 import type { DatasetAsset, DatasetManifest, DatasetMiscSection } from "@/lib/dataViewerTypes";
+import { trainingDataDownloadCoordinator } from "@/lib/sequentialDownloadCoordinator";
+import { toast } from "@/components/ui/sonner";
 import { ChevronDown, ChevronRight, Download, FileJson, FileText, Film, FolderOpen } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 interface DatasetLandingProps {
   manifest: DatasetManifest;
@@ -156,6 +158,11 @@ export function DatasetLanding({
   const [readmeOpen, setReadmeOpen] = useState(false);
   const [readmeText, setReadmeText] = useState("");
   const [readmeError, setReadmeError] = useState("");
+  const downloadState = useSyncExternalStore(
+    trainingDataDownloadCoordinator.subscribe,
+    trainingDataDownloadCoordinator.getSnapshot,
+    trainingDataDownloadCoordinator.getSnapshot,
+  );
 
   const visibleMiscSections = useMemo(
     () => {
@@ -182,6 +189,58 @@ export function DatasetLanding({
     ],
     [manifest.downloads, manifest.primary_video],
   );
+
+  const handleDownloadAll = async () => {
+    if (downloadState.status === "running") return;
+
+    const items = downloadableAssets.map(({ asset }) => ({
+      url: assetUrl(asset),
+      filename: asset.name,
+    }));
+
+    if (items.length === 0) {
+      toast.info("No training-ready files are available yet.");
+      return;
+    }
+
+    const summary = await trainingDataDownloadCoordinator.start(items, {
+      checkAvailability: async (item) => {
+        if (!item.url) return false;
+        const response = await fetch(item.url, {
+          method: "HEAD",
+          credentials: "include",
+        });
+        return response.ok;
+      },
+      triggerDownload: (item) => {
+        if (!item.url) throw new Error("Unavailable download");
+
+        const link = document.createElement("a");
+        link.href = item.url;
+        link.download = item.filename;
+        link.style.display = "none";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      },
+      waitBetweenDownloads: () =>
+        new Promise((resolve) => window.setTimeout(resolve, 350)),
+    });
+
+    if (summary.started === 0) {
+      toast.error("No downloads could be started.", {
+        description: "The files may be unavailable or blocked by the browser.",
+      });
+    } else if (summary.skipped > 0) {
+      toast.warning("Some downloads could not be started.", {
+        description: `${summary.started} started, ${summary.skipped} skipped.`,
+      });
+    } else {
+      toast.success("All training-ready downloads started.", {
+        description: `${summary.started} file${summary.started === 1 ? "" : "s"} sent to the browser.`,
+      });
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -214,10 +273,32 @@ export function DatasetLanding({
       <section className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(340px,0.9fr)]">
         <div className="space-y-6">
           <section>
-            <div className="mb-3 flex items-center gap-3">
+            <div className="mb-3 flex flex-wrap items-center gap-3">
               <span className="h-3 w-3 rounded-[4px] bg-slate-950" />
               <h2 className="text-lg font-black text-slate-950">Downloadable Files</h2>
-              <div className="h-px flex-1 bg-gradient-to-r from-slate-300 to-transparent" />
+              <div className="hidden h-px min-w-8 flex-1 bg-gradient-to-r from-slate-300 to-transparent sm:block" />
+              <button
+                type="button"
+                onClick={() => void handleDownloadAll()}
+                disabled={downloadableAssets.length === 0 || downloadState.status === "running"}
+                aria-label="Download all training ready data"
+                title="Download all training ready data"
+                className="ml-auto inline-flex h-9 shrink-0 items-center gap-2 rounded-xl border border-border bg-card px-3 text-xs font-bold text-foreground shadow-[0_8px_20px_rgba(15,23,42,0.04)] transition-colors hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Download className="h-3.5 w-3.5" />
+                {downloadState.status === "running" ? (
+                  <span>
+                    {downloadState.current === 0
+                      ? "Preparing downloads"
+                      : `Downloading ${downloadState.current} of ${downloadState.total}`}
+                  </span>
+                ) : (
+                  <>
+                    <span className="sm:hidden">Download all</span>
+                    <span className="hidden sm:inline">Download all training ready data</span>
+                  </>
+                )}
+              </button>
             </div>
             {downloadableAssets.length > 0 ? (
               <div className="grid gap-4 sm:grid-cols-2">
