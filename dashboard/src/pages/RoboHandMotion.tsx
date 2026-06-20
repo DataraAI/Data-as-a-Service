@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Hand, Sparkles, X } from "lucide-react";
+import { Hand, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import FooterSection from "@/components/FooterSection";
 import Navigation from "@/components/Navigation";
@@ -11,13 +11,6 @@ import leftHandMeshOne from "@/assets/Products/RoboHandMotion/left1.png";
 import leftHandMeshTwo from "@/assets/Products/RoboHandMotion/left2.png";
 import rightHandMeshOne from "@/assets/Products/RoboHandMotion/right1.png";
 import rightHandMeshTwo from "@/assets/Products/RoboHandMotion/right2.png";
-
-type StepCard = {
-  title: string;
-  description: string;
-  accent: "blue" | "purple" | "orange";
-  icon: "capture" | "engine" | "training";
-};
 
 type VideoAsset = {
   videoSrc: string;
@@ -34,37 +27,6 @@ type ExpandedImage = {
   src: string;
   alt: string;
 };
-
-const STATS = [
-  { value: "16", label: "Datasets" },
-  { value: "5,610+", label: "Hours Labeled" },
-  { value: "4", label: "Verticals" },
-  { value: "Patented", label: "Hand Motion Pipeline", featured: true },
-];
-
-const PROCESS_STEPS: StepCard[] = [
-  {
-    title: "Input Video",
-    description:
-      "Third-person task video captures the full hand motion sequence, object interactions, and scene context.",
-    accent: "blue",
-    icon: "capture",
-  },
-  {
-    title: "RoboHandMotion Engine",
-    description:
-      "Sequence tracking and per-frame reconstruction generate motion-aware hand outputs from real footage.",
-    accent: "purple",
-    icon: "engine",
-  },
-  {
-    title: "Tracking & 3D Mesh Outputs",
-    description:
-      "Hover-ready tracked video plus frame-level left and right hand 3D meshes for downstream learning workflows.",
-    accent: "orange",
-    icon: "training",
-  },
-];
 
 const VIDEO_SHOWCASE = {
   input: {
@@ -88,92 +50,6 @@ const RIGHT_HAND_MESHES: ImageAsset[] = [
   { src: rightHandMeshOne, alt: "Right hand 3D mesh example one" },
   { src: rightHandMeshTwo, alt: "Right hand 3D mesh example two" },
 ];
-
-function StatStrip() {
-  return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      {STATS.map((stat) => (
-        <div
-          key={`${stat.value}-${stat.label}`}
-          className={`rounded-[14px] border px-5 py-4 ${
-            stat.featured
-              ? "border-violet-200 bg-gradient-to-br from-violet-50 to-orange-50 dark:border-violet-900/50 dark:from-violet-950/20 dark:to-orange-950/20"
-              : "border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
-          }`}
-        >
-          <p
-            className={`text-[22px] font-black tracking-[-0.03em] ${
-              stat.featured ? "text-violet-700 dark:text-violet-200" : "text-slate-950 dark:text-slate-100"
-            }`}
-          >
-            {stat.value}
-          </p>
-          <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
-            {stat.label}
-          </p>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function StepIcon({ type }: { type: StepCard["icon"] }) {
-  if (type === "capture") {
-    return (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
-        <rect x="3" y="5" width="18" height="14" rx="2.5" />
-        <circle cx="12" cy="12" r="3.5" />
-      </svg>
-    );
-  }
-
-  if (type === "engine") {
-    return <Hand className="h-4 w-4" />;
-  }
-
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-    </svg>
-  );
-}
-
-function StepCardView({ step }: { step: StepCard }) {
-  const classes =
-    step.accent === "blue"
-      ? "border-blue-200 bg-blue-50/80 text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-200"
-      : step.accent === "purple"
-        ? "border-violet-200 bg-violet-50/80 text-violet-700 dark:border-violet-900/50 dark:bg-violet-950/30 dark:text-violet-200"
-        : "border-orange-200 bg-orange-50/80 text-orange-700 dark:border-orange-900/50 dark:bg-orange-950/30 dark:text-orange-200";
-
-  const iconClasses =
-    step.accent === "blue"
-      ? "border-blue-300 bg-blue-100 dark:border-blue-800 dark:bg-blue-950/50"
-      : step.accent === "purple"
-        ? "border-violet-300 bg-violet-100 dark:border-violet-800 dark:bg-violet-950/50"
-        : "border-orange-300 bg-orange-100 dark:border-orange-800 dark:bg-orange-950/50";
-
-  return (
-    <div className={`flex min-h-[176px] flex-1 flex-col rounded-[12px] border px-[22px] py-5 ${classes}`}>
-      <div className={`mb-3 grid h-9 w-9 place-items-center rounded-[8px] border ${iconClasses}`}>
-        <StepIcon type={step.icon} />
-      </div>
-      <p className="mb-2 text-[16px] font-extrabold text-slate-950 dark:text-slate-100">{step.title}</p>
-      <p className="text-[11px] leading-6 text-slate-500 dark:text-slate-400">{step.description}</p>
-    </div>
-  );
-}
-
-function FlowArrow() {
-  return (
-    <div className="hidden shrink-0 items-center px-5 lg:flex">
-      <div className="flex items-center">
-        <div className="h-[2px] w-14 rounded-[2px] bg-gradient-to-r from-blue-700 to-violet-600" />
-        <div className="h-0 w-0 border-y-[7px] border-y-transparent border-l-[11px] border-l-violet-600" />
-      </div>
-    </div>
-  );
-}
 
 function SectionHeader({
   title,
@@ -422,24 +298,10 @@ export default function RoboHandMotion() {
                   Patented
                 </span>
               </div>
-              <p className="max-w-[780px] text-[15px] leading-8 text-slate-500 dark:text-slate-400">
-                Patented pipeline for sequence-level hand tracking and frame-level 3D hand mesh generation from real-world task video.
+              <p className="max-w-[900px] text-[15px] leading-8 text-slate-500 dark:text-slate-400">
+                Transform real-world task video into training-ready hand-motion data with tracked overlay video,
+                frame-level reconstruction, and left/right 3D hand mesh outputs.
               </p>
-            </section>
-
-            <section className="mb-10">
-              <StatStrip />
-            </section>
-
-            <section className="mb-10 rounded-[14px] border border-slate-200 bg-slate-50/80 px-8 py-7 dark:border-slate-800 dark:bg-slate-900/60">
-              <p className="mb-6 text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-400">How It Works</p>
-              <div className="lg:flex lg:items-stretch">
-                <StepCardView step={PROCESS_STEPS[0]} />
-                <FlowArrow />
-                <StepCardView step={PROCESS_STEPS[1]} />
-                <FlowArrow />
-                <StepCardView step={PROCESS_STEPS[2]} />
-              </div>
             </section>
 
             <section className="flex flex-col gap-10">

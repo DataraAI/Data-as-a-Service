@@ -18,22 +18,21 @@ import { JobsPanel } from "./JobsPanel";
 
 type NavItem = {
   label: string;
-  subtitle: string;
   href: string;
   key: string;
 };
 
 const GLOBAL_NAV_ITEMS: NavItem[] = [
-  { key: "products", label: "Products", subtitle: "AI Data", href: "/#products" },
-  { key: "solutions", label: "Solutions", subtitle: "Use Cases", href: "/#solutions" },
-  { key: "customers", label: "Customers", subtitle: "Case Studies", href: "/#customers" },
-  { key: "company", label: "Company", subtitle: "Team · Mission", href: "/company" },
+  { key: "products", label: "Products", href: "/#products" },
+  { key: "solutions", label: "Use Cases", href: "/#solutions" },
+  { key: "customers", label: "Customers", href: "/#customers" },
+  { key: "company", label: "Company", href: "/company" },
 ];
 
 const HOME_SECTION_KEYS = ["products", "solutions", "customers"] as const;
 type HomeSectionKey = (typeof HOME_SECTION_KEYS)[number];
 
-const PRODUCT_NAV_ITEMS: NavItem[] = [
+const PRODUCT_NAV_ITEMS: Array<NavItem & { subtitle: string }> = [
   {
     key: "robodatahub",
     label: "RoboDataHub",
@@ -423,9 +422,6 @@ export default function Navigation() {
                         onClick={(event) => handleGlobalNavClick(event, item.href)}
                       >
                         <span className="truncate text-[14px] font-bold leading-none">{item.label}</span>
-                        <span className="mt-1 text-[10px] uppercase tracking-[0.18em] opacity-70">
-                          {item.subtitle}
-                        </span>
                       </Link>
                       <div className="flex items-stretch py-1.5 pr-2">
                         <ProductMenu
@@ -456,9 +452,6 @@ export default function Navigation() {
                       }`}
                   >
                     <span className="truncate text-[14px] font-bold leading-none">{item.label}</span>
-                    <span className="mt-1 text-[10px] uppercase tracking-[0.18em] opacity-70">
-                      {item.subtitle}
-                    </span>
                     <span
                       className={`absolute inset-x-[20%] bottom-0 h-0.5 rounded-t-full ${
                         isActive
@@ -570,9 +563,6 @@ export default function Navigation() {
                         }}
                       >
                         <div className="text-sm font-semibold">{item.label}</div>
-                        <div className="mt-1 text-[10px] uppercase tracking-[0.18em] opacity-60">
-                          {item.subtitle}
-                        </div>
                       </Link>
                       <div className="flex items-stretch border-l border-current/10 px-2 py-1">
                         <ProductMenu
@@ -601,9 +591,6 @@ export default function Navigation() {
                     }}
                   >
                     <div className="text-sm font-semibold">{item.label}</div>
-                    <div className="mt-1 text-[10px] uppercase tracking-[0.18em] opacity-60">
-                      {item.subtitle}
-                    </div>
                   </Link>
                 );
               })}

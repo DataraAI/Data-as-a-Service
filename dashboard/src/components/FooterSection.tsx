@@ -47,7 +47,7 @@ export default function FooterSection() {
                 to="/#solutions"
                 className="text-sm font-extrabold text-slate-950 transition-colors hover:text-primary"
               >
-                Solutions
+                Use Cases
               </Link>
             </div>
 

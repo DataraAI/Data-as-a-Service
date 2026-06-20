@@ -1,4 +1,4 @@
-import { Clock, Loader2, Workflow } from "lucide-react";
+import { Loader2, Workflow } from "lucide-react";
 import { useEffect, useState } from "react";
 import { QueuedJobStatus } from "./QueuedJobStatus";
 import { submitGenerationRequest, useQueuedJob } from "@/lib/lambdaJobs";
@@ -31,50 +31,6 @@ interface TaskIntelligencePanelProps {
   datasetName?: string;
   initialTasks?: Task[] | null;
   onGenerated?: () => void;
-}
-
-function TaskIntelligenceResults({ tasks }: { tasks: Task[] }) {
-  return (
-    <div className="space-y-4">
-      {tasks.map((task, index) => (
-        <div key={index} className="overflow-hidden rounded-sm border border-border bg-card/30">
-          <div className="border-b border-border bg-background/50 p-3">
-            <div className="flex items-start justify-between gap-2">
-              <h3 className="font-sans-tech text-sm font-bold text-foreground">{task.task_name}</h3>
-              <span className="inline-flex shrink-0 items-center gap-1 rounded-sm border border-primary/20 bg-primary/10 px-1.5 py-0.5 font-mono-tech text-[10px] text-primary">
-                <Clock className="h-3 w-3" />
-                {task.start_time} - {task.end_time}
-              </span>
-            </div>
-            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{task.description}</p>
-          </div>
-
-          <div className="divide-y divide-border bg-background/20 p-2">
-            <div className="mb-2 px-2 pt-1 font-mono-tech text-[10px] uppercase tracking-wider text-muted-foreground">
-              Subtasks
-            </div>
-            {task.subtasks.map((subtask, subIndex) => (
-              <div
-                key={subIndex}
-                title="Click-to-jump coming soon"
-                className="group cursor-pointer rounded-sm p-2 transition-colors hover:bg-primary/5"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <span className="font-sans-tech text-xs font-semibold text-foreground transition-colors group-hover:text-primary">
-                    {subtask.subtask_name}
-                  </span>
-                  <span className="shrink-0 font-mono-tech text-[10px] text-muted-foreground">
-                    {subtask.start_time} - {subtask.end_time}
-                  </span>
-                </div>
-                <p className="mt-1 line-clamp-2 text-[11px] text-muted-foreground">{subtask.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
 }
 
 export default function TaskIntelligencePanel({
@@ -159,8 +115,6 @@ export default function TaskIntelligencePanel({
       )}
 
       <QueuedJobStatus jobs={queuedJob.jobs} onClear={queuedJob.clearJob} />
-
-      {!loading && tasks && <TaskIntelligenceResults tasks={tasks} />}
     </div>
   );
 }
