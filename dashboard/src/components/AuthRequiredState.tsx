@@ -15,7 +15,7 @@ export default function AuthRequiredState({
 
   if (isLoading) {
     return (
-      <div className="flex min-h-[320px] items-center justify-center rounded-sm border border-border bg-card/20 p-8 text-muted-foreground">
+      <div className="flex min-h-[320px] items-center justify-center rounded-sm border border-border bg-card p-8 text-muted-foreground">
         Checking account access...
       </div>
     );
@@ -25,7 +25,7 @@ export default function AuthRequiredState({
 
   return (
     <div className="flex min-h-[360px] items-center justify-center px-4 py-10">
-      <div className="w-full max-w-2xl rounded-sm border border-border bg-card/40 p-8 text-center shadow-2xl shadow-black/10">
+      <div className="w-full max-w-2xl rounded-sm border border-border bg-card p-8 text-center shadow-2xl shadow-black/10">
         <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full border border-primary/30 bg-primary/10">
           {pendingApproval ? (
             <ShieldAlert className="h-8 w-8 text-primary" />

@@ -942,7 +942,7 @@ export default function DataViewer() {
           return (
             <div
               key={folder.full_path}
-              className="group relative cursor-pointer overflow-hidden rounded-[28px] border border-slate-200 bg-white p-6 transition-all duration-300 hover:-translate-y-1 hover:border-primary/20 hover:shadow-[0_28px_70px_rgba(15,23,42,0.12)]"
+              className="group relative cursor-pointer overflow-hidden rounded-[28px] border border-slate-200 bg-card p-6 transition-all duration-300 hover:-translate-y-1 hover:border-primary/20 hover:shadow-[0_28px_70px_rgba(15,23,42,0.12)]"
               onClick={() =>
                 navigate(
                   folder.viewer_path
@@ -974,7 +974,7 @@ export default function DataViewer() {
                         onClick={() => setFolderDropdownOpen(null)}
                         aria-hidden
                       />
-                      <div className="absolute right-0 z-20 mt-1 w-40 rounded-2xl border border-slate-200 bg-white py-1 shadow-[0_20px_40px_rgba(15,23,42,0.12)]">
+                      <div className="absolute right-0 z-20 mt-1 w-40 rounded-2xl border border-slate-200 bg-card py-1 shadow-[0_20px_40px_rgba(15,23,42,0.12)]">
                         <button
                           type="button"
                           onClick={(event) => {
@@ -994,7 +994,7 @@ export default function DataViewer() {
               )}
 
               <div className="relative z-10 flex flex-col items-center gap-6">
-                <div className="h-44 w-full overflow-hidden rounded-[20px] border border-slate-200 bg-slate-50 transition-all group-hover:border-primary/25 group-hover:shadow-[0_0_18px_rgba(13,148,136,0.08)]">
+                <div className="h-44 w-full overflow-hidden rounded-[20px] border border-slate-200 bg-muted/60 transition-all group-hover:border-primary/25 group-hover:shadow-[0_0_18px_rgba(13,148,136,0.08)]">
                   <DatasetFolderCover
                     key={folder.full_path}
                     fullPath={folder.source_path ?? folder.full_path}
@@ -1026,7 +1026,7 @@ export default function DataViewer() {
         })}
 
         {items.length === 0 && !loading && (
-          <div className="col-span-full flex flex-col items-center justify-center rounded-[28px] border border-dashed border-slate-300 bg-slate-50 py-20 text-slate-500">
+          <div className="col-span-full flex flex-col items-center justify-center rounded-[28px] border border-dashed border-slate-300 bg-muted/60 py-20 text-slate-500">
             <AlertCircle className="mb-4 h-12 w-12 text-slate-400" />
             <p className="font-sans-tech text-lg">No data found</p>
             {canManageDatasets && (
@@ -1154,9 +1154,9 @@ export default function DataViewer() {
 
             <div className="flex min-w-0 flex-1 flex-col bg-background/50">
               {!isCatalogLanding && (
-                <div className="flex min-h-10 flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50/70 px-4 py-2 sm:flex-nowrap sm:py-0">
+                <div className="flex min-h-10 flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-card px-4 py-2 sm:flex-nowrap sm:py-0">
                   <div className="flex items-center space-x-4">
-                    <div className="flex items-center rounded-sm border border-slate-200 bg-white px-2 py-1 text-xs shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                    <div className="flex items-center rounded-sm border border-slate-200 bg-background px-2 py-1 text-xs shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
                       <span className="mr-2 font-sans-tech text-slate-500">Items:</span>
                       <span className="font-sans-tech text-slate-900">{itemCount}</span>
                     </div>

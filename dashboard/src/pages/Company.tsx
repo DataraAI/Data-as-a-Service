@@ -83,7 +83,7 @@ export default function Company() {
           </p>
         </section>
 
-        <section className="border-b border-slate-200 bg-slate-50 px-4 py-9 sm:px-6">
+        <section className="border-b border-slate-200 bg-background px-4 py-9 sm:px-6">
           <div className="mx-auto grid max-w-[1300px] md:grid-cols-3">
             <div className="py-5 md:pr-8">
               <div className="text-[17px] font-extrabold tracking-[-0.01em] text-slate-950">Real-World First</div>
@@ -165,7 +165,7 @@ export default function Company() {
           </div>
         </section>
 
-        <section className="border-y border-slate-200 bg-slate-50 px-4 py-10 sm:px-6">
+        <section className="border-y border-slate-200 bg-background px-4 py-10 sm:px-6">
           <div className="mx-auto max-w-[1300px]">
             <div className="text-center text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
               Recognized & Backed By
@@ -174,7 +174,7 @@ export default function Company() {
               {CREDENTIALS.map((credential) => (
                 <div
                   key={credential.label}
-                  className="flex items-center gap-2 rounded-[10px] border border-slate-200 bg-white px-5 py-2.5 text-[13px] font-semibold text-slate-950"
+                  className="flex items-center gap-2 rounded-[10px] border border-slate-200 bg-card px-5 py-2.5 text-[13px] font-semibold text-slate-950"
                 >
                   <span className={`h-2 w-2 rounded-full ${credential.dot}`} />
                   {credential.label}
@@ -201,7 +201,7 @@ export default function Company() {
               </Link>
               <Link
                 to="/robodatahub"
-                className="inline-flex h-11 items-center justify-center rounded-[9px] border border-slate-200 bg-white px-7 text-sm font-semibold text-slate-600 transition-colors hover:border-primary/30 hover:text-primary"
+                className="inline-flex h-11 items-center justify-center rounded-[9px] border border-slate-200 bg-card px-7 text-sm font-semibold text-slate-600 transition-colors hover:border-primary/30 hover:text-primary"
               >
                 Explore RoboDataHub
               </Link>

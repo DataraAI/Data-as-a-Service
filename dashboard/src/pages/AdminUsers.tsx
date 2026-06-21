@@ -71,7 +71,7 @@ function SummaryCard({
   icon: ReactNode;
 }) {
   return (
-    <div className="rounded-sm border border-border bg-card/30 p-5 shadow-xl shadow-black/10">
+    <div className="rounded-sm border border-border bg-card p-5 shadow-xl shadow-black/10">
       <div className="mb-3 flex items-center justify-between">
         <span className="font-mono-tech text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
           {label}
@@ -249,7 +249,7 @@ export default function AdminUsers() {
     return (
       <article
         key={managedUser.id}
-        className="rounded-sm border border-border bg-card/25 p-5 shadow-xl shadow-black/10"
+        className="rounded-sm border border-border bg-card p-5 shadow-xl shadow-black/10"
       >
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0 flex-1">
@@ -435,7 +435,7 @@ export default function AdminUsers() {
         <div className="pointer-events-none absolute inset-0 bg-grid-pattern opacity-[0.05]" aria-hidden />
         <Navigation />
         <main className="relative z-10 px-4 pb-10 pt-24 sm:px-6">
-          <div className="mx-auto max-w-[1440px] rounded-sm border border-border bg-card/30 p-8 shadow-2xl shadow-black/10">
+          <div className="mx-auto max-w-[1440px] rounded-sm border border-border bg-card p-8 shadow-2xl shadow-black/10">
             <div className="mb-4 inline-flex items-center gap-2 rounded-sm border border-primary/30 bg-primary/10 px-3 py-1 font-mono-tech text-xs uppercase tracking-[0.22em] text-primary">
               Restricted
             </div>
@@ -459,7 +459,7 @@ export default function AdminUsers() {
 
       <main className="relative z-10 px-4 pb-10 pt-24 sm:px-6">
         <div className="mx-auto max-w-[1440px] space-y-8">
-          <header className="rounded-sm border border-border bg-card/30 p-8 shadow-2xl shadow-black/10">
+          <header className="rounded-sm border border-border bg-card p-8 shadow-2xl shadow-black/10">
             <div className="mb-4 inline-flex items-center gap-2 rounded-sm border border-primary/30 bg-primary/10 px-3 py-1 font-mono-tech text-xs uppercase tracking-[0.22em] text-primary">
               Datara Access Control
             </div>
@@ -507,7 +507,7 @@ export default function AdminUsers() {
           )}
 
           {loading ? (
-            <div className="flex min-h-[220px] items-center justify-center rounded-sm border border-border bg-card/20 text-muted-foreground">
+            <div className="flex min-h-[220px] items-center justify-center rounded-sm border border-border bg-card text-muted-foreground">
               <Loader2 className="mr-2 h-5 w-5 animate-spin" />
               Loading users...
             </div>

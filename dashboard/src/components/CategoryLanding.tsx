@@ -99,7 +99,7 @@ export function CategoryLanding({
 
   return (
     <div className="mx-auto w-full max-w-[1440px] px-4 py-10 sm:px-6 md:py-14">
-      <div className="overflow-hidden rounded-[30px] border border-slate-200 bg-white shadow-[0_30px_70px_rgba(15,23,42,0.1)]">
+      <div className="overflow-hidden rounded-[30px] border border-slate-200 bg-card shadow-[0_30px_70px_rgba(15,23,42,0.1)]">
         <section className="relative overflow-hidden border-b border-slate-200">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(13,148,136,0.06),transparent_52%),radial-gradient(ellipse_at_bottom_left,rgba(15,23,42,0.03),transparent_46%)]" />
           <div className="relative p-6 md:p-8">
@@ -150,13 +150,13 @@ export function CategoryLanding({
                   />
                 )}
                 <div className="absolute inset-0 bg-[linear-gradient(160deg,rgba(255,255,255,0.12),transparent_45%,rgba(15,23,42,0.08))]" />
-                <div className="absolute bottom-4 left-4 rounded-[10px] border border-slate-200 bg-white/90 px-3 py-2 backdrop-blur-sm">
+                <div className="absolute bottom-4 left-4 rounded-[10px] border border-slate-200 bg-card/90 px-3 py-2 backdrop-blur-sm">
                   <div className="text-[8px] font-black uppercase tracking-[0.18em] text-primary">
                     {landing.heroBadge}
                   </div>
                   <div className="mt-0.5 text-[12px] font-bold text-slate-950">{landing.heroTitle}</div>
                 </div>
-                <div className="absolute right-4 top-4 rounded-[8px] border border-slate-200 bg-white/90 px-3 py-1.5 text-[11px] font-semibold text-slate-500 backdrop-blur-sm">
+                <div className="absolute right-4 top-4 rounded-[8px] border border-slate-200 bg-card/90 px-3 py-1.5 text-[11px] font-semibold text-slate-500 backdrop-blur-sm">
                   <strong className="text-primary">{landing.heroPill}</strong>
                 </div>
               </div>
@@ -165,7 +165,7 @@ export function CategoryLanding({
                 {heroStats.map((stat) => (
                   <div
                     key={`${landing.routeKey}-${stat.label}`}
-                    className="flex min-h-[68px] flex-col justify-center rounded-[12px] border border-slate-200 bg-slate-50 px-4 py-3"
+                    className="flex min-h-[68px] flex-col justify-center rounded-[12px] border border-slate-200 bg-muted/60 px-4 py-3"
                   >
                     <div className="text-[20px] font-extrabold tracking-[-0.03em] text-slate-950">
                       {stat.value}
@@ -181,7 +181,7 @@ export function CategoryLanding({
         </section>
 
         <div className="grid lg:grid-cols-[240px_minmax(0,1fr)]">
-          <aside className="flex flex-col border-b border-slate-200 bg-slate-50/90 p-5 lg:border-b-0 lg:border-r lg:p-6">
+          <aside className="flex flex-col border-b border-slate-200 bg-card p-5 lg:border-b-0 lg:border-r lg:p-6">
             <CategorySidebarSection
               title="Verticals"
               items={CATEGORIES.map((item) => ({
@@ -241,7 +241,7 @@ export function CategoryLanding({
                   ) : null}
                 </div>
               ) : (
-                <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-center text-xs font-semibold leading-5 text-slate-500">
+                <div className="rounded-xl border border-slate-200 bg-card px-4 py-3 text-center text-xs font-semibold leading-5 text-slate-500">
                   Public datasets are ready to browse.
                 </div>
               )}
@@ -311,7 +311,7 @@ export function CategoryLanding({
                     <button
                       type="button"
                       onClick={() => onNavigate(viewerBasePath)}
-                      className="inline-flex h-12 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-700 transition-colors hover:border-primary/20 hover:text-primary"
+                      className="inline-flex h-12 items-center justify-center rounded-xl border border-slate-300 bg-card px-5 text-sm font-semibold text-slate-700 transition-colors hover:border-primary/20 hover:text-primary"
                     >
                       Back to RoboDataHub
                     </button>

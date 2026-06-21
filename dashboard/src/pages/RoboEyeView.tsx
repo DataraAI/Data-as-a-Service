@@ -161,7 +161,7 @@ function SectionHeader({
 
   return (
     <div className="mb-4 flex items-center gap-2">
-      <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-3 transition-all duration-200 group-hover:scale-[1.02] group-hover:border-slate-300 group-hover:bg-slate-50 group-hover:shadow-[0_10px_28px_rgba(15,23,42,0.08)] dark:border-slate-700 dark:bg-slate-900 dark:group-hover:border-slate-600 dark:group-hover:bg-slate-900/90 dark:group-hover:shadow-[0_10px_28px_rgba(15,23,42,0.22)]">
+      <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-card px-5 py-3 transition-all duration-200 group-hover:scale-[1.02] group-hover:border-slate-300 group-hover:bg-muted group-hover:shadow-[0_10px_28px_rgba(15,23,42,0.08)] dark:border-slate-700 dark:group-hover:border-slate-600 dark:group-hover:shadow-[0_10px_28px_rgba(15,23,42,0.22)]">
         <span className={`h-2 w-2 rounded-[2px] ${dot}`} />
         <span className="text-[14px] font-extrabold text-slate-950 dark:text-slate-100">{title}</span>
         <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">{summary}</span>
@@ -197,7 +197,7 @@ function CollapsibleSection({
         <div className="min-w-0 flex-1">
           <SectionHeader title={title} summary={summary} accent={accent} />
         </div>
-        <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-slate-600 transition-all duration-200 group-hover:scale-105 group-hover:border-slate-300 group-hover:bg-slate-50 group-hover:text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:group-hover:border-slate-600 dark:group-hover:bg-slate-900/90 dark:group-hover:text-slate-100">
+        <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-slate-200 bg-card text-slate-600 transition-all duration-200 group-hover:scale-105 group-hover:border-slate-300 group-hover:bg-muted group-hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:group-hover:border-slate-600 dark:group-hover:text-slate-100">
           <ChevronDown className={`h-5 w-5 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
         </div>
       </button>
@@ -210,7 +210,7 @@ function CollapsibleSection({
 function InlineEngineCard({ detail }: { detail: string }) {
   return (
     <div className="flex justify-center xl:hidden">
-      <div className="rounded-[14px] border border-teal-200 bg-gradient-to-br from-teal-50 via-white to-blue-50 px-5 py-4 text-center shadow-[0_10px_25px_rgba(13,148,136,0.08)] dark:border-slate-700 dark:bg-slate-900">
+      <div className="rounded-[14px] border border-teal-200 bg-card px-5 py-4 text-center shadow-[0_10px_25px_rgba(13,148,136,0.08)] dark:border-slate-700">
         <div className="mx-auto mb-2 grid h-9 w-9 place-items-center rounded-[10px] border border-teal-200 bg-teal-100 text-teal-700 dark:border-white/20 dark:bg-white/10 dark:text-teal-200">
           <Sparkles className="h-4 w-4" />
         </div>
@@ -228,7 +228,7 @@ function I2IPipe({ detail }: { detail: string }) {
       <div className="hidden h-full items-center justify-center xl:flex">
         <div className="mx-1 flex w-[118px] flex-col items-center">
           <div className="mb-2 h-6 w-px bg-slate-200 dark:bg-slate-700" />
-          <div className="w-full rounded-[16px] border-[1.5px] border-teal-300 bg-white px-3 py-4 text-center shadow-[0_12px_28px_rgba(13,148,136,0.08)] dark:border-teal-800/60 dark:bg-slate-900">
+          <div className="w-full rounded-[16px] border-[1.5px] border-teal-300 bg-card px-3 py-4 text-center shadow-[0_12px_28px_rgba(13,148,136,0.08)] dark:border-teal-800/60">
             <div className="mx-auto mb-2 grid h-9 w-9 place-items-center rounded-[10px] border border-teal-300 bg-teal-100 text-teal-700 dark:border-teal-800 dark:bg-teal-950/50 dark:text-teal-200">
               <Sparkles className="h-4 w-4" />
             </div>
@@ -328,7 +328,7 @@ function I2IRow({
   onImageOpen: (image: ExpandedImage) => void;
 }) {
   return (
-    <div className="rounded-[16px] border border-slate-200/80 bg-slate-50/70 p-5 dark:border-slate-700 dark:bg-slate-900/50">
+    <div className="rounded-[16px] border border-slate-200/80 bg-card p-5 dark:border-slate-700">
       <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-400">{eyebrow}</p>
       <p className="mt-2 text-[19px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">{title}</p>
       <p className="mt-2 max-w-[760px] text-[13px] leading-7 text-slate-500 dark:text-slate-400">{description}</p>
@@ -470,7 +470,7 @@ function V2VRow({
   outputAssets: VideoAsset[];
 }) {
   return (
-    <div className="rounded-[16px] border border-slate-200/80 bg-slate-50/70 p-5 dark:border-slate-700 dark:bg-slate-900/50">
+    <div className="rounded-[16px] border border-slate-200/80 bg-card p-5 dark:border-slate-700">
       <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-400">Video transformation</p>
       <p className="mt-2 text-[19px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">{title}</p>
       <p className="mt-2 max-w-[760px] text-[13px] leading-7 text-slate-500 dark:text-slate-400">{description}</p>
@@ -500,11 +500,11 @@ export default function RoboEyeView() {
   const [expandedImage, setExpandedImage] = useState<ExpandedImage | null>(null);
 
   return (
-    <div className="min-h-screen bg-white text-slate-950 dark:bg-slate-950 dark:text-slate-100">
+    <div className="min-h-screen bg-background text-slate-950 dark:text-slate-100">
       <Navigation />
 
       <main className="pt-[88px]">
-        <div className="mx-auto max-w-[1320px] bg-white px-4 py-9 sm:px-6 md:px-10 xl:px-12 dark:bg-slate-950">
+        <div className="mx-auto max-w-[1320px] bg-background px-4 py-9 sm:px-6 md:px-10 xl:px-12">
           <div className="mx-auto max-w-[1280px]">
             <section className="mb-6">
               <div className="mb-2 flex flex-wrap items-center gap-3">
@@ -530,7 +530,7 @@ export default function RoboEyeView() {
               accent="teal"
               defaultOpen
             >
-              <div className="flex flex-col gap-4 rounded-[18px] border border-slate-200 bg-white p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700 dark:bg-slate-900 sm:p-6">
+              <div className="flex flex-col gap-4 rounded-[18px] border border-slate-200 bg-card p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700 sm:p-6">
                 <V2VRow
                   title="Occlusion Removal"
                   description="Removes the installer from PDU installation footage while preserving the data-center rack, equipment, and underlying task context."
@@ -554,7 +554,7 @@ export default function RoboEyeView() {
               accent="blue"
               defaultOpen
             >
-              <div className="rounded-[18px] border border-slate-200 bg-white p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700 dark:bg-slate-900">
+              <div className="rounded-[18px] border border-slate-200 bg-card p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700">
                 <p className="text-[24px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">EXO to EGO</p>
                 <p className="mt-3 max-w-[840px] text-[13px] leading-7 text-slate-500 dark:text-slate-400">
                   Convert a single third-person scene capture into multiple robot-perspective views for inspection, manipulation, and control training.
@@ -582,7 +582,7 @@ export default function RoboEyeView() {
                 </div>
               </div>
 
-              <div className="rounded-[18px] border border-slate-200 bg-white p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700 dark:bg-slate-900">
+              <div className="rounded-[18px] border border-slate-200 bg-card p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700">
                 <p className="text-[24px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">Corner Case Generation</p>
                 <p className="mt-3 max-w-[840px] text-[13px] leading-7 text-slate-500 dark:text-slate-400">
                   Starting from a single source frame, RoboAnnotator can synthesize multiple edge-case outcomes to expand coverage for rare but critical scenarios.
@@ -608,7 +608,7 @@ export default function RoboEyeView() {
                 </div>
               </div>
 
-              <div className="rounded-[18px] border border-slate-200 bg-white p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700 dark:bg-slate-900">
+              <div className="rounded-[18px] border border-slate-200 bg-card p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700">
                 <p className="text-[24px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">Mask Segmentation</p>
                 <p className="mt-3 max-w-[840px] text-[13px] leading-7 text-slate-500 dark:text-slate-400">
                   Multi-frame segmentation outputs preserve the original scene context while isolating the exact regions needed for annotation and training workflows.

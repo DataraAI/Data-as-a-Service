@@ -225,7 +225,7 @@ function ProductTile({ card }: { card: ProductCard }) {
   return (
     <Link
       to={card.to}
-      className={`group flex h-full flex-col rounded-[22px] border bg-white px-6 pb-8 pt-8 text-center shadow-[0_2px_8px_rgba(0,0,0,0.05)] outline outline-1 outline-transparent transition-all duration-200 hover:-translate-y-1 hover:border-primary/45 hover:outline-primary/20 hover:shadow-[0_18px_42px_rgba(15,23,42,0.12)] ${card.tone}`}
+      className={`group flex h-full flex-col rounded-[22px] border bg-card px-6 pb-8 pt-8 text-center shadow-[0_2px_8px_rgba(0,0,0,0.05)] outline outline-1 outline-transparent transition-all duration-200 hover:-translate-y-1 hover:border-primary/45 hover:outline-primary/20 hover:shadow-[0_18px_42px_rgba(15,23,42,0.12)] ${card.tone}`}
     >
       <div className={`mx-auto flex h-[72px] w-[72px] items-center justify-center rounded-[20px] border ${card.pillTone}`}>
         <Icon className="h-8 w-8" />
@@ -343,7 +343,7 @@ export default function Home() {
               </button>
               <Link
                 to={buildAuthPath("register", "/")}
-                className="inline-flex h-14 items-center justify-center rounded-full border border-slate-200 bg-white px-8 text-[15px] font-bold text-slate-700 transition-colors hover:bg-slate-50"
+                className="inline-flex h-14 items-center justify-center rounded-full border border-slate-200 bg-card px-8 text-[15px] font-bold text-slate-700 transition-colors hover:bg-muted"
               >
                 Request a Demo
               </Link>
@@ -351,7 +351,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="bg-[#FBFCFD] px-4 py-14 dark:bg-[#040608] sm:px-6">
+        <section className="bg-background px-4 py-14 sm:px-6">
           <div className="mx-auto max-w-[1300px]">
             <div className="mb-10 text-center">
               <HomeSectionLabel>End-to-End</HomeSectionLabel>
@@ -373,7 +373,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="products" ref={productsRef} className="scroll-mt-[104px] bg-[#FBFCFD] px-4 py-16 dark:bg-[#040608] sm:px-6">
+        <section id="products" ref={productsRef} className="scroll-mt-[104px] bg-background px-4 py-16 sm:px-6">
           <div className="mx-auto max-w-[1300px]">
             <div className="mb-10 text-center">
               <HomeSectionLabel>Products</HomeSectionLabel>
@@ -393,7 +393,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="solutions" ref={solutionsRef} className="scroll-mt-[104px] bg-[#FBFCFD] px-4 py-16 dark:bg-[#040608] sm:px-6">
+        <section id="solutions" ref={solutionsRef} className="scroll-mt-[104px] bg-background px-4 py-16 sm:px-6">
           <div className="mx-auto max-w-[1300px]">
             <div className="mb-10 text-center">
               <HomeSectionLabel>Solutions</HomeSectionLabel>
@@ -409,7 +409,7 @@ export default function Home() {
               {SOLUTION_CARDS.map((card, index) => (
                 <article
                   key={card.title}
-                  className="relative overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.04)]"
+                  className="relative overflow-hidden rounded-[28px] border border-slate-200 bg-card shadow-[0_2px_12px_rgba(0,0,0,0.04)]"
                 >
                   <div className="pointer-events-none absolute right-11 top-7 text-[96px] font-black tracking-[-0.08em] text-black/[0.03]">
                     {String(index + 1).padStart(2, "0")}
@@ -467,7 +467,7 @@ export default function Home() {
                 </article>
               ))}
 
-              <article className="overflow-hidden rounded-[28px] border border-slate-200 bg-white">
+              <article className="overflow-hidden rounded-[28px] border border-slate-200 bg-card">
                 <div className="px-8 py-10 text-center md:px-12">
                   <div className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-primary">
                     From Use Case to Production
@@ -491,7 +491,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="customers" ref={customersRef} className="scroll-mt-[104px] bg-[#FBFCFD] px-4 py-16 dark:bg-[#040608] sm:px-6">
+        <section id="customers" ref={customersRef} className="scroll-mt-[104px] bg-background px-4 py-16 sm:px-6">
           <div className="mx-auto max-w-[1300px]">
             <div className="text-center">
               <HomeSectionLabel>Customers</HomeSectionLabel>
@@ -505,7 +505,7 @@ export default function Home() {
 
             <div className="mt-8 grid gap-4 lg:grid-cols-3">
               {CUSTOMER_CARDS.map((card) => (
-                <article key={card.company} className="rounded-[14px] border border-slate-200 bg-white p-7 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+                <article key={card.company} className="rounded-[14px] border border-slate-200 bg-card p-7 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
                   <div className={`text-[44px] font-black leading-none tracking-[-0.06em] ${card.valueTone}`}>{card.value}</div>
                   <div className="mt-2 text-sm font-bold text-slate-950">{card.company}</div>
                   <p className="mt-3 text-[13px] leading-6 text-slate-500">{card.detail}</p>
@@ -535,7 +535,7 @@ export default function Home() {
               </Link>
               <Link
                 to="/robodatahub"
-                className="inline-flex h-12 items-center justify-center rounded-xl border border-slate-200 bg-white px-8 text-sm font-semibold text-slate-600 transition-colors hover:border-primary/30 hover:text-primary"
+                className="inline-flex h-12 items-center justify-center rounded-xl border border-slate-200 bg-card px-8 text-sm font-semibold text-slate-600 transition-colors hover:border-primary/30 hover:text-primary"
               >
                 Explore RoboDataHub
               </Link>

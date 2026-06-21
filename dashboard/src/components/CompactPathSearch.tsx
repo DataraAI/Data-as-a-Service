@@ -38,7 +38,7 @@ export function CompactPathSearch({
             }
           }}
           placeholder={placeholder}
-          className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-10 font-sans-tech text-sm text-slate-900 shadow-[0_10px_24px_rgba(15,23,42,0.06)] placeholder:text-slate-400 focus:border-primary/30 focus:outline-none"
+          className="h-11 w-full rounded-xl border border-slate-200 bg-background pl-11 pr-10 font-sans-tech text-sm text-slate-900 shadow-[0_10px_24px_rgba(15,23,42,0.06)] placeholder:text-slate-400 focus:border-primary/30 focus:outline-none"
         />
         {loading && (
           <Loader2 className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-primary" />
@@ -46,7 +46,7 @@ export function CompactPathSearch({
       </div>
 
       {value.trim() !== "" && (
-        <div className="absolute left-0 right-0 top-[calc(100%+0.75rem)] z-30 overflow-hidden rounded-[20px] border border-slate-200 bg-white/95 text-left shadow-[0_24px_60px_rgba(15,23,42,0.14)] backdrop-blur-sm dark:bg-card/95 dark:shadow-[0_24px_60px_rgba(0,0,0,0.3)]">
+        <div className="absolute left-0 right-0 top-[calc(100%+0.75rem)] z-30 overflow-hidden rounded-[20px] border border-slate-200 bg-card/95 text-left shadow-[0_24px_60px_rgba(15,23,42,0.14)] backdrop-blur-sm dark:shadow-[0_24px_60px_rgba(0,0,0,0.3)]">
           {suggestions.length > 0 ? (
             <div className="divide-y divide-border">
               {suggestions.map((suggestion) => (

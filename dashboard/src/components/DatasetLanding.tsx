@@ -77,7 +77,7 @@ function MiscCard({
     <button
       type="button"
       onClick={() => onNavigate(section.viewer_path)}
-      className="group rounded-[18px] border border-slate-200 bg-white p-4 text-left shadow-[0_12px_30px_rgba(15,23,42,0.04)] transition-all hover:border-primary/25 hover:shadow-[0_18px_38px_rgba(15,23,42,0.08)]"
+      className="group rounded-[18px] border border-slate-200 bg-card p-4 text-left shadow-[0_12px_30px_rgba(15,23,42,0.04)] transition-all hover:border-primary/25 hover:shadow-[0_18px_38px_rgba(15,23,42,0.08)]"
     >
       <div className="flex items-start gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -113,7 +113,7 @@ function DownloadCard({
   const Icon = asset.type === "json" ? FileJson : asset.type === "video" ? Film : FileText;
 
   return (
-    <div className="rounded-[18px] border border-slate-200 bg-white p-4 shadow-[0_12px_30px_rgba(15,23,42,0.04)]">
+    <div className="rounded-[18px] border border-slate-200 bg-card p-4 shadow-[0_12px_30px_rgba(15,23,42,0.04)]">
       <div className="flex items-start gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
           <Icon className="h-4 w-4" />
@@ -312,7 +312,7 @@ export function DatasetLanding({
                 ))}
               </div>
             ) : (
-              <div className="rounded-[18px] border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-500">
+              <div className="rounded-[18px] border border-dashed border-slate-300 bg-muted/60 p-6 text-sm text-slate-500">
                 No downloadable files have been generated yet.
               </div>
             )}
@@ -321,7 +321,7 @@ export function DatasetLanding({
         </div>
 
         <div className="space-y-6">
-          <section className="rounded-[22px] border border-slate-200 bg-white p-5 shadow-[0_14px_38px_rgba(15,23,42,0.05)]">
+          <section className="rounded-[22px] border border-slate-200 bg-card p-5 shadow-[0_14px_38px_rgba(15,23,42,0.05)]">
             <button
               type="button"
               onClick={() => setReadmeOpen((open) => !open)}
@@ -346,7 +346,7 @@ export function DatasetLanding({
             </button>
 
             {readmeOpen && (
-              <div className="mt-4 space-y-4 rounded-[18px] border border-slate-200 bg-slate-50 p-5">
+              <div className="mt-4 space-y-4 rounded-[18px] border border-slate-200 bg-muted/60 p-5">
                 {readmeText ? (
                   renderMarkdown(readmeText)
                 ) : readmeError ? (
