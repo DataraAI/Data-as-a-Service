@@ -44,11 +44,9 @@ type SolutionCard = {
 };
 
 type CustomerCard = {
-  value: string;
-  company: string;
+  segment: string;
   detail: string;
   label: string;
-  valueTone: string;
   chipTone: string;
 };
 
@@ -191,31 +189,25 @@ const SOLUTION_CARDS: SolutionCard[] = [
 
 const CUSTOMER_CARDS: CustomerCard[] = [
   {
-    value: "3.8x",
-    company: "Figure AI",
+    segment: "Automotive OEMs",
     detail:
-      "Faster model convergence on manipulation tasks using RoboDataHub dexterous sequences vs. in-house collection.",
-    label: "Dexterity",
-    valueTone: "text-primary",
-    chipTone: "border-teal-200 bg-teal-50 text-primary",
-  },
-  {
-    value: "60%",
-    company: "BMW Robotics",
-    detail:
-      "Reduction in labeling cost for production-line vision models using RoboAnnotator EGO synthesis pipeline.",
-    label: "Automotive",
-    valueTone: "text-violet-700",
+      "Build task-specific datasets for assembly, inspection, fastening, and material-handling workflows, helping robotics teams automate repeatable production-line processes with greater consistency.",
+    label: "Automotive Manufacturing",
     chipTone: "border-violet-200 bg-violet-50 text-violet-700",
   },
   {
-    value: "99.1%",
-    company: "Foxconn Smart Factory",
+    segment: "Server Infrastructure Integrators",
     detail:
-      "Label accuracy on rack-navigation sequences, exceeding internal baseline by 4.7 percentage points.",
-    label: "Data Center",
-    valueTone: "text-blue-700",
+      "Train robotic systems to align, install, cable, and verify server hardware, reducing manual effort across repeatable rack deployment and commissioning tasks.",
+    label: "Rack Deployment",
     chipTone: "border-blue-200 bg-blue-50 text-blue-700",
+  },
+  {
+    segment: "Data Center Operators",
+    detail:
+      "Develop automation for routine operations such as cable connections, equipment swaps, inspection, and maintenance across large-scale data center environments.",
+    label: "Facility Operations",
+    chipTone: "border-teal-200 bg-teal-50 text-primary",
   },
 ];
 
@@ -496,21 +488,24 @@ export default function Home() {
             <div className="text-center">
               <HomeSectionLabel>Customers</HomeSectionLabel>
               <h2 className="marketing-display-title mt-6 text-[36px] font-black tracking-[-0.02em] text-slate-950">
-                Real Results in Production
+                Built for Real-World Automation
               </h2>
-              <p className="mx-auto mt-3 max-w-[480px] text-[15px] leading-7 text-slate-500">
-                Measurable outcomes from live deployments across robotics verticals.
+              <p className="mx-auto mt-3 max-w-[620px] text-[15px] leading-7 text-slate-500">
+                Supporting teams deploying robotics across automotive manufacturing and data center infrastructure.
               </p>
             </div>
 
             <div className="mt-8 grid gap-4 lg:grid-cols-3">
               {CUSTOMER_CARDS.map((card) => (
-                <article key={card.company} className="rounded-[14px] border border-slate-200 bg-card p-7 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
-                  <div className={`text-[44px] font-black leading-none tracking-[-0.06em] ${card.valueTone}`}>{card.value}</div>
-                  <div className="mt-2 text-sm font-bold text-slate-950">{card.company}</div>
-                  <p className="mt-3 text-[13px] leading-6 text-slate-500">{card.detail}</p>
-                  <div className={`mt-4 inline-flex rounded-sm border px-3 py-1 text-[9px] font-bold uppercase tracking-[0.1em] ${card.chipTone}`}>
-                    {card.label}
+                <article key={card.segment} className="flex h-full flex-col rounded-[14px] border border-slate-200 bg-card p-7 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+                  <h3 className="marketing-display-title text-[24px] font-black leading-tight tracking-[-0.025em] text-slate-950">
+                    {card.segment}
+                  </h3>
+                  <p className="mt-4 text-[13px] leading-6 text-slate-500">{card.detail}</p>
+                  <div className="mt-auto pt-6">
+                    <div className={`inline-flex rounded-sm border px-3 py-1 text-[9px] font-bold uppercase tracking-[0.1em] ${card.chipTone}`}>
+                      {card.label}
+                    </div>
                   </div>
                 </article>
               ))}
