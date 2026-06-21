@@ -10,7 +10,7 @@ const PRODUCT_LINKS = [
 
 export default function FooterSection() {
   return (
-    <footer className="border-t border-slate-200 bg-slate-50/90">
+    <footer className="border-t border-slate-200 bg-slate-50/90 dark:bg-card">
       <div className="mx-auto max-w-[1440px] px-4 py-10 sm:px-6">
         <div className="grid gap-10 lg:grid-cols-[minmax(260px,1.15fr)_minmax(0,2fr)] lg:gap-16">
           <div className="max-w-xl">

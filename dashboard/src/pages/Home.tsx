@@ -1,12 +1,15 @@
-import { useEffect, useRef, Fragment } from "react";
+import { useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { ArrowRight, Database, Eye, Hand, Workflow, Factory, Layers, Box, Zap, Bot, type LucideIcon } from "lucide-react";
+import { ArrowRight, Database, Eye, Hand, Workflow, type LucideIcon } from "lucide-react";
 import Navigation from "@/components/Navigation";
 import FooterSection from "@/components/FooterSection";
 import { buildAuthPath } from "@/lib/authLinks";
+import { useAppTheme } from "@/theme/AppThemeProvider";
 import pilotRoadmap from "@/assets/images/pilot-roadmap.png";
 import rackManual from "@/assets/images/rack-manual.png";
 import rackRobot from "@/assets/images/rack-robot.png";
+import simToRealLoopDark from "@/assets/images/sim to real loop-dark.png";
+import simToRealLoop from "@/assets/images/sim to real loop.png";
 import solutionBefore from "@/assets/images/serverrack/solutionbefore.png";
 import solutionAfter from "@/assets/images/serverrack/solutionafter.png";
 
@@ -48,65 +51,6 @@ type CustomerCard = {
   valueTone: string;
   chipTone: string;
 };
-
-type PipelineStep = {
-  step: string;
-  title: string;
-  description: string;
-  badge: string;
-  icon: LucideIcon;
-  accent: "teal" | "blue" | "violet" | "orange" | "emerald";
-};
-
-const PIPELINE_ARROWS = [
-  { line: "from-teal-400 to-blue-400",     head: "border-l-blue-400"    },
-  { line: "from-blue-400 to-violet-400",   head: "border-l-violet-400"  },
-  { line: "from-violet-400 to-orange-400", head: "border-l-orange-400"  },
-  { line: "from-orange-400 to-emerald-400", head: "border-l-emerald-400" },
-];
-
-const PIPELINE_STEPS: PipelineStep[] = [
-  {
-    step: "01",
-    title: "Real Factory Data",
-    description: "Data from OEM floors, warehouses & data centers.",
-    badge: "Data",
-    icon: Factory,
-    accent: "teal",
-  },
-  {
-    step: "02",
-    title: "Real2Sim",
-    description: "Real scenes & trajectories converted into accurate sim environments.",
-    badge: "Transfer",
-    icon: Layers,
-    accent: "blue",
-  },
-  {
-    step: "03",
-    title: "ISAAC SIM",
-    description: "Robot policies trained at scale in NVIDIA Isaac Sim.",
-    badge: "NVIDIA",
-    icon: Box,
-    accent: "violet",
-  },
-  {
-    step: "04",
-    title: "Sim2Real",
-    description: "Trained policies transferred to physical robots, grounded in real data.",
-    badge: "Deploy",
-    icon: Zap,
-    accent: "orange",
-  },
-  {
-    step: "05",
-    title: "Robot",
-    description: "Production-ready robots. Sim-to-real gap closed.",
-    badge: "Production",
-    icon: Bot,
-    accent: "emerald",
-  },
-];
 
 const HOME_SECTION_SCROLL_OFFSET = 96;
 
@@ -275,37 +219,6 @@ const CUSTOMER_CARDS: CustomerCard[] = [
   },
 ];
 
-const TRUSTED_BY = [
-  "NVIDIA",
-  "BMW Group",
-  "Figure AI",
-  "Boston Dynamics",
-  "Foxconn",
-  "Waymo",
-  "1X Technologies",
-];
-
-function PipelineStepCard({ step }: { step: PipelineStep }) {
-  const accentClasses = {
-    teal:    { badge: "border-teal-200 bg-teal-50 text-teal-700",    bar: "bg-teal-500"    },
-    blue:    { badge: "border-blue-200 bg-blue-50 text-blue-700",    bar: "bg-blue-500"    },
-    violet:  { badge: "border-violet-200 bg-violet-50 text-violet-700", bar: "bg-violet-500" },
-    orange:  { badge: "border-orange-200 bg-orange-50 text-orange-700", bar: "bg-orange-500" },
-    emerald: { badge: "border-emerald-200 bg-emerald-50 text-emerald-700", bar: "bg-emerald-500" },
-  }[step.accent];
-
-  return (
-    <div className="relative flex flex-1 flex-col items-center overflow-hidden rounded-[20px] border border-slate-200 bg-white px-5 pb-7 pt-6 text-center shadow-[0_1px_6px_rgba(0,0,0,0.05)] dark:border-white/7 dark:bg-[rgba(13,16,20,0.82)] dark:shadow-[0_18px_44px_rgba(0,0,0,0.24)]">
-      <p className="mb-2 text-[15px] font-black tracking-[-0.01em] text-slate-950 dark:text-slate-100">{step.title}</p>
-      <span className={`mb-3 inline-flex rounded-md border px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.12em] ${accentClasses.badge}`}>
-        {step.badge}
-      </span>
-      <p className="text-[12px] leading-5 text-slate-500 dark:text-slate-400">{step.description}</p>
-      <div className={`absolute bottom-0 left-0 h-[4px] w-full ${accentClasses.bar}`} />
-    </div>
-  );
-}
-
 function ProductTile({ card }: { card: ProductCard }) {
   const Icon = card.icon;
 
@@ -370,6 +283,7 @@ function HomeSectionLabel({ children }: { children: string }) {
 
 export default function Home() {
   const location = useLocation();
+  const { isDarkMode } = useAppTheme();
   const productsRef = useRef<HTMLElement | null>(null);
   const solutionsRef = useRef<HTMLElement | null>(null);
   const customersRef = useRef<HTMLElement | null>(null);
@@ -437,37 +351,29 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="bg-slate-50/60 px-4 py-14 dark:bg-slate-950/45 sm:px-6">
+        <section className="bg-[#FBFCFD] px-4 py-14 dark:bg-[#040608] sm:px-6">
           <div className="mx-auto max-w-[1300px]">
             <div className="mb-10 text-center">
               <HomeSectionLabel>End-to-End</HomeSectionLabel>
               <h2 className="marketing-display-title mt-4 text-[32px] font-black tracking-[-0.02em] text-slate-950">
-                From Factory Floor to Deployed Robot
+                From Factory Floor to Deployed Robot — and Back Again
               </h2>
-              <p className="mx-auto mt-3 max-w-[650px] text-[15px] leading-7 text-slate-500 dark:text-slate-400">
-                Real factory data is transformed into simulation-ready environments, used to train robot policies at scale, then transferred back to physical robots for production deployment.
+              <p className="mx-auto mt-3 max-w-[760px] text-[15px] leading-7 text-slate-500 dark:text-slate-400">
+                Real factory data is transformed into simulation-ready environments, used to train robot policies at scale, and transferred to physical robots for deployment. Real-world performance then feeds back into simulation, creating a continuous cycle of improvement.
               </p>
             </div>
 
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-stretch">
-              {PIPELINE_STEPS.map((step, i) => (
-                <Fragment key={step.title}>
-                  <PipelineStepCard step={step} />
-                  {i < PIPELINE_STEPS.length - 1 && (
-                    <div className="hidden shrink-0 items-center justify-center lg:flex">
-                      <div className="flex items-center drop-shadow-sm">
-                        <div className={`h-[6px] w-14 rounded-l-full bg-gradient-to-r ${PIPELINE_ARROWS[i].line}`} />
-                        <div className={`h-0 w-0 border-y-[10px] border-y-transparent border-l-[16px] ${PIPELINE_ARROWS[i].head}`} />
-                      </div>
-                    </div>
-                  )}
-                </Fragment>
-              ))}
-            </div>
+            <figure>
+              <img
+                src={isDarkMode ? simToRealLoopDark : simToRealLoop}
+                alt="Continuous improvement loop between simulation model training and real-world robot deployment"
+                className="mx-auto block h-auto w-full max-w-[1100px]"
+              />
+            </figure>
           </div>
         </section>
 
-        <section id="products" ref={productsRef} className="scroll-mt-[104px] bg-slate-50 px-4 py-16 sm:px-6">
+        <section id="products" ref={productsRef} className="scroll-mt-[104px] bg-[#FBFCFD] px-4 py-16 dark:bg-[#040608] sm:px-6">
           <div className="mx-auto max-w-[1300px]">
             <div className="mb-10 text-center">
               <HomeSectionLabel>Products</HomeSectionLabel>
@@ -487,7 +393,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="solutions" ref={solutionsRef} className="scroll-mt-[104px] bg-white px-4 py-16 sm:px-6">
+        <section id="solutions" ref={solutionsRef} className="scroll-mt-[104px] bg-[#FBFCFD] px-4 py-16 dark:bg-[#040608] sm:px-6">
           <div className="mx-auto max-w-[1300px]">
             <div className="mb-10 text-center">
               <HomeSectionLabel>Solutions</HomeSectionLabel>
@@ -561,7 +467,7 @@ export default function Home() {
                 </article>
               ))}
 
-              <article className="overflow-hidden rounded-[28px] border border-slate-200 bg-slate-50">
+              <article className="overflow-hidden rounded-[28px] border border-slate-200 bg-white">
                 <div className="px-8 py-10 text-center md:px-12">
                   <div className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-primary">
                     From Use Case to Production
@@ -585,7 +491,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="customers" ref={customersRef} className="scroll-mt-[104px] border-y border-slate-200 bg-slate-50 px-4 py-16 sm:px-6">
+        <section id="customers" ref={customersRef} className="scroll-mt-[104px] bg-[#FBFCFD] px-4 py-16 dark:bg-[#040608] sm:px-6">
           <div className="mx-auto max-w-[1300px]">
             <div className="text-center">
               <HomeSectionLabel>Customers</HomeSectionLabel>
@@ -607,21 +513,6 @@ export default function Home() {
                     {card.label}
                   </div>
                 </article>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="marketing-logo-strip px-4 py-6 sm:px-6">
-          <div className="mx-auto flex max-w-[1300px] flex-col items-center gap-4">
-            <div className="marketing-logo-label text-[10px] font-bold uppercase tracking-[0.14em]">
-              Trusted by teams at
-            </div>
-            <div className="flex flex-wrap items-center justify-center gap-x-9 gap-y-3">
-              {TRUSTED_BY.map((name) => (
-                <span key={name} className="marketing-logo-item text-[13px] font-bold tracking-[-0.01em]">
-                  {name}
-                </span>
               ))}
             </div>
           </div>

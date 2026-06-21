@@ -6,6 +6,10 @@ import Navigation from "@/components/Navigation";
 import { buildAuthPath } from "@/lib/authLinks";
 import handInputVideo from "@/assets/Products/RoboHandMotion/handinput.mp4";
 import handTrackingOutputVideo from "@/assets/Products/RoboHandMotion/handtrackingoutput.mp4";
+import mcapInputVideo from "@/assets/Products/RoboHandMotion/mcapinput.mp4";
+import mcapInputPoster from "@/assets/Products/RoboHandMotion/mcapinput-poster.jpg";
+import mcapOutputVideo from "@/assets/Products/RoboHandMotion/mcapoutput.mp4";
+import mcapOutputPoster from "@/assets/Products/RoboHandMotion/mcapoutput-poster.jpg";
 import frame390 from "@/assets/Products/RoboHandMotion/390.png";
 import leftHandMeshOne from "@/assets/Products/RoboHandMotion/left1.png";
 import leftHandMeshTwo from "@/assets/Products/RoboHandMotion/left2.png";
@@ -38,6 +42,19 @@ const VIDEO_SHOWCASE = {
     videoSrc: handTrackingOutputVideo,
     posterSrc: frame390,
     alt: "Hand tracking output video",
+  },
+} satisfies Record<string, VideoAsset>;
+
+const MCAP_SHOWCASE = {
+  input: {
+    videoSrc: mcapInputVideo,
+    posterSrc: mcapInputPoster,
+    alt: "Egocentric hand-motion input video",
+  },
+  output: {
+    videoSrc: mcapOutputVideo,
+    posterSrc: mcapOutputPoster,
+    alt: "21-keypoint hand MoCap output video",
   },
 } satisfies Record<string, VideoAsset>;
 
@@ -150,9 +167,18 @@ function FeaturePipe({ detail }: { detail: string }) {
   );
 }
 
-function VideoPreviewTile({ asset, aspectClass = "aspect-[16/10]" }: { asset: VideoAsset; aspectClass?: string }) {
+function VideoPreviewTile({
+  asset,
+  aspectClass = "aspect-[16/10]",
+  fit = "cover",
+}: {
+  asset: VideoAsset;
+  aspectClass?: string;
+  fit?: "cover" | "contain";
+}) {
   const [hovered, setHovered] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const mediaFitClass = fit === "contain" ? "object-contain" : "object-cover";
 
   useEffect(() => {
     const video = videoRef.current;
@@ -183,7 +209,7 @@ function VideoPreviewTile({ asset, aspectClass = "aspect-[16/10]" }: { asset: Vi
       <img
         src={asset.posterSrc}
         alt={asset.alt}
-        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${hovered ? "opacity-0" : "opacity-100"}`}
+        className={`absolute inset-0 h-full w-full ${mediaFitClass} transition-opacity duration-200 ${hovered ? "opacity-0" : "opacity-100"}`}
       />
       <video
         ref={videoRef}
@@ -193,7 +219,7 @@ function VideoPreviewTile({ asset, aspectClass = "aspect-[16/10]" }: { asset: Vi
         loop
         playsInline
         preload="metadata"
-        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${hovered ? "opacity-100" : "opacity-0"}`}
+        className={`absolute inset-0 h-full w-full ${mediaFitClass} transition-opacity duration-200 ${hovered ? "opacity-100" : "opacity-0"}`}
       />
       <div className="absolute inset-0 bg-gradient-to-t from-slate-950/40 via-transparent to-transparent" />
     </div>
@@ -336,7 +362,7 @@ export default function RoboHandMotion() {
               </div>
               <p className="max-w-[900px] text-[15px] leading-8 text-slate-500 dark:text-slate-400">
                 Transform real-world task video into training-ready hand-motion data with tracked overlay video,
-                frame-level reconstruction, and left/right 3D hand mesh outputs.
+                21-keypoint hand MoCap, frame-level reconstruction, and left/right 3D hand mesh outputs.
               </p>
             </section>
 
@@ -364,6 +390,42 @@ export default function RoboHandMotion() {
                     <div>
                       <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-orange-700 dark:text-orange-200">Tracked Output</p>
                       <VideoPreviewTile asset={VIDEO_SHOWCASE.output} />
+                    </div>
+                  </div>
+                </div>
+              </CollapsibleSection>
+
+              <CollapsibleSection
+                title="21-Keypoint Hand MoCap"
+                summary="Egocentric hand video to 21-keypoint MoCap data"
+                accent="orange"
+                defaultOpen
+              >
+                <div className="rounded-[18px] border border-slate-200 bg-white p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700 dark:bg-slate-900">
+                  <p className="text-[24px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">21-Keypoint Hand Motion Capture</p>
+                  <p className="mt-3 max-w-[860px] text-[13px] leading-7 text-slate-500 dark:text-slate-400">
+                    Generate motion-capture data from egocentric hand video using the standard 21-keypoint hand representation.
+                  </p>
+
+                  <div className="mt-6 grid gap-4 xl:grid-cols-[minmax(0,0.98fr)_118px_minmax(0,0.98fr)] xl:items-center">
+                    <div>
+                      <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-blue-700 dark:text-blue-200">Egocentric Input</p>
+                      <VideoPreviewTile
+                        asset={MCAP_SHOWCASE.input}
+                        aspectClass="mx-auto h-[120px] aspect-video sm:h-[188px] md:h-[225px] xl:h-[260px]"
+                        fit="contain"
+                      />
+                    </div>
+
+                    <FeaturePipe detail="21-Keypoint MoCap" />
+
+                    <div>
+                      <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-orange-700 dark:text-orange-200">MoCap Visualization</p>
+                      <VideoPreviewTile
+                        asset={MCAP_SHOWCASE.output}
+                        aspectClass="mx-auto h-[120px] aspect-[116/65] sm:h-[188px] md:h-[225px] xl:h-[260px]"
+                        fit="contain"
+                      />
                     </div>
                   </div>
                 </div>
