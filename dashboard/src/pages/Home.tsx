@@ -1,12 +1,15 @@
-import { useEffect, useRef, Fragment } from "react";
+import { useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { ArrowRight, Database, Eye, Hand, Workflow, Factory, Layers, Box, Zap, Bot, type LucideIcon } from "lucide-react";
+import { ArrowRight, Database, Eye, Hand, Workflow, type LucideIcon } from "lucide-react";
 import Navigation from "@/components/Navigation";
 import FooterSection from "@/components/FooterSection";
 import { buildAuthPath } from "@/lib/authLinks";
+import { useAppTheme } from "@/theme/AppThemeProvider";
 import pilotRoadmap from "@/assets/images/pilot-roadmap.png";
 import rackManual from "@/assets/images/rack-manual.png";
 import rackRobot from "@/assets/images/rack-robot.png";
+import simToRealLoopDark from "@/assets/images/sim to real loop-dark.png";
+import simToRealLoop from "@/assets/images/sim to real loop.png";
 import solutionBefore from "@/assets/images/serverrack/solutionbefore.png";
 import solutionAfter from "@/assets/images/serverrack/solutionafter.png";
 
@@ -41,72 +44,11 @@ type SolutionCard = {
 };
 
 type CustomerCard = {
-  value: string;
-  company: string;
+  segment: string;
   detail: string;
   label: string;
-  valueTone: string;
   chipTone: string;
 };
-
-type PipelineStep = {
-  step: string;
-  title: string;
-  description: string;
-  badge: string;
-  icon: LucideIcon;
-  accent: "teal" | "blue" | "violet" | "orange" | "emerald";
-};
-
-const PIPELINE_ARROWS = [
-  { line: "from-teal-400 to-blue-400",     head: "border-l-blue-400"    },
-  { line: "from-blue-400 to-violet-400",   head: "border-l-violet-400"  },
-  { line: "from-violet-400 to-orange-400", head: "border-l-orange-400"  },
-  { line: "from-orange-400 to-emerald-400", head: "border-l-emerald-400" },
-];
-
-const PIPELINE_STEPS: PipelineStep[] = [
-  {
-    step: "01",
-    title: "Real Factory Data",
-    description: "Data from OEM floors, warehouses & data centers.",
-    badge: "Data",
-    icon: Factory,
-    accent: "teal",
-  },
-  {
-    step: "02",
-    title: "Real2Sim",
-    description: "Real scenes & trajectories converted into accurate sim environments.",
-    badge: "Transfer",
-    icon: Layers,
-    accent: "blue",
-  },
-  {
-    step: "03",
-    title: "ISAAC SIM",
-    description: "Robot policies trained at scale in NVIDIA Isaac Sim.",
-    badge: "NVIDIA",
-    icon: Box,
-    accent: "violet",
-  },
-  {
-    step: "04",
-    title: "Sim2Real",
-    description: "Trained policies transferred to physical robots, grounded in real data.",
-    badge: "Deploy",
-    icon: Zap,
-    accent: "orange",
-  },
-  {
-    step: "05",
-    title: "Robot",
-    description: "Production-ready robots. Sim-to-real gap closed.",
-    badge: "Production",
-    icon: Bot,
-    accent: "emerald",
-  },
-];
 
 const HOME_SECTION_SCROLL_OFFSET = 96;
 
@@ -247,64 +189,27 @@ const SOLUTION_CARDS: SolutionCard[] = [
 
 const CUSTOMER_CARDS: CustomerCard[] = [
   {
-    value: "3.8x",
-    company: "Figure AI",
+    segment: "Automotive OEMs",
     detail:
-      "Faster model convergence on manipulation tasks using RoboDataHub dexterous sequences vs. in-house collection.",
-    label: "Dexterity",
-    valueTone: "text-primary",
-    chipTone: "border-teal-200 bg-teal-50 text-primary",
-  },
-  {
-    value: "60%",
-    company: "BMW Robotics",
-    detail:
-      "Reduction in labeling cost for production-line vision models using RoboAnnotator EGO synthesis pipeline.",
-    label: "Automotive",
-    valueTone: "text-violet-700",
+      "Build task-specific datasets for assembly, inspection, fastening, and material-handling workflows, helping robotics teams automate repeatable production-line processes with greater consistency.",
+    label: "Automotive Manufacturing",
     chipTone: "border-violet-200 bg-violet-50 text-violet-700",
   },
   {
-    value: "99.1%",
-    company: "Foxconn Smart Factory",
+    segment: "Server Infrastructure Integrators",
     detail:
-      "Label accuracy on rack-navigation sequences, exceeding internal baseline by 4.7 percentage points.",
-    label: "Data Center",
-    valueTone: "text-blue-700",
+      "Train robotic systems to align, install, cable, and verify server hardware, reducing manual effort across repeatable rack deployment and commissioning tasks.",
+    label: "Rack Deployment",
     chipTone: "border-blue-200 bg-blue-50 text-blue-700",
   },
+  {
+    segment: "Data Center Operators",
+    detail:
+      "Develop automation for routine operations such as cable connections, equipment swaps, inspection, and maintenance across large-scale data center environments.",
+    label: "Facility Operations",
+    chipTone: "border-teal-200 bg-teal-50 text-primary",
+  },
 ];
-
-const TRUSTED_BY = [
-  "NVIDIA",
-  "BMW Group",
-  "Figure AI",
-  "Boston Dynamics",
-  "Foxconn",
-  "Waymo",
-  "1X Technologies",
-];
-
-function PipelineStepCard({ step }: { step: PipelineStep }) {
-  const accentClasses = {
-    teal:    { badge: "border-teal-200 bg-teal-50 text-teal-700",    bar: "bg-teal-500"    },
-    blue:    { badge: "border-blue-200 bg-blue-50 text-blue-700",    bar: "bg-blue-500"    },
-    violet:  { badge: "border-violet-200 bg-violet-50 text-violet-700", bar: "bg-violet-500" },
-    orange:  { badge: "border-orange-200 bg-orange-50 text-orange-700", bar: "bg-orange-500" },
-    emerald: { badge: "border-emerald-200 bg-emerald-50 text-emerald-700", bar: "bg-emerald-500" },
-  }[step.accent];
-
-  return (
-    <div className="relative flex flex-1 flex-col items-center overflow-hidden rounded-[20px] border border-slate-200 bg-white px-5 pb-7 pt-6 text-center shadow-[0_1px_6px_rgba(0,0,0,0.05)] dark:border-white/7 dark:bg-[rgba(13,16,20,0.82)] dark:shadow-[0_18px_44px_rgba(0,0,0,0.24)]">
-      <p className="mb-2 text-[15px] font-black tracking-[-0.01em] text-slate-950 dark:text-slate-100">{step.title}</p>
-      <span className={`mb-3 inline-flex rounded-md border px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.12em] ${accentClasses.badge}`}>
-        {step.badge}
-      </span>
-      <p className="text-[12px] leading-5 text-slate-500 dark:text-slate-400">{step.description}</p>
-      <div className={`absolute bottom-0 left-0 h-[4px] w-full ${accentClasses.bar}`} />
-    </div>
-  );
-}
 
 function ProductTile({ card }: { card: ProductCard }) {
   const Icon = card.icon;
@@ -312,7 +217,7 @@ function ProductTile({ card }: { card: ProductCard }) {
   return (
     <Link
       to={card.to}
-      className={`group flex h-full flex-col rounded-[22px] border bg-white px-6 pb-8 pt-8 text-center shadow-[0_2px_8px_rgba(0,0,0,0.05)] outline outline-1 outline-transparent transition-all duration-200 hover:-translate-y-1 hover:border-primary/45 hover:outline-primary/20 hover:shadow-[0_18px_42px_rgba(15,23,42,0.12)] ${card.tone}`}
+      className={`group flex h-full flex-col rounded-[22px] border bg-card px-6 pb-8 pt-8 text-center shadow-[0_2px_8px_rgba(0,0,0,0.05)] outline outline-1 outline-transparent transition-all duration-200 hover:-translate-y-1 hover:border-primary/45 hover:outline-primary/20 hover:shadow-[0_18px_42px_rgba(15,23,42,0.12)] ${card.tone}`}
     >
       <div className={`mx-auto flex h-[72px] w-[72px] items-center justify-center rounded-[20px] border ${card.pillTone}`}>
         <Icon className="h-8 w-8" />
@@ -370,6 +275,7 @@ function HomeSectionLabel({ children }: { children: string }) {
 
 export default function Home() {
   const location = useLocation();
+  const { isDarkMode } = useAppTheme();
   const productsRef = useRef<HTMLElement | null>(null);
   const solutionsRef = useRef<HTMLElement | null>(null);
   const customersRef = useRef<HTMLElement | null>(null);
@@ -429,7 +335,7 @@ export default function Home() {
               </button>
               <Link
                 to={buildAuthPath("register", "/")}
-                className="inline-flex h-14 items-center justify-center rounded-full border border-slate-200 bg-white px-8 text-[15px] font-bold text-slate-700 transition-colors hover:bg-slate-50"
+                className="inline-flex h-14 items-center justify-center rounded-full border border-slate-200 bg-card px-8 text-[15px] font-bold text-slate-700 transition-colors hover:bg-muted"
               >
                 Request a Demo
               </Link>
@@ -437,37 +343,29 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="bg-slate-50/60 px-4 py-14 dark:bg-slate-950/45 sm:px-6">
+        <section className="bg-background px-4 py-14 sm:px-6">
           <div className="mx-auto max-w-[1300px]">
             <div className="mb-10 text-center">
               <HomeSectionLabel>End-to-End</HomeSectionLabel>
               <h2 className="marketing-display-title mt-4 text-[32px] font-black tracking-[-0.02em] text-slate-950">
-                From Factory Floor to Deployed Robot
+                From Factory Floor to Deployed Robot — and Back Again
               </h2>
-              <p className="mx-auto mt-3 max-w-[650px] text-[15px] leading-7 text-slate-500 dark:text-slate-400">
-                Real factory data is transformed into simulation-ready environments, used to train robot policies at scale, then transferred back to physical robots for production deployment.
+              <p className="mx-auto mt-3 max-w-[760px] text-[15px] leading-7 text-slate-500 dark:text-slate-400">
+                Real factory data is transformed into simulation-ready environments, used to train robot policies at scale, and transferred to physical robots for deployment. Real-world performance then feeds back into simulation, creating a continuous cycle of improvement.
               </p>
             </div>
 
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-stretch">
-              {PIPELINE_STEPS.map((step, i) => (
-                <Fragment key={step.title}>
-                  <PipelineStepCard step={step} />
-                  {i < PIPELINE_STEPS.length - 1 && (
-                    <div className="hidden shrink-0 items-center justify-center lg:flex">
-                      <div className="flex items-center drop-shadow-sm">
-                        <div className={`h-[6px] w-14 rounded-l-full bg-gradient-to-r ${PIPELINE_ARROWS[i].line}`} />
-                        <div className={`h-0 w-0 border-y-[10px] border-y-transparent border-l-[16px] ${PIPELINE_ARROWS[i].head}`} />
-                      </div>
-                    </div>
-                  )}
-                </Fragment>
-              ))}
-            </div>
+            <figure>
+              <img
+                src={isDarkMode ? simToRealLoopDark : simToRealLoop}
+                alt="Continuous improvement loop between simulation model training and real-world robot deployment"
+                className="mx-auto block h-auto w-[60%] max-w-[660px]"
+              />
+            </figure>
           </div>
         </section>
 
-        <section id="products" ref={productsRef} className="scroll-mt-[104px] bg-slate-50 px-4 py-16 sm:px-6">
+        <section id="products" ref={productsRef} className="scroll-mt-[104px] bg-background px-4 py-16 sm:px-6">
           <div className="mx-auto max-w-[1300px]">
             <div className="mb-10 text-center">
               <HomeSectionLabel>Products</HomeSectionLabel>
@@ -487,10 +385,10 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="solutions" ref={solutionsRef} className="scroll-mt-[104px] bg-white px-4 py-16 sm:px-6">
+        <section id="solutions" ref={solutionsRef} className="scroll-mt-[104px] bg-background px-4 py-16 sm:px-6">
           <div className="mx-auto max-w-[1300px]">
             <div className="mb-10 text-center">
-              <HomeSectionLabel>Solutions</HomeSectionLabel>
+              <HomeSectionLabel>Use Cases</HomeSectionLabel>
               <h2 className="marketing-display-title mt-6 text-[36px] font-black tracking-[-0.02em] text-slate-950">
                 Real-World Automation, Ready to Deploy
               </h2>
@@ -503,7 +401,7 @@ export default function Home() {
               {SOLUTION_CARDS.map((card, index) => (
                 <article
                   key={card.title}
-                  className="relative overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.04)]"
+                  className="relative overflow-hidden rounded-[28px] border border-slate-200 bg-card shadow-[0_2px_12px_rgba(0,0,0,0.04)]"
                 >
                   <div className="pointer-events-none absolute right-11 top-7 text-[96px] font-black tracking-[-0.08em] text-black/[0.03]">
                     {String(index + 1).padStart(2, "0")}
@@ -561,7 +459,7 @@ export default function Home() {
                 </article>
               ))}
 
-              <article className="overflow-hidden rounded-[28px] border border-slate-200 bg-slate-50">
+              <article className="overflow-hidden rounded-[28px] border border-slate-200 bg-card">
                 <div className="px-8 py-10 text-center md:px-12">
                   <div className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-primary">
                     From Use Case to Production
@@ -585,43 +483,31 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="customers" ref={customersRef} className="scroll-mt-[104px] border-y border-slate-200 bg-slate-50 px-4 py-16 sm:px-6">
+        <section id="customers" ref={customersRef} className="scroll-mt-[104px] bg-background px-4 py-16 sm:px-6">
           <div className="mx-auto max-w-[1300px]">
             <div className="text-center">
               <HomeSectionLabel>Customers</HomeSectionLabel>
               <h2 className="marketing-display-title mt-6 text-[36px] font-black tracking-[-0.02em] text-slate-950">
-                Real Results in Production
+                Built for Real-World Automation
               </h2>
-              <p className="mx-auto mt-3 max-w-[480px] text-[15px] leading-7 text-slate-500">
-                Measurable outcomes from live deployments across robotics verticals.
+              <p className="mx-auto mt-3 max-w-[620px] text-[15px] leading-7 text-slate-500">
+                Supporting teams deploying robotics across automotive manufacturing and data center infrastructure.
               </p>
             </div>
 
             <div className="mt-8 grid gap-4 lg:grid-cols-3">
               {CUSTOMER_CARDS.map((card) => (
-                <article key={card.company} className="rounded-[14px] border border-slate-200 bg-white p-7 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
-                  <div className={`text-[44px] font-black leading-none tracking-[-0.06em] ${card.valueTone}`}>{card.value}</div>
-                  <div className="mt-2 text-sm font-bold text-slate-950">{card.company}</div>
-                  <p className="mt-3 text-[13px] leading-6 text-slate-500">{card.detail}</p>
-                  <div className={`mt-4 inline-flex rounded-sm border px-3 py-1 text-[9px] font-bold uppercase tracking-[0.1em] ${card.chipTone}`}>
-                    {card.label}
+                <article key={card.segment} className="flex h-full flex-col rounded-[14px] border border-slate-200 bg-card p-7 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+                  <h3 className="marketing-display-title text-[24px] font-black leading-tight tracking-[-0.025em] text-slate-950">
+                    {card.segment}
+                  </h3>
+                  <p className="mt-4 text-[13px] leading-6 text-slate-500">{card.detail}</p>
+                  <div className="mt-auto pt-6">
+                    <div className={`inline-flex rounded-sm border px-3 py-1 text-[9px] font-bold uppercase tracking-[0.1em] ${card.chipTone}`}>
+                      {card.label}
+                    </div>
                   </div>
                 </article>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="marketing-logo-strip px-4 py-6 sm:px-6">
-          <div className="mx-auto flex max-w-[1300px] flex-col items-center gap-4">
-            <div className="marketing-logo-label text-[10px] font-bold uppercase tracking-[0.14em]">
-              Trusted by teams at
-            </div>
-            <div className="flex flex-wrap items-center justify-center gap-x-9 gap-y-3">
-              {TRUSTED_BY.map((name) => (
-                <span key={name} className="marketing-logo-item text-[13px] font-bold tracking-[-0.01em]">
-                  {name}
-                </span>
               ))}
             </div>
           </div>
@@ -644,7 +530,7 @@ export default function Home() {
               </Link>
               <Link
                 to="/robodatahub"
-                className="inline-flex h-12 items-center justify-center rounded-xl border border-slate-200 bg-white px-8 text-sm font-semibold text-slate-600 transition-colors hover:border-primary/30 hover:text-primary"
+                className="inline-flex h-12 items-center justify-center rounded-xl border border-slate-200 bg-card px-8 text-sm font-semibold text-slate-600 transition-colors hover:border-primary/30 hover:text-primary"
               >
                 Explore RoboDataHub
               </Link>

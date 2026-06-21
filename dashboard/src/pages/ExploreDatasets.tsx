@@ -144,7 +144,7 @@ export default function ExploreDatasets() {
       <Navigation />
 
       <main className="relative z-10 flex min-h-0 flex-1 flex-col pt-[88px]">
-        <header className="border-b border-border bg-card/30 px-4 py-6 backdrop-blur-sm sm:px-6">
+        <header className="border-b border-border bg-card px-4 py-6 backdrop-blur-sm sm:px-6">
           <div className="mx-auto max-w-[1440px]">
             <p className="mb-2 font-mono-tech text-xs uppercase tracking-widest text-muted-foreground">
               Datara DataHub
@@ -169,7 +169,7 @@ export default function ExploreDatasets() {
           </div>
         ) : (
           <div className="mx-auto flex min-h-0 w-full max-w-[1440px] flex-1 flex-col lg:flex-row">
-            <aside className="custom-scrollbar w-full shrink-0 overflow-y-auto border-b border-border bg-card/20 lg:w-[320px] lg:border-b-0 lg:border-r">
+            <aside className="custom-scrollbar w-full shrink-0 overflow-y-auto border-b border-border bg-card lg:w-[320px] lg:border-b-0 lg:border-r">
               <div className="space-y-8 p-5">
                 <div className="space-y-3">
                   <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -328,7 +328,7 @@ export default function ExploreDatasets() {
                       <li key={record.id}>
                         <Link
                           to={record.viewer_path}
-                          className="group block overflow-hidden rounded-sm border border-border bg-card/30 transition-all duration-300 hover:border-primary/50 hover:bg-card/50 hover:shadow-elegant"
+                          className="group block overflow-hidden rounded-sm border border-border bg-card transition-all duration-300 hover:border-primary/50 hover:shadow-elegant"
                         >
                           <div className="flex min-h-[100px] flex-col sm:flex-row sm:items-stretch">
                             <div className="flex shrink-0 items-center justify-center overflow-hidden border-b border-border bg-primary/10 p-4 sm:w-36 sm:border-b-0 sm:border-r">

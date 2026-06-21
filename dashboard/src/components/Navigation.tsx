@@ -18,22 +18,21 @@ import { JobsPanel } from "./JobsPanel";
 
 type NavItem = {
   label: string;
-  subtitle: string;
   href: string;
   key: string;
 };
 
 const GLOBAL_NAV_ITEMS: NavItem[] = [
-  { key: "products", label: "Products", subtitle: "AI Data", href: "/#products" },
-  { key: "solutions", label: "Solutions", subtitle: "Use Cases", href: "/#solutions" },
-  { key: "customers", label: "Customers", subtitle: "Case Studies", href: "/#customers" },
-  { key: "company", label: "Company", subtitle: "Team · Mission", href: "/company" },
+  { key: "products", label: "Products", href: "/#products" },
+  { key: "solutions", label: "Use Cases", href: "/#solutions" },
+  { key: "customers", label: "Customers", href: "/#customers" },
+  { key: "company", label: "Company", href: "/company" },
 ];
 
 const HOME_SECTION_KEYS = ["products", "solutions", "customers"] as const;
 type HomeSectionKey = (typeof HOME_SECTION_KEYS)[number];
 
-const PRODUCT_NAV_ITEMS: NavItem[] = [
+const PRODUCT_NAV_ITEMS: Array<NavItem & { subtitle: string }> = [
   {
     key: "robodatahub",
     label: "RoboDataHub",
@@ -88,7 +87,7 @@ function ProductMenu({
       <DropdownMenuContent
         align={align}
         sideOffset={10}
-        className="w-[calc(100vw-2rem)] max-w-[320px] rounded-2xl border-slate-200 bg-white p-2 shadow-[0_22px_55px_rgba(15,23,42,0.16)]"
+        className="w-[calc(100vw-2rem)] max-w-[320px] rounded-2xl border-slate-200 bg-card p-2 shadow-[0_22px_55px_rgba(15,23,42,0.16)]"
       >
         <div className="px-3 pb-2 pt-3">
           <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">
@@ -174,7 +173,7 @@ function AccountMenu({
       <DropdownMenuContent
         align="end"
         sideOffset={10}
-        className="w-[280px] rounded-2xl border-slate-200 bg-white p-2 shadow-[0_22px_55px_rgba(15,23,42,0.16)]"
+        className="w-[280px] rounded-2xl border-slate-200 bg-card p-2 shadow-[0_22px_55px_rgba(15,23,42,0.16)]"
       >
         <div className="px-3 py-3">
           <div className="truncate text-sm font-extrabold text-slate-950">
@@ -372,7 +371,7 @@ export default function Navigation() {
 
   return (
     <>
-    <nav className="fixed inset-x-0 top-0 z-50 border-b border-slate-200/80 bg-white/92 text-foreground backdrop-blur-xl">
+    <nav className="fixed inset-x-0 top-0 z-50 border-b border-slate-200/80 bg-card/95 text-foreground backdrop-blur-xl">
       <div className="mx-auto max-w-[1440px] px-4 sm:px-6">
         <div className="relative flex h-[88px] items-center justify-between gap-4">
           <Link
@@ -422,15 +421,12 @@ export default function Navigation() {
                         className="flex min-w-0 flex-1 flex-col items-center justify-center py-2 pl-4 pr-1"
                         onClick={(event) => handleGlobalNavClick(event, item.href)}
                       >
-                        <span className="truncate text-[14px] font-bold leading-none">{item.label}</span>
-                        <span className="mt-1 text-[10px] uppercase tracking-[0.18em] opacity-70">
-                          {item.subtitle}
-                        </span>
+                        <span className="truncate text-[16px] font-bold leading-none">{item.label}</span>
                       </Link>
                       <div className="flex items-stretch py-1.5 pr-2">
                         <ProductMenu
                           activeProductKey={activeProductKey}
-                          triggerClassName="h-full min-h-[52px] w-10 rounded-[14px] text-current hover:bg-white/80 hover:text-primary data-[state=open]:bg-white data-[state=open]:text-primary"
+                          triggerClassName="h-full min-h-[52px] w-10 rounded-[14px] text-current hover:bg-card/80 hover:text-primary data-[state=open]:bg-card data-[state=open]:text-primary"
                         />
                       </div>
                       <span
@@ -455,10 +451,7 @@ export default function Navigation() {
                         : "text-slate-500 hover:bg-slate-50 hover:text-foreground"
                       }`}
                   >
-                    <span className="truncate text-[14px] font-bold leading-none">{item.label}</span>
-                    <span className="mt-1 text-[10px] uppercase tracking-[0.18em] opacity-70">
-                      {item.subtitle}
-                    </span>
+                    <span className="truncate text-[16px] font-bold leading-none">{item.label}</span>
                     <span
                       className={`absolute inset-x-[20%] bottom-0 h-0.5 rounded-t-full ${
                         isActive
@@ -477,7 +470,7 @@ export default function Navigation() {
               type="button"
               variant="ghost"
               size="icon"
-              className="h-10 w-10 rounded-full border border-slate-200 bg-white text-slate-500 shadow-[0_10px_20px_rgba(15,23,42,0.04)] hover:border-primary/30 hover:text-primary"
+              className="h-10 w-10 rounded-full border border-slate-200 bg-card text-slate-500 shadow-[0_10px_20px_rgba(15,23,42,0.04)] hover:border-primary/30 hover:text-primary"
               onClick={toggleTheme}
               aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
               title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
@@ -514,7 +507,7 @@ export default function Navigation() {
               type="button"
               variant="ghost"
               size="icon"
-              className="h-11 w-11 rounded-2xl border border-slate-200 bg-white text-slate-500 shadow-[0_10px_20px_rgba(15,23,42,0.04)] hover:text-primary"
+              className="h-11 w-11 rounded-2xl border border-slate-200 bg-card text-slate-500 shadow-[0_10px_20px_rgba(15,23,42,0.04)] hover:text-primary"
               onClick={toggleTheme}
               aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
               title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
@@ -536,7 +529,7 @@ export default function Navigation() {
               type="button"
               variant="ghost"
               size="icon"
-              className="h-11 w-11 rounded-2xl border border-slate-200 bg-white text-slate-500 shadow-[0_10px_20px_rgba(15,23,42,0.04)] hover:text-primary"
+              className="h-11 w-11 rounded-2xl border border-slate-200 bg-card text-slate-500 shadow-[0_10px_20px_rgba(15,23,42,0.04)] hover:text-primary"
               onClick={() => setIsMenuOpen((open) => !open)}
               aria-label={isMenuOpen ? "Close navigation menu" : "Open navigation menu"}
             >
@@ -558,7 +551,7 @@ export default function Navigation() {
                       className={`flex items-stretch overflow-hidden rounded-2xl border ${
                         isActive
                           ? "border-primary/20 bg-primary/6 text-primary"
-                          : "border-slate-200 bg-white text-slate-500"
+                          : "border-slate-200 bg-card text-slate-500"
                       }`}
                     >
                       <Link
@@ -570,16 +563,13 @@ export default function Navigation() {
                         }}
                       >
                         <div className="text-sm font-semibold">{item.label}</div>
-                        <div className="mt-1 text-[10px] uppercase tracking-[0.18em] opacity-60">
-                          {item.subtitle}
-                        </div>
                       </Link>
                       <div className="flex items-stretch border-l border-current/10 px-2 py-1">
                         <ProductMenu
                           activeProductKey={activeProductKey}
                           align="end"
                           onNavigate={() => setIsMenuOpen(false)}
-                          triggerClassName="h-full min-h-[48px] w-10 rounded-[14px] text-current hover:bg-white/80 hover:text-primary data-[state=open]:bg-white data-[state=open]:text-primary"
+                          triggerClassName="h-full min-h-[48px] w-10 rounded-[14px] text-current hover:bg-card/80 hover:text-primary data-[state=open]:bg-card data-[state=open]:text-primary"
                         />
                       </div>
                     </div>
@@ -593,7 +583,7 @@ export default function Navigation() {
                     className={`block rounded-2xl border px-4 py-3 ${
                       isActive
                         ? "border-primary/20 bg-primary/6 text-primary"
-                        : "border-slate-200 bg-white text-slate-500"
+                        : "border-slate-200 bg-card text-slate-500"
                     }`}
                     onClick={(event) => {
                       setIsMenuOpen(false);
@@ -601,9 +591,6 @@ export default function Navigation() {
                     }}
                   >
                     <div className="text-sm font-semibold">{item.label}</div>
-                    <div className="mt-1 text-[10px] uppercase tracking-[0.18em] opacity-60">
-                      {item.subtitle}
-                    </div>
                   </Link>
                 );
               })}
@@ -613,7 +600,7 @@ export default function Navigation() {
               <div className="mt-4 space-y-3 border-t border-slate-200 pt-4">
                 <Link
                   to={loginHref}
-                  className="flex h-11 items-center rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-500"
+                  className="flex h-11 items-center rounded-2xl border border-slate-200 bg-card px-4 text-sm font-semibold text-slate-500"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Sign In

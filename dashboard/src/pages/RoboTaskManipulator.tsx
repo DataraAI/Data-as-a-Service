@@ -271,7 +271,7 @@ function StatStrip() {
       {STATS.map((stat) => (
         <div
           key={stat.label}
-          className={`bg-white px-5 py-4 text-center shadow-[0_1px_3px_rgba(0,0,0,0.04)] dark:bg-slate-900 ${
+          className={`bg-card px-5 py-4 text-center shadow-[0_1px_3px_rgba(0,0,0,0.04)] ${
             "featured" in stat && stat.featured ? "bg-orange-50 dark:bg-orange-950/20" : ""
           }`}
         >
@@ -372,7 +372,7 @@ function SectionHeader({
 
   return (
     <div className="mb-4 flex items-center gap-1">
-      <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 dark:border-slate-700 dark:bg-slate-900">
+      <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-card px-4 py-2 dark:border-slate-700">
         <span className={`h-2 w-2 rounded-[2px] ${dot}`} />
         <span className="text-[14px] font-extrabold text-slate-950 dark:text-slate-100">{title}</span>
         <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">{summary}</span>
@@ -401,7 +401,7 @@ function Pipe({ detail }: { detail: string }) {
     <div className="hidden items-center lg:flex">
       <div className="mx-4 flex w-[92px] flex-col items-center">
         <div className="mb-2 h-6 w-px bg-slate-200 dark:bg-slate-700" />
-        <div className="w-full rounded-[16px] border-[1.5px] border-orange-300 bg-white px-4 py-4 text-center shadow-[0_8px_20px_rgba(234,88,12,0.06)] dark:border-orange-800/60 dark:bg-slate-900">
+        <div className="w-full rounded-[16px] border-[1.5px] border-orange-300 bg-card px-4 py-4 text-center shadow-[0_8px_20px_rgba(234,88,12,0.06)] dark:border-orange-800/60">
           <div className="mx-auto mb-2 grid h-10 w-10 place-items-center rounded-[10px] border border-orange-300 bg-orange-100 text-orange-700 dark:border-orange-800 dark:bg-orange-950/50 dark:text-orange-200">
             <Workflow className="h-4 w-4" />
           </div>
@@ -422,7 +422,7 @@ function Pipe({ detail }: { detail: string }) {
 
 function ShowcaseCardView({ card }: { card: ShowcaseCard }) {
   return (
-    <article className="rounded-[14px] border border-slate-200 bg-white px-6 py-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700 dark:bg-slate-900">
+    <article className="rounded-[14px] border border-slate-200 bg-card px-6 py-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700">
       <div className="mb-[14px] flex items-start justify-between gap-4">
         <div>
           <p className="mb-0.5 text-[14px] font-bold text-slate-950 dark:text-slate-100">{card.title}</p>
@@ -479,7 +479,7 @@ function ShowcaseCardView({ card }: { card: ShowcaseCard }) {
 
 function GalleryCardView({ card, compact = false }: { card: GalleryCard; compact?: boolean }) {
   return (
-    <article className="overflow-hidden rounded-[12px] border border-slate-200 bg-white shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700 dark:bg-slate-900">
+    <article className="overflow-hidden rounded-[12px] border border-slate-200 bg-card shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700">
       <SurfaceImage
         path={card.image}
         alt={card.title}
@@ -503,11 +503,11 @@ function GalleryCardView({ card, compact = false }: { card: GalleryCard; compact
 
 export default function RoboTaskManipulator() {
   return (
-    <div className="min-h-screen bg-white text-slate-950 dark:bg-slate-950 dark:text-slate-100">
+    <div className="min-h-screen bg-background text-slate-950 dark:text-slate-100">
       <Navigation />
 
       <main className="pt-[88px]">
-        <div className="mx-auto max-w-[1320px] bg-white px-4 py-9 sm:px-6 md:px-10 xl:px-12 dark:bg-slate-950">
+        <div className="mx-auto max-w-[1320px] bg-background px-4 py-9 sm:px-6 md:px-10 xl:px-12">
           <div className="mx-auto max-w-[1280px]">
               <section className="mb-6">
                 <div className="mb-2 flex flex-wrap items-center gap-3">
@@ -540,7 +540,7 @@ export default function RoboTaskManipulator() {
                 <StatStrip />
               </section>
 
-              <section className="mb-10 rounded-[14px] border border-slate-200 bg-slate-50/80 px-8 py-7 dark:border-slate-800 dark:bg-slate-900/60">
+              <section className="mb-10 rounded-[14px] border border-slate-200 bg-card px-8 py-7 dark:border-slate-800">
                 <p className="mb-6 text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-400">How It Works</p>
                 <div className="lg:flex lg:items-stretch">
                   <StepCardView step={PROCESS_STEPS[0]} />

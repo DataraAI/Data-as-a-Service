@@ -2,14 +2,16 @@ import { useEffect, useRef, useState } from "react";
 import { ChevronDown, Eye, Sparkles, X } from "lucide-react";
 import FooterSection from "@/components/FooterSection";
 import Navigation from "@/components/Navigation";
+import pduInstallationVideo from "@/assets/Products/RoboAnnotator/v2v/input/pduInstallation.mp4";
+import pduInstallationPoster from "@/assets/Products/RoboAnnotator/v2v/input/pduInstallation-poster.jpg";
 import sourceFrontGrilleVideo from "@/assets/Products/RoboAnnotator/v2v/input/source-front-grille.mp4";
 import sourceFrontGrillePoster from "@/assets/Products/RoboAnnotator/v2v/input/source-front-grille-poster.jpg";
 import frontGrilleLeftVideo from "@/assets/Products/RoboAnnotator/v2v/newangles/front-grille-left.mp4";
 import frontGrilleLeftPoster from "@/assets/Products/RoboAnnotator/v2v/newangles/front-grille-left-poster.jpg";
 import frontGrilleUpVideo from "@/assets/Products/RoboAnnotator/v2v/newangles/front-grille-up.mp4";
 import frontGrilleUpPoster from "@/assets/Products/RoboAnnotator/v2v/newangles/front-grille-up-poster.jpg";
-import occlusionRemovedVideo from "@/assets/Products/RoboAnnotator/v2v/occl_removal/occlusion-removed.mp4";
-import occlusionRemovedPoster from "@/assets/Products/RoboAnnotator/v2v/occl_removal/occlusion-removed-poster.jpg";
+import noPersonVideo from "@/assets/Products/RoboAnnotator/v2v/occl_removal/no_person.mp4";
+import noPersonPoster from "@/assets/Products/RoboAnnotator/v2v/occl_removal/no_person-poster.jpg";
 import exoCarAutomation from "@/assets/Products/RoboAnnotator/i2i/exo2ego/2exo_carautomation.png";
 import egoCarAutomationFront from "@/assets/Products/RoboAnnotator/i2i/exo2ego/2ego_carautomation.png";
 import egoCarAutomationSide from "@/assets/Products/RoboAnnotator/i2i/exo2ego/2ego_carautomation1.png";
@@ -29,13 +31,6 @@ import maskOutput000 from "@/assets/Products/RoboAnnotator/i2i/maskseg/000mask.p
 import maskOutput103 from "@/assets/Products/RoboAnnotator/i2i/maskseg/103mask.png";
 import maskOutput206 from "@/assets/Products/RoboAnnotator/i2i/maskseg/206mask.png";
 import maskOutput309 from "@/assets/Products/RoboAnnotator/i2i/maskseg/309mask.png";
-
-type StepCard = {
-  title: string;
-  description: string;
-  accent: "blue" | "teal" | "amber";
-  icon: "capture" | "engine" | "training";
-};
 
 type VideoAsset = {
   videoSrc: string;
@@ -60,35 +55,6 @@ type ExoToEgoExample = {
   input: ImageAsset;
   outputs: ImageAsset[];
 };
-
-const STATS = [
-  { value: "6", label: "Datasets" },
-  { value: "5,570", label: "Hours" },
-  { value: "3", label: "Verticals" },
-  { value: "Patented", label: "EXO -> EGO Pipeline", featured: true },
-];
-
-const PROCESS_STEPS: StepCard[] = [
-  {
-    title: "Input Media",
-    description:
-      "Source images and source video provide the real-world task context, geometry, and scene state.",
-    accent: "blue",
-    icon: "capture",
-  },
-  {
-    title: "RoboAnnotator Engine",
-    description: "A unified generation pipeline for viewpoint synthesis, segmentation, and scene editing.",
-    accent: "teal",
-    icon: "engine",
-  },
-  {
-    title: "Generated Outputs",
-    description: "Training-ready image and video outputs that expose the exact transformation applied.",
-    accent: "amber",
-    icon: "training",
-  },
-];
 
 const EXO_TO_EGO_EXAMPLES: ExoToEgoExample[] = [
   {
@@ -154,15 +120,20 @@ const MASK_SEGMENTATION_OUTPUTS: ImageAsset[] = [
 ];
 
 const VIDEO_OUTPUTS = {
-  input: {
+  pduInstallationInput: {
+    videoSrc: pduInstallationVideo,
+    posterSrc: pduInstallationPoster,
+    caption: "PDU installation source clip",
+  },
+  frontGrilleInput: {
     videoSrc: sourceFrontGrilleVideo,
     posterSrc: sourceFrontGrillePoster,
-    caption: "Original source clip",
+    caption: "Front grille source clip",
   },
   occlusionRemoval: {
-    videoSrc: occlusionRemovedVideo,
-    posterSrc: occlusionRemovedPoster,
-    caption: "Occlusion removed output",
+    videoSrc: noPersonVideo,
+    posterSrc: noPersonPoster,
+    caption: "PDU installation with installer removed",
   },
   newAngleLeft: {
     videoSrc: frontGrilleLeftVideo,
@@ -175,96 +146,6 @@ const VIDEO_OUTPUTS = {
     caption: "Generated upper view",
   },
 } satisfies Record<string, VideoAsset>;
-
-function StatStrip() {
-  return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      {STATS.map((stat) => (
-        <div
-          key={`${stat.value}-${stat.label}`}
-          className={`rounded-[14px] border px-5 py-4 ${
-            stat.featured
-              ? "border-teal-200 bg-gradient-to-br from-teal-50 to-blue-50 dark:border-teal-900/50 dark:from-teal-950/20 dark:to-blue-950/20"
-              : "border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
-          }`}
-        >
-          <p
-            className={`text-[22px] font-black tracking-[-0.03em] ${
-              stat.featured ? "text-teal-700 dark:text-teal-200" : "text-slate-950 dark:text-slate-100"
-            }`}
-          >
-            {stat.value}
-          </p>
-          <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
-            {stat.label}
-          </p>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function StepIcon({ type }: { type: StepCard["icon"] }) {
-  if (type === "capture") {
-    return (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
-        <rect x="3" y="5" width="18" height="14" rx="2.5" />
-        <circle cx="12" cy="12" r="3.5" />
-      </svg>
-    );
-  }
-
-  if (type === "engine") {
-    return (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-      </svg>
-    );
-  }
-
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-    </svg>
-  );
-}
-
-function StepCardView({ step }: { step: StepCard }) {
-  const classes =
-    step.accent === "blue"
-      ? "border-blue-200 bg-blue-50/80 text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-200"
-      : step.accent === "teal"
-        ? "border-teal-200 bg-teal-50/80 text-teal-700 dark:border-teal-900/50 dark:bg-teal-950/30 dark:text-teal-200"
-        : "border-amber-200 bg-amber-50/80 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200";
-
-  const iconClasses =
-    step.accent === "blue"
-      ? "border-blue-300 bg-blue-100 dark:border-blue-800 dark:bg-blue-950/50"
-      : step.accent === "teal"
-        ? "border-teal-300 bg-teal-100 dark:border-teal-800 dark:bg-teal-950/50"
-        : "border-amber-300 bg-amber-100 dark:border-amber-800 dark:bg-amber-950/50";
-
-  return (
-    <div className={`flex min-h-[176px] flex-1 flex-col rounded-[12px] border px-[22px] py-5 ${classes}`}>
-      <div className={`mb-3 grid h-9 w-9 place-items-center rounded-[8px] border ${iconClasses}`}>
-        <StepIcon type={step.icon} />
-      </div>
-      <p className="mb-2 text-[16px] font-extrabold text-slate-950 dark:text-slate-100">{step.title}</p>
-      <p className="text-[11px] leading-6 text-slate-500 dark:text-slate-400">{step.description}</p>
-    </div>
-  );
-}
-
-function FlowArrow() {
-  return (
-    <div className="hidden shrink-0 items-center px-5 lg:flex">
-      <div className="flex items-center">
-        <div className="h-[2px] w-14 rounded-[2px] bg-gradient-to-r from-blue-700 to-teal-600" />
-        <div className="h-0 w-0 border-y-[7px] border-y-transparent border-l-[11px] border-l-teal-600" />
-      </div>
-    </div>
-  );
-}
 
 function SectionHeader({
   title,
@@ -280,7 +161,7 @@ function SectionHeader({
 
   return (
     <div className="mb-4 flex items-center gap-2">
-      <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-3 transition-all duration-200 group-hover:scale-[1.02] group-hover:border-slate-300 group-hover:bg-slate-50 group-hover:shadow-[0_10px_28px_rgba(15,23,42,0.08)] dark:border-slate-700 dark:bg-slate-900 dark:group-hover:border-slate-600 dark:group-hover:bg-slate-900/90 dark:group-hover:shadow-[0_10px_28px_rgba(15,23,42,0.22)]">
+      <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-card px-5 py-3 transition-all duration-200 group-hover:scale-[1.02] group-hover:border-slate-300 group-hover:bg-muted group-hover:shadow-[0_10px_28px_rgba(15,23,42,0.08)] dark:border-slate-700 dark:group-hover:border-slate-600 dark:group-hover:shadow-[0_10px_28px_rgba(15,23,42,0.22)]">
         <span className={`h-2 w-2 rounded-[2px] ${dot}`} />
         <span className="text-[14px] font-extrabold text-slate-950 dark:text-slate-100">{title}</span>
         <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">{summary}</span>
@@ -316,7 +197,7 @@ function CollapsibleSection({
         <div className="min-w-0 flex-1">
           <SectionHeader title={title} summary={summary} accent={accent} />
         </div>
-        <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-slate-600 transition-all duration-200 group-hover:scale-105 group-hover:border-slate-300 group-hover:bg-slate-50 group-hover:text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:group-hover:border-slate-600 dark:group-hover:bg-slate-900/90 dark:group-hover:text-slate-100">
+        <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-slate-200 bg-card text-slate-600 transition-all duration-200 group-hover:scale-105 group-hover:border-slate-300 group-hover:bg-muted group-hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:group-hover:border-slate-600 dark:group-hover:text-slate-100">
           <ChevronDown className={`h-5 w-5 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
         </div>
       </button>
@@ -326,44 +207,10 @@ function CollapsibleSection({
   );
 }
 
-function VerticalFlowArrow() {
-  return (
-    <div className="flex justify-center py-1">
-      <div className="flex flex-col items-center">
-        <div className="h-14 w-[2px] rounded-[2px] bg-gradient-to-b from-blue-700 to-teal-600 dark:from-blue-300 dark:to-teal-300" />
-        <div className="h-0 w-0 border-x-[7px] border-x-transparent border-t-[11px] border-t-teal-600 dark:border-t-teal-300" />
-      </div>
-    </div>
-  );
-}
-
-function EngineBlock({
-  title,
-  description,
-}: {
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="rounded-[18px] border border-teal-200 bg-gradient-to-br from-teal-50 via-white to-blue-50 px-6 py-6 text-slate-950 shadow-[0_20px_50px_rgba(13,148,136,0.12)] dark:border-slate-700 dark:bg-[radial-gradient(circle_at_top,_rgba(13,148,136,0.18),_transparent_48%),linear-gradient(180deg,#0f172a_0%,#111827_100%)] dark:text-white dark:shadow-[0_20px_50px_rgba(15,23,42,0.2)]">
-      <div className="mb-4 flex items-center gap-3">
-        <div className="grid h-11 w-11 place-items-center rounded-[12px] border border-teal-200 bg-teal-100 text-teal-700 dark:border-white/20 dark:bg-white/10 dark:text-teal-200">
-          <Sparkles className="h-5 w-5" />
-        </div>
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-teal-700 dark:text-teal-200">RoboAnnotator</p>
-          <p className="text-[18px] font-black tracking-[-0.03em]">{title}</p>
-        </div>
-      </div>
-      <p className="max-w-[540px] text-[13px] leading-6 text-slate-600 dark:text-slate-300">{description}</p>
-    </div>
-  );
-}
-
 function InlineEngineCard({ detail }: { detail: string }) {
   return (
     <div className="flex justify-center xl:hidden">
-      <div className="rounded-[14px] border border-teal-200 bg-gradient-to-br from-teal-50 via-white to-blue-50 px-5 py-4 text-center shadow-[0_10px_25px_rgba(13,148,136,0.08)] dark:border-slate-700 dark:bg-slate-900">
+      <div className="rounded-[14px] border border-teal-200 bg-card px-5 py-4 text-center shadow-[0_10px_25px_rgba(13,148,136,0.08)] dark:border-slate-700">
         <div className="mx-auto mb-2 grid h-9 w-9 place-items-center rounded-[10px] border border-teal-200 bg-teal-100 text-teal-700 dark:border-white/20 dark:bg-white/10 dark:text-teal-200">
           <Sparkles className="h-4 w-4" />
         </div>
@@ -381,7 +228,7 @@ function I2IPipe({ detail }: { detail: string }) {
       <div className="hidden h-full items-center justify-center xl:flex">
         <div className="mx-1 flex w-[118px] flex-col items-center">
           <div className="mb-2 h-6 w-px bg-slate-200 dark:bg-slate-700" />
-          <div className="w-full rounded-[16px] border-[1.5px] border-teal-300 bg-white px-3 py-4 text-center shadow-[0_12px_28px_rgba(13,148,136,0.08)] dark:border-teal-800/60 dark:bg-slate-900">
+          <div className="w-full rounded-[16px] border-[1.5px] border-teal-300 bg-card px-3 py-4 text-center shadow-[0_12px_28px_rgba(13,148,136,0.08)] dark:border-teal-800/60">
             <div className="mx-auto mb-2 grid h-9 w-9 place-items-center rounded-[10px] border border-teal-300 bg-teal-100 text-teal-700 dark:border-teal-800 dark:bg-teal-950/50 dark:text-teal-200">
               <Sparkles className="h-4 w-4" />
             </div>
@@ -481,7 +328,7 @@ function I2IRow({
   onImageOpen: (image: ExpandedImage) => void;
 }) {
   return (
-    <div className="rounded-[16px] border border-slate-200/80 bg-slate-50/70 p-5 dark:border-slate-700 dark:bg-slate-900/50">
+    <div className="rounded-[16px] border border-slate-200/80 bg-card p-5 dark:border-slate-700">
       <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-400">{eyebrow}</p>
       <p className="mt-2 text-[19px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">{title}</p>
       <p className="mt-2 max-w-[760px] text-[13px] leading-7 text-slate-500 dark:text-slate-400">{description}</p>
@@ -609,15 +456,55 @@ function VideoPreviewTile({ asset, aspectClass = "aspect-[16/9]" }: { asset: Vid
   );
 }
 
+function V2VRow({
+  title,
+  description,
+  engineDetail,
+  inputAsset,
+  outputAssets,
+}: {
+  title: string;
+  description: string;
+  engineDetail: string;
+  inputAsset: VideoAsset;
+  outputAssets: VideoAsset[];
+}) {
+  return (
+    <div className="rounded-[16px] border border-slate-200/80 bg-card p-5 dark:border-slate-700">
+      <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-400">Video transformation</p>
+      <p className="mt-2 text-[19px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">{title}</p>
+      <p className="mt-2 max-w-[760px] text-[13px] leading-7 text-slate-500 dark:text-slate-400">{description}</p>
+
+      <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,0.98fr)_118px_minmax(0,1.12fr)] xl:items-center">
+        <div>
+          <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-blue-700 dark:text-blue-200">Input video</p>
+          <VideoPreviewTile asset={inputAsset} />
+        </div>
+
+        <I2IPipe detail={engineDetail} />
+
+        <div>
+          <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-teal-700 dark:text-teal-200">Output video</p>
+          <div className="grid grid-cols-1 gap-3">
+            {outputAssets.map((asset) => (
+              <VideoPreviewTile key={asset.caption} asset={asset} />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function RoboEyeView() {
   const [expandedImage, setExpandedImage] = useState<ExpandedImage | null>(null);
 
   return (
-    <div className="min-h-screen bg-white text-slate-950 dark:bg-slate-950 dark:text-slate-100">
+    <div className="min-h-screen bg-background text-slate-950 dark:text-slate-100">
       <Navigation />
 
       <main className="pt-[88px]">
-        <div className="mx-auto max-w-[1320px] bg-white px-4 py-9 sm:px-6 md:px-10 xl:px-12 dark:bg-slate-950">
+        <div className="mx-auto max-w-[1320px] bg-background px-4 py-9 sm:px-6 md:px-10 xl:px-12">
           <div className="mx-auto max-w-[1280px]">
             <section className="mb-6">
               <div className="mb-2 flex flex-wrap items-center gap-3">
@@ -631,32 +518,43 @@ export default function RoboEyeView() {
                   Patented
                 </span>
               </div>
-              <p className="max-w-[760px] text-[15px] leading-8 text-slate-500 dark:text-slate-400">
-                Patented image-to-image and video-to-video pipeline for robotics data generation.
+              <p className="max-w-[900px] text-[15px] leading-8 text-slate-500 dark:text-slate-400">
+                Generate training-ready robotics data through video-to-video and image-to-image transformation,
+                including new-angle perspectives, occlusion removal, EXO-to-EGO conversion, corner cases, and mask segmentation.
               </p>
             </section>
 
-            <section className="mb-10">
-              <StatStrip />
-            </section>
-
-            <section className="mb-10 rounded-[14px] border border-slate-200 bg-slate-50/80 px-8 py-7 dark:border-slate-800 dark:bg-slate-900/60">
-              <p className="mb-6 text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-400">How It Works</p>
-              <div className="lg:flex lg:items-stretch">
-                <StepCardView step={PROCESS_STEPS[0]} />
-                <FlowArrow />
-                <StepCardView step={PROCESS_STEPS[1]} />
-                <FlowArrow />
-                <StepCardView step={PROCESS_STEPS[2]} />
+            <CollapsibleSection
+              title="Video-to-Video"
+              summary="Input source video feeding multiple transformations"
+              accent="teal"
+              defaultOpen
+            >
+              <div className="flex flex-col gap-4 rounded-[18px] border border-slate-200 bg-card p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700 sm:p-6">
+                <V2VRow
+                  title="Occlusion Removal"
+                  description="Removes the installer from PDU installation footage while preserving the data-center rack, equipment, and underlying task context."
+                  engineDetail="Occlusion Removal"
+                  inputAsset={VIDEO_OUTPUTS.pduInstallationInput}
+                  outputAssets={[VIDEO_OUTPUTS.occlusionRemoval]}
+                />
+                <V2VRow
+                  title="New Angle Video Generation"
+                  description="Generates multiple alternative perspectives from the same clip so one real capture can feed several robot-view training scenarios."
+                  engineDetail="New Angle Generation"
+                  inputAsset={VIDEO_OUTPUTS.frontGrilleInput}
+                  outputAssets={[VIDEO_OUTPUTS.newAngleLeft, VIDEO_OUTPUTS.newAngleUp]}
+                />
               </div>
-            </section>
+            </CollapsibleSection>
 
             <CollapsibleSection
               title="Image-to-Image"
               summary="Three generation workflows built from real product outputs"
               accent="blue"
+              defaultOpen
             >
-              <div className="rounded-[18px] border border-slate-200 bg-white p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700 dark:bg-slate-900">
+              <div className="rounded-[18px] border border-slate-200 bg-card p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700">
                 <p className="text-[24px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">EXO to EGO</p>
                 <p className="mt-3 max-w-[840px] text-[13px] leading-7 text-slate-500 dark:text-slate-400">
                   Convert a single third-person scene capture into multiple robot-perspective views for inspection, manipulation, and control training.
@@ -672,19 +570,19 @@ export default function RoboEyeView() {
                       engineDetail={example.engineDetail}
                       inputTitle="EXO Source"
                       outputTitle="Generated EGO Views"
-                    inputItems={[example.input]}
-                    outputItems={example.outputs}
-                    inputColumns={1}
-                    outputColumns={2}
-                    inputAspectClass="aspect-[5/4]"
-                    outputAspectClass="aspect-[5/4]"
-                    onImageOpen={setExpandedImage}
-                  />
-                ))}
-              </div>
+                      inputItems={[example.input]}
+                      outputItems={example.outputs}
+                      inputColumns={1}
+                      outputColumns={2}
+                      inputAspectClass="aspect-[5/4]"
+                      outputAspectClass="aspect-[5/4]"
+                      onImageOpen={setExpandedImage}
+                    />
+                  ))}
+                </div>
               </div>
 
-              <div className="rounded-[18px] border border-slate-200 bg-white p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700 dark:bg-slate-900">
+              <div className="rounded-[18px] border border-slate-200 bg-card p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700">
                 <p className="text-[24px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">Corner Case Generation</p>
                 <p className="mt-3 max-w-[840px] text-[13px] leading-7 text-slate-500 dark:text-slate-400">
                   Starting from a single source frame, RoboAnnotator can synthesize multiple edge-case outcomes to expand coverage for rare but critical scenarios.
@@ -710,7 +608,7 @@ export default function RoboEyeView() {
                 </div>
               </div>
 
-              <div className="rounded-[18px] border border-slate-200 bg-white p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700 dark:bg-slate-900">
+              <div className="rounded-[18px] border border-slate-200 bg-card p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700">
                 <p className="text-[24px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">Mask Segmentation</p>
                 <p className="mt-3 max-w-[840px] text-[13px] leading-7 text-slate-500 dark:text-slate-400">
                   Multi-frame segmentation outputs preserve the original scene context while isolating the exact regions needed for annotation and training workflows.
@@ -732,60 +630,6 @@ export default function RoboEyeView() {
                     outputAspectClass="aspect-square"
                     onImageOpen={setExpandedImage}
                   />
-                </div>
-              </div>
-            </CollapsibleSection>
-
-            <CollapsibleSection
-              title="Video-to-Video"
-              summary="Input source video feeding multiple transformations"
-              accent="teal"
-            >
-              <div className="mx-auto w-full max-w-[680px] rounded-[18px] border border-slate-200 bg-white p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700 dark:bg-slate-900">
-                <div className="mb-4">
-                  <p className="text-[18px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">Input Video</p>
-                  <p className="mt-2 max-w-[560px] text-[13px] leading-7 text-slate-500 dark:text-slate-400">
-                    A single front grille source clip feeds the transformations below. Hover to preview the original input before it enters the generation pipeline.
-                  </p>
-                </div>
-                <div className="mx-auto max-w-[390px]">
-                  <VideoPreviewTile asset={VIDEO_OUTPUTS.input} />
-                </div>
-              </div>
-
-              <VerticalFlowArrow />
-
-              <div className="py-1">
-                <div className="mx-auto max-w-[880px]">
-                  <EngineBlock
-                    title="Video Transformation Engine"
-                    description="The same source sequence can be routed through different RoboAnnotator generation paths, producing cleaned footage and entirely new viewpoints without changing the underlying task context."
-                  />
-                </div>
-              </div>
-
-              <VerticalFlowArrow />
-
-              <div className="grid gap-4 lg:grid-cols-[minmax(0,1.22fr)_minmax(0,0.88fr)]">
-                <div className="rounded-[16px] border border-slate-200 bg-white p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700 dark:bg-slate-900">
-                  <p className="text-[22px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">New Angle Video Generation</p>
-                  <p className="mt-3 max-w-[560px] text-[13px] leading-7 text-slate-500 dark:text-slate-400">
-                    Generates multiple alternative perspectives from the same clip so one real capture can feed several robot-view training scenarios.
-                  </p>
-                  <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                    <VideoPreviewTile asset={VIDEO_OUTPUTS.newAngleLeft} />
-                    <VideoPreviewTile asset={VIDEO_OUTPUTS.newAngleUp} />
-                  </div>
-                </div>
-
-                <div className="rounded-[16px] border border-slate-200 bg-white p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700 dark:bg-slate-900">
-                  <p className="text-[22px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">Occlusion Removal</p>
-                  <p className="mt-3 max-w-[420px] text-[13px] leading-7 text-slate-500 dark:text-slate-400">
-                    Removes foreground blockers while preserving the scene geometry and the underlying task action.
-                  </p>
-                  <div className="mt-5">
-                    <VideoPreviewTile asset={VIDEO_OUTPUTS.occlusionRemoval} />
-                  </div>
                 </div>
               </div>
             </CollapsibleSection>

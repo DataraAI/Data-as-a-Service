@@ -1,23 +1,20 @@
 import { useEffect, useRef, useState } from "react";
-import { Hand, Sparkles, X } from "lucide-react";
+import { ChevronDown, Hand, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import FooterSection from "@/components/FooterSection";
 import Navigation from "@/components/Navigation";
 import { buildAuthPath } from "@/lib/authLinks";
 import handInputVideo from "@/assets/Products/RoboHandMotion/handinput.mp4";
 import handTrackingOutputVideo from "@/assets/Products/RoboHandMotion/handtrackingoutput.mp4";
+import mcapInputVideo from "@/assets/Products/RoboHandMotion/mcapinput.mp4";
+import mcapInputPoster from "@/assets/Products/RoboHandMotion/mcapinput-poster.jpg";
+import mcapOutputVideo from "@/assets/Products/RoboHandMotion/mcapoutput.mp4";
+import mcapOutputPoster from "@/assets/Products/RoboHandMotion/mcapoutput-poster.jpg";
 import frame390 from "@/assets/Products/RoboHandMotion/390.png";
 import leftHandMeshOne from "@/assets/Products/RoboHandMotion/left1.png";
 import leftHandMeshTwo from "@/assets/Products/RoboHandMotion/left2.png";
 import rightHandMeshOne from "@/assets/Products/RoboHandMotion/right1.png";
 import rightHandMeshTwo from "@/assets/Products/RoboHandMotion/right2.png";
-
-type StepCard = {
-  title: string;
-  description: string;
-  accent: "blue" | "purple" | "orange";
-  icon: "capture" | "engine" | "training";
-};
 
 type VideoAsset = {
   videoSrc: string;
@@ -35,37 +32,6 @@ type ExpandedImage = {
   alt: string;
 };
 
-const STATS = [
-  { value: "16", label: "Datasets" },
-  { value: "5,610+", label: "Hours Labeled" },
-  { value: "4", label: "Verticals" },
-  { value: "Patented", label: "Hand Motion Pipeline", featured: true },
-];
-
-const PROCESS_STEPS: StepCard[] = [
-  {
-    title: "Input Video",
-    description:
-      "Third-person task video captures the full hand motion sequence, object interactions, and scene context.",
-    accent: "blue",
-    icon: "capture",
-  },
-  {
-    title: "RoboHandMotion Engine",
-    description:
-      "Sequence tracking and per-frame reconstruction generate motion-aware hand outputs from real footage.",
-    accent: "purple",
-    icon: "engine",
-  },
-  {
-    title: "Tracking & 3D Mesh Outputs",
-    description:
-      "Hover-ready tracked video plus frame-level left and right hand 3D meshes for downstream learning workflows.",
-    accent: "orange",
-    icon: "training",
-  },
-];
-
 const VIDEO_SHOWCASE = {
   input: {
     videoSrc: handInputVideo,
@@ -79,6 +45,19 @@ const VIDEO_SHOWCASE = {
   },
 } satisfies Record<string, VideoAsset>;
 
+const MCAP_SHOWCASE = {
+  input: {
+    videoSrc: mcapInputVideo,
+    posterSrc: mcapInputPoster,
+    alt: "Egocentric hand-motion input video",
+  },
+  output: {
+    videoSrc: mcapOutputVideo,
+    posterSrc: mcapOutputPoster,
+    alt: "21-keypoint hand MoCap output video",
+  },
+} satisfies Record<string, VideoAsset>;
+
 const LEFT_HAND_MESHES: ImageAsset[] = [
   { src: leftHandMeshOne, alt: "Left hand 3D mesh example one" },
   { src: leftHandMeshTwo, alt: "Left hand 3D mesh example two" },
@@ -88,92 +67,6 @@ const RIGHT_HAND_MESHES: ImageAsset[] = [
   { src: rightHandMeshOne, alt: "Right hand 3D mesh example one" },
   { src: rightHandMeshTwo, alt: "Right hand 3D mesh example two" },
 ];
-
-function StatStrip() {
-  return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      {STATS.map((stat) => (
-        <div
-          key={`${stat.value}-${stat.label}`}
-          className={`rounded-[14px] border px-5 py-4 ${
-            stat.featured
-              ? "border-violet-200 bg-gradient-to-br from-violet-50 to-orange-50 dark:border-violet-900/50 dark:from-violet-950/20 dark:to-orange-950/20"
-              : "border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
-          }`}
-        >
-          <p
-            className={`text-[22px] font-black tracking-[-0.03em] ${
-              stat.featured ? "text-violet-700 dark:text-violet-200" : "text-slate-950 dark:text-slate-100"
-            }`}
-          >
-            {stat.value}
-          </p>
-          <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
-            {stat.label}
-          </p>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function StepIcon({ type }: { type: StepCard["icon"] }) {
-  if (type === "capture") {
-    return (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
-        <rect x="3" y="5" width="18" height="14" rx="2.5" />
-        <circle cx="12" cy="12" r="3.5" />
-      </svg>
-    );
-  }
-
-  if (type === "engine") {
-    return <Hand className="h-4 w-4" />;
-  }
-
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-    </svg>
-  );
-}
-
-function StepCardView({ step }: { step: StepCard }) {
-  const classes =
-    step.accent === "blue"
-      ? "border-blue-200 bg-blue-50/80 text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-200"
-      : step.accent === "purple"
-        ? "border-violet-200 bg-violet-50/80 text-violet-700 dark:border-violet-900/50 dark:bg-violet-950/30 dark:text-violet-200"
-        : "border-orange-200 bg-orange-50/80 text-orange-700 dark:border-orange-900/50 dark:bg-orange-950/30 dark:text-orange-200";
-
-  const iconClasses =
-    step.accent === "blue"
-      ? "border-blue-300 bg-blue-100 dark:border-blue-800 dark:bg-blue-950/50"
-      : step.accent === "purple"
-        ? "border-violet-300 bg-violet-100 dark:border-violet-800 dark:bg-violet-950/50"
-        : "border-orange-300 bg-orange-100 dark:border-orange-800 dark:bg-orange-950/50";
-
-  return (
-    <div className={`flex min-h-[176px] flex-1 flex-col rounded-[12px] border px-[22px] py-5 ${classes}`}>
-      <div className={`mb-3 grid h-9 w-9 place-items-center rounded-[8px] border ${iconClasses}`}>
-        <StepIcon type={step.icon} />
-      </div>
-      <p className="mb-2 text-[16px] font-extrabold text-slate-950 dark:text-slate-100">{step.title}</p>
-      <p className="text-[11px] leading-6 text-slate-500 dark:text-slate-400">{step.description}</p>
-    </div>
-  );
-}
-
-function FlowArrow() {
-  return (
-    <div className="hidden shrink-0 items-center px-5 lg:flex">
-      <div className="flex items-center">
-        <div className="h-[2px] w-14 rounded-[2px] bg-gradient-to-r from-blue-700 to-violet-600" />
-        <div className="h-0 w-0 border-y-[7px] border-y-transparent border-l-[11px] border-l-violet-600" />
-      </div>
-    </div>
-  );
-}
 
 function SectionHeader({
   title,
@@ -189,20 +82,56 @@ function SectionHeader({
 
   return (
     <div className="mb-4 flex items-center gap-2">
-      <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-3 dark:border-slate-700 dark:bg-slate-900">
+      <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-card px-5 py-3 transition-all duration-200 group-hover:scale-[1.02] group-hover:border-slate-300 group-hover:bg-muted group-hover:shadow-[0_10px_28px_rgba(15,23,42,0.08)] dark:border-slate-700 dark:group-hover:border-slate-600 dark:group-hover:shadow-[0_10px_28px_rgba(15,23,42,0.22)]">
         <span className={`h-2 w-2 rounded-[2px] ${dot}`} />
         <span className="text-[14px] font-extrabold text-slate-950 dark:text-slate-100">{title}</span>
         <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">{summary}</span>
       </div>
-      <div className={`h-px flex-1 bg-gradient-to-r ${line} to-transparent`} />
+      <div className={`h-px flex-1 bg-gradient-to-r ${line} to-transparent transition-all duration-200 group-hover:opacity-100 group-hover:from-slate-300 dark:group-hover:from-slate-500`} />
     </div>
+  );
+}
+
+function CollapsibleSection({
+  title,
+  summary,
+  accent,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  summary: string;
+  accent: "blue" | "purple" | "orange";
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+
+  return (
+    <section className="flex flex-col gap-5">
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        aria-expanded={open}
+        className="group flex w-full items-center gap-3 rounded-[18px] p-2 text-left transition-colors"
+      >
+        <div className="min-w-0 flex-1">
+          <SectionHeader title={title} summary={summary} accent={accent} />
+        </div>
+        <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-slate-200 bg-card text-slate-600 transition-all duration-200 group-hover:scale-105 group-hover:border-slate-300 group-hover:bg-muted group-hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:group-hover:border-slate-600 dark:group-hover:text-slate-100">
+          <ChevronDown className={`h-5 w-5 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+        </div>
+      </button>
+
+      {open ? children : null}
+    </section>
   );
 }
 
 function InlineFeaturePipe({ detail }: { detail: string }) {
   return (
     <div className="flex justify-center xl:hidden">
-      <div className="rounded-[14px] border border-violet-200 bg-gradient-to-br from-violet-50 via-white to-orange-50 px-5 py-4 text-center shadow-[0_10px_25px_rgba(124,58,237,0.08)] dark:border-slate-700 dark:bg-slate-900">
+      <div className="rounded-[14px] border border-violet-200 bg-card px-5 py-4 text-center shadow-[0_10px_25px_rgba(124,58,237,0.08)] dark:border-slate-700">
         <div className="mx-auto mb-2 grid h-9 w-9 place-items-center rounded-[10px] border border-violet-200 bg-violet-100 text-violet-700 dark:border-white/20 dark:bg-white/10 dark:text-violet-200">
           <Hand className="h-4 w-4" />
         </div>
@@ -220,7 +149,7 @@ function FeaturePipe({ detail }: { detail: string }) {
       <div className="hidden h-full items-center justify-center xl:flex">
         <div className="mx-1 flex w-[118px] flex-col items-center">
           <div className="mb-2 h-6 w-px bg-slate-200 dark:bg-slate-700" />
-          <div className="w-full rounded-[16px] border-[1.5px] border-violet-300 bg-white px-3 py-4 text-center shadow-[0_12px_28px_rgba(124,58,237,0.08)] dark:border-violet-800/60 dark:bg-slate-900">
+          <div className="w-full rounded-[16px] border-[1.5px] border-violet-300 bg-card px-3 py-4 text-center shadow-[0_12px_28px_rgba(124,58,237,0.08)] dark:border-violet-800/60">
             <div className="mx-auto mb-2 grid h-9 w-9 place-items-center rounded-[10px] border border-violet-300 bg-violet-100 text-violet-700 dark:border-violet-800 dark:bg-violet-950/50 dark:text-violet-200">
               <Hand className="h-4 w-4" />
             </div>
@@ -238,9 +167,18 @@ function FeaturePipe({ detail }: { detail: string }) {
   );
 }
 
-function VideoPreviewTile({ asset, aspectClass = "aspect-[16/10]" }: { asset: VideoAsset; aspectClass?: string }) {
+function VideoPreviewTile({
+  asset,
+  aspectClass = "aspect-[16/10]",
+  fit = "cover",
+}: {
+  asset: VideoAsset;
+  aspectClass?: string;
+  fit?: "cover" | "contain";
+}) {
   const [hovered, setHovered] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const mediaFitClass = fit === "contain" ? "object-contain" : "object-cover";
 
   useEffect(() => {
     const video = videoRef.current;
@@ -271,7 +209,7 @@ function VideoPreviewTile({ asset, aspectClass = "aspect-[16/10]" }: { asset: Vi
       <img
         src={asset.posterSrc}
         alt={asset.alt}
-        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${hovered ? "opacity-0" : "opacity-100"}`}
+        className={`absolute inset-0 h-full w-full ${mediaFitClass} transition-opacity duration-200 ${hovered ? "opacity-0" : "opacity-100"}`}
       />
       <video
         ref={videoRef}
@@ -281,7 +219,7 @@ function VideoPreviewTile({ asset, aspectClass = "aspect-[16/10]" }: { asset: Vi
         loop
         playsInline
         preload="metadata"
-        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${hovered ? "opacity-100" : "opacity-0"}`}
+        className={`absolute inset-0 h-full w-full ${mediaFitClass} transition-opacity duration-200 ${hovered ? "opacity-100" : "opacity-0"}`}
       />
       <div className="absolute inset-0 bg-gradient-to-t from-slate-950/40 via-transparent to-transparent" />
     </div>
@@ -404,11 +342,11 @@ export default function RoboHandMotion() {
   const [expandedImage, setExpandedImage] = useState<ExpandedImage | null>(null);
 
   return (
-    <div className="min-h-screen bg-white text-slate-950 dark:bg-slate-950 dark:text-slate-100">
+    <div className="min-h-screen bg-background text-slate-950 dark:text-slate-100">
       <Navigation />
 
       <main className="pt-[88px]">
-        <div className="mx-auto max-w-[1320px] bg-white px-4 py-9 sm:px-6 md:px-10 xl:px-12 dark:bg-slate-950">
+        <div className="mx-auto max-w-[1320px] bg-background px-4 py-9 sm:px-6 md:px-10 xl:px-12">
           <div className="mx-auto max-w-[1280px]">
             <section className="mb-6">
               <div className="mb-2 flex flex-wrap items-center gap-3">
@@ -422,30 +360,20 @@ export default function RoboHandMotion() {
                   Patented
                 </span>
               </div>
-              <p className="max-w-[780px] text-[15px] leading-8 text-slate-500 dark:text-slate-400">
-                Patented pipeline for sequence-level hand tracking and frame-level 3D hand mesh generation from real-world task video.
+              <p className="max-w-[900px] text-[15px] leading-8 text-slate-500 dark:text-slate-400">
+                Transform real-world task video into training-ready hand-motion data with tracked overlay video,
+                21-keypoint hand MoCap, frame-level reconstruction, and left/right 3D hand mesh outputs.
               </p>
             </section>
 
-            <section className="mb-10">
-              <StatStrip />
-            </section>
-
-            <section className="mb-10 rounded-[14px] border border-slate-200 bg-slate-50/80 px-8 py-7 dark:border-slate-800 dark:bg-slate-900/60">
-              <p className="mb-6 text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-400">How It Works</p>
-              <div className="lg:flex lg:items-stretch">
-                <StepCardView step={PROCESS_STEPS[0]} />
-                <FlowArrow />
-                <StepCardView step={PROCESS_STEPS[1]} />
-                <FlowArrow />
-                <StepCardView step={PROCESS_STEPS[2]} />
-              </div>
-            </section>
-
             <section className="flex flex-col gap-10">
-              <div>
-                <SectionHeader title="Sequence Tracking" summary="Input towel video to tracked hand output" accent="purple" />
-                <div className="rounded-[18px] border border-slate-200 bg-white p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700 dark:bg-slate-900">
+              <CollapsibleSection
+                title="Sequence Tracking"
+                summary="Input towel video to tracked hand output"
+                accent="purple"
+                defaultOpen
+              >
+                <div className="rounded-[18px] border border-slate-200 bg-card p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700">
                   <p className="text-[24px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">Sequence-Level Hand Tracking</p>
                   <p className="mt-3 max-w-[860px] text-[13px] leading-7 text-slate-500 dark:text-slate-400">
                     Hover the source towel manipulation clip to compare the raw sequence against RoboHandMotion&apos;s tracked output of the same action.
@@ -465,11 +393,51 @@ export default function RoboHandMotion() {
                     </div>
                   </div>
                 </div>
-              </div>
+              </CollapsibleSection>
 
-              <div>
-                <SectionHeader title="Frame Reconstruction" summary="Single frame to left and right hand 3D meshes" accent="blue" />
-                <div className="rounded-[18px] border border-slate-200 bg-white p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700 dark:bg-slate-900">
+              <CollapsibleSection
+                title="Hand Motion Capture"
+                summary="Egocentric hand video to 21-keypoint MoCap data"
+                accent="orange"
+                defaultOpen
+              >
+                <div className="rounded-[18px] border border-slate-200 bg-card p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700">
+                  <p className="text-[24px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">Hand Motion Capture</p>
+                  <p className="mt-3 max-w-[860px] text-[13px] leading-7 text-slate-500 dark:text-slate-400">
+                    Generate motion-capture data from egocentric hand video using the standard 21-keypoint hand representation.
+                  </p>
+
+                  <div className="mt-6 grid gap-4 xl:grid-cols-[minmax(0,0.98fr)_118px_minmax(0,0.98fr)] xl:items-center">
+                    <div>
+                      <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-blue-700 dark:text-blue-200">Egocentric Input</p>
+                      <VideoPreviewTile
+                        asset={MCAP_SHOWCASE.input}
+                        aspectClass="mx-auto h-[120px] aspect-video sm:h-[188px] md:h-[225px] xl:h-[260px]"
+                        fit="contain"
+                      />
+                    </div>
+
+                    <FeaturePipe detail="21-Keypoint MoCap" />
+
+                    <div>
+                      <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-orange-700 dark:text-orange-200">MoCap Visualization</p>
+                      <VideoPreviewTile
+                        asset={MCAP_SHOWCASE.output}
+                        aspectClass="mx-auto h-[120px] aspect-[116/65] sm:h-[188px] md:h-[225px] xl:h-[260px]"
+                        fit="contain"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </CollapsibleSection>
+
+              <CollapsibleSection
+                title="Frame Reconstruction"
+                summary="Single frame to left and right hand 3D meshes"
+                accent="blue"
+                defaultOpen
+              >
+                <div className="rounded-[18px] border border-slate-200 bg-card p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700">
                   <p className="text-[24px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">Frame-by-Frame 3D Hand Mesh Generation</p>
                   <p className="mt-3 max-w-[860px] text-[13px] leading-7 text-slate-500 dark:text-slate-400">
                     A representative frame from the same towel sequence is reconstructed into per-hand 3D mesh outputs, with two 3D mesh views for the left hand and two for the right.
@@ -492,7 +460,7 @@ export default function RoboHandMotion() {
                     </div>
                   </div>
                 </div>
-              </div>
+              </CollapsibleSection>
 
               <div className="mt-1 flex flex-col justify-between gap-6 rounded-[14px] border-[1.5px] border-dashed border-violet-300 bg-gradient-to-br from-violet-50 to-orange-50 px-8 py-7 lg:flex-row lg:items-center dark:border-violet-900/50 dark:from-violet-950/20 dark:to-orange-950/20">
                 <div className="flex items-center gap-4">
