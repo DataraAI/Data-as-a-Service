@@ -421,7 +421,7 @@ export default function Navigation() {
                         className="flex min-w-0 flex-1 flex-col items-center justify-center py-2 pl-4 pr-1"
                         onClick={(event) => handleGlobalNavClick(event, item.href)}
                       >
-                        <span className="truncate text-[14px] font-bold leading-none">{item.label}</span>
+                        <span className="truncate text-[16px] font-bold leading-none">{item.label}</span>
                       </Link>
                       <div className="flex items-stretch py-1.5 pr-2">
                         <ProductMenu
@@ -451,7 +451,7 @@ export default function Navigation() {
                         : "text-slate-500 hover:bg-slate-50 hover:text-foreground"
                       }`}
                   >
-                    <span className="truncate text-[14px] font-bold leading-none">{item.label}</span>
+                    <span className="truncate text-[16px] font-bold leading-none">{item.label}</span>
                     <span
                       className={`absolute inset-x-[20%] bottom-0 h-0.5 rounded-t-full ${
                         isActive
