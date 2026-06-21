@@ -359,7 +359,7 @@ export default function Home() {
               <img
                 src={isDarkMode ? simToRealLoopDark : simToRealLoop}
                 alt="Continuous improvement loop between simulation model training and real-world robot deployment"
-                className="mx-auto block h-auto w-full max-w-[1100px]"
+                className="mx-auto block h-auto w-[60%] max-w-[660px]"
               />
             </figure>
           </div>
@@ -388,7 +388,7 @@ export default function Home() {
         <section id="solutions" ref={solutionsRef} className="scroll-mt-[104px] bg-background px-4 py-16 sm:px-6">
           <div className="mx-auto max-w-[1300px]">
             <div className="mb-10 text-center">
-              <HomeSectionLabel>Solutions</HomeSectionLabel>
+              <HomeSectionLabel>Use Cases</HomeSectionLabel>
               <h2 className="marketing-display-title mt-6 text-[36px] font-black tracking-[-0.02em] text-slate-950">
                 Real-World Automation, Ready to Deploy
               </h2>
