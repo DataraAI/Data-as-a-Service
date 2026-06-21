@@ -45,7 +45,7 @@ export function CuratedCatalogCard({
     <button
       type="button"
       onClick={onOpen}
-      className="group flex h-full flex-col overflow-hidden rounded-[18px] border border-slate-200 bg-white text-left shadow-[0_14px_34px_rgba(15,23,42,0.06)] transition-all duration-300 hover:-translate-y-1 hover:border-primary/25 hover:shadow-[0_24px_56px_rgba(15,23,42,0.12)] sm:flex-row"
+      className="group flex h-full flex-col overflow-hidden rounded-[18px] border border-slate-200 bg-card text-left shadow-[0_14px_34px_rgba(15,23,42,0.06)] transition-all duration-300 hover:-translate-y-1 hover:border-primary/25 hover:shadow-[0_24px_56px_rgba(15,23,42,0.12)] sm:flex-row"
     >
       <div
         className={`p-4 sm:min-w-0 sm:flex-[0_0_48%] sm:p-5 ${

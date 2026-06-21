@@ -129,7 +129,7 @@ export default function AuthPage() {
 
       <main className="relative z-10 flex min-h-screen items-center justify-center px-4 pb-10 pt-24 sm:px-6">
         <div className="grid w-full max-w-6xl gap-8 lg:grid-cols-[1.05fr,0.95fr]">
-          <section className="rounded-sm border border-border bg-card/30 p-8 shadow-2xl shadow-black/10">
+          <section className="rounded-sm border border-border bg-card p-8 shadow-2xl shadow-black/10">
             <div className="mb-4 inline-flex items-center gap-2 rounded-sm border border-primary/30 bg-primary/10 px-3 py-1 font-mono-tech text-xs uppercase tracking-[0.24em] text-primary">
               Datara Access
             </div>
@@ -162,7 +162,7 @@ export default function AuthPage() {
             </div>
           </section>
 
-          <section className="rounded-sm border border-border bg-card/50 p-8 shadow-2xl shadow-black/10">
+          <section className="rounded-sm border border-border bg-card p-8 shadow-2xl shadow-black/10">
             {isLoading ? (
               <div className="flex min-h-[420px] items-center justify-center text-muted-foreground">
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />

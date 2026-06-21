@@ -74,7 +74,7 @@ export function RootShowcaseCatalogCard({
     <button
       type="button"
       onClick={onOpen}
-      className="group flex h-full flex-col overflow-hidden rounded-[12px] border border-slate-200 bg-white text-left shadow-[0_1px_4px_rgba(0,0,0,0.04)] transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_8px_24px_rgba(13,148,136,0.10)]"
+      className="group flex h-full flex-col overflow-hidden rounded-[12px] border border-slate-200 bg-card text-left shadow-[0_1px_4px_rgba(0,0,0,0.04)] transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_8px_24px_rgba(13,148,136,0.10)]"
     >
       <div
         className="relative h-[120px] overflow-hidden"

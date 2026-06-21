@@ -54,9 +54,9 @@ export function RootLanding({
 }: RootLandingProps) {
   return (
     <div className="mx-auto w-full max-w-[1440px] px-4 py-10 sm:px-6 md:py-14">
-      <div className="overflow-hidden rounded-[30px] border border-slate-200 bg-white shadow-[0_30px_70px_rgba(15,23,42,0.1)]">
+      <div className="overflow-hidden rounded-[30px] border border-slate-200 bg-card shadow-[0_30px_70px_rgba(15,23,42,0.1)]">
         <div className="grid lg:grid-cols-[220px_minmax(0,1fr)]">
-          <aside className="flex flex-col border-b border-slate-200 bg-slate-50/90 p-5 lg:border-b-0 lg:border-r lg:p-6">
+          <aside className="flex flex-col border-b border-slate-200 bg-card p-5 lg:border-b-0 lg:border-r lg:p-6">
             <div className="border-b border-slate-200 pb-5">
               <div className="text-lg font-extrabold tracking-[0.04em] text-primary">DataraAI</div>
               <div className="mt-1 text-base font-bold text-slate-950">Physical AI Data</div>
@@ -121,7 +121,7 @@ export function RootLanding({
                   Get Access
                 </Link>
               ) : (
-                <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-center text-xs font-semibold leading-5 text-slate-500">
+                <div className="rounded-xl border border-slate-200 bg-card px-4 py-3 text-center text-xs font-semibold leading-5 text-slate-500">
                   Public datasets are ready to browse.
                 </div>
               )}

@@ -33,7 +33,7 @@
 
 @layer base {
   :root {
-    --background: 210 33% 99%;
+    --background: 210 33% 98.8%;
     --foreground: 222 47% 11%;
 
     --card: 0 0% 100%;
@@ -67,7 +67,7 @@
 
     --gradient-primary: linear-gradient(135deg, hsl(174 79% 32%), hsl(206 89% 45%));
     --gradient-hero: linear-gradient(135deg, #ffffff 0%, #f8fafc 35%, #eef6f5 68%, #eff6ff 100%);
-    --gradient-card: linear-gradient(135deg, #ffffff, #f8fafc);
+    --gradient-card: linear-gradient(135deg, hsl(var(--card)), hsl(var(--card)));
 
     --shadow-elegant: 0 18px 48px rgba(15, 23, 42, 0.08);
     --shadow-glow: 0 0 28px rgba(13, 148, 136, 0.14);
@@ -88,13 +88,13 @@
   }
 
   .dark {
-    --background: 200 18% 4%;
+    --background: 210 33% 2.35%;
     --foreground: 210 40% 98%;
 
-    --card: 220 21% 7%;
+    --card: 218 22% 7%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 220 21% 7%;
+    --popover: 218 22% 7%;
     --popover-foreground: 210 40% 98%;
 
     --primary: 166 83% 51%;
@@ -124,17 +124,17 @@
     --gradient-hero:
       linear-gradient(
         120deg,
-        hsl(200 18% 4%) 0%,
+        hsl(var(--background)) 0%,
         hsl(147 40% 8%) 30%,
         hsl(214 43% 10%) 65%,
-        hsl(200 18% 4%) 100%
+        hsl(var(--background)) 100%
       );
-    --gradient-card: linear-gradient(135deg, hsl(220 21% 7%), hsl(214 24% 9%));
+    --gradient-card: linear-gradient(135deg, hsl(var(--card)), hsl(var(--card)));
 
     --shadow-elegant: 0 20px 60px rgba(0, 0, 0, 0.28);
     --shadow-glow: 0 0 32px rgba(29, 233, 182, 0.18);
 
-    --sidebar-background: 210 29% 3%;
+    --sidebar-background: 218 22% 7%;
     --sidebar-foreground: 214 16% 78%;
     --sidebar-primary: 166 83% 51%;
     --sidebar-primary-foreground: 200 33% 5%;
@@ -168,7 +168,7 @@
     background-image:
       radial-gradient(circle at top center, rgba(29, 233, 182, 0.1), transparent 28%),
       radial-gradient(circle at 85% 18%, rgba(30, 136, 229, 0.08), transparent 24%),
-      linear-gradient(180deg, hsl(var(--background)) 0%, #06080b 100%);
+      linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--background)) 100%);
   }
 
   a,
@@ -212,25 +212,25 @@
   }
 
   .glass-card {
-    background: rgba(255, 255, 255, 0.86);
+    background: hsl(var(--card));
     backdrop-filter: blur(12px);
   }
 
   .marketing-frame {
     border: 1px solid rgba(226, 232, 240, 0.95);
-    background: rgba(255, 255, 255, 0.92);
+    background: hsl(var(--card));
     box-shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
   }
 
   .marketing-surface {
     border: 1px solid rgba(226, 232, 240, 0.95);
-    background: rgba(255, 255, 255, 0.94);
+    background: hsl(var(--card));
     box-shadow: 0 18px 44px rgba(15, 23, 42, 0.08);
   }
 
   .marketing-surface-muted {
     border: 1px solid rgba(226, 232, 240, 0.95);
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(248, 250, 252, 0.96) 100%);
+    background: hsl(var(--card));
     box-shadow: 0 14px 34px rgba(15, 23, 42, 0.06);
   }
 
@@ -238,38 +238,38 @@
     background:
       radial-gradient(circle at top left, rgba(13, 148, 136, 0.12), transparent 24%),
       radial-gradient(circle at 85% 12%, rgba(29, 78, 216, 0.08), transparent 20%),
-      linear-gradient(180deg, #ffffff 0%, #f8fafc 62%, #fbfcfd 100%);
+      linear-gradient(180deg, hsl(var(--card)) 0%, #f8fafc 62%, hsl(var(--background)) 100%);
   }
 
   .marketing-hero-company {
     background:
       radial-gradient(circle at top left, rgba(13, 148, 136, 0.1), transparent 24%),
-      linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+      linear-gradient(180deg, hsl(var(--card)) 0%, hsl(var(--background)) 100%);
   }
 
   .marketing-hero-product {
     background:
       radial-gradient(circle at top left, rgba(13, 148, 136, 0.08), transparent 24%),
       radial-gradient(circle at 82% 8%, rgba(29, 78, 216, 0.08), transparent 18%),
-      linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+      linear-gradient(180deg, hsl(var(--card)) 0%, hsl(var(--background)) 100%);
   }
 
   .marketing-hero-data {
     background:
       radial-gradient(circle at top right, rgba(29, 78, 216, 0.08), transparent 30%),
       radial-gradient(circle at 18% 14%, rgba(13, 148, 136, 0.08), transparent 22%),
-      linear-gradient(180deg, rgba(248, 250, 252, 0.94), rgba(255, 255, 255, 1));
+      linear-gradient(180deg, rgba(248, 250, 252, 0.94), hsl(var(--background)));
   }
 
   .marketing-hero-roboeye {
     background:
       radial-gradient(circle at top right, rgba(29, 78, 216, 0.08), transparent 30%),
       radial-gradient(circle at 20% 10%, rgba(13, 148, 136, 0.08), transparent 22%),
-      linear-gradient(180deg, rgba(248, 250, 252, 0.95), rgba(255, 255, 255, 1));
+      linear-gradient(180deg, rgba(248, 250, 252, 0.95), hsl(var(--background)));
   }
 
   .marketing-panel-header {
-    background: linear-gradient(180deg, rgba(248, 250, 252, 0.92), rgba(255, 255, 255, 1));
+    background: hsl(var(--card));
   }
 
   .marketing-display-title {
@@ -279,7 +279,7 @@
 
   .marketing-cta-shared {
     border-top: 1px solid rgba(226, 232, 240, 0.95);
-    background: #fbfcfd;
+    background: hsl(var(--background));
   }
 
   .marketing-logo-strip {
@@ -297,37 +297,32 @@
   }
 
   .marketing-cta-product {
-    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 45%, #eef6f5 100%);
+    background: hsl(var(--card));
   }
 
   .marketing-cta-roboeye {
-    background: linear-gradient(
-      135deg,
-      rgba(13, 148, 136, 0.12),
-      rgba(255, 255, 255, 0.96) 45%,
-      rgba(29, 78, 216, 0.08)
-    );
+    background: hsl(var(--card));
   }
 
   html.dark .glass-card {
-    background: rgba(13, 16, 20, 0.82);
+    background: hsl(var(--card));
   }
 
   html.dark .marketing-frame {
     border: 1px solid rgba(255, 255, 255, 0.06);
-    background: rgba(13, 16, 20, 0.84);
+    background: hsl(var(--card));
     box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
   }
 
   html.dark .marketing-surface {
     border: 1px solid rgba(255, 255, 255, 0.07);
-    background: rgba(13, 16, 20, 0.82);
+    background: hsl(var(--card));
     box-shadow: 0 18px 44px rgba(0, 0, 0, 0.24);
   }
 
   html.dark .marketing-surface-muted {
     border: 1px solid rgba(255, 255, 255, 0.06);
-    background: linear-gradient(180deg, rgba(13, 16, 20, 0.9) 0%, rgba(9, 12, 16, 0.96) 100%);
+    background: hsl(var(--card));
     box-shadow: 0 14px 34px rgba(0, 0, 0, 0.24);
   }
 
@@ -366,7 +361,7 @@
   }
 
   html.dark .marketing-panel-header {
-    background: linear-gradient(180deg, rgba(13, 16, 20, 0.9), rgba(9, 12, 16, 0.98));
+    background: hsl(var(--card));
   }
 
   html.dark .marketing-cta-shared {
@@ -389,16 +384,11 @@
   }
 
   html.dark .marketing-cta-product {
-    background: linear-gradient(135deg, rgba(8, 11, 15, 1) 0%, rgba(11, 14, 19, 1) 45%, rgba(11, 26, 24, 0.98) 100%);
+    background: hsl(var(--card));
   }
 
   html.dark .marketing-cta-roboeye {
-    background: linear-gradient(
-      135deg,
-      rgba(13, 148, 136, 0.2),
-      rgba(10, 14, 18, 0.96) 45%,
-      rgba(29, 78, 216, 0.14)
-    );
+    background: hsl(var(--card));
   }
 
   html.dark :is(.text-slate-950, .text-slate-900, .text-slate-800, .text-slate-700) {
