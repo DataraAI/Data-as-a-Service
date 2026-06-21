@@ -396,13 +396,13 @@ export default function RoboHandMotion() {
               </CollapsibleSection>
 
               <CollapsibleSection
-                title="21-Keypoint Hand MoCap"
+                title="Hand Motion Capture"
                 summary="Egocentric hand video to 21-keypoint MoCap data"
                 accent="orange"
                 defaultOpen
               >
                 <div className="rounded-[18px] border border-slate-200 bg-card p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700">
-                  <p className="text-[24px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">21-Keypoint Hand Motion Capture</p>
+                  <p className="text-[24px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">Hand Motion Capture</p>
                   <p className="mt-3 max-w-[860px] text-[13px] leading-7 text-slate-500 dark:text-slate-400">
                     Generate motion-capture data from egocentric hand video using the standard 21-keypoint hand representation.
                   </p>
