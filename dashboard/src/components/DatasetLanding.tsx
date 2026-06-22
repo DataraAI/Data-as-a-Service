@@ -1,12 +1,14 @@
 import type { DatasetAsset, DatasetManifest, DatasetMiscSection } from "@/lib/dataViewerTypes";
 import { trainingDataDownloadCoordinator } from "@/lib/sequentialDownloadCoordinator";
 import { toast } from "@/components/ui/sonner";
-import { ChevronDown, ChevronRight, Download, FileJson, FileText, Film, FolderOpen } from "lucide-react";
+import { ChevronDown, ChevronRight, Download, FileJson, FileText, Film, FolderOpen, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 interface DatasetLandingProps {
   manifest: DatasetManifest;
   canUseGenerationTools?: boolean;
+  canDeleteDataset?: boolean;
+  onDeleteDataset?: () => void;
   onNavigate: (path: string) => void;
   onOpenAsset: (asset: DatasetAsset) => void;
 }
@@ -152,6 +154,8 @@ function DownloadCard({
 
 export function DatasetLanding({
   manifest,
+  canDeleteDataset,
+  onDeleteDataset,
   onNavigate,
   onOpenAsset,
 }: DatasetLandingProps) {
@@ -359,6 +363,24 @@ export function DatasetLanding({
               </div>
             )}
           </section>
+
+          {canDeleteDataset && onDeleteDataset && (
+            <button
+              type="button"
+              onClick={onDeleteDataset}
+              className="flex w-full items-center justify-between gap-4 rounded-[22px] border border-destructive/30 bg-card p-5 text-left shadow-[0_14px_38px_rgba(15,23,42,0.05)] transition-colors hover:bg-destructive/5"
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-destructive/10 text-destructive">
+                  <Trash2 className="h-4 w-4" />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-lg font-black text-destructive">Delete dataset</h2>
+                  <p className="truncate text-xs text-muted-foreground">Remove this folder and all its contents</p>
+                </div>
+              </div>
+            </button>
+          )}
 
           {visibleMiscSections.length > 0 && (
             <section>
