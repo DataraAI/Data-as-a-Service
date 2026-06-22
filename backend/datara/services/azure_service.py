@@ -10,6 +10,7 @@ from typing import Any
 from urllib.parse import quote
 
 from azure.cosmos import CosmosClient
+from azure.cosmos.partition_key import NonePartitionKeyValue
 from azure.core.exceptions import HttpResponseError, ResourceExistsError, ResourceNotFoundError
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import (
@@ -187,6 +188,12 @@ class AzureService:
                     logger.info("Directory marker still non-empty during cleanup: %s/%s", container_name, blob_name)
                     continue
                 raise
+        return deleted
+    
+    def delete_dataset_blobs(self, container_name: str, prefix: str) -> list[str]:
+        """Delete all blobs under prefix and the directory marker blob at exactly prefix."""
+        deleted = self.delete_blobs_with_prefix(container_name, prefix)
+        self.delete_blob(container_name, prefix.rstrip("/"))
         return deleted
 
     def generate_sas_url(self, container_name: str, blob_name: str, expiry_hours: int = 1) -> str:
@@ -484,7 +491,8 @@ class AzureService:
             partition_key_field = None
 
         for doc in docs:
-            partition_value = doc.get(partition_key_field) if partition_key_field else doc["id"]
+            raw = doc.get(partition_key_field) if partition_key_field else None
+            partition_value = raw if raw is not None else NonePartitionKeyValue
             try:
                 cosmos_container.delete_item(item=doc["id"], partition_key=partition_value)
                 deleted += 1

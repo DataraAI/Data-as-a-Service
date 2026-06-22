@@ -175,6 +175,13 @@ export default function DataViewer() {
   const contentScrollRef = useRef<HTMLDivElement | null>(null);
   const previousPathSearchReloadTickRef = useRef(reloadTick);
 
+  useEffect(() => {
+    if (!folderDropdownOpen) return;
+    const handler = () => setFolderDropdownOpen(null);
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [folderDropdownOpen]);
+
   const pathSegments = useMemo(
     () =>
       location.pathname
@@ -937,7 +944,7 @@ export default function DataViewer() {
         className={`mx-auto grid w-full grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3 ${maxWidthClassName}`}
       >
         {items.map((folder) => {
-          const isDataset = isDatasetRoutePath(folder.full_path);
+          const canDeleteFolder = canDeleteDatasets && isDatasetRoutePath(folder.full_path);
 
           return (
             <div
@@ -951,48 +958,6 @@ export default function DataViewer() {
                 )
               }
             >
-              {isDataset && canDeleteDatasets && (
-                <div className="absolute right-4 top-4 z-20">
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setFolderDropdownOpen((previous) =>
-                        previous === folder.full_path ? null : folder.full_path,
-                      );
-                    }}
-                    className="rounded-sm p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-foreground"
-                    aria-label="Folder options"
-                  >
-                    <MoreVertical className="h-5 w-5" />
-                  </button>
-
-                  {folderDropdownOpen === folder.full_path && (
-                    <>
-                      <div
-                        className="fixed inset-0 z-10"
-                        onClick={() => setFolderDropdownOpen(null)}
-                        aria-hidden
-                      />
-                      <div className="absolute right-0 z-20 mt-1 w-40 rounded-2xl border border-slate-200 bg-card py-1 shadow-[0_20px_40px_rgba(15,23,42,0.12)]">
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setDeleteModalFolder(folder);
-                            setFolderDropdownOpen(null);
-                          }}
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left font-sans-tech text-sm text-destructive hover:bg-destructive/10"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          Delete
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-
               <div className="relative z-10 flex flex-col items-center gap-6">
                 <div className="h-44 w-full overflow-hidden rounded-[20px] border border-slate-200 bg-muted/60 transition-all group-hover:border-primary/25 group-hover:shadow-[0_0_18px_rgba(13,148,136,0.08)]">
                   <DatasetFolderCover
@@ -1004,8 +969,8 @@ export default function DataViewer() {
                     iconClassName="h-16 w-16 text-muted-foreground transition-colors group-hover:text-primary"
                   />
                 </div>
-                <div className="w-full text-center">
-                  <span className="block break-words font-sans-tech text-lg font-bold uppercase tracking-[0.12em] text-slate-950 transition-colors group-hover:text-primary">
+                <div className="relative w-full text-center">
+                  <span className={`block break-words font-sans-tech text-lg font-bold uppercase tracking-[0.12em] text-slate-950 transition-colors group-hover:text-primary ${canDeleteFolder ? "pl-8 pr-8" : ""}`}>
                     {folder.name}
                   </span>
                   {folder.visibility && (
@@ -1018,6 +983,43 @@ export default function DataViewer() {
                     >
                       {folder.visibility}
                     </span>
+                  )}
+                  {canDeleteFolder && (
+                    <div className="absolute right-0 top-0">
+                      <button
+                        type="button"
+                        onMouseDown={(event) => event.stopPropagation()}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setFolderDropdownOpen((previous) =>
+                            previous === folder.full_path ? null : folder.full_path,
+                          );
+                        }}
+                        className="rounded-sm p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-foreground"
+                        aria-label="Folder options"
+                      >
+                        <MoreVertical className="h-5 w-5" />
+                      </button>
+                      {folderDropdownOpen === folder.full_path && (
+                        <div
+                          className="absolute right-0 top-full z-20 mt-1 w-40 rounded-2xl border border-slate-200 bg-card py-1 shadow-[0_20px_40px_rgba(15,23,42,0.12)]"
+                          onMouseDown={(event) => event.stopPropagation()}
+                        >
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setDeleteModalFolder(folder);
+                              setFolderDropdownOpen(null);
+                            }}
+                            className="flex w-full items-center gap-2 px-3 py-2 text-left font-sans-tech text-sm text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            Delete
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
@@ -1226,6 +1228,16 @@ export default function DataViewer() {
                   <DatasetLanding
                     manifest={datasetManifest}
                     canUseGenerationTools={canManageDatasets}
+                    canDeleteDataset={
+                      canDeleteDatasets &&
+                      isDatasetRoutePath(datasetManifest.dataset.viewer_path.replace(/^\/viewer\//, ""))
+                    }
+                    onDeleteDataset={() =>
+                      setDeleteModalFolder({
+                        name: datasetManifest.dataset.task_label || datasetManifest.dataset.task_slug,
+                        full_path: datasetManifest.dataset.viewer_path.replace(/^\/viewer\//, ""),
+                      })
+                    }
                     onNavigate={(path) => navigate(withViewerBase(path, viewerBasePath))}
                     onOpenAsset={handleOpenDatasetAsset}
                   />

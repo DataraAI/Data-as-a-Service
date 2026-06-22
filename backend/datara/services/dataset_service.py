@@ -472,7 +472,7 @@ class DatasetService:
         dataset, _ = self.sql_store.resolve_dataset_route(route_path, current_user)
         self.sql_store.assert_user_can_manage_dataset(dataset, current_user)
 
-        deleted_blobs = self.azure_service.delete_blobs_with_prefix(
+        deleted_blobs = self.azure_service.delete_dataset_blobs(
             dataset["storage_container"],
             dataset["storage_prefix"],
         )
