@@ -1,3 +1,4 @@
+import fnmatch
 import importlib.util
 import os
 import posixpath
@@ -58,10 +59,61 @@ DEFAULT_QWEN_VLM_PYTHON_BIN = f"/home/{SAAS_USER}/miniconda3/envs/qwen-vlm/bin/p
 DEFAULT_ROSE_PYTHON_BIN = f"/home/{SAAS_USER}/miniconda3/envs/rose_runtime/bin/python"
 DEFAULT_ADDIT_SAM2_PYTHON_BIN = f"/home/{SAAS_USER}/miniconda3/envs/addit-sam2/bin/python"
 
-def _resolve_key_path():
-    return os.path.join(os.path.expanduser("~"), ".ssh", "azure_to_lambda")
+def _ssh_config_identity_path(hostname: str) -> str | None:
+    """Return the first existing IdentityFile for a host in the local SSH config."""
+    config_path = Path.home() / ".ssh" / "config"
+    if not config_path.is_file():
+        return None
 
-SAAS_KEY_PATH = _resolve_key_path()
+    active_host = False
+    for raw_line in config_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.partition("#")[0].strip()
+        if not line:
+            continue
+
+        directive, _, value = line.partition(" ")
+        if not value:
+            directive, _, value = line.partition("\t")
+
+        if directive.lower() == "host":
+            active_host = False
+            for pattern in value.split():
+                excluded = pattern.startswith("!")
+                normalized_pattern = pattern.removeprefix("!").lower()
+                if fnmatch.fnmatchcase(hostname.lower(), normalized_pattern):
+                    if excluded:
+                        active_host = False
+                        break
+                    active_host = True
+            continue
+
+        if active_host and directive.lower() == "identityfile":
+            identity_path = value.strip().strip('"')
+            candidate = Path(os.path.expandvars(os.path.expanduser(identity_path)))
+            if candidate.is_file():
+                return str(candidate.resolve())
+
+    return None
+
+
+def _resolve_key_path(configured_path: str, hostname: str) -> str:
+    """Resolve deployment paths directly and local keys through SSH configuration."""
+    configured = Path(os.path.abspath(os.path.expandvars(os.path.expanduser(configured_path))))
+    if configured.is_file():
+        return str(configured)
+
+    ssh_config_identity = _ssh_config_identity_path(hostname)
+    if ssh_config_identity:
+        return ssh_config_identity
+
+    historical_local_path = Path.home() / ".ssh" / Path(configured_path).name
+    if historical_local_path.is_file():
+        return str(historical_local_path.resolve())
+
+    return str(configured)
+
+
+SAAS_KEY_PATH = _resolve_key_path(SAAS_KEY_PATH, SAAS_HOST)
 SAAS_PYTHON_BIN = (
     os.getenv("SAAS_PYTHON_BIN")
     or _legacy_saas_attr("PYTHON_BIN")
