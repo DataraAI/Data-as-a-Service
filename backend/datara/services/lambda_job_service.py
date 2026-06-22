@@ -19,6 +19,7 @@ ACTIVE_STATUSES = {"queued", "running"}
 TERMINAL_STATUSES = {"succeeded", "failed"}
 GENERIC_FAILURE_MESSAGE = "This request could not be completed. Please try again."
 QUEUE_LIMIT_MESSAGE = "You already have 5 requests waiting. Please wait for one to start before submitting another."
+GENERATION_BUSY_MESSAGE = "Generation resources are currently busy. Please try again when active work is complete."
 
 
 class Publisher(Protocol):
@@ -36,6 +37,10 @@ class QueueLimitExceeded(Exception):
 
 
 class PublishFailed(Exception):
+    pass
+
+
+class GenerationBusy(Exception):
     pass
 
 
@@ -222,6 +227,7 @@ class LambdaJobService:
         current_user: dict[str, Any],
         job_type: str,
         payload: dict[str, Any],
+        execute_inline: bool = False,
     ) -> dict[str, Any]:
         definition = self._definition(job_type)
         normalized_payload = _normalize_value(payload)
@@ -229,6 +235,9 @@ class LambdaJobService:
             raise ValueError("Invalid request body")
         self._validate_payload(definition, normalized_payload)
         normalized_payload = self._authorize_and_enrich_payload(current_user, normalized_payload)
+
+        if execute_inline and self._active_jobs():
+            raise GenerationBusy(GENERATION_BUSY_MESSAGE)
 
         scope_key = self._scope_key(normalized_payload)
         payload_json = _json_dumps(normalized_payload)
@@ -254,6 +263,19 @@ class LambdaJobService:
             raise QueueLimitExceeded(QUEUE_LIMIT_MESSAGE)
         if not record:
             raise RuntimeError("The request could not be queued")
+
+        if execute_inline:
+            execution_outcome = self.execute_job(record["job_id"], worker_id=f"direct-ssh:{uuid.uuid4().hex}")
+            if execution_outcome in {"out_of_order", "leased", "missing"}:
+                self.mark_failed(
+                    record["job_id"],
+                    private_error=f"Direct SSH execution could not start: {execution_outcome}",
+                )
+                raise GenerationBusy(GENERATION_BUSY_MESSAGE)
+            completed = self.job_store.get_lambda_job(record["job_id"])
+            if not completed:
+                raise RuntimeError("The direct generation result could not be loaded")
+            return self.serialize(completed, submit=True)
 
         message = {"job_id": record["job_id"], "job_type": job_type, "schema_version": 1}
         try:
