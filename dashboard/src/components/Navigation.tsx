@@ -32,29 +32,25 @@ const GLOBAL_NAV_ITEMS: NavItem[] = [
 const HOME_SECTION_KEYS = ["products", "solutions", "customers"] as const;
 type HomeSectionKey = (typeof HOME_SECTION_KEYS)[number];
 
-const PRODUCT_NAV_ITEMS: Array<NavItem & { subtitle: string }> = [
+const PRODUCT_NAV_ITEMS: NavItem[] = [
   {
     key: "robodatahub",
     label: "RoboDataHub",
-    subtitle: "Dataset Catalog",
     href: "/robodatahub",
   },
   {
     key: "roboeyeview",
     label: "RoboAnnotator",
-    subtitle: "Visual Intelligence",
     href: "/roboannotator",
   },
   {
     key: "robohandmotion",
     label: "RoboHandMotion",
-    subtitle: "Dexterity Data",
     href: "/robohandmotion",
   },
   {
     key: "robotaskmanipulator",
     label: "RoboTaskManipulator",
-    subtitle: "Task Execution",
     href: "/robotaskmanipulator",
   },
 ];
@@ -93,9 +89,6 @@ function ProductMenu({
           <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">
             Products
           </div>
-          <div className="mt-1 text-xs leading-relaxed text-slate-500">
-            Move directly between DataraAI products.
-          </div>
         </div>
 
         <DropdownMenuSeparator className="my-1 bg-slate-200" />
@@ -114,12 +107,7 @@ function ProductMenu({
               }`}
             >
               <Link to={product.href} onClick={onNavigate} aria-current={isCurrent ? "page" : undefined}>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-bold">{product.label}</span>
-                  <span className="mt-0.5 block truncate text-[10px] uppercase tracking-[0.14em] opacity-65">
-                    {product.subtitle}
-                  </span>
-                </span>
+                <span className="min-w-0 flex-1 truncate text-sm font-bold">{product.label}</span>
                 {isCurrent && <Check className="ml-3 h-4 w-4 shrink-0" />}
               </Link>
             </DropdownMenuItem>
