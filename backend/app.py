@@ -21,6 +21,7 @@ from datara.services.dataset_service import DatasetService
 from datara.services.lambda_job_publisher import LambdaJobPublisher
 from datara.services.lambda_job_service import (
     DuplicateActiveJob,
+    GenerationBusy,
     LambdaJobService,
     PublishFailed,
     QueueLimitExceeded,
@@ -93,14 +94,17 @@ def register_routes(app: Flask) -> None:
                 current_user=current_user,
                 job_type=job_type,
                 payload=data,
+                execute_inline=settings.is_development,
             )
-            return jsonify(receipt), 202
+            return jsonify(receipt), 200 if settings.is_development else 202
         except DuplicateActiveJob as exc:
             return jsonify({"error": str(exc), **exc.receipt}), 409
         except QueueLimitExceeded as exc:
             return jsonify({"error": str(exc)}), 429
         except PublishFailed as exc:
             return jsonify({"error": str(exc)}), 503
+        except GenerationBusy as exc:
+            return jsonify({"error": str(exc)}), 409
 
     def _require_account_manager() -> dict[str, object]:
         current_user = auth_service.get_current_user_or_raise()
