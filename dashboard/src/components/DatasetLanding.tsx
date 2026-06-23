@@ -1,6 +1,6 @@
+import { toast } from "@/components/ui/sonner";
 import type { DatasetAsset, DatasetManifest, DatasetMiscSection } from "@/lib/dataViewerTypes";
 import { trainingDataDownloadCoordinator } from "@/lib/sequentialDownloadCoordinator";
-import { toast } from "@/components/ui/sonner";
 import { ChevronDown, ChevronRight, Download, FileJson, FileText, Film, FolderOpen, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
@@ -9,6 +9,9 @@ interface DatasetLandingProps {
   canUseGenerationTools?: boolean;
   canDeleteDataset?: boolean;
   onDeleteDataset?: () => void;
+  canDeleteAssets?: boolean;
+  onDeleteAsset?: (asset: DatasetAsset) => void;
+  onDeleteMiscSection?: (section: DatasetMiscSection) => void;
   onNavigate: (path: string) => void;
   onOpenAsset: (asset: DatasetAsset) => void;
 }
@@ -71,34 +74,55 @@ function renderMarkdown(markdown: string) {
 function MiscCard({
   section,
   onNavigate,
+  canDelete,
+  onDelete,
 }: {
   section: DatasetMiscSection;
   onNavigate: (path: string) => void;
+  canDelete?: boolean;
+  onDelete?: (section: DatasetMiscSection) => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={() => onNavigate(section.viewer_path)}
-      className="group rounded-[18px] border border-slate-200 bg-card p-4 text-left shadow-[0_12px_30px_rgba(15,23,42,0.04)] transition-all hover:border-primary/25 hover:shadow-[0_18px_38px_rgba(15,23,42,0.08)]"
-    >
-      <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-          <FolderOpen className="h-4 w-4" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-extrabold text-slate-950">{section.label}</div>
-          <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
-            Misc folder - {section.asset_count} asset{section.asset_count === 1 ? "" : "s"}
+    <div className="group relative rounded-[18px] border border-slate-200 bg-card p-4 shadow-[0_12px_30px_rgba(15,23,42,0.04)] transition-all hover:border-primary/25 hover:shadow-[0_18px_38px_rgba(15,23,42,0.08)]">
+      <button
+        type="button"
+        onClick={() => onNavigate(section.viewer_path)}
+        className="block w-full text-left"
+      >
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <FolderOpen className="h-4 w-4" />
           </div>
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm font-extrabold text-slate-950">{section.label}</div>
+            <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+              Misc folder - {section.asset_count} asset{section.asset_count === 1 ? "" : "s"}
+            </div>
+          </div>
+          <ChevronRight className="mt-3 h-4 w-4 shrink-0 text-slate-400 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
         </div>
-        <ChevronRight className="mt-3 h-4 w-4 shrink-0 text-slate-400 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
-      </div>
-      <div className="mt-4">
-        <span className="inline-flex h-9 items-center rounded-xl border border-primary/20 bg-primary/8 px-3 text-xs font-bold text-primary transition-colors group-hover:bg-primary/12">
+      </button>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={() => onNavigate(section.viewer_path)}
+          className="inline-flex h-9 items-center rounded-xl border border-primary/20 bg-primary/8 px-3 text-xs font-bold text-primary transition-colors hover:bg-primary/12"
+        >
           Open folder
-        </span>
+        </button>
+        {canDelete && onDelete && (
+          <button
+            type="button"
+            onClick={() => onDelete(section)}
+            aria-label="Delete folder"
+            title="Delete folder"
+            className="absolute bottom-3 right-3 flex h-9 w-9 items-center justify-center rounded-xl border border-destructive/30 bg-destructive/5 text-destructive transition-colors hover:bg-destructive/10"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        )}
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -106,16 +130,20 @@ function DownloadCard({
   asset,
   label,
   onOpenAsset,
+  canDelete,
+  onDelete,
 }: {
   asset: DatasetAsset;
   label?: string;
   onOpenAsset: (asset: DatasetAsset) => void;
+  canDelete?: boolean;
+  onDelete?: (asset: DatasetAsset) => void;
 }) {
   const isPlayable = asset.type === "video" || asset.type === "3d";
   const Icon = asset.type === "json" ? FileJson : asset.type === "video" ? Film : FileText;
 
   return (
-    <div className="rounded-[18px] border border-slate-200 bg-card p-4 shadow-[0_12px_30px_rgba(15,23,42,0.04)]">
+    <div className="relative rounded-[18px] border border-slate-200 bg-card p-4 shadow-[0_12px_30px_rgba(15,23,42,0.04)]">
       <div className="flex items-start gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
           <Icon className="h-4 w-4" />
@@ -129,7 +157,7 @@ function DownloadCard({
           </div>
         </div>
       </div>
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className={`mt-4 flex flex-wrap gap-2 ${canDelete && onDelete ? "pr-11" : ""}`}>
         {isPlayable && (
           <button
             type="button"
@@ -148,6 +176,17 @@ function DownloadCard({
           Download
         </a>
       </div>
+      {canDelete && onDelete && (
+        <button
+          type="button"
+          onClick={() => onDelete(asset)}
+          aria-label="Delete file"
+          title="Delete file"
+          className="absolute bottom-3 right-3 flex h-9 w-9 items-center justify-center rounded-xl border border-destructive/30 bg-destructive/5 text-destructive transition-colors hover:bg-destructive/10"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      )}
     </div>
   );
 }
@@ -156,6 +195,9 @@ export function DatasetLanding({
   manifest,
   canDeleteDataset,
   onDeleteDataset,
+  canDeleteAssets,
+  onDeleteAsset,
+  onDeleteMiscSection,
   onNavigate,
   onOpenAsset,
 }: DatasetLandingProps) {
@@ -312,6 +354,8 @@ export function DatasetLanding({
                     asset={asset}
                     label={label}
                     onOpenAsset={onOpenAsset}
+                    canDelete={canDeleteAssets}
+                    onDelete={onDeleteAsset}
                   />
                 ))}
               </div>
@@ -376,7 +420,7 @@ export function DatasetLanding({
                 </div>
                 <div className="min-w-0">
                   <h2 className="text-lg font-black text-destructive">Delete dataset</h2>
-                  <p className="truncate text-xs text-muted-foreground">Remove this folder and all its contents</p>
+                  <p className="truncate text-xs text-muted-foreground">Remove this dataset and all its contents</p>
                 </div>
               </div>
             </button>
@@ -391,7 +435,13 @@ export function DatasetLanding({
               </div>
               <div className="grid gap-4">
                 {visibleMiscSections.map((section) => (
-                  <MiscCard key={section.key} section={section} onNavigate={onNavigate} />
+                  <MiscCard
+                    key={section.key}
+                    section={section}
+                    onNavigate={onNavigate}
+                    canDelete={canDeleteAssets}
+                    onDelete={onDeleteMiscSection}
+                  />
                 ))}
               </div>
             </section>
