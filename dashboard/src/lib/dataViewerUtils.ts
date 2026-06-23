@@ -403,6 +403,13 @@ export function getCatalogAvailabilityClasses(availability: CatalogCard["availab
     : "border border-amber-200 bg-amber-50 text-amber-700";
 }
 
+export function getResolvedCatalogAvailability(
+  card: CatalogCard,
+  previewItem?: CategoryDatasetPreview | null,
+): CatalogCard["availability"] {
+  return previewItem || card.livePathHints?.length ? "In Library" : "On-demand";
+}
+
 export function matchesLivePreviewHint(card: CatalogCard, item: CategoryDatasetPreview) {
   if (!card.livePathHints || card.livePathHints.length === 0) return false;
   const normalizedPath = normalizePathSearchValue(item.full_path);

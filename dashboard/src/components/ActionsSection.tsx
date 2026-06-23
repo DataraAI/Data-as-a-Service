@@ -5,14 +5,14 @@ import { Database, Upload, ArrowRight, ExternalLink, LockKeyhole } from "lucide-
 import { Link, useLocation } from "react-router-dom";
 import { UploadModal } from "@/components/UploadModal";
 import { useAuth } from "@/auth/useAuth";
+import { canImportData } from "@/lib/dataImportAccess";
 
 const ActionsSection = () => {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const { isAuthenticated, isApproved, login, user } = useAuth();
   const location = useLocation();
 
-  const canImport =
-    isAuthenticated && isApproved && (user?.role === "admin" || user?.role === "analyst");
+  const canImport = canImportData({ isAuthenticated, isApproved, user });
 
   const actions = [
     {
@@ -21,14 +21,14 @@ const ActionsSection = () => {
       description: canImport
         ? "Upload a public dataset for processing"
         : isAuthenticated
-          ? "Dataset import is available to Datara staff"
-          : "Sign in with an approved staff account before importing data",
+          ? "Dataset import is available to approved accounts with import access"
+          : "Sign in with an approved account before importing data",
       action: () =>
         canImport || isAuthenticated
           ? setIsUploadModalOpen(true)
           : login(`${location.pathname}${location.search}`),
       variant: "default",
-      cta: canImport ? "IMPORT DATA" : isAuthenticated ? "STAFF ONLY" : "SIGN IN TO IMPORT",
+      cta: canImport ? "IMPORT DATA" : isAuthenticated ? "IMPORT LOCKED" : "SIGN IN TO IMPORT",
     },
     {
       icon: Database,

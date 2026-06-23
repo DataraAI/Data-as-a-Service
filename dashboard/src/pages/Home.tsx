@@ -1,6 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, Fragment } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { ArrowRight, Database, Eye, Hand, Workflow, type LucideIcon } from "lucide-react";
+import { ArrowRight, Database, Eye, Hand, Workflow, Factory, Layers, Box, Zap, Bot, type LucideIcon } from "lucide-react";
 import Navigation from "@/components/Navigation";
 import FooterSection from "@/components/FooterSection";
 import { buildAuthPath } from "@/lib/authLinks";
@@ -49,6 +49,65 @@ type CustomerCard = {
   label: string;
   chipTone: string;
 };
+
+type PipelineStep = {
+  step: string;
+  title: string;
+  description: string;
+  badge: string;
+  icon: LucideIcon;
+  accent: "teal" | "blue" | "violet" | "orange" | "emerald";
+};
+
+const PIPELINE_ARROWS = [
+  { line: "from-teal-400 to-blue-400",     head: "border-l-blue-400"    },
+  { line: "from-blue-400 to-violet-400",   head: "border-l-violet-400"  },
+  { line: "from-violet-400 to-orange-400", head: "border-l-orange-400"  },
+  { line: "from-orange-400 to-emerald-400", head: "border-l-emerald-400" },
+];
+
+const PIPELINE_STEPS: PipelineStep[] = [
+  {
+    step: "01",
+    title: "Real Factory Data",
+    description: "Data from OEM floors, warehouses & data centers.",
+    badge: "Data",
+    icon: Factory,
+    accent: "teal",
+  },
+  {
+    step: "02",
+    title: "Real2Sim",
+    description: "Real scenes & trajectories converted into accurate sim environments.",
+    badge: "Transfer",
+    icon: Layers,
+    accent: "blue",
+  },
+  {
+    step: "03",
+    title: "ISAAC SIM",
+    description: "Robot policies trained at scale in NVIDIA Isaac Sim.",
+    badge: "NVIDIA",
+    icon: Box,
+    accent: "violet",
+  },
+  {
+    step: "04",
+    title: "Sim2Real",
+    description: "Trained policies transferred to physical robots, grounded in real data.",
+    badge: "Deploy",
+    icon: Zap,
+    accent: "orange",
+  },
+  {
+    step: "05",
+    title: "Robot",
+    description: "Production-ready robots. Sim-to-real gap closed.",
+    badge: "Production",
+    icon: Bot,
+    accent: "emerald",
+  },
+];
 
 const HOME_SECTION_SCROLL_OFFSET = 96;
 
@@ -211,6 +270,27 @@ const CUSTOMER_CARDS: CustomerCard[] = [
   },
 ];
 
+function PipelineStepCard({ step }: { step: PipelineStep }) {
+  const accentClasses = {
+    teal:    { badge: "border-teal-200 bg-teal-50 text-teal-700",    bar: "bg-teal-500"    },
+    blue:    { badge: "border-blue-200 bg-blue-50 text-blue-700",    bar: "bg-blue-500"    },
+    violet:  { badge: "border-violet-200 bg-violet-50 text-violet-700", bar: "bg-violet-500" },
+    orange:  { badge: "border-orange-200 bg-orange-50 text-orange-700", bar: "bg-orange-500" },
+    emerald: { badge: "border-emerald-200 bg-emerald-50 text-emerald-700", bar: "bg-emerald-500" },
+  }[step.accent];
+
+  return (
+    <div className="relative flex flex-1 flex-col items-center overflow-hidden rounded-[20px] border border-slate-200 bg-white px-5 pb-7 pt-6 text-center shadow-[0_1px_6px_rgba(0,0,0,0.05)] dark:border-white/7 dark:bg-[rgba(13,16,20,0.82)] dark:shadow-[0_18px_44px_rgba(0,0,0,0.24)]">
+      <p className="mb-2 text-[15px] font-black tracking-[-0.01em] text-slate-950 dark:text-slate-100">{step.title}</p>
+      <span className={`mb-3 inline-flex rounded-md border px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.12em] ${accentClasses.badge}`}>
+        {step.badge}
+      </span>
+      <p className="text-[12px] leading-5 text-slate-500 dark:text-slate-400">{step.description}</p>
+      <div className={`absolute bottom-0 left-0 h-[4px] w-full ${accentClasses.bar}`} />
+    </div>
+  );
+}
+
 function ProductTile({ card }: { card: ProductCard }) {
   const Icon = card.icon;
 
@@ -348,20 +428,45 @@ export default function Home() {
             <div className="mb-10 text-center">
               <HomeSectionLabel>End-to-End</HomeSectionLabel>
               <h2 className="marketing-display-title mt-4 text-[32px] font-black tracking-[-0.02em] text-slate-950">
-                From Factory Floor to Deployed Robot — and Back Again
+                From Factory Floor to Deployed Robot
               </h2>
-              <p className="mx-auto mt-3 max-w-[760px] text-[15px] leading-7 text-slate-500 dark:text-slate-400">
-                Real factory data is transformed into simulation-ready environments, used to train robot policies at scale, and transferred to physical robots for deployment. Real-world performance then feeds back into simulation, creating a continuous cycle of improvement.
+              <p className="mx-auto mt-3 max-w-[650px] text-[15px] leading-7 text-slate-500 dark:text-slate-400">
+                Real factory data is transformed into simulation-ready environments, used to train robot policies at scale, then transferred back to physical robots for production deployment.
               </p>
             </div>
 
-            <figure>
-              <img
-                src={isDarkMode ? simToRealLoopDark : simToRealLoop}
-                alt="Continuous improvement loop between simulation model training and real-world robot deployment"
-                className="mx-auto block h-auto w-[60%] max-w-[660px]"
-              />
-            </figure>
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-stretch">
+              {PIPELINE_STEPS.map((step, i) => (
+                <Fragment key={step.title}>
+                  <PipelineStepCard step={step} />
+                  {i < PIPELINE_STEPS.length - 1 && (
+                    <div className="hidden shrink-0 items-center justify-center lg:flex">
+                      <div className="flex items-center drop-shadow-sm">
+                        <div className={`h-[6px] w-14 rounded-l-full bg-gradient-to-r ${PIPELINE_ARROWS[i].line}`} />
+                        <div className={`h-0 w-0 border-y-[10px] border-y-transparent border-l-[16px] ${PIPELINE_ARROWS[i].head}`} />
+                      </div>
+                    </div>
+                  )}
+                </Fragment>
+              ))}
+            </div>
+
+            <div className="mt-14 text-center">
+              <h3 className="marketing-display-title text-[32px] font-black tracking-[-0.02em] text-slate-950">
+                — and Back Again
+              </h3>
+              <p className="mx-auto mt-3 max-w-[680px] text-[15px] leading-7 text-slate-500 dark:text-slate-400">
+                Each deployment produces new real-world performance data. That data feeds back into simulation, creating a continuous improvement loop where every cycle helps close the sim-to-real gap further.
+              </p>
+
+              <figure className="mt-8">
+                <img
+                  src={isDarkMode ? simToRealLoopDark : simToRealLoop}
+                  alt="Continuous improvement loop between simulation model training and real-world robot deployment"
+                  className="mx-auto block h-auto w-[60%] max-w-[660px]"
+                />
+              </figure>
+            </div>
           </div>
         </section>
 
@@ -513,30 +618,6 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="marketing-cta-shared px-4 py-16 text-center sm:px-6">
-          <div className="mx-auto max-w-4xl">
-            <h2 className="marketing-display-title text-[clamp(24px,2.8vw,36px)] font-black tracking-[-0.015em] text-slate-950">
-              Ready to close the Sim-to-Real gap?
-            </h2>
-            <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-slate-600">
-              Join leading robotics companies using DataraAI&apos;s real-world data to achieve 95%+ precision.
-            </p>
-            <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
-              <Link
-                to={buildAuthPath("register", "/")}
-                className="inline-flex h-12 items-center justify-center rounded-xl bg-primary px-8 text-sm font-extrabold text-primary-foreground shadow-[0_14px_28px_rgba(13,148,136,0.16)]"
-              >
-                Request a Demo
-              </Link>
-              <Link
-                to="/robodatahub"
-                className="inline-flex h-12 items-center justify-center rounded-xl border border-slate-200 bg-card px-8 text-sm font-semibold text-slate-600 transition-colors hover:border-primary/30 hover:text-primary"
-              >
-                Explore RoboDataHub
-              </Link>
-            </div>
-          </div>
-        </section>
       </main>
 
       <FooterSection />

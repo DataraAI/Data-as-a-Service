@@ -1,6 +1,11 @@
 import { useAuth } from "@/auth/useAuth";
 import AuthRequiredState from "@/components/AuthRequiredState";
 import { buildAuthPath } from "@/lib/authLinks";
+import {
+  canImportData,
+  IMPORT_DATA_QUERY_PARAM,
+  IMPORT_DATA_QUERY_VALUE,
+} from "@/lib/dataImportAccess";
 import { getLocalFolderPreviewSnapshots } from "@/lib/datasetFolderCover";
 import type {
   CategoryConfig,
@@ -129,6 +134,7 @@ export default function DataViewer() {
   );
   const canUseLockedViewerLayout = isAuthenticated && isApproved;
   const canUseCatalogSearch = isAuthenticated && isApproved;
+  const canImportDatasets = canImportData({ isAuthenticated, isApproved, user });
   const canManageDatasets =
     isAuthenticated && isApproved && (user?.role === "admin" || user?.role === "analyst");
   const canDeleteDatasets = isAuthenticated && isApproved && user?.role === "admin";
@@ -282,6 +288,26 @@ export default function DataViewer() {
   const isRootLanding = pathSegments.length === 0;
   const isCategoryLanding = Boolean(activeCategory) && pathSegments.length === 1;
   const isCatalogLanding = isRootLanding || isCategoryLanding;
+  const shouldOpenImportModal =
+    new URLSearchParams(location.search).get(IMPORT_DATA_QUERY_PARAM) === IMPORT_DATA_QUERY_VALUE;
+
+  useEffect(() => {
+    if (!shouldOpenImportModal || !isRootLanding || !canImportDatasets) return;
+
+    setIsUploadModalOpen(true);
+
+    const params = new URLSearchParams(location.search);
+    params.delete(IMPORT_DATA_QUERY_PARAM);
+    const nextSearch = params.toString();
+    navigate(
+      {
+        pathname: location.pathname,
+        search: nextSearch ? `?${nextSearch}` : "",
+      },
+      { replace: true },
+    );
+  }, [canImportDatasets, isRootLanding, location.pathname, location.search, navigate, shouldOpenImportModal]);
+
   const datasetRootDepth = useMemo(() => {
     if (pathSegments[0] === "my") return 4;
     if (pathSegments[0] === "admin") return 5;
@@ -1062,7 +1088,7 @@ export default function DataViewer() {
           <div className="col-span-full flex flex-col items-center justify-center rounded-[28px] border border-dashed border-slate-300 bg-muted/60 py-20 text-slate-500">
             <AlertCircle className="mb-4 h-12 w-12 text-slate-400" />
             <p className="font-sans-tech text-lg">No data found</p>
-            {canManageDatasets && (
+            {canImportDatasets && (
               <button
                 onClick={() => setIsUploadModalOpen(true)}
                 className="mt-6 font-sans-tech text-sm font-medium text-primary underline decoration-dotted underline-offset-4 hover:text-primary-glow"
@@ -1081,6 +1107,7 @@ export default function DataViewer() {
     isAuthenticated,
     isApproved,
     canManageDatasets,
+    canImportDatasets,
     pathSearchText,
     pathSearchLoading,
     pathSuggestions,
@@ -1181,7 +1208,7 @@ export default function DataViewer() {
                 matchingTagSuggestions={matchingTagSuggestions}
                 onSelectTagSuggestion={handleSelectTagSuggestion}
                 vlmPromptGroups={vlmPromptGroups}
-                canUpload={canManageDatasets}
+                canUpload={canImportDatasets}
               />
             )}
 
@@ -1205,7 +1232,7 @@ export default function DataViewer() {
                     </button>
                   </div>
 
-                  {!isLeaf && canManageDatasets && !datasetManifest && (
+                  {!isLeaf && canImportDatasets && !datasetManifest && (
                     <button
                       onClick={() => setIsUploadModalOpen(true)}
                       className="flex items-center gap-2 rounded-sm border border-primary/25 bg-primary/10 px-3 py-1 font-sans-tech text-xs font-medium text-primary transition-colors hover:bg-primary/15"
