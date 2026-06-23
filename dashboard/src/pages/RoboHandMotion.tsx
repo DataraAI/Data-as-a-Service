@@ -408,12 +408,6 @@ export default function RoboHandMotion() {
               {canSubmitFootage && (
                 <div className="mt-1 flex flex-col justify-between gap-6 rounded-[14px] border-[1.5px] border-dashed border-violet-300 bg-gradient-to-br from-violet-50 to-orange-50 px-8 py-7 lg:flex-row lg:items-center dark:border-violet-900/50 dark:from-violet-950/20 dark:to-orange-950/20">
                   <div className="flex items-center gap-4">
-                    <div className="grid h-11 w-11 shrink-0 place-items-center rounded-[11px] border border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900/50 dark:bg-violet-950/30 dark:text-violet-200">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="12" y1="5" x2="12" y2="19" />
-                        <line x1="5" y1="12" x2="19" y2="12" />
-                      </svg>
-                    </div>
                     <div>
                       <p className="mb-1 text-[15px] font-bold text-slate-950 dark:text-slate-100">
                         Run RoboHandMotion on Your Footage

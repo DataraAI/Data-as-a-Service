@@ -1,11 +1,29 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Database, Upload, ArrowRight, ExternalLink, LockKeyhole } from "lucide-react";
+import { Database, Upload, ArrowRight, ExternalLink, LockKeyhole, type LucideIcon } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { UploadModal } from "@/components/UploadModal";
 import { useAuth } from "@/auth/useAuth";
 import { canImportData } from "@/lib/dataImportAccess";
+
+type QuickAction =
+  | {
+      icon: LucideIcon;
+      title: string;
+      description: string;
+      action: () => void;
+      variant: "default";
+      cta: string;
+    }
+  | {
+      icon: LucideIcon;
+      title: string;
+      description: string;
+      href: string;
+      variant: "secondary";
+      cta: string;
+    };
 
 const ActionsSection = () => {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -14,7 +32,7 @@ const ActionsSection = () => {
 
   const canImport = canImportData({ isAuthenticated, isApproved, user });
 
-  const actions = [
+  const actions: QuickAction[] = [
     {
       icon: canImport ? Upload : LockKeyhole,
       title: "Import Dataset",

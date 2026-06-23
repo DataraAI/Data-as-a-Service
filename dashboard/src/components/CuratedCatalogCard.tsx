@@ -1,4 +1,4 @@
-import type { CategoryDatasetPreview, CategoryPreviewAsset, ResolvedCatalogCardEntry } from "@/lib/dataViewerTypes";
+import type { CategoryDatasetPreview, CategoryPreviewAsset } from "@/lib/dataViewerTypes";
 import { formatPublicDatasetPathLabel, getCategoryBadge, getResolvedCatalogAvailability } from "@/lib/dataViewerUtils";
 import { frontPageImageUrl } from "@/lib/datasetFolderCover";
 import type { CatalogCard } from "@/lib/roboDataHubCatalog";

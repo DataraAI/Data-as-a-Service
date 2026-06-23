@@ -1,7 +1,5 @@
-import { Link } from "react-router-dom";
 import Navigation from "@/components/Navigation";
 import FooterSection from "@/components/FooterSection";
-import { buildAuthPath } from "@/lib/authLinks";
 
 type Founder = {
   initials: string;
@@ -51,14 +49,6 @@ const ADVISORS: Advisor[] = [
   { initials: "TG", name: "Dr. Teck Joo Goh", role: "Angel Investor · Corporate VP SkyeChip · ex-GM Intel" },
   { initials: "AR", name: "Dr. Amit Roy-Chowdhury", role: "Professor & UC Presidential Chair · Chair Robotics, UC Riverside" },
   { initials: "LA", name: "Lomesh Agarwal", role: "VP Software Apptronik · Ex-MagicLeap" },
-];
-
-const CREDENTIALS = [
-  { label: "NVIDIA Inception Member", dot: "bg-lime-500" },
-  { label: "Figure AI Partner", dot: "bg-blue-700" },
-  { label: "BMW Robotics Partner", dot: "bg-primary" },
-  { label: "Foxconn Smart Factory", dot: "bg-orange-600" },
-  { label: "Peer Robotics Customer", dot: "bg-violet-700" },
 ];
 
 export default function Company() {
@@ -162,50 +152,6 @@ export default function Company() {
                 <div className="mt-2 text-[10px] leading-5 text-slate-500">{advisor.role}</div>
               </article>
             ))}
-          </div>
-        </section>
-
-        <section className="border-y border-slate-200 bg-background px-4 py-10 sm:px-6">
-          <div className="mx-auto max-w-[1300px]">
-            <div className="text-center text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
-              Recognized & Backed By
-            </div>
-            <div className="mt-6 flex flex-wrap justify-center gap-4">
-              {CREDENTIALS.map((credential) => (
-                <div
-                  key={credential.label}
-                  className="flex items-center gap-2 rounded-[10px] border border-slate-200 bg-card px-5 py-2.5 text-[13px] font-semibold text-slate-950"
-                >
-                  <span className={`h-2 w-2 rounded-full ${credential.dot}`} />
-                  {credential.label}
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="marketing-cta-shared px-4 py-16 text-center sm:px-6">
-          <div className="mx-auto max-w-4xl">
-            <h2 className="marketing-display-title text-[clamp(22px,2.5vw,32px)] font-extrabold tracking-[-0.015em] text-slate-950">
-              Ready to close the Sim-to-Real gap?
-            </h2>
-            <p className="mx-auto mt-4 max-w-2xl text-[15px] leading-7 text-slate-600">
-              Join leading robotics companies using DataraAI&apos;s real-world data to achieve 95%+ precision.
-            </p>
-            <div className="mt-7 flex flex-col items-center justify-center gap-4 sm:flex-row">
-              <Link
-                to={buildAuthPath("register", "/company")}
-                className="inline-flex h-11 items-center justify-center rounded-[9px] bg-primary px-7 text-sm font-bold text-primary-foreground"
-              >
-                Request a Demo
-              </Link>
-              <Link
-                to="/robodatahub"
-                className="inline-flex h-11 items-center justify-center rounded-[9px] border border-slate-200 bg-card px-7 text-sm font-semibold text-slate-600 transition-colors hover:border-primary/30 hover:text-primary"
-              >
-                Explore RoboDataHub
-              </Link>
-            </div>
           </div>
         </section>
       </main>

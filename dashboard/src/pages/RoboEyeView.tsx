@@ -249,8 +249,6 @@ function I2IRow({
   outputItems,
   inputColumns,
   outputColumns,
-  inputAspectClass = "aspect-[5/4]",
-  outputAspectClass = "aspect-[5/4]",
   inputNote,
   outputNote,
   onImageOpen,
@@ -265,8 +263,6 @@ function I2IRow({
   outputItems: ImageAsset[];
   inputColumns: 1 | 2;
   outputColumns: 1 | 2;
-  inputAspectClass?: string;
-  outputAspectClass?: string;
   inputNote?: string;
   outputNote?: string;
   onImageOpen: (image: ExpandedImage) => void;
@@ -504,8 +500,6 @@ export default function RoboEyeView() {
               outputItems={automotiveExample.outputs}
               inputColumns={1}
               outputColumns={2}
-              inputAspectClass="aspect-[5/4]"
-              outputAspectClass="aspect-[5/4]"
               onImageOpen={setExpandedImage}
             />
           </div>
@@ -535,8 +529,6 @@ export default function RoboEyeView() {
               outputItems={dataCenterExample.outputs}
               inputColumns={1}
               outputColumns={2}
-              inputAspectClass="aspect-[5/4]"
-              outputAspectClass="aspect-[5/4]"
               onImageOpen={setExpandedImage}
             />
           </div>
@@ -566,8 +558,6 @@ export default function RoboEyeView() {
               outputItems={CORNER_CASE_OUTPUTS}
               inputColumns={1}
               outputColumns={2}
-              inputAspectClass="aspect-[5/4]"
-              outputAspectClass="aspect-[5/4]"
               outputNote={'Prompts shown: "Add fire in front of car" and "Add oil leak under vehicle."'}
               onImageOpen={setExpandedImage}
             />
@@ -598,8 +588,6 @@ export default function RoboEyeView() {
               outputItems={MASK_SEGMENTATION_OUTPUTS}
               inputColumns={2}
               outputColumns={2}
-              inputAspectClass="aspect-square"
-              outputAspectClass="aspect-square"
               onImageOpen={setExpandedImage}
             />
           </div>
@@ -643,12 +631,6 @@ export default function RoboEyeView() {
               {canSubmitFootage && (
                 <div className="mt-1 flex flex-col justify-between gap-6 rounded-[14px] border-[1.5px] border-dashed border-teal-300 bg-gradient-to-br from-teal-50 to-blue-50 px-8 py-7 lg:flex-row lg:items-center dark:border-teal-900/50 dark:from-teal-950/20 dark:to-blue-950/20">
                   <div className="flex items-center gap-4">
-                    <div className="grid h-11 w-11 shrink-0 place-items-center rounded-[11px] border border-teal-200 bg-teal-50 text-teal-700 dark:border-teal-900/50 dark:bg-teal-950/30 dark:text-teal-200">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="12" y1="5" x2="12" y2="19" />
-                        <line x1="5" y1="12" x2="19" y2="12" />
-                      </svg>
-                    </div>
                     <div>
                       <p className="mb-1 text-[15px] font-bold text-slate-950 dark:text-slate-100">
                         Run RoboAnnotator on Your Footage
