@@ -152,6 +152,10 @@ export default function DataViewer() {
   const [folderDropdownOpen, setFolderDropdownOpen] = useState<string | null>(null);
   const [deleteModalFolder, setDeleteModalFolder] = useState<FolderItem | null>(null);
   const [deleteInProgress, setDeleteInProgress] = useState(false);
+  const [deleteAssetTarget, setDeleteAssetTarget] = useState<
+    { label: string; blobPath?: string; sectionKey?: string } | null
+  >(null);
+  const [deleteAssetInProgress, setDeleteAssetInProgress] = useState(false);
   const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [vlmPromptGroups, setVlmPromptGroups] = useState<VlmPromptGroup[]>([]);
   const [visibleTags, setVisibleTags] = useState<Set<string>>(new Set());
@@ -903,6 +907,33 @@ export default function DataViewer() {
     }
   }
 
+  async function handleDeleteAssetTarget() {
+    if (!deleteAssetTarget || !datasetManifest) return;
+
+    const path = datasetManifest.dataset.viewer_path.replace(/^\/viewer\//, "");
+    setDeleteAssetInProgress(true);
+    try {
+      if (deleteAssetTarget.blobPath) {
+        await axios.post("/api/delete_dataset_asset", {
+          path,
+          blob_path: deleteAssetTarget.blobPath,
+        });
+      } else if (deleteAssetTarget.sectionKey) {
+        await axios.post("/api/delete_dataset_misc", {
+          path,
+          section: deleteAssetTarget.sectionKey,
+        });
+      }
+      setDeleteAssetTarget(null);
+      setReloadTick((value) => value + 1);
+    } catch (error) {
+      console.error("Failed to delete asset", error);
+      alert("Failed to delete asset.");
+    } finally {
+      setDeleteAssetInProgress(false);
+    }
+  }
+
   function handleOpenDatasetAsset(asset: DatasetAsset) {
     setSelectedImage(asset);
   }
@@ -1238,6 +1269,13 @@ export default function DataViewer() {
                         full_path: datasetManifest.dataset.viewer_path.replace(/^\/viewer\//, ""),
                       })
                     }
+                    canDeleteAssets={canDeleteDatasets}
+                    onDeleteAsset={(asset) =>
+                      setDeleteAssetTarget({ label: asset.name, blobPath: asset.blob_path })
+                    }
+                    onDeleteMiscSection={(section) =>
+                      setDeleteAssetTarget({ label: section.label, sectionKey: section.key })
+                    }
                     onNavigate={(path) => navigate(withViewerBase(path, viewerBasePath))}
                     onOpenAsset={handleOpenDatasetAsset}
                   />
@@ -1350,6 +1388,47 @@ export default function DataViewer() {
                   className="flex items-center gap-2 rounded-sm bg-destructive px-4 py-2 font-sans-tech text-sm font-medium text-primary-foreground transition-colors hover:bg-destructive/90 disabled:opacity-50"
                 >
                   {deleteInProgress && <Loader2 className="h-4 w-4 animate-spin" />}
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {deleteAssetTarget && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 backdrop-blur-sm">
+            <div
+              className="w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-xl"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <h3 className="mb-2 font-sans-tech text-lg font-bold text-foreground">
+                Delete {deleteAssetTarget.blobPath ? "file" : "folder"}?
+              </h3>
+              <p className="mb-1 font-sans-tech text-sm text-muted-foreground">
+                You are about to delete{" "}
+                <span className="font-medium text-foreground">{deleteAssetTarget.label}</span>
+                {deleteAssetTarget.blobPath
+                  ? " from Azure Blob Storage and its annotations."
+                  : " and all of its contents from Azure Blob Storage and their annotations."}
+              </p>
+              <p className="mb-6 font-sans-tech text-xs text-destructive/90">
+                This action cannot be undone.
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setDeleteAssetTarget(null)}
+                  className="rounded-sm border border-border px-4 py-2 font-sans-tech text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteAssetTarget}
+                  disabled={deleteAssetInProgress}
+                  className="flex items-center gap-2 rounded-sm bg-destructive px-4 py-2 font-sans-tech text-sm font-medium text-primary-foreground transition-colors hover:bg-destructive/90 disabled:opacity-50"
+                >
+                  {deleteAssetInProgress && <Loader2 className="h-4 w-4 animate-spin" />}
                   Delete
                 </button>
               </div>

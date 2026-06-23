@@ -439,6 +439,28 @@ def register_routes(app: Flask) -> None:
             return jsonify({"error": "Missing or empty 'path'"}), 400
         return jsonify(dataset_service.delete_dataset(path, current_user))
 
+    @app.route("/api/delete_dataset_asset", methods=["POST"])
+    @auth_service.require_approved_user
+    def delete_dataset_asset():
+        current_user = auth_service.get_current_user_or_raise()
+        data = request.get_json() or {}
+        path = str(data.get("path") or "").strip().strip("/")
+        blob_path = str(data.get("blob_path") or "").strip().strip("/")
+        if not path or not blob_path:
+            return jsonify({"error": "Missing or empty 'path' or 'blob_path'"}), 400
+        return jsonify(dataset_service.delete_dataset_asset(path, blob_path, current_user))
+
+    @app.route("/api/delete_dataset_misc", methods=["POST"])
+    @auth_service.require_approved_user
+    def delete_dataset_misc():
+        current_user = auth_service.get_current_user_or_raise()
+        data = request.get_json() or {}
+        path = str(data.get("path") or "").strip().strip("/")
+        section = str(data.get("section") or "").strip()
+        if not path or not section:
+            return jsonify({"error": "Missing or empty 'path' or 'section'"}), 400
+        return jsonify(dataset_service.delete_dataset_misc_section(path, section, current_user))
+
     @app.route("/api/stats", methods=["GET"])
     def get_stats():
         return jsonify(
