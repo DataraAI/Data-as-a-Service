@@ -62,10 +62,10 @@ export default function FeatureShowcaseCarousel({
     initialItemId ? items.findIndex((item) => item.id === initialItemId) : 0,
   );
   const [activeIndex, setActiveIndex] = useState(initialIndex);
-  const [direction, setDirection] = useState<"forward" | "backward">("forward");
   const carouselId = useId().replace(/:/g, "");
   const touchStartX = useRef<number | null>(null);
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const tabListRef = useRef<HTMLDivElement | null>(null);
   const hasMounted = useRef(false);
   const activeItem = items[activeIndex];
 
@@ -78,27 +78,34 @@ export default function FeatureShowcaseCarousel({
     if (document.activeElement?.getAttribute("role") === "tab") {
       activeTab?.focus({ preventScroll: true });
     }
-    activeTab?.scrollIntoView({
-      behavior: "smooth",
-      block: "nearest",
-      inline: "center",
-    });
+    const tabList = tabListRef.current;
+    if (!activeTab || !tabList) return;
+    const tabLeft = activeTab.offsetLeft;
+    const tabRight = tabLeft + activeTab.offsetWidth;
+    const visibleLeft = tabList.scrollLeft;
+    const visibleRight = visibleLeft + tabList.clientWidth;
+
+    if (tabLeft < visibleLeft || tabRight > visibleRight) {
+      tabList.scrollTo({
+        left: Math.max(0, tabLeft - (tabList.clientWidth - activeTab.offsetWidth) / 2),
+        behavior: "smooth",
+      });
+    }
   }, [activeIndex]);
 
   if (!activeItem) return null;
 
-  const selectItem = (nextIndex: number, nextDirection?: "forward" | "backward") => {
+  const selectItem = (nextIndex: number) => {
     if (nextIndex === activeIndex) return;
-    setDirection(nextDirection ?? (nextIndex > activeIndex ? "forward" : "backward"));
     setActiveIndex(nextIndex);
   };
 
   const showPrevious = () => {
-    selectItem((activeIndex - 1 + items.length) % items.length, "backward");
+    selectItem((activeIndex - 1 + items.length) % items.length);
   };
 
   const showNext = () => {
-    selectItem((activeIndex + 1) % items.length, "forward");
+    selectItem((activeIndex + 1) % items.length);
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
@@ -113,10 +120,10 @@ export default function FeatureShowcaseCarousel({
       showNext();
     } else if (event.key === "Home") {
       event.preventDefault();
-      selectItem(0, "backward");
+      selectItem(0);
     } else if (event.key === "End") {
       event.preventDefault();
-      selectItem(items.length - 1, "forward");
+      selectItem(items.length - 1);
     }
   };
 
@@ -136,6 +143,73 @@ export default function FeatureShowcaseCarousel({
     else showNext();
   };
 
+  const carouselControls = (
+    <div className="flex items-center gap-3 rounded-[20px] border border-slate-200 bg-card p-3 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700">
+      <div
+        ref={tabListRef}
+        role="tablist"
+        aria-label={`${ariaLabel} features`}
+        className="custom-scrollbar flex min-w-0 flex-1 gap-2 overflow-x-auto pb-1 sm:pb-0"
+      >
+        {items.map((item, index) => {
+          const selected = index === activeIndex;
+          return (
+            <button
+              key={item.id}
+              ref={(node) => {
+                tabRefs.current[index] = node;
+              }}
+              id={`${carouselId}-${item.id}-tab`}
+              type="button"
+              role="tab"
+              aria-selected={selected}
+              aria-controls={`${carouselId}-${item.id}-panel`}
+              tabIndex={selected ? 0 : -1}
+              onClick={() => selectItem(index)}
+              className={`group inline-flex h-10 shrink-0 items-center gap-2 rounded-full border px-4 text-[12px] font-extrabold transition-all duration-200 ${
+                selected
+                  ? ACTIVE_TAB_CLASSES[item.accent]
+                  : INACTIVE_TAB_CLASSES[item.accent]
+              }`}
+            >
+              <span
+                className={`h-2 w-2 rounded-[2px] transition-all ${
+                  selected
+                    ? "bg-white shadow-[0_0_8px_rgba(255,255,255,0.85)]"
+                    : `${DOT_CLASSES[item.accent]} opacity-60 group-hover:opacity-100`
+                }`}
+              />
+              <span className="sm:hidden">{item.shortLabel ?? item.label}</span>
+              <span className="hidden sm:inline">{item.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="flex shrink-0 items-center gap-1.5 border-l border-slate-200 pl-3 dark:border-slate-700">
+        <span className={`mr-1 hidden min-w-10 text-center font-mono-tech text-[10px] font-bold tracking-[0.08em] sm:inline ${COUNT_CLASSES[activeItem.accent]}`}>
+          {activeIndex + 1} / {items.length}
+        </span>
+        <button
+          type="button"
+          onClick={showPrevious}
+          aria-label="Show previous feature"
+          className={`grid h-9 w-9 place-items-center rounded-full border transition-all ${CONTROL_CLASSES[activeItem.accent]}`}
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onClick={showNext}
+          aria-label="Show next feature"
+          className={`grid h-9 w-9 place-items-center rounded-full border transition-all ${CONTROL_CLASSES[activeItem.accent]}`}
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <section
       aria-label={ariaLabel}
@@ -143,87 +217,38 @@ export default function FeatureShowcaseCarousel({
       tabIndex={0}
       onKeyDown={handleKeyDown}
     >
-      <div className="flex items-center gap-3 rounded-[20px] border border-slate-200 bg-card p-3 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700">
-        <div
-          role="tablist"
-          aria-label={`${ariaLabel} features`}
-          className="custom-scrollbar flex min-w-0 flex-1 gap-2 overflow-x-auto pb-1 sm:pb-0"
-        >
-          {items.map((item, index) => {
-            const selected = index === activeIndex;
-            return (
-              <button
-                key={item.id}
-                ref={(node) => {
-                  tabRefs.current[index] = node;
-                }}
-                id={`${carouselId}-${item.id}-tab`}
-                type="button"
-                role="tab"
-                aria-selected={selected}
-                aria-controls={`${carouselId}-${item.id}-panel`}
-                tabIndex={selected ? 0 : -1}
-                onClick={() => selectItem(index)}
-                className={`group inline-flex h-10 shrink-0 items-center gap-2 rounded-full border px-4 text-[12px] font-extrabold transition-all duration-200 ${
-                  selected
-                    ? ACTIVE_TAB_CLASSES[item.accent]
-                    : INACTIVE_TAB_CLASSES[item.accent]
-                }`}
-              >
-                <span
-                  className={`h-2 w-2 rounded-[2px] transition-all ${
-                    selected
-                      ? "bg-white shadow-[0_0_8px_rgba(255,255,255,0.85)]"
-                      : `${DOT_CLASSES[item.accent]} opacity-60 group-hover:opacity-100`
-                  }`}
-                />
-                <span className="sm:hidden">{item.shortLabel ?? item.label}</span>
-                <span className="hidden sm:inline">{item.label}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="flex shrink-0 items-center gap-1.5 border-l border-slate-200 pl-3 dark:border-slate-700">
-          <span className={`mr-1 hidden min-w-10 text-center font-mono-tech text-[10px] font-bold tracking-[0.08em] sm:inline ${COUNT_CLASSES[activeItem.accent]}`}>
-            {activeIndex + 1} / {items.length}
-          </span>
-          <button
-            type="button"
-            onClick={showPrevious}
-            aria-label="Show previous feature"
-            className={`grid h-9 w-9 place-items-center rounded-full border transition-all ${CONTROL_CLASSES[activeItem.accent]}`}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            onClick={showNext}
-            aria-label="Show next feature"
-            className={`grid h-9 w-9 place-items-center rounded-full border transition-all ${CONTROL_CLASSES[activeItem.accent]}`}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
-
       <div
-        className="overflow-hidden touch-pan-y"
+        className="relative overflow-hidden touch-pan-y"
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
+        <button
+          type="button"
+          onClick={showPrevious}
+          aria-label="Show previous feature"
+          className={`absolute left-2 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 place-items-center rounded-full border shadow-[0_10px_28px_rgba(15,23,42,0.16)] transition-all md:grid ${CONTROL_CLASSES[activeItem.accent]}`}
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </button>
         <div
           key={activeItem.id}
           id={`${carouselId}-${activeItem.id}-panel`}
           role="tabpanel"
           aria-labelledby={`${carouselId}-${activeItem.id}-tab`}
-          className={`motion-safe:animate-in motion-safe:fade-in motion-safe:duration-300 ${
-            direction === "forward" ? "motion-safe:slide-in-from-right-4" : "motion-safe:slide-in-from-left-4"
-          }`}
         >
           {activeItem.content}
         </div>
+        <button
+          type="button"
+          onClick={showNext}
+          aria-label="Show next feature"
+          className={`absolute right-2 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 place-items-center rounded-full border shadow-[0_10px_28px_rgba(15,23,42,0.16)] transition-all md:grid ${CONTROL_CLASSES[activeItem.accent]}`}
+        >
+          <ChevronRight className="h-5 w-5" />
+        </button>
       </div>
+
+      {carouselControls}
 
       <div className="flex items-center justify-center gap-2 sm:hidden" aria-hidden="true">
         {items.map((item, index) => (
