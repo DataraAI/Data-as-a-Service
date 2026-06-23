@@ -34,12 +34,10 @@ export default function VideoToVideoViewsPanel({
     const [generatedVideoUrl, setGeneratedVideoUrl] = useState<string | null>(
         null,
     );
-    const [cached, setCached] = useState(false);
     const [trajectory, setTrajectory] = useState<Trajectory>("left");
     const queuedJob = useQueuedJob(`datara-job:video-perspective:${assetId || videoID}:${trajectory}`, (completedJob) => {
         if (completedJob.status === "succeeded" && completedJob.result?.proxy_url) {
             setGeneratedVideoUrl(completedJob.result.proxy_url);
-            setCached(false);
             onGenerated?.();
         }
     });
@@ -62,12 +60,6 @@ export default function VideoToVideoViewsPanel({
         } finally {
             setLoading(false);
         }
-    };
-
-    const handleRegenerate = () => {
-        setGeneratedVideoUrl(null);
-        setError(null);
-        setCached(false);
     };
 
     return (

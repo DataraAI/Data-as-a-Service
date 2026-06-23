@@ -335,9 +335,8 @@ export default function DataViewer() {
   }, [isRootLanding, rootCategoryPreviews, visibleRootRouteKeys]);
   const initialCategoryCatalogContentReady =
     isCategoryLanding &&
-    Boolean(activeCategory) &&
     !categoryPreviewsLoading &&
-    loadedCategoryPreviewKey === activeCategory.routeKey;
+    loadedCategoryPreviewKey === activeCategory?.routeKey;
 
   useEffect(() => {
     setActiveLandingFilterId(activeLandingContent?.filters[0]?.id ?? "all");

@@ -19,7 +19,7 @@ export interface AuthState {
   user: AuthUser | null;
 }
 
-interface AuthContextValue extends AuthState {
+export interface AuthContextValue extends AuthState {
   isLoading: boolean;
   refreshAuth: () => Promise<AuthState>;
   login: (nextPath?: string) => void;

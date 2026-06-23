@@ -16,7 +16,6 @@ import {
   type CategoryPreviewAsset,
   type FolderItem,
   type ResolvedCatalogCardEntry,
-  type StoragePreviewKey,
 } from "./dataViewerTypes";
 
 export const CATEGORIES: CategoryConfig[] = [
