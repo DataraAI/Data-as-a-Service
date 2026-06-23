@@ -226,6 +226,8 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+
+
   deploy:
     name: Deploy to Production
     needs: [build-production]
@@ -240,7 +242,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             # Navigate to deployment directory (configure path as needed)
-            cd /opt/datara-ai || mkdir -p /opt/datara-ai
+            mkdir -p /opt/datara-ai && cd /opt/datara-ai 
             
             # Pull the latest docker-compose.prod.yml if you have a way to fetch it, 
             # or rely on pulling the images specified in the already-present compose file.
@@ -287,4 +289,3 @@ jobs:
 
             ## Changes
             See [commits](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }}) for more details.
-       See [commits](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }}) for more details.
