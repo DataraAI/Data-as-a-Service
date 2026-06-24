@@ -55,6 +55,11 @@ const DOT_CLASSES: Record<ShowcaseAccent, string> = {
 const SIDE_ARROW_CLASSES =
   "absolute top-[18rem] z-20 hidden h-11 w-11 -translate-y-1/2 place-items-center rounded-full border shadow-[0_10px_28px_rgba(15,23,42,0.16)] transition-all md:grid";
 
+const PANEL_SLIDE_CLASSES = {
+  forward: "motion-safe:slide-in-from-right-4",
+  backward: "motion-safe:slide-in-from-left-4",
+} satisfies Record<"forward" | "backward", string>;
+
 export default function FeatureShowcaseCarousel({
   items,
   initialItemId,
@@ -65,6 +70,7 @@ export default function FeatureShowcaseCarousel({
     initialItemId ? items.findIndex((item) => item.id === initialItemId) : 0,
   );
   const [activeIndex, setActiveIndex] = useState(initialIndex);
+  const [direction, setDirection] = useState<"forward" | "backward">("forward");
   const carouselId = useId().replace(/:/g, "");
   const touchStartX = useRef<number | null>(null);
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -98,17 +104,18 @@ export default function FeatureShowcaseCarousel({
 
   if (!activeItem) return null;
 
-  const selectItem = (nextIndex: number) => {
+  const selectItem = (nextIndex: number, nextDirection?: "forward" | "backward") => {
     if (nextIndex === activeIndex) return;
+    setDirection(nextDirection ?? (nextIndex > activeIndex ? "forward" : "backward"));
     setActiveIndex(nextIndex);
   };
 
   const showPrevious = () => {
-    selectItem((activeIndex - 1 + items.length) % items.length);
+    selectItem((activeIndex - 1 + items.length) % items.length, "backward");
   };
 
   const showNext = () => {
-    selectItem((activeIndex + 1) % items.length);
+    selectItem((activeIndex + 1) % items.length, "forward");
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
@@ -123,10 +130,10 @@ export default function FeatureShowcaseCarousel({
       showNext();
     } else if (event.key === "Home") {
       event.preventDefault();
-      selectItem(0);
+      selectItem(0, "backward");
     } else if (event.key === "End") {
       event.preventDefault();
-      selectItem(items.length - 1);
+      selectItem(items.length - 1, "forward");
     }
   };
 
@@ -238,6 +245,7 @@ export default function FeatureShowcaseCarousel({
           id={`${carouselId}-${activeItem.id}-panel`}
           role="tabpanel"
           aria-labelledby={`${carouselId}-${activeItem.id}-tab`}
+          className={`motion-safe:animate-in motion-safe:duration-200 motion-safe:ease-out ${PANEL_SLIDE_CLASSES[direction]}`}
         >
           {activeItem.content}
         </div>
