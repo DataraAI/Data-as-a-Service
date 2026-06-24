@@ -52,6 +52,9 @@ const DOT_CLASSES: Record<ShowcaseAccent, string> = {
   orange: "bg-orange-600",
 };
 
+const SIDE_ARROW_CLASSES =
+  "absolute top-[18rem] z-20 hidden h-11 w-11 -translate-y-1/2 place-items-center rounded-full border shadow-[0_10px_28px_rgba(15,23,42,0.16)] transition-all md:grid";
+
 export default function FeatureShowcaseCarousel({
   items,
   initialItemId,
@@ -218,7 +221,7 @@ export default function FeatureShowcaseCarousel({
       onKeyDown={handleKeyDown}
     >
       <div
-        className="relative overflow-hidden touch-pan-y"
+        className="relative touch-pan-y"
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
@@ -226,7 +229,7 @@ export default function FeatureShowcaseCarousel({
           type="button"
           onClick={showPrevious}
           aria-label="Show previous feature"
-          className={`absolute left-2 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 place-items-center rounded-full border shadow-[0_10px_28px_rgba(15,23,42,0.16)] transition-all md:grid ${CONTROL_CLASSES[activeItem.accent]}`}
+          className={`left-2 ${SIDE_ARROW_CLASSES} ${CONTROL_CLASSES[activeItem.accent]}`}
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
@@ -242,7 +245,7 @@ export default function FeatureShowcaseCarousel({
           type="button"
           onClick={showNext}
           aria-label="Show next feature"
-          className={`absolute right-2 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 place-items-center rounded-full border shadow-[0_10px_28px_rgba(15,23,42,0.16)] transition-all md:grid ${CONTROL_CLASSES[activeItem.accent]}`}
+          className={`right-2 ${SIDE_ARROW_CLASSES} ${CONTROL_CLASSES[activeItem.accent]}`}
         >
           <ChevronRight className="h-5 w-5" />
         </button>
