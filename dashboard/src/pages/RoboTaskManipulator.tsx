@@ -536,21 +536,6 @@ export default function RoboTaskManipulator() {
                 </div>
               </section>
 
-              <section className="mb-10">
-                <StatStrip />
-              </section>
-
-              <section className="mb-10 rounded-[14px] border border-slate-200 bg-card px-8 py-7 dark:border-slate-800">
-                <p className="mb-6 text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-400">How It Works</p>
-                <div className="lg:flex lg:items-stretch">
-                  <StepCardView step={PROCESS_STEPS[0]} />
-                  <FlowArrow />
-                  <StepCardView step={PROCESS_STEPS[1]} />
-                  <FlowArrow />
-                  <StepCardView step={PROCESS_STEPS[2]} />
-                </div>
-              </section>
-
               <section className="flex flex-col gap-10">
                 <div id="dc" className="scroll-mt-28">
                   <SectionHeader title="Data Center" summary="4 datasets · 1,060 hrs" accent="blue" />
