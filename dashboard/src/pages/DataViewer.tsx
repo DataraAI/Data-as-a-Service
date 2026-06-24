@@ -152,6 +152,10 @@ export default function DataViewer() {
   const [folderDropdownOpen, setFolderDropdownOpen] = useState<string | null>(null);
   const [deleteModalFolder, setDeleteModalFolder] = useState<FolderItem | null>(null);
   const [deleteInProgress, setDeleteInProgress] = useState(false);
+  const [deleteAssetTarget, setDeleteAssetTarget] = useState<
+    { label: string; blobPath?: string; sectionKey?: string } | null
+  >(null);
+  const [deleteAssetInProgress, setDeleteAssetInProgress] = useState(false);
   const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [vlmPromptGroups, setVlmPromptGroups] = useState<VlmPromptGroup[]>([]);
   const [visibleTags, setVisibleTags] = useState<Set<string>>(new Set());
@@ -174,6 +178,13 @@ export default function DataViewer() {
   const landingTopRef = useRef<HTMLDivElement | null>(null);
   const contentScrollRef = useRef<HTMLDivElement | null>(null);
   const previousPathSearchReloadTickRef = useRef(reloadTick);
+
+  useEffect(() => {
+    if (!folderDropdownOpen) return;
+    const handler = () => setFolderDropdownOpen(null);
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [folderDropdownOpen]);
 
   const pathSegments = useMemo(
     () =>
@@ -896,6 +907,33 @@ export default function DataViewer() {
     }
   }
 
+  async function handleDeleteAssetTarget() {
+    if (!deleteAssetTarget || !datasetManifest) return;
+
+    const path = datasetManifest.dataset.viewer_path.replace(/^\/viewer\//, "");
+    setDeleteAssetInProgress(true);
+    try {
+      if (deleteAssetTarget.blobPath) {
+        await axios.post("/api/delete_dataset_asset", {
+          path,
+          blob_path: deleteAssetTarget.blobPath,
+        });
+      } else if (deleteAssetTarget.sectionKey) {
+        await axios.post("/api/delete_dataset_misc", {
+          path,
+          section: deleteAssetTarget.sectionKey,
+        });
+      }
+      setDeleteAssetTarget(null);
+      setReloadTick((value) => value + 1);
+    } catch (error) {
+      console.error("Failed to delete asset", error);
+      alert("Failed to delete asset.");
+    } finally {
+      setDeleteAssetInProgress(false);
+    }
+  }
+
   function handleOpenDatasetAsset(asset: DatasetAsset) {
     setSelectedImage(asset);
   }
@@ -937,7 +975,7 @@ export default function DataViewer() {
         className={`mx-auto grid w-full grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3 ${maxWidthClassName}`}
       >
         {items.map((folder) => {
-          const isDataset = isDatasetRoutePath(folder.full_path);
+          const canDeleteFolder = canDeleteDatasets && isDatasetRoutePath(folder.full_path);
 
           return (
             <div
@@ -951,48 +989,6 @@ export default function DataViewer() {
                 )
               }
             >
-              {isDataset && canDeleteDatasets && (
-                <div className="absolute right-4 top-4 z-20">
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setFolderDropdownOpen((previous) =>
-                        previous === folder.full_path ? null : folder.full_path,
-                      );
-                    }}
-                    className="rounded-sm p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-foreground"
-                    aria-label="Folder options"
-                  >
-                    <MoreVertical className="h-5 w-5" />
-                  </button>
-
-                  {folderDropdownOpen === folder.full_path && (
-                    <>
-                      <div
-                        className="fixed inset-0 z-10"
-                        onClick={() => setFolderDropdownOpen(null)}
-                        aria-hidden
-                      />
-                      <div className="absolute right-0 z-20 mt-1 w-40 rounded-2xl border border-slate-200 bg-card py-1 shadow-[0_20px_40px_rgba(15,23,42,0.12)]">
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setDeleteModalFolder(folder);
-                            setFolderDropdownOpen(null);
-                          }}
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left font-sans-tech text-sm text-destructive hover:bg-destructive/10"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          Delete
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-
               <div className="relative z-10 flex flex-col items-center gap-6">
                 <div className="h-44 w-full overflow-hidden rounded-[20px] border border-slate-200 bg-muted/60 transition-all group-hover:border-primary/25 group-hover:shadow-[0_0_18px_rgba(13,148,136,0.08)]">
                   <DatasetFolderCover
@@ -1004,8 +1000,8 @@ export default function DataViewer() {
                     iconClassName="h-16 w-16 text-muted-foreground transition-colors group-hover:text-primary"
                   />
                 </div>
-                <div className="w-full text-center">
-                  <span className="block break-words font-sans-tech text-lg font-bold uppercase tracking-[0.12em] text-slate-950 transition-colors group-hover:text-primary">
+                <div className="relative w-full text-center">
+                  <span className={`block break-words font-sans-tech text-lg font-bold uppercase tracking-[0.12em] text-slate-950 transition-colors group-hover:text-primary ${canDeleteFolder ? "pl-8 pr-8" : ""}`}>
                     {folder.name}
                   </span>
                   {folder.visibility && (
@@ -1018,6 +1014,43 @@ export default function DataViewer() {
                     >
                       {folder.visibility}
                     </span>
+                  )}
+                  {canDeleteFolder && (
+                    <div className="absolute right-0 top-0">
+                      <button
+                        type="button"
+                        onMouseDown={(event) => event.stopPropagation()}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setFolderDropdownOpen((previous) =>
+                            previous === folder.full_path ? null : folder.full_path,
+                          );
+                        }}
+                        className="rounded-sm p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-foreground"
+                        aria-label="Folder options"
+                      >
+                        <MoreVertical className="h-5 w-5" />
+                      </button>
+                      {folderDropdownOpen === folder.full_path && (
+                        <div
+                          className="absolute right-0 top-full z-20 mt-1 w-40 rounded-2xl border border-slate-200 bg-card py-1 shadow-[0_20px_40px_rgba(15,23,42,0.12)]"
+                          onMouseDown={(event) => event.stopPropagation()}
+                        >
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setDeleteModalFolder(folder);
+                              setFolderDropdownOpen(null);
+                            }}
+                            className="flex w-full items-center gap-2 px-3 py-2 text-left font-sans-tech text-sm text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            Delete
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
@@ -1226,6 +1259,23 @@ export default function DataViewer() {
                   <DatasetLanding
                     manifest={datasetManifest}
                     canUseGenerationTools={canManageDatasets}
+                    canDeleteDataset={
+                      canDeleteDatasets &&
+                      isDatasetRoutePath(datasetManifest.dataset.viewer_path.replace(/^\/viewer\//, ""))
+                    }
+                    onDeleteDataset={() =>
+                      setDeleteModalFolder({
+                        name: datasetManifest.dataset.task_label || datasetManifest.dataset.task_slug,
+                        full_path: datasetManifest.dataset.viewer_path.replace(/^\/viewer\//, ""),
+                      })
+                    }
+                    canDeleteAssets={canDeleteDatasets}
+                    onDeleteAsset={(asset) =>
+                      setDeleteAssetTarget({ label: asset.name, blobPath: asset.blob_path })
+                    }
+                    onDeleteMiscSection={(section) =>
+                      setDeleteAssetTarget({ label: section.label, sectionKey: section.key })
+                    }
                     onNavigate={(path) => navigate(withViewerBase(path, viewerBasePath))}
                     onOpenAsset={handleOpenDatasetAsset}
                   />
@@ -1338,6 +1388,47 @@ export default function DataViewer() {
                   className="flex items-center gap-2 rounded-sm bg-destructive px-4 py-2 font-sans-tech text-sm font-medium text-primary-foreground transition-colors hover:bg-destructive/90 disabled:opacity-50"
                 >
                   {deleteInProgress && <Loader2 className="h-4 w-4 animate-spin" />}
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {deleteAssetTarget && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 backdrop-blur-sm">
+            <div
+              className="w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-xl"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <h3 className="mb-2 font-sans-tech text-lg font-bold text-foreground">
+                Delete {deleteAssetTarget.blobPath ? "file" : "folder"}?
+              </h3>
+              <p className="mb-1 font-sans-tech text-sm text-muted-foreground">
+                You are about to delete{" "}
+                <span className="font-medium text-foreground">{deleteAssetTarget.label}</span>
+                {deleteAssetTarget.blobPath
+                  ? " from Azure Blob Storage and its annotations."
+                  : " and all of its contents from Azure Blob Storage and their annotations."}
+              </p>
+              <p className="mb-6 font-sans-tech text-xs text-destructive/90">
+                This action cannot be undone.
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setDeleteAssetTarget(null)}
+                  className="rounded-sm border border-border px-4 py-2 font-sans-tech text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteAssetTarget}
+                  disabled={deleteAssetInProgress}
+                  className="flex items-center gap-2 rounded-sm bg-destructive px-4 py-2 font-sans-tech text-sm font-medium text-primary-foreground transition-colors hover:bg-destructive/90 disabled:opacity-50"
+                >
+                  {deleteAssetInProgress && <Loader2 className="h-4 w-4 animate-spin" />}
                   Delete
                 </button>
               </div>

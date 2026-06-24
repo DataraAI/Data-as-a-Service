@@ -472,7 +472,7 @@ class DatasetService:
         dataset, _ = self.sql_store.resolve_dataset_route(route_path, current_user)
         self.sql_store.assert_user_can_manage_dataset(dataset, current_user)
 
-        deleted_blobs = self.azure_service.delete_blobs_with_prefix(
+        deleted_blobs = self.azure_service.delete_dataset_blobs(
             dataset["storage_container"],
             dataset["storage_prefix"],
         )
@@ -486,6 +486,57 @@ class DatasetService:
         return {
             "message": "Dataset deleted successfully",
             "deleted_blobs": len(deleted_blobs),
+            "deleted_docs": deleted_docs,
+        }
+
+    def delete_dataset_asset(
+        self, route_path: str, blob_path: str, current_user: dict[str, Any]
+    ) -> dict[str, Any]:
+        dataset, _ = self.sql_store.resolve_dataset_route(route_path, current_user)
+        self.sql_store.assert_user_can_manage_dataset(dataset, current_user)
+
+        storage_prefix = dataset["storage_prefix"].rstrip("/")
+        if blob_path != storage_prefix and not blob_path.startswith(f"{storage_prefix}/"):
+            raise ValueError("Asset does not belong to this dataset")
+
+        self.azure_service.delete_blob(dataset["storage_container"], blob_path)
+        deleted_docs = self.azure_service.delete_cosmos_doc_for_blob(
+            dataset["storage_container"], blob_path
+        )
+        self._dataset_path_cache.clear()
+        logger.info("Deleted dataset asset %s (%s) (%s docs)", route_path, blob_path, deleted_docs)
+        return {
+            "message": "Asset deleted successfully",
+            "deleted_docs": deleted_docs,
+        }
+
+    def delete_dataset_misc_section(
+        self, route_path: str, section_key: str, current_user: dict[str, Any]
+    ) -> dict[str, Any]:
+        dataset, _ = self.sql_store.resolve_dataset_route(route_path, current_user)
+        self.sql_store.assert_user_can_manage_dataset(dataset, current_user)
+
+        prefixes = self._misc_section_storage_prefixes(dataset["storage_prefix"], section_key)
+        if not prefixes:
+            raise ValueError("Unknown misc section")
+
+        deleted_blobs = 0
+        deleted_docs = 0
+        for prefix in prefixes:
+            deleted_blobs += len(self.azure_service.delete_dataset_blobs(dataset["storage_container"], prefix))
+            deleted_docs += self.azure_service.delete_cosmos_docs_for_prefix(dataset["storage_container"], prefix)
+
+        self._dataset_path_cache.clear()
+        logger.info(
+            "Deleted misc section %s for %s (%s blobs, %s docs)",
+            section_key,
+            route_path,
+            deleted_blobs,
+            deleted_docs,
+        )
+        return {
+            "message": "Misc section deleted successfully",
+            "deleted_blobs": deleted_blobs,
             "deleted_docs": deleted_docs,
         }
 
