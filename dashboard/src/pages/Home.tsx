@@ -1,17 +1,17 @@
-import { useEffect, useRef, Fragment } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { ArrowRight, Database, Eye, Hand, Workflow, Factory, Layers, Box, Zap, Bot, type LucideIcon } from "lucide-react";
-import Navigation from "@/components/Navigation";
-import FooterSection from "@/components/FooterSection";
-import { buildAuthPath } from "@/lib/authLinks";
-import { useAppTheme } from "@/theme/AppThemeProvider";
 import pilotRoadmap from "@/assets/images/pilot-roadmap.png";
 import rackManual from "@/assets/images/rack-manual.png";
 import rackRobot from "@/assets/images/rack-robot.png";
+import solutionAfter from "@/assets/images/serverrack/solutionafter.png";
+import solutionBefore from "@/assets/images/serverrack/solutionbefore.png";
 import simToRealLoopDark from "@/assets/images/sim to real loop-dark.png";
 import simToRealLoop from "@/assets/images/sim to real loop.png";
-import solutionBefore from "@/assets/images/serverrack/solutionbefore.png";
-import solutionAfter from "@/assets/images/serverrack/solutionafter.png";
+import FooterSection from "@/components/FooterSection";
+import Navigation from "@/components/Navigation";
+import { buildAuthPath } from "@/lib/authLinks";
+import { useAppTheme } from "@/theme/AppThemeProvider";
+import { ArrowRight, Bot, Box, Database, Eye, Factory, Hand, Layers, Workflow, Zap, type LucideIcon } from "lucide-react";
+import { Fragment, useEffect, useRef } from "react";
+import { Link, useLocation } from "react-router-dom";
 
 type ProductCard = {
   name: string;
@@ -60,9 +60,9 @@ type PipelineStep = {
 };
 
 const PIPELINE_ARROWS = [
-  { line: "from-teal-400 to-blue-400",     head: "border-l-blue-400"    },
-  { line: "from-blue-400 to-violet-400",   head: "border-l-violet-400"  },
-  { line: "from-violet-400 to-orange-400", head: "border-l-orange-400"  },
+  { line: "from-teal-400 to-blue-400", head: "border-l-blue-400" },
+  { line: "from-blue-400 to-violet-400", head: "border-l-violet-400" },
+  { line: "from-violet-400 to-orange-400", head: "border-l-orange-400" },
   { line: "from-orange-400 to-emerald-400", head: "border-l-emerald-400" },
 ];
 
@@ -272,10 +272,10 @@ const CUSTOMER_CARDS: CustomerCard[] = [
 
 function PipelineStepCard({ step }: { step: PipelineStep }) {
   const accentClasses = {
-    teal:    { badge: "border-teal-200 bg-teal-50 text-teal-700",    bar: "bg-teal-500"    },
-    blue:    { badge: "border-blue-200 bg-blue-50 text-blue-700",    bar: "bg-blue-500"    },
-    violet:  { badge: "border-violet-200 bg-violet-50 text-violet-700", bar: "bg-violet-500" },
-    orange:  { badge: "border-orange-200 bg-orange-50 text-orange-700", bar: "bg-orange-500" },
+    teal: { badge: "border-teal-200 bg-teal-50 text-teal-700", bar: "bg-teal-500" },
+    blue: { badge: "border-blue-200 bg-blue-50 text-blue-700", bar: "bg-blue-500" },
+    violet: { badge: "border-violet-200 bg-violet-50 text-violet-700", bar: "bg-violet-500" },
+    orange: { badge: "border-orange-200 bg-orange-50 text-orange-700", bar: "bg-orange-500" },
     emerald: { badge: "border-emerald-200 bg-emerald-50 text-emerald-700", bar: "bg-emerald-500" },
   }[step.accent];
 
@@ -384,10 +384,6 @@ export default function Home() {
       <main className="pt-[88px]">
         <section className="marketing-hero-home overflow-hidden px-4 py-10 text-center sm:px-6 md:min-h-[calc(88vh-88px)] md:py-12 lg:py-14">
           <div className="mx-auto max-w-[860px]">
-            <div className="inline-flex border-y border-primary/30 px-5 py-2 text-[11px] font-extrabold uppercase tracking-[0.18em] text-primary">
-              NVIDIA Inception Member - 2025
-            </div>
-
             <h1 className="marketing-display-title mt-7 text-[clamp(38px,5.5vw,64px)] font-black leading-[1] tracking-[-0.045em] text-slate-950">
               The Sim-to-Real Gap
               <br />
