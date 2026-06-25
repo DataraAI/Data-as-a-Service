@@ -9,12 +9,21 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { canImportData, ROBODATAHUB_IMPORT_DATA_PATH } from "@/lib/dataImportAccess";
 import pduInstallationVideo from "@/assets/Products/RoboAnnotator/v2v/input/pduInstallation.mp4";
 import pduInstallationPoster from "@/assets/Products/RoboAnnotator/v2v/input/pduInstallation-poster.jpg";
-import sourceFrontGrilleVideo from "@/assets/Products/RoboAnnotator/v2v/input/source-front-grille.mp4";
-import sourceFrontGrillePoster from "@/assets/Products/RoboAnnotator/v2v/input/source-front-grille-poster.jpg";
-import frontGrilleLeftVideo from "@/assets/Products/RoboAnnotator/v2v/newangles/front-grille-left.mp4";
-import frontGrilleLeftPoster from "@/assets/Products/RoboAnnotator/v2v/newangles/front-grille-left-poster.jpg";
-import frontGrilleUpVideo from "@/assets/Products/RoboAnnotator/v2v/newangles/front-grille-up.mp4";
-import frontGrilleUpPoster from "@/assets/Products/RoboAnnotator/v2v/newangles/front-grille-up-poster.jpg";
+// import sourceFrontGrilleVideo from "@/assets/Products/RoboAnnotator/v2v/input/source-front-grille.mp4";
+// import sourceFrontGrillePoster from "@/assets/Products/RoboAnnotator/v2v/input/source-front-grille-poster.jpg";
+// import frontGrilleLeftVideo from "@/assets/Products/RoboAnnotator/v2v/newangles/front-grille-left.mp4";
+// import frontGrilleLeftPoster from "@/assets/Products/RoboAnnotator/v2v/newangles/front-grille-left-poster.jpg";
+// import frontGrilleUpVideo from "@/assets/Products/RoboAnnotator/v2v/newangles/front-grille-up.mp4";
+// import frontGrilleUpPoster from "@/assets/Products/RoboAnnotator/v2v/newangles/front-grille-up-poster.jpg";
+
+
+import sourcedataRackInstall from "@/assets/Products/RoboAnnotator/v2v/input/source-dataRackInstall.mp4";
+import sourcedataRackInstallPoster from "@/assets/Products/RoboAnnotator/v2v/input/source-dataRackInstall-poster.png";
+import dataRackInstallLeftVideo from "@/assets/Products/RoboAnnotator/v2v/newangles/dataRackInstall-left.mp4";
+import dataRackInstallZoomOutVideo from "@/assets/Products/RoboAnnotator/v2v/newangles/dataRackInstall-zoom-out.mp4";
+import dataRackInstallLeftPoster from "@/assets/Products/RoboAnnotator/v2v/newangles/dataRackInstall-left-poster.png";
+import dataRackInstallZoomOutPoster from "@/assets/Products/RoboAnnotator/v2v/newangles/dataRackInstall-zoom-out-poster.png";
+
 import noPersonVideo from "@/assets/Products/RoboAnnotator/v2v/occl_removal/no_person.mp4";
 import noPersonPoster from "@/assets/Products/RoboAnnotator/v2v/occl_removal/no_person-poster.jpg";
 import exoServerRack from "@/assets/Products/RoboAnnotator/i2i/exo2ego/2exo_serverrack.png";
@@ -110,8 +119,8 @@ const VIDEO_OUTPUTS = {
     caption: "PDU installation source clip",
   },
   frontGrilleInput: {
-    videoSrc: sourceFrontGrilleVideo,
-    posterSrc: sourceFrontGrillePoster,
+    videoSrc: sourcedataRackInstall,
+    posterSrc: sourcedataRackInstallPoster,
     caption: "Front grille source clip",
   },
   occlusionRemoval: {
@@ -120,13 +129,13 @@ const VIDEO_OUTPUTS = {
     caption: "PDU installation with installer removed",
   },
   newAngleLeft: {
-    videoSrc: frontGrilleLeftVideo,
-    posterSrc: frontGrilleLeftPoster,
+    videoSrc: dataRackInstallLeftVideo,
+    posterSrc: dataRackInstallLeftPoster,
     caption: "Generated left view",
   },
   newAngleUp: {
-    videoSrc: frontGrilleUpVideo,
-    posterSrc: frontGrilleUpPoster,
+    videoSrc: dataRackInstallZoomOutVideo,
+    posterSrc: dataRackInstallZoomOutPoster,
     caption: "Generated upper view",
   },
 } satisfies Record<string, VideoAsset>;
