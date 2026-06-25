@@ -1,5 +1,10 @@
 import type { CategoryDatasetPreview } from "@/lib/dataViewerTypes";
-import { getCatalogAvailabilityClasses, getCatalogViewBadge, resolvePreviewMediaUrl } from "@/lib/dataViewerUtils";
+import {
+  getCatalogAvailabilityClasses,
+  getCatalogViewBadge,
+  getResolvedCatalogAvailability,
+  resolvePreviewMediaUrl,
+} from "@/lib/dataViewerUtils";
 import { frontPageImageUrl } from "@/lib/datasetFolderCover";
 import type { CatalogCard } from "@/lib/roboDataHubCatalog";
 import { Database } from "lucide-react";
@@ -29,9 +34,8 @@ export function RootShowcaseCatalogCard({
   const resolvedVideoSrc = displayItem?.preview_video ? resolvePreviewMediaUrl(displayItem.preview_video) : null;
   const videoSrc = videoFailed ? null : resolvedVideoSrc;
   const badge = getCatalogViewBadge(card);
-  const availabilityClasses = getCatalogAvailabilityClasses(
-    displayItem ? "In Library" : card.availability,
-  );
+  const resolvedAvailability = getResolvedCatalogAvailability(card, displayItem);
+  const availabilityClasses = getCatalogAvailabilityClasses(resolvedAvailability);
 
   useEffect(() => {
     setImageFailed(false);
@@ -155,7 +159,7 @@ export function RootShowcaseCatalogCard({
           <span
             className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${availabilityClasses}`}
           >
-            {displayItem ? "In Library" : card.availability}
+            {resolvedAvailability}
           </span>
         </div>
       </div>

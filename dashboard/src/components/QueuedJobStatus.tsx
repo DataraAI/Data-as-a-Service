@@ -9,7 +9,7 @@ interface QueuedJobStatusProps {
 }
 
 export function QueuedJobStatus({ job, jobs, onOpenViewerPath, onClear }: QueuedJobStatusProps) {
-  const visibleJobs = jobs ?? (job ? [job] : []);
+  const visibleJobs = (jobs ?? (job ? [job] : [])).slice(-1);
   if (visibleJobs.length === 0) return null;
 
   return <div>{visibleJobs.map((visibleJob) => (

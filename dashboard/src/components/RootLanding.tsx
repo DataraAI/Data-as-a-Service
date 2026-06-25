@@ -20,6 +20,7 @@ interface RootLandingProps {
   isAuthenticated: boolean;
   isApproved: boolean;
   canManageDatasets: boolean;
+  canImportDatasets: boolean;
   pathSearchText: string;
   pathSearchLoading: boolean;
   pathSuggestions: FolderItem[];
@@ -39,6 +40,7 @@ export function RootLanding({
   isAuthenticated,
   isApproved,
   canManageDatasets,
+  canImportDatasets,
   pathSearchText,
   pathSearchLoading,
   pathSuggestions,
@@ -96,22 +98,26 @@ export function RootLanding({
             </div>
 
             <div className="mt-5 border-t border-slate-200 pt-4">
-              {isAuthenticated && isApproved && canManageDatasets ? (
+              {isAuthenticated && isApproved && (canManageDatasets || canImportDatasets) ? (
                 <div className="space-y-3">
-                  <button
-                    type="button"
-                    onClick={() => onNavigate(`${viewerBasePath}/my`)}
-                    className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
-                  >
-                    My private data
-                  </button>
-                  <button
-                    type="button"
-                    onClick={onUploadOpen}
-                    className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
-                  >
-                    Import data
-                  </button>
+                  {canManageDatasets && (
+                    <button
+                      type="button"
+                      onClick={() => onNavigate(`${viewerBasePath}/my`)}
+                      className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
+                    >
+                      My private data
+                    </button>
+                  )}
+                  {canImportDatasets && (
+                    <button
+                      type="button"
+                      onClick={onUploadOpen}
+                      className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
+                    >
+                      Import data
+                    </button>
+                  )}
                 </div>
               ) : !isAuthenticated || !isApproved ? (
                 <Link
@@ -212,35 +218,6 @@ export function RootLanding({
                 );
               })}
 
-              <section className="rounded-[20px] border border-primary/15 bg-[linear-gradient(135deg,rgba(13,148,136,0.05),rgba(29,78,216,0.03))] p-8">
-                <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-                  <div className="max-w-3xl">
-                    <h2 className="marketing-display-title text-2xl font-black tracking-[-0.005em] text-slate-950">
-                      Request a Custom Dataset
-                    </h2>
-                    <p className="mt-3 text-sm leading-7 text-slate-600">
-                      Don&apos;t see what you need? Our team captures any task, environment, or
-                      robot workflow on demand.
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-3">
-                    {CATEGORIES.map((category) => (
-                      <span
-                        key={`${category.routeKey}-pill`}
-                        className={`inline-flex rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${getCategoryAccent(category.routeKey).chip}`}
-                      >
-                        {category.label}
-                      </span>
-                    ))}
-                    <Link
-                      to={buildAuthPath("register", viewerBasePath)}
-                      className="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-5 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
-                    >
-                      Submit Request
-                    </Link>
-                  </div>
-                </div>
-              </section>
             </div>
           </div>
         </div>

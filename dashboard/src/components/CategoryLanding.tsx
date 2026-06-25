@@ -37,6 +37,7 @@ interface CategoryLandingProps {
   isAuthenticated: boolean;
   isApproved: boolean;
   canManageDatasets: boolean;
+  canImportDatasets: boolean;
   user: { role?: string; storageSlug?: string } | null | undefined;
   landingTopRef: React.RefObject<HTMLDivElement | null>;
   sectionAnchorRefs: React.MutableRefObject<Record<string, HTMLElement | null>>;
@@ -64,6 +65,7 @@ export function CategoryLanding({
   isAuthenticated,
   isApproved,
   canManageDatasets,
+  canImportDatasets,
   user,
   landingTopRef,
   sectionAnchorRefs,
@@ -213,22 +215,26 @@ export function CategoryLanding({
                 >
                   Get Access
                 </Link>
-              ) : canManageDatasets ? (
+              ) : canManageDatasets || canImportDatasets ? (
                 <div className="space-y-3">
-                  <button
-                    type="button"
-                    onClick={() => onNavigate(`${viewerBasePath}/my`)}
-                    className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
-                  >
-                    My private data
-                  </button>
-                  <button
-                    type="button"
-                    onClick={onUploadOpen}
-                    className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
-                  >
-                    Import data
-                  </button>
+                  {canManageDatasets && (
+                    <button
+                      type="button"
+                      onClick={() => onNavigate(`${viewerBasePath}/my`)}
+                      className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
+                    >
+                      My private data
+                    </button>
+                  )}
+                  {canImportDatasets && (
+                    <button
+                      type="button"
+                      onClick={onUploadOpen}
+                      className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
+                    >
+                      Import data
+                    </button>
+                  )}
                   {user?.role === "admin" ? (
                     <button
                       type="button"
@@ -291,33 +297,6 @@ export function CategoryLanding({
                 </section>
               ))}
 
-              <section className="rounded-[20px] border border-primary/15 bg-[linear-gradient(128deg,rgba(13,148,136,0.05),rgba(15,23,42,0.02)_55%,transparent)] p-8">
-                <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-                  <div className="max-w-3xl">
-                    <h2 className="marketing-display-title text-[28px] font-black tracking-[-0.015em] text-slate-950">
-                      {landing.ctaTitle}
-                    </h2>
-                    <p className="mt-3 text-sm leading-7 text-slate-600">
-                      {landing.ctaDescription}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-3">
-                    <Link
-                      to={buildAuthPath("register", viewerBasePath)}
-                      className="inline-flex h-12 items-center justify-center rounded-xl bg-primary px-5 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
-                    >
-                      Request access
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() => onNavigate(viewerBasePath)}
-                      className="inline-flex h-12 items-center justify-center rounded-xl border border-slate-300 bg-card px-5 text-sm font-semibold text-slate-700 transition-colors hover:border-primary/20 hover:text-primary"
-                    >
-                      Back to RoboDataHub
-                    </button>
-                  </div>
-                </div>
-              </section>
             </div>
           </div>
         </div>

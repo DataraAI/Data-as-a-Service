@@ -156,7 +156,7 @@ REMOTE_CORNER_CASE_OUTPUT_ROOT = "corner_images_controlnet"
 REMOTE_CORNER_CASE_LOCALIZATION_MODEL = "attention_points_sam"
 REMOTE_VLM_IMAGE_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "Post Annotation", "qwen_vlm_image.py")
 REMOTE_SEGMENTATION_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "DataraAI_segmentation.py")
-REMOTE_SUBTASK_ANNOTATOR_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "Post Annotation", "qwen_subtask_annotator.py")
+REMOTE_SUBTASK_ANNOTATOR_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "Post Annotation", "vila_subtask_annotator.py")
 REMOTE_ROSE_RUNNER_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "DataraAI_rose_occlusion.py")
 REMOTE_ROSE_VERIFY_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "verify_rose_runtime.sh")
 REMOTE_ROSE_SETUP_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "setup_rose_runtime.sh")
@@ -877,15 +877,15 @@ def generate_task_intelligence(video_url: str):
             # Check where the script exists on the remote VM
             check_script_cmd = (
                 f'if [ -f "{_shell_escape(REMOTE_SUBTASK_ANNOTATOR_SCRIPT)}" ]; then echo "{_shell_escape(REMOTE_SUBTASK_ANNOTATOR_SCRIPT)}"; '
-                f'elif [ -f "{_shell_escape(posixpath.join(REMOTE_SAAS_ROOT, "Post Annotation", "qwen_subtask_annotator.py"))}" ]; then echo "{_shell_escape(posixpath.join(REMOTE_SAAS_ROOT, "Post Annotation", "qwen_subtask_annotator.py"))}"; '
-                f'elif [ -f "{_shell_escape(posixpath.join(REMOTE_SAAS_ROOT, "qwen_subtask_annotator.py"))}" ]; then echo "{_shell_escape(posixpath.join(REMOTE_SAAS_ROOT, "qwen_subtask_annotator.py"))}"; '
+                f'elif [ -f "{_shell_escape(posixpath.join(REMOTE_SAAS_ROOT, "Post Annotation", "vila_subtask_annotator.py"))}" ]; then echo "{_shell_escape(posixpath.join(REMOTE_SAAS_ROOT, "Post Annotation", "vila_subtask_annotator.py"))}"; '
+                f'elif [ -f "{_shell_escape(posixpath.join(REMOTE_SAAS_ROOT, "vila_subtask_annotator.py"))}" ]; then echo "{_shell_escape(posixpath.join(REMOTE_SAAS_ROOT, "vila_subtask_annotator.py"))}"; '
                 f'else echo "MISSING"; fi'
             )
             script_path_out, _ = _run_command(ssh_client, check_script_cmd)
             script_path_out = script_path_out.strip()
 
             if script_path_out == "MISSING":
-                logger.error("qwen_subtask_annotator.py is missing from the Lambda VM. Ensure the SaaS repo is updated.")
+                logger.error("vila_subtask_annotator.py is missing from the Lambda VM. Ensure the SaaS repo is updated.")
                 return None, 404
 
             command = (
