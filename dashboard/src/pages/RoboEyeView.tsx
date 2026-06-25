@@ -1,7 +1,11 @@
+import { useAuth } from "@/auth/useAuth";
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, Eye, Sparkles, X } from "lucide-react";
+import { Eye, Sparkles, X } from "lucide-react";
+import { Link } from "react-router-dom";
 import FooterSection from "@/components/FooterSection";
+import FeatureShowcaseCarousel, { type FeatureShowcaseItem } from "@/components/FeatureShowcaseCarousel";
 import Navigation from "@/components/Navigation";
+import { canImportData, ROBODATAHUB_IMPORT_DATA_PATH } from "@/lib/dataImportAccess";
 import pduInstallationVideo from "@/assets/Products/RoboAnnotator/v2v/input/pduInstallation.mp4";
 import pduInstallationPoster from "@/assets/Products/RoboAnnotator/v2v/input/pduInstallation-poster.jpg";
 import sourceFrontGrilleVideo from "@/assets/Products/RoboAnnotator/v2v/input/source-front-grille.mp4";
@@ -12,10 +16,6 @@ import frontGrilleUpVideo from "@/assets/Products/RoboAnnotator/v2v/newangles/fr
 import frontGrilleUpPoster from "@/assets/Products/RoboAnnotator/v2v/newangles/front-grille-up-poster.jpg";
 import noPersonVideo from "@/assets/Products/RoboAnnotator/v2v/occl_removal/no_person.mp4";
 import noPersonPoster from "@/assets/Products/RoboAnnotator/v2v/occl_removal/no_person-poster.jpg";
-import exoCarAutomation from "@/assets/Products/RoboAnnotator/i2i/exo2ego/2exo_carautomation.png";
-import egoCarAutomationFront from "@/assets/Products/RoboAnnotator/i2i/exo2ego/2ego_carautomation.png";
-import egoCarAutomationSide from "@/assets/Products/RoboAnnotator/i2i/exo2ego/2ego_carautomation1.png";
-import egoCarAutomationLow from "@/assets/Products/RoboAnnotator/i2i/exo2ego/2ego_carautomation2.png";
 import exoServerRack from "@/assets/Products/RoboAnnotator/i2i/exo2ego/2exo_serverrack.png";
 import egoServerRackFront from "@/assets/Products/RoboAnnotator/i2i/exo2ego/2ego_serverrack.png";
 import egoServerRackOverhead from "@/assets/Products/RoboAnnotator/i2i/exo2ego/2ego_serverrack1.png";
@@ -56,38 +56,21 @@ type ExoToEgoExample = {
   outputs: ImageAsset[];
 };
 
-const EXO_TO_EGO_EXAMPLES: ExoToEgoExample[] = [
-  {
-    title: "Automotive Assembly",
-    description:
-      "Third-person automotive assembly footage transformed into multiple robot-perspective viewpoints for downstream manipulation training.",
-    engineDetail: "View Synthesis",
-    input: {
-      src: exoCarAutomation,
-      caption: "Automotive EXO source",
-    },
-    outputs: [
-      { src: egoCarAutomationFront, caption: "Front robot view" },
-      { src: egoCarAutomationSide, caption: "Side robot view" },
-      { src: egoCarAutomationLow, caption: "Low-angle robot view" },
-    ],
+const DATA_CENTER_EXO_TO_EGO_EXAMPLE: ExoToEgoExample = {
+  title: "Data Center EXO to EGO",
+  description:
+    "Converts fixed server-rack capture into robot-ready inspection perspectives.",
+  engineDetail: "Robot Perspective Generation",
+  input: {
+    src: exoServerRack,
+    caption: "Server rack EXO source",
   },
-  {
-    title: "Data Center Servicing",
-    description:
-      "Server rack service capture converted from a fixed external viewpoint into robot-ready inspection perspectives.",
-    engineDetail: "Robot Perspective Generation",
-    input: {
-      src: exoServerRack,
-      caption: "Server rack EXO source",
-    },
-    outputs: [
-      { src: egoServerRackFront, caption: "Front inspection view" },
-      { src: egoServerRackOverhead, caption: "Overhead inspection view" },
-      { src: egoServerRackSide, caption: "Side inspection view" },
-    ],
-  },
-];
+  outputs: [
+    { src: egoServerRackFront, caption: "Front inspection view" },
+    { src: egoServerRackOverhead, caption: "Overhead inspection view" },
+    { src: egoServerRackSide, caption: "Side inspection view" },
+  ],
+};
 
 const CORNER_CASE_INPUT: ImageAsset = {
   src: cornerCaseInput,
@@ -146,66 +129,6 @@ const VIDEO_OUTPUTS = {
     caption: "Generated upper view",
   },
 } satisfies Record<string, VideoAsset>;
-
-function SectionHeader({
-  title,
-  summary,
-  accent,
-}: {
-  title: string;
-  summary: string;
-  accent: "blue" | "teal" | "purple";
-}) {
-  const dot = accent === "blue" ? "bg-blue-700" : accent === "teal" ? "bg-teal-600" : "bg-violet-600";
-  const line = accent === "blue" ? "from-blue-200" : accent === "teal" ? "from-teal-200" : "from-violet-200";
-
-  return (
-    <div className="mb-4 flex items-center gap-2">
-      <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-card px-5 py-3 transition-all duration-200 group-hover:scale-[1.02] group-hover:border-slate-300 group-hover:bg-muted group-hover:shadow-[0_10px_28px_rgba(15,23,42,0.08)] dark:border-slate-700 dark:group-hover:border-slate-600 dark:group-hover:shadow-[0_10px_28px_rgba(15,23,42,0.22)]">
-        <span className={`h-2 w-2 rounded-[2px] ${dot}`} />
-        <span className="text-[14px] font-extrabold text-slate-950 dark:text-slate-100">{title}</span>
-        <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">{summary}</span>
-      </div>
-      <div className={`h-px flex-1 bg-gradient-to-r ${line} to-transparent transition-all duration-200 group-hover:opacity-100 group-hover:from-slate-300 dark:group-hover:from-slate-500`} />
-    </div>
-  );
-}
-
-function CollapsibleSection({
-  title,
-  summary,
-  accent,
-  defaultOpen = false,
-  children,
-}: {
-  title: string;
-  summary: string;
-  accent: "blue" | "teal" | "purple";
-  defaultOpen?: boolean;
-  children: React.ReactNode;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-
-  return (
-    <section className="flex flex-col gap-5">
-      <button
-        type="button"
-        onClick={() => setOpen((current) => !current)}
-        aria-expanded={open}
-        className="group flex w-full items-center gap-3 rounded-[18px] p-2 text-left transition-colors"
-      >
-        <div className="min-w-0 flex-1">
-          <SectionHeader title={title} summary={summary} accent={accent} />
-        </div>
-        <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-slate-200 bg-card text-slate-600 transition-all duration-200 group-hover:scale-105 group-hover:border-slate-300 group-hover:bg-muted group-hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:group-hover:border-slate-600 dark:group-hover:text-slate-100">
-          <ChevronDown className={`h-5 w-5 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
-        </div>
-      </button>
-
-      {open ? children : null}
-    </section>
-  );
-}
 
 function InlineEngineCard({ detail }: { detail: string }) {
   return (
@@ -295,7 +218,6 @@ function ImageMosaic({
 }
 
 function I2IRow({
-  eyebrow,
   title,
   description,
   engineDetail,
@@ -305,13 +227,10 @@ function I2IRow({
   outputItems,
   inputColumns,
   outputColumns,
-  inputAspectClass = "aspect-[5/4]",
-  outputAspectClass = "aspect-[5/4]",
   inputNote,
   outputNote,
   onImageOpen,
 }: {
-  eyebrow: string;
   title: string;
   description: string;
   engineDetail: string;
@@ -321,19 +240,16 @@ function I2IRow({
   outputItems: ImageAsset[];
   inputColumns: 1 | 2;
   outputColumns: 1 | 2;
-  inputAspectClass?: string;
-  outputAspectClass?: string;
   inputNote?: string;
   outputNote?: string;
   onImageOpen: (image: ExpandedImage) => void;
 }) {
   return (
-    <div className="rounded-[16px] border border-slate-200/80 bg-card p-5 dark:border-slate-700">
-      <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-400">{eyebrow}</p>
-      <p className="mt-2 text-[19px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">{title}</p>
-      <p className="mt-2 max-w-[760px] text-[13px] leading-7 text-slate-500 dark:text-slate-400">{description}</p>
+    <div className="rounded-[16px] border border-slate-200/80 bg-card p-4 dark:border-slate-700 sm:p-5">
+      <p className="text-[17px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">{title}</p>
+      <p className="mt-1.5 max-w-[760px] text-[12px] leading-6 text-slate-500 dark:text-slate-400">{description}</p>
 
-      <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,0.98fr)_118px_minmax(0,1.12fr)] xl:items-center">
+      <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,0.98fr)_118px_minmax(0,1.12fr)] xl:items-center">
         <div>
           <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-blue-700 dark:text-blue-200">{inputTitle}</p>
           <ImageMosaic items={inputItems} columns={inputColumns} onOpen={onImageOpen} />
@@ -470,12 +386,11 @@ function V2VRow({
   outputAssets: VideoAsset[];
 }) {
   return (
-    <div className="rounded-[16px] border border-slate-200/80 bg-card p-5 dark:border-slate-700">
-      <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-400">Video transformation</p>
-      <p className="mt-2 text-[19px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">{title}</p>
-      <p className="mt-2 max-w-[760px] text-[13px] leading-7 text-slate-500 dark:text-slate-400">{description}</p>
+    <div className="rounded-[16px] border border-slate-200/80 bg-card p-4 dark:border-slate-700 sm:p-5">
+      <p className="text-[17px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">{title}</p>
+      <p className="mt-1.5 max-w-[760px] text-[12px] leading-6 text-slate-500 dark:text-slate-400">{description}</p>
 
-      <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,0.98fr)_118px_minmax(0,1.12fr)] xl:items-center">
+      <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,0.98fr)_118px_minmax(0,1.12fr)] xl:items-center">
         <div>
           <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-blue-700 dark:text-blue-200">Input video</p>
           <VideoPreviewTile asset={inputAsset} />
@@ -497,7 +412,111 @@ function V2VRow({
 }
 
 export default function RoboEyeView() {
+  const { isAuthenticated, isApproved, user } = useAuth();
   const [expandedImage, setExpandedImage] = useState<ExpandedImage | null>(null);
+  const canSubmitFootage = canImportData({ isAuthenticated, isApproved, user });
+  const dataCenterExample = DATA_CENTER_EXO_TO_EGO_EXAMPLE;
+  const showcaseItems: FeatureShowcaseItem[] = [
+    {
+      id: "occlusion-removal",
+      label: "Occlusion Removal",
+      shortLabel: "Occlusion",
+      accent: "teal",
+      content: (
+        <V2VRow
+          title="Occlusion Removal"
+          description="Removes people from PDU footage while preserving the rack, equipment, and task context."
+          engineDetail="Occlusion Removal"
+          inputAsset={VIDEO_OUTPUTS.pduInstallationInput}
+          outputAssets={[VIDEO_OUTPUTS.occlusionRemoval]}
+        />
+      ),
+    },
+    {
+      id: "new-angle-video",
+      label: "New Angle Generation",
+      shortLabel: "New Angles",
+      accent: "teal",
+      content: (
+        <V2VRow
+          title="New Angle Video Generation"
+          description="Generates alternative perspectives from a single clip for robot-view training."
+          engineDetail="New Angle Generation"
+          inputAsset={VIDEO_OUTPUTS.frontGrilleInput}
+          outputAssets={[VIDEO_OUTPUTS.newAngleLeft, VIDEO_OUTPUTS.newAngleUp]}
+        />
+      ),
+    },
+    {
+      id: "exo-to-ego",
+      label: "EXO → EGO",
+      shortLabel: "EXO → EGO",
+      accent: "blue",
+      content: (
+        <I2IRow
+          title={dataCenterExample.title}
+          description={dataCenterExample.description}
+          engineDetail={dataCenterExample.engineDetail}
+          inputTitle="EXO Source"
+          outputTitle="Generated EGO Views"
+          inputItems={[dataCenterExample.input]}
+          outputItems={dataCenterExample.outputs}
+          inputColumns={1}
+          outputColumns={2}
+          onImageOpen={setExpandedImage}
+        />
+      ),
+    },
+    {
+      id: "corner-case-generation",
+      label: "Corner Case Generation",
+      shortLabel: "Corner Cases",
+      accent: "orange",
+      content: (
+        <I2IRow
+          title="Synthetic Edge Cases"
+          description="One source frame becomes generated safety scenarios with prompt-specific edits."
+          engineDetail="Prompted Scene Editing"
+          inputTitle="Source Frame"
+          outputTitle="Generated Variants"
+          inputItems={[CORNER_CASE_INPUT]}
+          outputItems={CORNER_CASE_OUTPUTS}
+          inputColumns={1}
+          outputColumns={2}
+          onImageOpen={setExpandedImage}
+        />
+      ),
+    },
+    {
+      id: "mask-segmentation",
+      label: "Mask Segmentation",
+      shortLabel: "Segmentation",
+      accent: "violet",
+      content: (
+        <I2IRow
+          title="Frame-to-Mask Conversion"
+          description="Representative source frames paired with generated masks for segmentation consistency."
+          engineDetail="Segmentation Pipeline"
+          inputTitle="Input Frames"
+          outputTitle="Generated Masks"
+          inputItems={MASK_SEGMENTATION_INPUTS}
+          outputItems={MASK_SEGMENTATION_OUTPUTS}
+          inputColumns={2}
+          outputColumns={2}
+          onImageOpen={setExpandedImage}
+        />
+      ),
+    },
+  ];
+  const visibleShowcaseItems = [
+    "occlusion-removal",
+    "new-angle-video",
+    "exo-to-ego",
+    "corner-case-generation",
+    "mask-segmentation",
+  ]
+    .map((itemId) => showcaseItems.find((item) => item.id === itemId))
+    .filter((item): item is FeatureShowcaseItem => Boolean(item));
 
   return (
     <div className="min-h-screen bg-background text-slate-950 dark:text-slate-100">
@@ -524,115 +543,44 @@ export default function RoboEyeView() {
               </p>
             </section>
 
-            <CollapsibleSection
-              title="Video-to-Video"
-              summary="Input source video feeding multiple transformations"
-              accent="teal"
-              defaultOpen
-            >
-              <div className="flex flex-col gap-4 rounded-[18px] border border-slate-200 bg-card p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700 sm:p-6">
-                <V2VRow
-                  title="Occlusion Removal"
-                  description="Removes the installer from PDU installation footage while preserving the data-center rack, equipment, and underlying task context."
-                  engineDetail="Occlusion Removal"
-                  inputAsset={VIDEO_OUTPUTS.pduInstallationInput}
-                  outputAssets={[VIDEO_OUTPUTS.occlusionRemoval]}
-                />
-                <V2VRow
-                  title="New Angle Video Generation"
-                  description="Generates multiple alternative perspectives from the same clip so one real capture can feed several robot-view training scenarios."
-                  engineDetail="New Angle Generation"
-                  inputAsset={VIDEO_OUTPUTS.frontGrilleInput}
-                  outputAssets={[VIDEO_OUTPUTS.newAngleLeft, VIDEO_OUTPUTS.newAngleUp]}
-                />
-              </div>
-            </CollapsibleSection>
+            <section className="flex flex-col gap-10">
+              <FeatureShowcaseCarousel
+                ariaLabel="RoboAnnotator showcase"
+                initialItemId="occlusion-removal"
+                items={visibleShowcaseItems}
+              />
 
-            <CollapsibleSection
-              title="Image-to-Image"
-              summary="Three generation workflows built from real product outputs"
-              accent="blue"
-              defaultOpen
-            >
-              <div className="rounded-[18px] border border-slate-200 bg-card p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700">
-                <p className="text-[24px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">EXO to EGO</p>
-                <p className="mt-3 max-w-[840px] text-[13px] leading-7 text-slate-500 dark:text-slate-400">
-                  Convert a single third-person scene capture into multiple robot-perspective views for inspection, manipulation, and control training.
-                </p>
-
-                <div className="mt-6 flex flex-col gap-5">
-                  {EXO_TO_EGO_EXAMPLES.map((example) => (
-                    <I2IRow
-                      key={example.title}
-                      eyebrow="Conversion Example"
-                      title={example.title}
-                      description={example.description}
-                      engineDetail={example.engineDetail}
-                      inputTitle="EXO Source"
-                      outputTitle="Generated EGO Views"
-                      inputItems={[example.input]}
-                      outputItems={example.outputs}
-                      inputColumns={1}
-                      outputColumns={2}
-                      inputAspectClass="aspect-[5/4]"
-                      outputAspectClass="aspect-[5/4]"
-                      onImageOpen={setExpandedImage}
-                    />
-                  ))}
+              {canSubmitFootage && (
+                <div className="mt-1 flex flex-col justify-between gap-6 rounded-[14px] border-[1.5px] border-dashed border-teal-300 bg-gradient-to-br from-teal-50 to-blue-50 px-8 py-7 lg:flex-row lg:items-center dark:border-teal-900/50 dark:from-teal-950/20 dark:to-blue-950/20">
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <p className="mb-1 text-[15px] font-bold text-slate-950 dark:text-slate-100">
+                        Run RoboAnnotator on Your Footage
+                      </p>
+                      <p className="max-w-[520px] text-[12px] leading-5 text-slate-500 dark:text-slate-400">
+                        Upload source videos or frames into RoboDataHub, then open the dataset to run view synthesis, occlusion removal, segmentation, or corner-case tools when you&apos;re ready.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-start gap-2 lg:items-center">
+                    <div className="flex gap-[5px]">
+                      <span className="rounded-[4px] border border-teal-200 bg-teal-50 px-2 py-1 text-[10px] font-bold tracking-[0.08em] text-teal-700 dark:border-teal-900/50 dark:bg-teal-950/30 dark:text-teal-200">
+                        View Synthesis
+                      </span>
+                      <span className="rounded-[4px] border border-blue-200 bg-blue-50 px-2 py-1 text-[10px] font-bold tracking-[0.08em] text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-200">
+                        Segmentation
+                      </span>
+                    </div>
+                    <Link
+                      to={ROBODATAHUB_IMPORT_DATA_PATH}
+                      className="inline-flex w-full items-center justify-center rounded-[8px] bg-teal-600 px-6 py-2.5 text-[13px] font-bold text-white transition-opacity hover:opacity-90"
+                    >
+                      Submit Your Footage
+                    </Link>
+                  </div>
                 </div>
-              </div>
-
-              <div className="rounded-[18px] border border-slate-200 bg-card p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700">
-                <p className="text-[24px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">Corner Case Generation</p>
-                <p className="mt-3 max-w-[840px] text-[13px] leading-7 text-slate-500 dark:text-slate-400">
-                  Starting from a single source frame, RoboAnnotator can synthesize multiple edge-case outcomes to expand coverage for rare but critical scenarios.
-                </p>
-
-                <div className="mt-6">
-                  <I2IRow
-                    eyebrow="Prompt-Driven Editing"
-                    title="Synthetic Edge Cases"
-                    description="One base image becomes multiple generated safety scenarios with prompt-specific scene edits."
-                    engineDetail="Prompted Scene Editing"
-                    inputTitle="Source Frame"
-                    outputTitle="Generated Variants"
-                    inputItems={[CORNER_CASE_INPUT]}
-                    outputItems={CORNER_CASE_OUTPUTS}
-                    inputColumns={1}
-                    outputColumns={2}
-                    inputAspectClass="aspect-[5/4]"
-                    outputAspectClass="aspect-[5/4]"
-                    outputNote='Prompts shown: "Add fire in front of car" and "Add oil leak under vehicle."'
-                    onImageOpen={setExpandedImage}
-                  />
-                </div>
-              </div>
-
-              <div className="rounded-[18px] border border-slate-200 bg-card p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700">
-                <p className="text-[24px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">Mask Segmentation</p>
-                <p className="mt-3 max-w-[840px] text-[13px] leading-7 text-slate-500 dark:text-slate-400">
-                  Multi-frame segmentation outputs preserve the original scene context while isolating the exact regions needed for annotation and training workflows.
-                </p>
-
-                <div className="mt-6">
-                  <I2IRow
-                    eyebrow="Pixel-Level Output"
-                    title="Frame-to-Mask Conversion"
-                    description="Four representative source frames paired with four generated masks to show consistent segmentation behavior across the scene."
-                    engineDetail="Segmentation Pipeline"
-                    inputTitle="Input Frames"
-                    outputTitle="Generated Masks"
-                    inputItems={MASK_SEGMENTATION_INPUTS}
-                    outputItems={MASK_SEGMENTATION_OUTPUTS}
-                    inputColumns={2}
-                    outputColumns={2}
-                    inputAspectClass="aspect-square"
-                    outputAspectClass="aspect-square"
-                    onImageOpen={setExpandedImage}
-                  />
-                </div>
-              </div>
-            </CollapsibleSection>
+              )}
+            </section>
           </div>
         </div>
       </main>

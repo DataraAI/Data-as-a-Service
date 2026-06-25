@@ -1,5 +1,5 @@
-import type { CategoryDatasetPreview, CategoryPreviewAsset, ResolvedCatalogCardEntry } from "@/lib/dataViewerTypes";
-import { formatPublicDatasetPathLabel, getCategoryBadge } from "@/lib/dataViewerUtils";
+import type { CategoryDatasetPreview, CategoryPreviewAsset } from "@/lib/dataViewerTypes";
+import { formatPublicDatasetPathLabel, getCategoryBadge, getResolvedCatalogAvailability } from "@/lib/dataViewerUtils";
 import { frontPageImageUrl } from "@/lib/datasetFolderCover";
 import type { CatalogCard } from "@/lib/roboDataHubCatalog";
 import { ArrowRight } from "lucide-react";
@@ -22,9 +22,10 @@ export function CuratedCatalogCard({
 }) {
   const badge = getCategoryBadge(card);
   const previewItem = placeholderItem ?? liveItem ?? null;
+  const resolvedAvailability = getResolvedCatalogAvailability(card, previewItem);
   const displayImages = card.images;
   const badgeClasses =
-    previewItem || card.availability === "In Library"
+    resolvedAvailability === "In Library"
       ? "border-emerald-200 bg-emerald-50 text-emerald-700"
       : "border-amber-200 bg-amber-50 text-amber-700";
   const footerLabel = formatPublicDatasetPathLabel(previewItem ? previewItem.full_path : card.pathLabel);
@@ -87,7 +88,7 @@ export function CuratedCatalogCard({
           <span
             className={`inline-flex shrink-0 rounded-full border px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em] ${badgeClasses}`}
           >
-            {previewItem ? "In Library" : card.availability}
+            {resolvedAvailability}
           </span>
         </div>
 

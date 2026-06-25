@@ -536,37 +536,37 @@ export default function RoboTaskManipulator() {
                 </div>
               </section>
 
-              <section className="mb-10">
-                <StatStrip />
-              </section>
-
-              <section className="mb-10 rounded-[14px] border border-slate-200 bg-card px-8 py-7 dark:border-slate-800">
-                <p className="mb-6 text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-400">How It Works</p>
-                <div className="lg:flex lg:items-stretch">
-                  <StepCardView step={PROCESS_STEPS[0]} />
-                  <FlowArrow />
-                  <StepCardView step={PROCESS_STEPS[1]} />
-                  <FlowArrow />
-                  <StepCardView step={PROCESS_STEPS[2]} />
-                </div>
-              </section>
-
               <section className="flex flex-col gap-10">
                 <div id="dc" className="scroll-mt-28">
                   <SectionHeader title="Data Center" summary="4 datasets · 1,060 hrs" accent="blue" />
-                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                    {DATA_CENTER_GALLERY.map((card) => (
-                      <GalleryCardView key={card.title} card={card} compact />
-                    ))}
+                  <div className="overflow-hidden rounded-[14px] border border-slate-200 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+                    <SurfaceImage
+                      path="serverrack/datacenter_taskmani1.png"
+                      alt="Data Center task manipulation"
+                      className="w-full object-contain"
+                    />
                   </div>
                 </div>
 
                 <div id="wh" className="scroll-mt-28">
                   <SectionHeader title="Warehouse" summary="2 datasets · 1,200 hrs" accent="teal" />
-                  <div className="flex flex-col gap-4">
-                    {WAREHOUSE_SHOWCASES.map((card) => (
-                      <ShowcaseCardView key={card.title} card={card} />
-                    ))}
+                  <div className="overflow-hidden rounded-[14px] border border-slate-200 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+                    <SurfaceImage
+                      path="warehouse/warehouse_taskmani1.png"
+                      alt="Warehouse task manipulation"
+                      className="w-full object-contain"
+                    />
+                  </div>
+                </div>
+
+                <div id="au" className="scroll-mt-28">
+                  <SectionHeader title="Automotive Assembly" summary="4 datasets · 1,540 hrs" accent="purple" />
+                  <div className="overflow-hidden rounded-[14px] border border-slate-200 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+                    <SurfaceImage
+                      path="carAutomation/auto_taskmani1.png"
+                      alt="Automotive task manipulation"
+                      className="w-full object-contain"
+                    />
                   </div>
                 </div>
 
@@ -574,15 +574,6 @@ export default function RoboTaskManipulator() {
                   <SectionHeader title="Dexterity" summary="3 datasets · 1,430 hrs" accent="teal" />
                   <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     {DEXTERITY_GALLERY.map((card) => (
-                      <GalleryCardView key={card.title} card={card} />
-                    ))}
-                  </div>
-                </div>
-
-                <div id="au" className="scroll-mt-28">
-                  <SectionHeader title="Automotive Assembly" summary="4 datasets · 1,540 hrs" accent="purple" />
-                  <div className="grid gap-4 md:grid-cols-2">
-                    {AUTOMOTIVE_GALLERY.map((card) => (
                       <GalleryCardView key={card.title} card={card} />
                     ))}
                   </div>

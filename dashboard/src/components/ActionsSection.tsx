@@ -1,34 +1,52 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Database, Upload, ArrowRight, ExternalLink, LockKeyhole } from "lucide-react";
+import { Database, Upload, ArrowRight, ExternalLink, LockKeyhole, type LucideIcon } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { UploadModal } from "@/components/UploadModal";
 import { useAuth } from "@/auth/useAuth";
+import { canImportData } from "@/lib/dataImportAccess";
+
+type QuickAction =
+  | {
+      icon: LucideIcon;
+      title: string;
+      description: string;
+      action: () => void;
+      variant: "default";
+      cta: string;
+    }
+  | {
+      icon: LucideIcon;
+      title: string;
+      description: string;
+      href: string;
+      variant: "secondary";
+      cta: string;
+    };
 
 const ActionsSection = () => {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const { isAuthenticated, isApproved, login, user } = useAuth();
   const location = useLocation();
 
-  const canImport =
-    isAuthenticated && isApproved && (user?.role === "admin" || user?.role === "analyst");
+  const canImport = canImportData({ isAuthenticated, isApproved, user });
 
-  const actions = [
+  const actions: QuickAction[] = [
     {
       icon: canImport ? Upload : LockKeyhole,
       title: "Import Dataset",
       description: canImport
         ? "Upload a public dataset for processing"
         : isAuthenticated
-          ? "Dataset import is available to Datara staff"
-          : "Sign in with an approved staff account before importing data",
+          ? "Dataset import is available to approved accounts with import access"
+          : "Sign in with an approved account before importing data",
       action: () =>
         canImport || isAuthenticated
           ? setIsUploadModalOpen(true)
           : login(`${location.pathname}${location.search}`),
       variant: "default",
-      cta: canImport ? "IMPORT DATA" : isAuthenticated ? "STAFF ONLY" : "SIGN IN TO IMPORT",
+      cta: canImport ? "IMPORT DATA" : isAuthenticated ? "IMPORT LOCKED" : "SIGN IN TO IMPORT",
     },
     {
       icon: Database,

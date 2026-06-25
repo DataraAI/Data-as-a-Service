@@ -16,7 +16,6 @@ import {
   type CategoryPreviewAsset,
   type FolderItem,
   type ResolvedCatalogCardEntry,
-  type StoragePreviewKey,
 } from "./dataViewerTypes";
 
 export const CATEGORIES: CategoryConfig[] = [
@@ -401,6 +400,13 @@ export function getCatalogAvailabilityClasses(availability: CatalogCard["availab
   return availability === "In Library"
     ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
     : "border border-amber-200 bg-amber-50 text-amber-700";
+}
+
+export function getResolvedCatalogAvailability(
+  card: CatalogCard,
+  previewItem?: CategoryDatasetPreview | null,
+): CatalogCard["availability"] {
+  return previewItem || card.livePathHints?.length ? "In Library" : "On-demand";
 }
 
 export function matchesLivePreviewHint(card: CatalogCard, item: CategoryDatasetPreview) {

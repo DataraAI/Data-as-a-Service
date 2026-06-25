@@ -63,47 +63,45 @@ export function formatJobEta(seconds: number | null | undefined) {
   return remainingMinutes ? `About ${hours} hr ${remainingMinutes} min` : `About ${hours} hr`;
 }
 
+const INLINE_GENERATION_JOB_STARTED_EVENT = "datara:inline-generation-job-started";
+
+function isActiveJob(job: LambdaJob) {
+  return job.status === "queued" || job.status === "running";
+}
+
+function getStartedJobId(event: Event) {
+  if (!(event instanceof CustomEvent)) return null;
+  const detail = event.detail as { jobId?: unknown } | null;
+  return typeof detail?.jobId === "string" ? detail.jobId : null;
+}
+
 export function useQueuedJob(storageKey: string, onComplete?: (job: LambdaJob) => void) {
-  const [jobs, setJobs] = useState<LambdaJob[]>([]);
+  const [trackedJobs, setTrackedJobs] = useState<LambdaJob[]>([]);
+  const [visibleJobId, setVisibleJobId] = useState<string | null>(null);
   const onCompleteRef = useRef(onComplete);
   const completedJobIdsRef = useRef(new Set<string>());
   onCompleteRef.current = onComplete;
 
   useEffect(() => {
-    const stored = window.localStorage.getItem(storageKey);
-    if (!stored) {
-      setJobs([]);
-      return;
-    }
-
-    let storedJobIds: string[];
-    try {
-      const parsed = JSON.parse(stored);
-      storedJobIds = Array.isArray(parsed) ? parsed.filter((value): value is string => typeof value === "string") : [stored];
-    } catch {
-      storedJobIds = [stored];
-    }
-    let cancelled = false;
-    Promise.all(
-      storedJobIds.map(async (jobId) => {
-        const response = await fetch(`/api/jobs/${encodeURIComponent(jobId)}`, { credentials: "include" });
-        if (!response.ok) return null;
-        return (await response.json()) as LambdaJob;
-      }),
-    )
-      .then((loadedJobs) => {
-        if (!cancelled) setJobs(loadedJobs.filter((job): job is LambdaJob => job !== null));
-      })
-      .catch(() => {
-        // Keep stored IDs so a temporary connectivity issue does not lose tickets.
-      });
-    return () => {
-      cancelled = true;
-    };
+    setTrackedJobs([]);
+    setVisibleJobId(null);
+    completedJobIdsRef.current.clear();
   }, [storageKey]);
 
   useEffect(() => {
-    const activeJobs = jobs.filter((job) => job.status === "queued" || job.status === "running");
+    const clearOlderInlineJobs = (event: Event) => {
+      const startedJobId = getStartedJobId(event);
+      setVisibleJobId((current) => (current === startedJobId ? current : null));
+    };
+
+    window.addEventListener(INLINE_GENERATION_JOB_STARTED_EVENT, clearOlderInlineJobs);
+    return () => {
+      window.removeEventListener(INLINE_GENERATION_JOB_STARTED_EVENT, clearOlderInlineJobs);
+    };
+  }, []);
+
+  useEffect(() => {
+    const activeJobs = trackedJobs.filter(isActiveJob);
     if (activeJobs.length === 0) return;
     let cancelled = false;
 
@@ -118,7 +116,7 @@ export function useQueuedJob(storageKey: string, onComplete?: (job: LambdaJob) =
         );
         if (!cancelled) {
           const byId = new Map(updates.map((job) => [job.job_id, job]));
-          setJobs((current) => current.map((job) => byId.get(job.job_id) ?? job));
+          setTrackedJobs((current) => current.map((job) => byId.get(job.job_id) ?? job));
         }
       } catch {
         // Keep the last known safe status while connectivity recovers.
@@ -131,43 +129,38 @@ export function useQueuedJob(storageKey: string, onComplete?: (job: LambdaJob) =
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [jobs.map((job) => `${job.job_id}:${job.status}`).join("|")]);
+  }, [trackedJobs.map((job) => `${job.job_id}:${job.status}`).join("|")]);
 
   useEffect(() => {
-    for (const job of jobs) {
+    for (const job of trackedJobs) {
       if (job.status !== "succeeded" && job.status !== "failed") continue;
       if (completedJobIdsRef.current.has(job.job_id)) continue;
       completedJobIdsRef.current.add(job.job_id);
       onCompleteRef.current?.(job);
     }
-  }, [jobs]);
+  }, [trackedJobs]);
 
   const trackJob = (nextJob: LambdaJob) => {
     completedJobIdsRef.current.delete(nextJob.job_id);
-    setJobs((current) => {
-      const next = [...current.filter((job) => job.job_id !== nextJob.job_id), nextJob];
-      window.localStorage.setItem(storageKey, JSON.stringify(next.map((job) => job.job_id)));
-      return next;
-    });
+    window.dispatchEvent(new CustomEvent(INLINE_GENERATION_JOB_STARTED_EVENT, { detail: { jobId: nextJob.job_id } }));
+    setTrackedJobs((current) => [...current.filter((job) => job.job_id !== nextJob.job_id && isActiveJob(job)), nextJob]);
+    setVisibleJobId(nextJob.job_id);
   };
 
   const clearJob = (jobId?: string) => {
-    setJobs((current) => {
-      const next = jobId ? current.filter((job) => job.job_id !== jobId) : [];
-      if (next.length > 0) {
-        window.localStorage.setItem(storageKey, JSON.stringify(next.map((job) => job.job_id)));
-      } else {
-        window.localStorage.removeItem(storageKey);
-      }
-      return next;
+    setVisibleJobId((current) => (!jobId || current === jobId ? null : current));
+    setTrackedJobs((current) => {
+      return jobId ? current.filter((job) => job.job_id !== jobId || isActiveJob(job)) : current.filter(isActiveJob);
     });
   };
 
+  const visibleJobs = visibleJobId ? trackedJobs.filter((job) => job.job_id === visibleJobId) : [];
+
   return {
-    job: jobs.at(-1) ?? null,
-    jobs,
+    job: visibleJobs.at(-1) ?? null,
+    jobs: visibleJobs,
     trackJob,
     clearJob,
-    isActive: jobs.some((job) => job.status === "queued" || job.status === "running"),
+    isActive: trackedJobs.some(isActiveJob),
   };
 }

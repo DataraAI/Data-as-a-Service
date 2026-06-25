@@ -12,6 +12,7 @@ import {
   LockKeyhole,
 } from "lucide-react";
 import { useAuth } from "@/auth/useAuth";
+import { canImportData } from "@/lib/dataImportAccess";
 
 interface UploadModalProps {
   isOpen: boolean;
@@ -67,10 +68,9 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
 
   if (!isOpen) return null;
 
-  const canImportData =
-    isAuthenticated && isApproved && (user?.role === "admin" || user?.role === "analyst");
+  const canImport = canImportData({ isAuthenticated, isApproved, user });
 
-  if (!canImportData) {
+  if (!canImport) {
     return (
       <div className="fixed inset-0 z-[80] overflow-y-auto bg-background/80 px-4 pb-6 pt-24 backdrop-blur-md sm:px-6 sm:pt-28">
         <div className="relative mx-auto w-full max-w-lg rounded-lg border border-border bg-card p-8 shadow-2xl">
@@ -84,10 +84,10 @@ export function UploadModal({ isOpen, onClose, onSuccess }: UploadModalProps) {
             <LockKeyhole className="h-7 w-7 text-primary" />
           </div>
           <h2 className="font-sans-tech text-2xl font-bold text-foreground">
-            Staff access required
+            Import access required
           </h2>
           <p className="mt-3 font-sans-tech text-sm leading-relaxed text-muted-foreground">
-            Importing public datasets is available to Datara staff only. Customer accounts can
+            Dataset import is available to approved accounts with import access. You can still
             browse, view, and download approved public datasets.
           </p>
           <div className="mt-6 flex justify-end gap-3">

@@ -72,7 +72,7 @@ export default function FooterSection() {
         </div>
 
         <div className="mt-8 flex flex-col gap-4 border-t border-slate-200 pt-6 text-sm text-slate-500 md:flex-row md:items-center md:justify-between">
-          <div>&copy; 2026 DataraAI - NVIDIA Inception Member</div>
+          <div>&copy; 2025 DataraAI - NVIDIA Inception Member</div>
           <button
             type="button"
             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
