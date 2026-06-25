@@ -53,7 +53,7 @@ const DOT_CLASSES: Record<ShowcaseAccent, string> = {
 };
 
 const SIDE_ARROW_CLASSES =
-  "absolute top-[18rem] z-20 hidden h-11 w-11 -translate-y-1/2 place-items-center rounded-full border shadow-[0_10px_28px_rgba(15,23,42,0.16)] transition-all md:grid";
+  "absolute top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 place-items-center rounded-full border shadow-[0_10px_28px_rgba(15,23,42,0.16)] transition-all md:grid";
 
 const PANEL_SLIDE_CLASSES = {
   forward: "motion-safe:slide-in-from-right-4",
@@ -75,6 +75,7 @@ export default function FeatureShowcaseCarousel({
   const touchStartX = useRef<number | null>(null);
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const tabListRef = useRef<HTMLDivElement | null>(null);
+  const panelViewportRef = useRef<HTMLDivElement | null>(null);
   const hasMounted = useRef(false);
   const activeItem = items[activeIndex];
 
@@ -82,6 +83,9 @@ export default function FeatureShowcaseCarousel({
     if (!hasMounted.current) {
       hasMounted.current = true;
       return;
+    }
+    if (panelViewportRef.current) {
+      panelViewportRef.current.scrollTop = 0;
     }
     const activeTab = tabRefs.current[activeIndex];
     if (document.activeElement?.getAttribute("role") === "tab") {
@@ -227,6 +231,8 @@ export default function FeatureShowcaseCarousel({
       tabIndex={0}
       onKeyDown={handleKeyDown}
     >
+      {carouselControls}
+
       <div
         className="relative touch-pan-y"
         onTouchStart={handleTouchStart}
@@ -241,13 +247,18 @@ export default function FeatureShowcaseCarousel({
           <ChevronLeft className="h-5 w-5" />
         </button>
         <div
-          key={activeItem.id}
-          id={`${carouselId}-${activeItem.id}-panel`}
-          role="tabpanel"
-          aria-labelledby={`${carouselId}-${activeItem.id}-tab`}
-          className={`motion-safe:animate-in motion-safe:duration-200 motion-safe:ease-out ${PANEL_SLIDE_CLASSES[direction]}`}
+          ref={panelViewportRef}
+          className="custom-scrollbar h-[34rem] overflow-y-auto overscroll-contain"
         >
-          {activeItem.content}
+          <div
+            key={activeItem.id}
+            id={`${carouselId}-${activeItem.id}-panel`}
+            role="tabpanel"
+            aria-labelledby={`${carouselId}-${activeItem.id}-tab`}
+            className={`min-h-full motion-safe:animate-in motion-safe:duration-200 motion-safe:ease-out [&>*]:min-h-full ${PANEL_SLIDE_CLASSES[direction]}`}
+          >
+            {activeItem.content}
+          </div>
         </div>
         <button
           type="button"
@@ -258,8 +269,6 @@ export default function FeatureShowcaseCarousel({
           <ChevronRight className="h-5 w-5" />
         </button>
       </div>
-
-      {carouselControls}
 
       <div className="flex items-center justify-center gap-2 sm:hidden" aria-hidden="true">
         {items.map((item, index) => (
