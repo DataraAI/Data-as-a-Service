@@ -403,6 +403,7 @@ function V2VRow({
   outputAssets: VideoAsset[];
 }) {
   const [hovered, setHovered] = useState(false);
+  const multiOutput = outputAssets.length > 1;
 
   return (
     <div className="rounded-[16px] border border-slate-200/80 bg-card p-4 dark:border-slate-700 sm:p-5">
@@ -414,6 +415,7 @@ function V2VRow({
           <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-blue-700 dark:text-blue-200">Input video</p>
           <VideoPreviewTile
             asset={inputAsset}
+            aspectClass={multiOutput ? "aspect-[2/1]" : "aspect-[16/9]"}
             playing={hovered}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
@@ -429,6 +431,7 @@ function V2VRow({
               <VideoPreviewTile
                 key={asset.caption}
                 asset={asset}
+                aspectClass={multiOutput ? "aspect-[2/1]" : "aspect-[16/9]"}
                 playing={hovered}
                 onMouseEnter={() => setHovered(true)}
                 onMouseLeave={() => setHovered(false)}
@@ -466,6 +469,7 @@ export default function RoboEyeView() {
       label: "New Angle Generation",
       shortLabel: "New Angles",
       accent: "teal",
+      tall: true,
       content: (
         <V2VRow
           title="New Angle Video Generation"
@@ -481,6 +485,7 @@ export default function RoboEyeView() {
       label: "EXO → EGO",
       shortLabel: "EXO → EGO",
       accent: "blue",
+      tall: true,
       content: (
         <V2VRow
           title="EXO to EGO Conversion"
