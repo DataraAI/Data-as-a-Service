@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/auth/useAuth";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 type AuthMode = "login" | "register";
 
@@ -53,6 +54,7 @@ export default function AuthPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const mode = (searchParams.get("mode") === "register" ? "register" : "login") as AuthMode;
+  usePageTitle(mode === "register" ? "Register" : "Sign In");
   const nextPath = useMemo(() => sanitizeNext(searchParams.get("next")), [searchParams]);
   const { isLoading, isAuthenticated, isApproved, submitLogin, submitRegister, logout } = useAuth();
 
