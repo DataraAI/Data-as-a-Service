@@ -470,7 +470,7 @@ export default function RoboEyeView() {
       label: "New Angle Generation",
       shortLabel: "New Angles",
       accent: "teal",
-      tall: true,
+      tall: 44,
       content: (
         <V2VRow
           title="New Angle Video Generation"
@@ -486,7 +486,7 @@ export default function RoboEyeView() {
       label: "EXO → EGO",
       shortLabel: "EXO → EGO",
       accent: "blue",
-      tall: true,
+      tall: 44,
       content: (
         <V2VRow
           title="EXO to EGO Conversion"
