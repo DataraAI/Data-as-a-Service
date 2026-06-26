@@ -1,5 +1,6 @@
 import { useAuth } from "@/auth/useAuth";
 import AuthRequiredState from "@/components/AuthRequiredState";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { buildAuthPath } from "@/lib/authLinks";
 import {
   canImportData,
@@ -121,6 +122,7 @@ function isDatasetRoutePath(path: string) {
 }
 
 export default function DataViewer() {
+  usePageTitle("RoboDataHub");
   const location = useLocation();
   const navigate = useNavigate();
   const { isLoading: authLoading, isAuthenticated, isApproved, user } = useAuth();
