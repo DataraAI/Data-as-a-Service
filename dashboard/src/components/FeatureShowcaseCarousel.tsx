@@ -9,6 +9,7 @@ export type FeatureShowcaseItem = {
   shortLabel?: string;
   accent: ShowcaseAccent;
   content: ReactNode;
+  tall?: boolean;
 };
 
 type FeatureShowcaseCarouselProps = {
@@ -248,7 +249,7 @@ export default function FeatureShowcaseCarousel({
         </button>
         <div
           ref={panelViewportRef}
-          className="custom-scrollbar h-[34rem] overflow-y-auto overscroll-contain"
+          className={`custom-scrollbar overflow-y-auto overscroll-contain transition-[height] duration-300 ${activeItem.tall ? "h-[44rem]" : "h-[34rem]"}`}
         >
           <div
             key={activeItem.id}
