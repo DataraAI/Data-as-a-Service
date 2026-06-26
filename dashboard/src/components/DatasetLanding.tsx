@@ -1,7 +1,9 @@
 import { toast } from "@/components/ui/sonner";
 import type { DatasetAsset, DatasetManifest, DatasetMiscSection } from "@/lib/dataViewerTypes";
+import { folderPreviewMediaUrl } from "@/lib/datasetFolderCover";
 import { trainingDataDownloadCoordinator } from "@/lib/sequentialDownloadCoordinator";
 import { ChevronDown, ChevronRight, Download, FileJson, FileText, Film, FolderOpen, Trash2 } from "lucide-react";
+import type { SyntheticEvent } from "react";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 interface DatasetLandingProps {
@@ -29,6 +31,203 @@ function fileTypeLabel(asset: DatasetAsset) {
   if (type === "3d") return "OBJ";
   if (type === "markdown") return "Markdown";
   return "File";
+}
+
+interface DatasetShowcaseVideo {
+  title: string;
+  eyebrow: string;
+  description: string;
+  blobPath: string;
+}
+
+const DATASET_SHOWCASE_VIDEOS: Record<string, DatasetShowcaseVideo[]> = {
+  "serverrack/datarackinstall": [
+    {
+      title: "Original",
+      eyebrow: "Source clip",
+      description: "Original rack-install footage.",
+      blobPath: "serverrack/dataRackInstall/showcase/original.mp4",
+    },
+    {
+      title: "Occlusion Removal",
+      eyebrow: "No-person generation",
+      description: "Installer removed while preserving rack context.",
+      blobPath: "serverrack/dataRackInstall/showcase/occlusion-removal.mp4",
+    },
+    {
+      title: "New Angle",
+      eyebrow: "Generated view",
+      description: "Alternate viewpoint generated from the source clip.",
+      blobPath: "serverrack/dataRackInstall/showcase/new-angle.mp4",
+    },
+  ],
+  "serverrack/pduinstallation": [
+    {
+      title: "Original",
+      eyebrow: "Source clip",
+      description: "Original PDU installation footage.",
+      blobPath: "serverrack/pduInstallation/showcase/original.mp4",
+    },
+    {
+      title: "Occlusion Removal",
+      eyebrow: "No-person generation",
+      description: "Installer removed while preserving rack context.",
+      blobPath: "serverrack/pduInstallation/showcase/occlusion-removal.mp4",
+    },
+    {
+      title: "New Angle",
+      eyebrow: "Generated view",
+      description: "Alternate viewpoint generated from the source clip.",
+      blobPath: "serverrack/pduInstallation/showcase/new-angle.mp4",
+    },
+  ],
+  "serverrack/ad-plugging-cable": [
+    {
+      title: "Original",
+      eyebrow: "Source clip",
+      description: "Original cable-plugging footage.",
+      blobPath: "serverrack/AD-Plugging-Cable/showcase/original.mp4",
+    },
+    {
+      title: "New Angle",
+      eyebrow: "Generated view",
+      description: "Alternate viewpoint generated from the source clip.",
+      blobPath: "serverrack/AD-Plugging-Cable/showcase/new-angle.mp4",
+    },
+    {
+      title: "Zoom View",
+      eyebrow: "Generated view",
+      description: "A generated framing change for closer task context.",
+      blobPath: "serverrack/AD-Plugging-Cable/showcase/generated-zoom.mp4",
+    },
+  ],
+  "serverrack/cableinsertion": [
+    {
+      title: "Original",
+      eyebrow: "Source clip",
+      description: "Original cable insertion footage.",
+      blobPath: "serverrack/cableInsertion/showcase/original.mp4",
+    },
+    {
+      title: "No Hands",
+      eyebrow: "No-hands generation",
+      description: "Hands removed from the cable insertion clip for cleaner task context.",
+      blobPath: "serverrack/cableInsertion/showcase/no-hands.mp4",
+    },
+    {
+      title: "Zoom View",
+      eyebrow: "Generated view",
+      description: "A generated framing change for closer task context.",
+      blobPath: "serverrack/cableInsertion/showcase/generated-zoom.mp4",
+    },
+  ],
+  "dexterity/plasticpacking": [
+    {
+      title: "Original",
+      eyebrow: "Source clip",
+      description: "Original dexterity footage.",
+      blobPath: "dexterity/plasticPacking/showcase/original.mp4",
+    },
+    {
+      title: "Hand Motion Src Cam",
+      eyebrow: "Hand-motion output",
+      description: "Source-camera hand-motion visualisation.",
+      blobPath: "dexterity/plasticPacking/showcase/hand-motion-src-cam.mp4",
+    },
+    {
+      title: "MoCap Visualisation",
+      eyebrow: "Motion output",
+      description: "MoCap visualisation for the same plastic packing task.",
+      blobPath: "dexterity/plasticPacking/showcase/mcap-visualization.mp4",
+    },
+  ],
+  "dexterity/cheesesandwich": [
+    {
+      title: "Original",
+      eyebrow: "Source clip",
+      description: "Original sandwich-making footage.",
+      blobPath: "dexterity/cheeseSandwich/showcase/original.mp4",
+    },
+    {
+      title: "Hand Motion Src Cam",
+      eyebrow: "Hand-motion output",
+      description: "Source-camera hand-motion visualisation.",
+      blobPath: "dexterity/cheeseSandwich/showcase/hand-motion-src-cam.mp4",
+    },
+    {
+      title: "MoCap Visualisation",
+      eyebrow: "Motion output",
+      description: "MoCap visualisation for the same sandwich-making task.",
+      blobPath: "dexterity/cheeseSandwich/showcase/mcap-visualization.mp4",
+    },
+  ],
+  "dexterity/towel": [
+    {
+      title: "Original",
+      eyebrow: "Source clip",
+      description: "Original towel manipulation footage.",
+      blobPath: "dexterity/towel/showcase/original.mp4",
+    },
+    {
+      title: "Hand Motion Src Cam",
+      eyebrow: "Hand-motion output",
+      description: "Source-camera hand-motion visualisation.",
+      blobPath: "dexterity/towel/showcase/hand-motion-src-cam.mp4",
+    },
+    {
+      title: "MoCap Visualisation",
+      eyebrow: "Motion output",
+      description: "Overlayed hand-motion visualisation for the same task.",
+      blobPath: "dexterity/towel/showcase/mcap-visualization.mp4",
+    },
+  ],
+};
+
+function datasetShowcaseKey(manifest: DatasetManifest) {
+  return (manifest.dataset.prefix || manifest.dataset.viewer_path.replace(/^\/viewer\//, ""))
+    .replace(/\\/g, "/")
+    .replace(/^\/+|\/+$/g, "")
+    .toLowerCase();
+}
+
+function handleShowcaseMouseEnter(event: SyntheticEvent<HTMLVideoElement>) {
+  event.currentTarget.play().catch(() => undefined);
+}
+
+function handleShowcaseMouseLeave(event: SyntheticEvent<HTMLVideoElement>) {
+  event.currentTarget.pause();
+  event.currentTarget.currentTime = 0;
+}
+
+function DatasetShowcaseVideoCard({ video }: { video: DatasetShowcaseVideo & { src: string } }) {
+  return (
+    <article className="group overflow-hidden rounded-[22px] border border-slate-200 bg-card shadow-[0_18px_42px_rgba(15,23,42,0.06)]">
+      <div className="relative aspect-video overflow-hidden bg-slate-950">
+        <video
+          src={video.src}
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          onMouseEnter={handleShowcaseMouseEnter}
+          onMouseLeave={handleShowcaseMouseLeave}
+          onFocus={handleShowcaseMouseEnter}
+          onBlur={handleShowcaseMouseLeave}
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+        />
+        <div className="pointer-events-none absolute left-3 top-3 rounded-full border border-white/20 bg-slate-950/70 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em] text-white">
+          Hover to play
+        </div>
+      </div>
+      <div className="space-y-2 p-4">
+        <div className="text-[10px] font-black uppercase tracking-[0.16em] text-primary">
+          {video.eyebrow}
+        </div>
+        <h3 className="text-sm font-black text-slate-950">{video.title}</h3>
+        <p className="text-xs leading-5 text-slate-500">{video.description}</p>
+      </div>
+    </article>
+  );
 }
 
 function renderMarkdown(markdown: string) {
@@ -209,6 +408,16 @@ export function DatasetLanding({
     trainingDataDownloadCoordinator.getSnapshot,
     trainingDataDownloadCoordinator.getSnapshot,
   );
+  const showcaseVideos = useMemo(
+    () =>
+      (DATASET_SHOWCASE_VIDEOS[datasetShowcaseKey(manifest)] ?? [])
+        .map((video) => {
+          const src = folderPreviewMediaUrl(video.blobPath);
+          return src ? { ...video, src } : null;
+        })
+        .filter((video): video is DatasetShowcaseVideo & { src: string } => Boolean(video)),
+    [manifest],
+  );
 
   const visibleMiscSections = useMemo(
     () => {
@@ -316,12 +525,32 @@ export function DatasetLanding({
 
   return (
     <div className="mx-auto flex min-h-full w-full max-w-[1320px] flex-col gap-6 p-4 sm:p-6 lg:p-8">
+      {showcaseVideos.length > 0 && (
+        <section className="space-y-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="h-3 w-3 rounded-[4px] bg-primary" />
+            <div>
+              <h2 className="text-lg font-black text-slate-950">Dataset Previews</h2>
+              <p className="text-xs font-medium text-slate-500">
+                Hover each clip to preview the source and generated outputs.
+              </p>
+            </div>
+            <div className="hidden h-px min-w-8 flex-1 bg-gradient-to-r from-primary/20 to-transparent sm:block" />
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            {showcaseVideos.map((video) => (
+              <DatasetShowcaseVideoCard key={video.blobPath} video={video} />
+            ))}
+          </div>
+        </section>
+      )}
+
       <section className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(340px,0.9fr)]">
         <div className="space-y-6">
           <section>
             <div className="mb-3 flex flex-wrap items-center gap-3">
               <span className="h-3 w-3 rounded-[4px] bg-slate-950" />
-              <h2 className="text-lg font-black text-slate-950">Downloadable Files</h2>
+              <h2 className="text-lg font-black text-slate-950">Training Ready Files</h2>
               <div className="hidden h-px min-w-8 flex-1 bg-gradient-to-r from-slate-300 to-transparent sm:block" />
               <button
                 type="button"
@@ -361,7 +590,7 @@ export function DatasetLanding({
               </div>
             ) : (
               <div className="rounded-[18px] border border-dashed border-slate-300 bg-muted/60 p-6 text-sm text-slate-500">
-                No downloadable files have been generated yet.
+                No training-ready files have been generated yet.
               </div>
             )}
           </section>
