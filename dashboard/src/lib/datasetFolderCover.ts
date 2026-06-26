@@ -151,6 +151,7 @@ const PREVIEW_DATASET_DIRECTORIES = new Set([
   "corner_images_controlnet",
   "occl_del",
   "preview",
+  "showcase",
   "masks",
 ]);
 
@@ -235,6 +236,7 @@ const LOCAL_FOLDER_PREVIEW_SNAPSHOTS: LocalFolderPreviewSnapshot[] = (() => {
       dataset: string;
       images: string[];
       previewVideoBlobPath: string | null;
+      fallbackPreviewVideoBlobPath: string | null;
     }
   >();
 
@@ -265,6 +267,7 @@ const LOCAL_FOLDER_PREVIEW_SNAPSHOTS: LocalFolderPreviewSnapshot[] = (() => {
         dataset: datasetRootSegments[datasetRootSegments.length - 1] ?? "",
         images: [],
         previewVideoBlobPath: null,
+        fallbackPreviewVideoBlobPath: null,
       });
     }
 
@@ -273,6 +276,11 @@ const LOCAL_FOLDER_PREVIEW_SNAPSHOTS: LocalFolderPreviewSnapshot[] = (() => {
 
     if (directory === "preview" && extension === "mp4" && segments[segments.length - 1]?.toLowerCase() === "hover.mp4") {
       entry.previewVideoBlobPath = blobPath;
+      return;
+    }
+
+    if (directory === "showcase" && extension === "mp4" && segments[segments.length - 1]?.toLowerCase() === "original.mp4") {
+      entry.fallbackPreviewVideoBlobPath = blobPath;
       return;
     }
 
@@ -290,7 +298,7 @@ const LOCAL_FOLDER_PREVIEW_SNAPSHOTS: LocalFolderPreviewSnapshot[] = (() => {
       brand: entry.brand,
       dataset: entry.dataset,
       imageBlobPaths: selectPreviewImageBlobPaths(entry.images),
-      previewVideoBlobPath: entry.previewVideoBlobPath,
+      previewVideoBlobPath: entry.previewVideoBlobPath ?? entry.fallbackPreviewVideoBlobPath,
     }))
     .sort((left, right) => naturalCompare(left.fullPath, right.fullPath));
 })();

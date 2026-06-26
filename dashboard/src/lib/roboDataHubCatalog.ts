@@ -14,6 +14,7 @@ export interface CatalogCard {
   pathLabel: string;
   images: CatalogImageSet;
   livePathHints?: string[];
+  previewVideoBlobPath?: string;
 }
 
 export interface CatalogSection {
@@ -281,15 +282,78 @@ export const CATEGORY_LANDING_CONTENT: Record<CatalogRouteKey, CategoryLandingCo
     ],
     filters: [
       { id: "all", label: "All Tasks", dotClassName: "bg-blue-600" },
+      { id: "featured", label: "Rack Hardware & Cabling", dotClassName: "bg-blue-600" },
       { id: "cable", label: "Cable Management", dotClassName: "bg-blue-400" },
       { id: "server", label: "Server Operations", dotClassName: "bg-blue-500" },
       { id: "hardware", label: "Hardware Maintenance", dotClassName: "bg-blue-700" },
     ],
     sections: [
       {
+        id: "featured",
+        title: "Rack Hardware & Cabling",
+        countLabel: "4 datasets",
+        cards: [
+          {
+            title: "Data Rack Install",
+            description: "Rack installation workflow with source footage, occlusion removal, generated viewpoints, and downloadable tag/intelligence files.",
+            tags: ["EXO-Centric", "Task Labels", "Generated Views"],
+            availability: "In Library",
+            hours: "Live dataset",
+            pathLabel: "serverrack/dataRackInstall",
+            images: imageSet("serverrack/serverrack1.png", "serverrack/serverrack2.png", "serverrack/serverrack3.png", "serverrack/serverrack4.png"),
+            livePathHints: ["serverrack/dataRackInstall"],
+            previewVideoBlobPath: "serverrack/dataRackInstall/showcase/original.mp4",
+          },
+          {
+            title: "Rack PDU Installation",
+            description: "Rack-side PDU installation with occlusion removal, generated camera angles, and rich downloadable generation outputs.",
+            tags: ["EXO-Centric", "Task Labels", "Rack Power"],
+            availability: "In Library",
+            hours: "Live dataset",
+            pathLabel: "serverrack/pduInstallation",
+            images: imageSet("serverrack/serverrack4.png", "serverrack/serverrack3.png", "serverrack/serverrack2.png", "serverrack/serverrack1.png"),
+            livePathHints: ["serverrack/pduInstallation"],
+            previewVideoBlobPath: "serverrack/pduInstallation/showcase/original.mp4",
+          },
+          {
+            title: "AD Plugging Cable",
+            description: "Cable-plugging workflow with generated viewpoints, task intelligence, tag JSON, and preview-ready source footage.",
+            tags: ["EXO-Centric", "Task Labels", "Generated Views"],
+            availability: "In Library",
+            hours: "Live dataset",
+            pathLabel: "serverrack/AD-Plugging-Cable",
+            images: imageSet(
+              "serverrack/cablemanagement_4.png",
+              "serverrack/cablemanagement_2.png",
+              "serverrack/cablemanagement_1.png",
+              "serverrack/cablemanagement_3.png",
+            ),
+            livePathHints: ["serverrack/AD-Plugging-Cable"],
+            previewVideoBlobPath: "serverrack/AD-Plugging-Cable/showcase/original.mp4",
+          },
+          {
+            title: "Cable Insertion",
+            description:
+              "Ethernet cable insertion workflow with generated viewpoints, tag JSON, task intelligence, and short preview clips.",
+            tags: ["EXO-Centric", "Task Labels", "Cable Routing"],
+            availability: "In Library",
+            hours: "Live dataset",
+            pathLabel: "serverrack/cableInsertion",
+            images: imageSet(
+              "serverrack/cablemanagement_1.png",
+              "serverrack/cablemanagement_2.png",
+              "serverrack/cablemanagement_3.png",
+              "serverrack/cablemanagement_4.png",
+            ),
+            livePathHints: ["serverrack/cableInsertion"],
+            previewVideoBlobPath: "serverrack/cableInsertion/showcase/original.mp4",
+          },
+        ],
+      },
+      {
         id: "cable",
         title: "Cable Management",
-        countLabel: "6 datasets",
+        countLabel: "5 datasets",
         cards: [
           {
             ...ROOT_SHOWCASE_SECTIONS[0].cards[0],
@@ -317,22 +381,6 @@ export const CATEGORY_LANDING_CONTENT: Record<CatalogRouteKey, CategoryLandingCo
             availability: "On-demand",
             livePathHints: undefined,
           },
-          {
-            title: "AD Plugging Cable",
-            description:
-              "Analog Devices cable plugging workflow covering connector approach, seating, and final cable dress-out around rack hardware.",
-            tags: ["EXO-Centric", "Task Labels"],
-            availability: "In Library",
-            hours: "410 hrs",
-            pathLabel: "serverrack/cabling/adPluggingCable",
-            images: imageSet(
-              "serverrack/cablemanagement_4.png",
-              "serverrack/cablemanagement_2.png",
-              "serverrack/cablemanagement_1.png",
-              "serverrack/cablemanagement_3.png",
-            ),
-            livePathHints: ["AD-Plugging-Cable"],
-          },
           ROOT_SHOWCASE_SECTIONS[0].cards[2],
           {
             title: "Cable Bundle Tie-Down",
@@ -348,7 +396,7 @@ export const CATEGORY_LANDING_CONTENT: Record<CatalogRouteKey, CategoryLandingCo
       {
         id: "server",
         title: "Server Operations",
-        countLabel: "4 datasets",
+        countLabel: "3 datasets",
         cards: [
           ROOT_SHOWCASE_SECTIONS[0].cards[2],
           {
@@ -385,19 +433,9 @@ export const CATEGORY_LANDING_CONTENT: Record<CatalogRouteKey, CategoryLandingCo
       {
         id: "hardware",
         title: "Hardware Maintenance",
-        countLabel: "3 datasets",
+        countLabel: "2 datasets",
         cards: [
           ROOT_SHOWCASE_SECTIONS[0].cards[3],
-          {
-            title: "Rack PDU Installation",
-            description: "Rack-side installation of an Enlogic power distribution unit with bracket alignment, rail seating, and final fastening.",
-            tags: ["EXO-Centric", "Task Labels", "Rack Power"],
-            availability: "In Library",
-            hours: "440 hrs",
-            pathLabel: "serverrack/hardware/driveBay",
-            images: imageSet("serverrack/serverrack4.png", "serverrack/serverrack4.png", "serverrack/serverrack3.png", "serverrack/serverrack1.png"),
-            livePathHints: ["pduInstallation"],
-          },
           {
             title: "Network Card Installation",
             description: "Server-side NIC installation and seating workflow on an HPE ProLiant platform, including slot access and final verification.",
@@ -435,11 +473,52 @@ export const CATEGORY_LANDING_CONTENT: Record<CatalogRouteKey, CategoryLandingCo
     ],
     filters: [
       { id: "all", label: "All Tasks", dotClassName: "bg-teal-600" },
+      { id: "featured", label: "Object Handling", dotClassName: "bg-teal-600" },
       { id: "kitchen", label: "Kitchen Tasks", dotClassName: "bg-teal-400" },
       { id: "cleaning", label: "Cleaning & Hygiene", dotClassName: "bg-teal-500" },
       { id: "household", label: "Household Operations", dotClassName: "bg-teal-700" },
     ],
     sections: [
+      {
+        id: "featured",
+        title: "Dexterous Object Handling",
+        countLabel: "3 datasets",
+        cards: [
+          {
+            title: "Plastic Packing",
+            description: "Dexterous packing workflow with source footage, hand-motion src-cam output, tag JSON, and preview-ready generation assets.",
+            tags: ["EXO-Centric", "Hand Pose", "Motion Output"],
+            availability: "In Library",
+            hours: "Live dataset",
+            pathLabel: "dexterity/plasticPacking",
+            images: imageSet("humanoid/humanoid1.png", "humanoid/humanoid4.png", "humanoid/humanoid3.png", "humanoid/humanoid5.png"),
+            livePathHints: ["dexterity/plasticPacking"],
+            previewVideoBlobPath: "dexterity/plasticPacking/showcase/original.mp4",
+          },
+          {
+            title: "Making Sandwich",
+            description: "Kitchen dexterity task with source footage, hand-motion src-cam output, tag JSON, and task-level downloadable assets.",
+            tags: ["EXO-Centric", "Hand Pose", "Motion Output"],
+            availability: "In Library",
+            hours: "Live dataset",
+            pathLabel: "dexterity/cheeseSandwich",
+            images: imageSet("humanoid/foodprep_1.png", "humanoid/foodprep_2.png", "humanoid/foodprep_3.png", "humanoid/foodprep_4.png"),
+            livePathHints: ["dexterity/cheeseSandwich"],
+            previewVideoBlobPath: "dexterity/cheeseSandwich/showcase/original.mp4",
+          },
+          {
+            title: "Towel Folding",
+            description: "Soft-goods manipulation dataset with source footage, hand-motion src-cam output, MoCap visualisation, and downloadable generation files.",
+            tags: ["EXO-Centric", "Hand Pose", "MoCap"],
+            availability: "In Library",
+            hours: "Live dataset",
+            pathLabel: "dexterity/towel",
+            images: imageSet("humanoid/humanoid5.png", "humanoid/humanoid1.png", "humanoid/humanoid3.png", "humanoid/humanoid4.png"),
+            livePathHints: ["dexterity/towel"],
+            previewVideoBlobPath: "dexterity/towel/showcase/original.mp4",
+          },
+        ],
+      },
       {
         id: "kitchen",
         title: "Kitchen Tasks",
@@ -527,18 +606,8 @@ export const CATEGORY_LANDING_CONTENT: Record<CatalogRouteKey, CategoryLandingCo
       {
         id: "household",
         title: "Household Operations",
-        countLabel: "4 datasets",
+        countLabel: "3 datasets",
         cards: [
-          {
-            title: "Towel Folding",
-            description: "Soft-goods handling with lift, align, fold, and flatten steps captured around a towel-folding routine.",
-            tags: ["EXO-Centric", "Hand Pose", "Task Labels"],
-            availability: "In Library",
-            hours: "520 hrs",
-            pathLabel: "dexterity/household/laundry",
-            images: imageSet("humanoid/humanoid5.png", "humanoid/humanoid1.png", "humanoid/humanoid3.png", "humanoid/humanoid4.png"),
-            livePathHints: ["towel"],
-          },
           {
             title: "Crockery Cabinet Organization",
             description: "Dish and crockery arrangement task with shelf placement, object rotation, and cabinet-space organization.",
