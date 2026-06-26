@@ -236,7 +236,6 @@ export default function Navigation() {
     isAuthenticated && isApproved && user?.role === "admin";
   const canViewJobs = isAuthenticated && isApproved;
   const canViewJobHistory = user?.role === "admin" || user?.role === "analyst";
-  const isMarketingPage = location.pathname === "/" || location.pathname === "/company";
   const [hasPrivateData, setHasPrivateData] = useState<boolean | null>(null);
   const [jobsOpen, setJobsOpen] = useState(false);
 
