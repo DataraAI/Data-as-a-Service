@@ -7,6 +7,8 @@ import simToRealLoopDark from "@/assets/images/sim to real loop-dark.png";
 import simToRealLoop from "@/assets/images/sim to real loop.png";
 import FooterSection from "@/components/FooterSection";
 import Navigation from "@/components/Navigation";
+import NvidiaInceptionMember from "@/components/NvidiaInceptionMember";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { buildAuthPath } from "@/lib/authLinks";
 import { useAppTheme } from "@/theme/AppThemeProvider";
 import { ArrowRight, Bot, Box, Database, Eye, Factory, Hand, Layers, Workflow, Zap, type LucideIcon } from "lucide-react";
@@ -330,6 +332,7 @@ function HomeSectionLabel({ children }: { children: string }) {
 }
 
 export default function Home() {
+  usePageTitle("Home");
   const location = useLocation();
   const { isDarkMode } = useAppTheme();
   const productsRef = useRef<HTMLElement | null>(null);
@@ -360,6 +363,8 @@ export default function Home() {
       <main className="pt-[88px]">
         <section className="marketing-hero-home overflow-hidden px-4 py-10 text-center sm:px-6 md:min-h-[calc(88vh-88px)] md:py-12 lg:py-14">
           <div className="mx-auto max-w-[860px]">
+            <NvidiaInceptionMember variant="hero" />
+
             <h1 className="marketing-display-title mt-7 text-[clamp(38px,5.5vw,64px)] font-black leading-[1] tracking-[-0.045em] text-slate-950">
               The Sim-to-Real Gap
               <br />

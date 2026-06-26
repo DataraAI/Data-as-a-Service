@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { ArrowUp } from "lucide-react";
+import NvidiaInceptionMember from "@/components/NvidiaInceptionMember";
 
 const PRODUCT_LINKS = [
   { label: "RoboDataHub", to: "/robodatahub" },
@@ -72,7 +73,10 @@ export default function FooterSection() {
         </div>
 
         <div className="mt-8 flex flex-col gap-4 border-t border-slate-200 pt-6 text-sm text-slate-500 md:flex-row md:items-center md:justify-between">
-          <div>&copy; 2025 DataraAI - NVIDIA Inception Member</div>
+          <div className="flex flex-wrap items-center gap-3">
+            <NvidiaInceptionMember variant="logo-only" />
+            <div>&copy; 2026 DataraAI - NVIDIA Inception Member</div>
+          </div>
           <button
             type="button"
             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
