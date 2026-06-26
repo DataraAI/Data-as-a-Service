@@ -16,10 +16,12 @@ import dataRackInstallLeftPoster from "@/assets/Products/RoboAnnotator/v2v/newan
 import dataRackInstallZoomOutPoster from "@/assets/Products/RoboAnnotator/v2v/newangles/dataRackInstall-zoom-out-poster.png";
 import noPersonVideo from "@/assets/Products/RoboAnnotator/v2v/occl_removal/no_person.mp4";
 import noPersonPoster from "@/assets/Products/RoboAnnotator/v2v/occl_removal/no_person-poster.jpg";
-import exoServerRack from "@/assets/Products/RoboAnnotator/i2i/exo2ego/2exo_serverrack.png";
-import egoServerRackFront from "@/assets/Products/RoboAnnotator/i2i/exo2ego/2ego_serverrack.png";
-import egoServerRackOverhead from "@/assets/Products/RoboAnnotator/i2i/exo2ego/2ego_serverrack1.png";
-import egoServerRackSide from "@/assets/Products/RoboAnnotator/i2i/exo2ego/2ego_serverrack2.png";
+import cableInsertionVideo from "@/assets/Products/RoboAnnotator/v2v/exo2ego/cableInsertion.mp4";
+import cableInsertionPoster from "@/assets/Products/RoboAnnotator/v2v/exo2ego/cableInsertion-poster.png";
+import cableInsertionLeftVideo from "@/assets/Products/RoboAnnotator/v2v/exo2ego/cableInsertion_left.mp4";
+import cableInsertionLeftPoster from "@/assets/Products/RoboAnnotator/v2v/exo2ego/cableInsertion_left-poster.png";
+import cableInsertionRightVideo from "@/assets/Products/RoboAnnotator/v2v/exo2ego/cableInsertion_right.mp4";
+import cableInsertionRightPoster from "@/assets/Products/RoboAnnotator/v2v/exo2ego/cableInsertion_right-poster.png";
 import cornerCaseInput from "@/assets/Products/RoboAnnotator/i2i/cornercase/input.png";
 import cornerCaseFire from "@/assets/Products/RoboAnnotator/i2i/cornercase/fireoutput.png";
 import cornerCaseOil from "@/assets/Products/RoboAnnotator/i2i/cornercase/oilleak.png";
@@ -46,30 +48,6 @@ type ImageAsset = {
 type ExpandedImage = {
   src: string;
   alt: string;
-};
-
-type ExoToEgoExample = {
-  title: string;
-  description: string;
-  engineDetail: string;
-  input: ImageAsset;
-  outputs: ImageAsset[];
-};
-
-const DATA_CENTER_EXO_TO_EGO_EXAMPLE: ExoToEgoExample = {
-  title: "Data Center EXO to EGO",
-  description:
-    "Converts fixed server-rack capture into robot-ready inspection perspectives.",
-  engineDetail: "Robot Perspective Generation",
-  input: {
-    src: exoServerRack,
-    caption: "Server rack EXO source",
-  },
-  outputs: [
-    { src: egoServerRackFront, caption: "Front inspection view" },
-    { src: egoServerRackOverhead, caption: "Overhead inspection view" },
-    { src: egoServerRackSide, caption: "Side inspection view" },
-  ],
 };
 
 const CORNER_CASE_INPUT: ImageAsset = {
@@ -113,6 +91,11 @@ const VIDEO_OUTPUTS = {
     posterSrc: sourcedataRackInstallPoster,
     caption: "Front grille source clip",
   },
+  cableInsertionInput: {
+    videoSrc: cableInsertionVideo,
+    posterSrc: cableInsertionPoster,
+    caption: "Cable insertion source clip",
+  },
   occlusionRemoval: {
     videoSrc: noPersonVideo,
     posterSrc: noPersonPoster,
@@ -128,6 +111,17 @@ const VIDEO_OUTPUTS = {
     posterSrc: dataRackInstallZoomOutPoster,
     caption: "Generated upper view",
   },
+  exo2egoLeft: {
+    videoSrc: cableInsertionLeftVideo,
+    posterSrc: cableInsertionLeftPoster,
+    caption: "Generated occlusion + left view",
+  },
+  exo2egoRight: {
+    videoSrc: cableInsertionRightVideo,
+    posterSrc: cableInsertionRightPoster,
+    caption: "Generated occlusion + right view",
+  },
+
 } satisfies Record<string, VideoAsset>;
 
 function InlineEngineCard({ detail }: { detail: string }) {
@@ -415,7 +409,6 @@ export default function RoboEyeView() {
   const { isAuthenticated, isApproved, user } = useAuth();
   const [expandedImage, setExpandedImage] = useState<ExpandedImage | null>(null);
   const canSubmitFootage = canImportData({ isAuthenticated, isApproved, user });
-  const dataCenterExample = DATA_CENTER_EXO_TO_EGO_EXAMPLE;
   const showcaseItems: FeatureShowcaseItem[] = [
     {
       id: "occlusion-removal",
@@ -453,17 +446,12 @@ export default function RoboEyeView() {
       shortLabel: "EXO → EGO",
       accent: "blue",
       content: (
-        <I2IRow
-          title={dataCenterExample.title}
-          description={dataCenterExample.description}
-          engineDetail={dataCenterExample.engineDetail}
-          inputTitle="EXO Source"
-          outputTitle="Generated EGO Views"
-          inputItems={[dataCenterExample.input]}
-          outputItems={dataCenterExample.outputs}
-          inputColumns={1}
-          outputColumns={2}
-          onImageOpen={setExpandedImage}
+        <V2VRow
+          title="EXO to EGO Conversion"
+          description="Transforms fixed EXO footage into robot-ready EGO perspectives for inspection and manipulation tasks."
+          engineDetail="EXO to EGO Conversion"
+          inputAsset={VIDEO_OUTPUTS.cableInsertionInput}
+          outputAssets={[VIDEO_OUTPUTS.exo2egoLeft, VIDEO_OUTPUTS.exo2egoRight]}
         />
       ),
     },
