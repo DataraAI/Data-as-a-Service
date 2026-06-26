@@ -5,7 +5,7 @@ import {
   getResolvedCatalogAvailability,
   resolvePreviewMediaUrl,
 } from "@/lib/dataViewerUtils";
-import { frontPageImageUrl } from "@/lib/datasetFolderCover";
+import { folderPreviewMediaUrl, frontPageImageUrl } from "@/lib/datasetFolderCover";
 import type { CatalogCard } from "@/lib/roboDataHubCatalog";
 import { Database } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -31,7 +31,10 @@ export function RootShowcaseCatalogCard({
   const fallbackImageSrc = frontPageImageUrl(fallbackMain);
   const previewImageSrc = displayItem?.main_image ? resolvePreviewMediaUrl(displayItem.main_image) : null;
   const imageSrc = imageFailed ? fallbackImageSrc : previewImageSrc ?? fallbackImageSrc;
-  const resolvedVideoSrc = displayItem?.preview_video ? resolvePreviewMediaUrl(displayItem.preview_video) : null;
+  const fallbackVideoSrc = card.previewVideoBlobPath ? folderPreviewMediaUrl(card.previewVideoBlobPath) : null;
+  const resolvedVideoSrc =
+    fallbackVideoSrc ??
+    (displayItem?.preview_video ? resolvePreviewMediaUrl(displayItem.preview_video) : null);
   const videoSrc = videoFailed ? null : resolvedVideoSrc;
   const badge = getCatalogViewBadge(card);
   const resolvedAvailability = getResolvedCatalogAvailability(card, displayItem);

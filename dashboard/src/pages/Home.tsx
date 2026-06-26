@@ -85,7 +85,7 @@ const PIPELINE_STEPS: PipelineStep[] = [
   },
   {
     step: "03",
-    title: "ISAAC SIM",
+    title: "Isaac Sim",
     description: "Robot policies trained at scale in NVIDIA Isaac Sim.",
     badge: "NVIDIA",
     icon: Box,
@@ -169,30 +169,6 @@ const PRODUCT_CARDS: ProductCard[] = [
 ];
 
 const SOLUTION_CARDS: SolutionCard[] = [
-  {
-    kicker: "Warehouse Automation - Intralogistics",
-    title: "Pellet Transport Automation",
-    description:
-      "Training data for robots moving loaded pellet containers across warehouse lanes, pickup points, and outbound staging zones without slowing downstream operations.",
-    bullets: [
-      "Detect and localize palletized pellet loads",
-      "Navigate shared aisles and dynamic traffic safely",
-      "Align at pickup and drop-off points with repeatable precision",
-      "Track load handoff, route completion, and exceptions in real time",
-    ],
-    metrics: [
-      { value: "2.8x", label: "More throughput" },
-      { value: "41%", label: "Lower handling time" },
-      { value: "99.3%", label: "Route accuracy" },
-    ],
-    beforeLabel: "Before - Manual Hauling",
-    afterLabel: "After - Autonomous Transport",
-    beforeImage: solutionBefore,
-    afterImage: solutionAfter,
-    accent: "text-primary",
-    beforeTone: "border-red-200 bg-red-50/80 text-red-700",
-    afterTone: "border-primary/20 bg-primary/10 text-primary",
-  },
   {
     kicker: "Data Center - NVL72 Infrastructure",
     title: "Rack Cable Installation",
