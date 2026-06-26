@@ -1369,7 +1369,12 @@ export default function DataViewer() {
             canUseGenerationTools={canManageDatasets}
             routePath={datasetManifest?.dataset.viewer_path.replace(/^\/viewer\//, "") ?? currentDisplayPath}
             showHandMeshGeneration={
-              (datasetManifest?.dataset.vertical ?? pathSegments[0])?.toLowerCase() === "dexterity"
+              true
+              /*
+               * Temporary demo override: make Hand Motion Generation available across all verticals.
+               * Restore this gate after launch/demo if we want it scoped back to dexterity datasets:
+               * (datasetManifest?.dataset.vertical ?? pathSegments[0])?.toLowerCase() === "dexterity"
+               */
             }
             onVideoToolSuccess={() => setReloadTick((value) => value + 1)}
             onOpenViewerPath={(viewerPath) => navigate(withViewerBase(viewerPath, viewerBasePath))}
