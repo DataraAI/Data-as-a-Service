@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import FeatureShowcaseCarousel, { type FeatureShowcaseItem } from "@/components/FeatureShowcaseCarousel";
 import FooterSection from "@/components/FooterSection";
 import Navigation from "@/components/Navigation";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { canImportData, ROBODATAHUB_IMPORT_DATA_PATH } from "@/lib/dataImportAccess";
 import handInputVideo from "@/assets/Products/RoboHandMotion/handinput.mp4";
 import handTrackingOutputVideo from "@/assets/Products/RoboHandMotion/handtrackingoutput.mp4";
@@ -298,6 +299,7 @@ function HandMeshGroup({
 }
 
 export default function RoboHandMotion() {
+  usePageTitle("RoboHandMotion");
   const { isAuthenticated, isApproved, user } = useAuth();
   const [expandedImage, setExpandedImage] = useState<ExpandedImage | null>(null);
   const canSubmitFootage = canImportData({ isAuthenticated, isApproved, user });

@@ -3,6 +3,7 @@ import { Boxes, Workflow } from "lucide-react";
 import { Link } from "react-router-dom";
 import FooterSection from "@/components/FooterSection";
 import Navigation from "@/components/Navigation";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { buildAuthPath } from "@/lib/authLinks";
 import { frontPageImageUrl } from "@/lib/datasetFolderCover";
 
@@ -502,6 +503,7 @@ function GalleryCardView({ card, compact = false }: { card: GalleryCard; compact
 }
 
 export default function RoboTaskManipulator() {
+  usePageTitle("RoboTaskManipulator");
   return (
     <div className="min-h-screen bg-background text-slate-950 dark:text-slate-100">
       <Navigation />

@@ -448,6 +448,7 @@ function V2VRow({
 }
 
 export default function RoboEyeView() {
+  usePageTitle("RoboAnnotator");
   const { isAuthenticated, isApproved, user } = useAuth();
   const [expandedImage, setExpandedImage] = useState<ExpandedImage | null>(null);
   const canSubmitFootage = canImportData({ isAuthenticated, isApproved, user });
