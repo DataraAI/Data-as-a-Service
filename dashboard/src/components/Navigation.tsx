@@ -381,11 +381,6 @@ export default function Navigation() {
               <div className="truncate font-sans-tech text-lg font-extrabold tracking-[0.04em] text-primary">
                 DataraAI
               </div>
-              {!isMarketingPage ? (
-                <div className="truncate text-[11px] font-medium text-slate-500">
-                  Back to Home
-                </div>
-              ) : null}
             </div>
           </Link>
 

@@ -70,7 +70,7 @@ const PIPELINE_STEPS: PipelineStep[] = [
   {
     step: "01",
     title: "Real Factory Data",
-    description: "Data from OEM floors, warehouses & data centers.",
+    description: "Data from data centers, OEM floors, warehouses & dexterity tasks.",
     badge: "Data",
     icon: Factory,
     accent: "teal",
@@ -78,7 +78,7 @@ const PIPELINE_STEPS: PipelineStep[] = [
   {
     step: "02",
     title: "Real2Sim",
-    description: "Real scenes & trajectories converted into accurate sim environments.",
+    description: "Real scenes & trajectories converted into accurate digital twin sim environments.",
     badge: "Transfer",
     icon: Layers,
     accent: "blue",
@@ -122,7 +122,7 @@ const PRODUCT_CARDS: ProductCard[] = [
     name: "RoboDataHub",
     badge: "Core Platform",
     tagline: "Central intelligence layer for Physical AI training data",
-    pills: ["EGO + EXO labelled datasets", "4 industry verticals", "500K+ annotated sequences"],
+    pills: ["EGO + EXO labeled datasets", "4 industry verticals", "500K+ annotated sequences"],
     linkLabel: "Browse datasets",
     to: "/robodatahub",
     icon: Database,
@@ -134,7 +134,7 @@ const PRODUCT_CARDS: ProductCard[] = [
     name: "RoboAnnotator",
     badge: "Patented IP",
     tagline: "AI-assisted annotation platform for robot training data",
-    pills: ["EXO to EGO view synthesis", "85% to 95%+ accuracy", "60% labelling cost cut"],
+    pills: ["EXO to EGO view synthesis", "85% to 95%+ accuracy", "60% labeling cost cut"],
     linkLabel: "Learn more",
     to: "/roboannotator",
     icon: Eye,
@@ -224,45 +224,47 @@ const SOLUTION_CARDS: SolutionCard[] = [
 
 const CUSTOMER_CARDS: CustomerCard[] = [
   {
-    segment: "Automotive OEMs",
-    detail:
-      "Build task-specific datasets for assembly, inspection, fastening, and material-handling workflows, helping robotics teams automate repeatable production-line processes with greater consistency.",
-    label: "Automotive Manufacturing",
-    chipTone: "border-violet-200 bg-violet-50 text-violet-700",
-  },
-  {
-    segment: "Server Infrastructure Integrators",
-    detail:
-      "Train robotic systems to align, install, cable, and verify server hardware, reducing manual effort across repeatable rack deployment and commissioning tasks.",
-    label: "Rack Deployment",
+    segment: "Data Centers",
+    detail: "Robot training data for data center automation.",
+    label: "Data Center",
     chipTone: "border-blue-200 bg-blue-50 text-blue-700",
   },
   {
-    segment: "Data Center Operators",
-    detail:
-      "Develop automation for routine operations such as cable connections, equipment swaps, inspection, and maintenance across large-scale data center environments.",
-    label: "Facility Operations",
+    segment: "Warehouses",
+    detail: "Robot training data for warehouse and logistics automation.",
+    label: "Warehouse",
+    chipTone: "border-orange-200 bg-orange-50 text-orange-700",
+  },
+  {
+    segment: "Dexterity",
+    detail: "Robot training data for humanoid dexterity and manipulation.",
+    label: "Dexterity",
     chipTone: "border-teal-200 bg-teal-50 text-primary",
+  },
+  {
+    segment: "Automotive",
+    detail: "Robot training data for automotive production lines.",
+    label: "Automotive",
+    chipTone: "border-violet-200 bg-violet-50 text-violet-700",
   },
 ];
 
 function PipelineStepCard({ step }: { step: PipelineStep }) {
   const accentClasses = {
-    teal: { badge: "border-teal-200 bg-teal-50 text-teal-700", bar: "bg-teal-500" },
-    blue: { badge: "border-blue-200 bg-blue-50 text-blue-700", bar: "bg-blue-500" },
-    violet: { badge: "border-violet-200 bg-violet-50 text-violet-700", bar: "bg-violet-500" },
-    orange: { badge: "border-orange-200 bg-orange-50 text-orange-700", bar: "bg-orange-500" },
-    emerald: { badge: "border-emerald-200 bg-emerald-50 text-emerald-700", bar: "bg-emerald-500" },
+    teal:    { badge: "border-teal-200 bg-teal-50 text-teal-700",       bar: "bg-teal-500",    top: "border-t-teal-500"    },
+    blue:    { badge: "border-blue-200 bg-blue-50 text-blue-700",       bar: "bg-blue-500",    top: "border-t-blue-500"    },
+    violet:  { badge: "border-violet-200 bg-violet-50 text-violet-700", bar: "bg-violet-500",  top: "border-t-violet-500"  },
+    orange:  { badge: "border-orange-200 bg-orange-50 text-orange-700", bar: "bg-orange-500",  top: "border-t-orange-500"  },
+    emerald: { badge: "border-emerald-200 bg-emerald-50 text-emerald-700", bar: "bg-emerald-500", top: "border-t-emerald-500" },
   }[step.accent];
 
   return (
-    <div className="relative flex flex-1 flex-col items-center overflow-hidden rounded-[20px] border border-slate-200 bg-white px-5 pb-7 pt-6 text-center shadow-[0_1px_6px_rgba(0,0,0,0.05)] dark:border-white/7 dark:bg-[rgba(13,16,20,0.82)] dark:shadow-[0_18px_44px_rgba(0,0,0,0.24)]">
-      <p className="mb-2 text-[15px] font-black tracking-[-0.01em] text-slate-950 dark:text-slate-100">{step.title}</p>
-      <span className={`mb-3 inline-flex rounded-md border px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.12em] ${accentClasses.badge}`}>
+    <div className={`relative flex flex-1 flex-col items-center overflow-hidden rounded-[16px] border border-slate-200 border-t-2 bg-white px-4 pb-5 pt-5 text-center shadow-[0_2px_8px_rgba(0,0,0,0.06)] ${accentClasses.top}`}>
+      <span className={`mb-2.5 inline-flex rounded-full border px-2.5 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.14em] ${accentClasses.badge}`}>
         {step.badge}
       </span>
-      <p className="text-[12px] leading-5 text-slate-500 dark:text-slate-400">{step.description}</p>
-      <div className={`absolute bottom-0 left-0 h-[4px] w-full ${accentClasses.bar}`} />
+      <p className="mb-1.5 text-[14px] font-black tracking-[-0.02em] text-slate-950">{step.title}</p>
+      <p className="text-[11px] leading-[1.6] text-slate-500">{step.description}</p>
     </div>
   );
 }
@@ -391,6 +393,25 @@ export default function Home() {
               >
                 Request a Demo
               </Link>
+            </div>
+          </div>
+        </section>
+
+        <section className="border-y border-slate-200 bg-slate-50/60 px-4 py-8 sm:px-6">
+          <div className="mx-auto max-w-[1300px]">
+            <div className="grid grid-cols-2 gap-px overflow-hidden rounded-[14px] border border-slate-200 bg-slate-200 sm:grid-cols-3 lg:grid-cols-5">
+              {[
+                { value: "500K+", label: "Annotated Sequences" },
+                { value: "4", label: "Industry Verticals" },
+                { value: "95%", label: "Precision · Peer Robotics" },
+                { value: "60%", label: "Labeling Cost Cut" },
+                { value: "3.8x", label: "Faster Model Convergence" },
+              ].map((stat) => (
+                <div key={stat.label} className="bg-white px-6 py-5 text-center">
+                  <div className="text-[28px] font-black tracking-[-0.04em] text-primary">{stat.value}</div>
+                  <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500">{stat.label}</div>
+                </div>
+              ))}
             </div>
           </div>
         </section>
@@ -568,11 +589,11 @@ export default function Home() {
                 Built for Real-World Automation
               </h2>
               <p className="mx-auto mt-3 max-w-[620px] text-[15px] leading-7 text-slate-500">
-                Supporting teams deploying robotics across automotive manufacturing and data center infrastructure.
+                Supporting teams deploying robots across data centers, warehouses, dexterity, and automotive production lines.
               </p>
             </div>
 
-            <div className="mt-8 grid gap-4 lg:grid-cols-3">
+            <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {CUSTOMER_CARDS.map((card) => (
                 <article key={card.segment} className="flex h-full flex-col rounded-[14px] border border-slate-200 bg-card p-7 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
                   <h3 className="marketing-display-title text-[24px] font-black leading-tight tracking-[-0.025em] text-slate-950">
