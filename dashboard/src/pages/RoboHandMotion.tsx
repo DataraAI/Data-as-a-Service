@@ -111,14 +111,21 @@ function FeaturePipe({ detail }: { detail: string }) {
 
 function VideoPreviewTile({
   asset,
-  aspectClass = "aspect-[16/10]",
+  aspectClass = "aspect-[16/9]",
+  playing,
+  onMouseEnter,
+  onMouseLeave,
   fit = "cover",
 }: {
   asset: VideoAsset;
   aspectClass?: string;
+  playing?: boolean;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
   fit?: "cover" | "contain";
 }) {
-  const [hovered, setHovered] = useState(false);
+  const [interalHovered, setInternalHovered] = useState(false);
+  const isPlaying = playing !== undefined ? playing : interalHovered;
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const mediaFitClass = fit === "contain" ? "object-contain" : "object-cover";
 
@@ -126,7 +133,7 @@ function VideoPreviewTile({
     const video = videoRef.current;
     if (!video) return;
 
-    if (hovered) {
+    if (isPlaying) {
       const playPromise = video.play();
       if (playPromise) {
         void playPromise.catch(() => {
@@ -140,18 +147,28 @@ function VideoPreviewTile({
     if (video.currentTime !== 0) {
       video.currentTime = 0;
     }
-  }, [hovered]);
+  }, [isPlaying]);
+
+  const handleMouseEnter = () => {
+    if (playing === undefined) setInternalHovered(true);
+    onMouseEnter?.();
+  };
+
+  const handleMouseLeave = () => {
+    if (playing === undefined) setInternalHovered(false);
+    onMouseLeave?.();
+  };
 
   return (
     <div
       className={`group relative overflow-hidden rounded-[14px] bg-slate-950 ${aspectClass}`}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       <img
         src={asset.posterSrc}
         alt={asset.alt}
-        className={`absolute inset-0 h-full w-full ${mediaFitClass} transition-opacity duration-200 ${hovered ? "opacity-0" : "opacity-100"}`}
+        className={`absolute inset-0 h-full w-full ${mediaFitClass} transition-opacity duration-200 ${isPlaying ? "opacity-0" : "opacity-100"}`}
       />
       <video
         ref={videoRef}
@@ -161,7 +178,7 @@ function VideoPreviewTile({
         loop
         playsInline
         preload="metadata"
-        className={`absolute inset-0 h-full w-full ${mediaFitClass} transition-opacity duration-200 ${hovered ? "opacity-100" : "opacity-0"}`}
+        className={`absolute inset-0 h-full w-full ${mediaFitClass} transition-opacity duration-200 ${isPlaying ? "opacity-100" : "opacity-0"}`}
       />
       <div className="absolute inset-0 bg-gradient-to-t from-slate-950/40 via-transparent to-transparent" />
     </div>
@@ -284,6 +301,7 @@ export default function RoboHandMotion() {
   const { isAuthenticated, isApproved, user } = useAuth();
   const [expandedImage, setExpandedImage] = useState<ExpandedImage | null>(null);
   const canSubmitFootage = canImportData({ isAuthenticated, isApproved, user });
+  const [hovered, setHovered] = useState(false);
   const showcaseItems: FeatureShowcaseItem[] = [
     {
       id: "sequence-tracking",
@@ -299,12 +317,20 @@ export default function RoboHandMotion() {
           <div className="mt-6 grid gap-4 xl:grid-cols-[minmax(0,0.98fr)_126px_minmax(0,0.98fr)] xl:items-center">
             <div>
               <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-blue-700 dark:text-blue-200">Input Video</p>
-              <VideoPreviewTile asset={VIDEO_SHOWCASE.input} />
+              <VideoPreviewTile 
+                asset={VIDEO_SHOWCASE.input} 
+                playing={hovered} 
+                onMouseEnter={() => setHovered(true)} 
+                onMouseLeave={() => setHovered(false)} />
             </div>
             <FeaturePipe detail="Hand Tracking" />
             <div>
               <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-orange-700 dark:text-orange-200">Tracked Output</p>
-              <VideoPreviewTile asset={VIDEO_SHOWCASE.output} />
+              <VideoPreviewTile 
+                asset={VIDEO_SHOWCASE.output} 
+                playing={hovered} 
+                onMouseEnter={() => setHovered(true)} 
+                onMouseLeave={() => setHovered(false)} />
             </div>
           </div>
         </div>
@@ -328,6 +354,9 @@ export default function RoboHandMotion() {
                 asset={MCAP_SHOWCASE.input}
                 aspectClass="mx-auto h-[120px] aspect-video sm:h-[188px] md:h-[225px] xl:h-[260px]"
                 fit="contain"
+                playing={hovered}
+                onMouseEnter={() => setHovered(true)}
+                onMouseLeave={() => setHovered(false)}
               />
             </div>
             <FeaturePipe detail="21-Keypoint MoCap" />
@@ -337,6 +366,9 @@ export default function RoboHandMotion() {
                 asset={MCAP_SHOWCASE.output}
                 aspectClass="mx-auto h-[120px] aspect-[116/65] sm:h-[188px] md:h-[225px] xl:h-[260px]"
                 fit="contain"
+                playing={hovered}
+                onMouseEnter={() => setHovered(true)}
+                onMouseLeave={() => setHovered(false)}
               />
             </div>
           </div>
@@ -348,6 +380,7 @@ export default function RoboHandMotion() {
       label: "3D Mesh Reconstruction",
       shortLabel: "3D Meshes",
       accent: "blue",
+      tall: 54,
       content: (
         <div className="rounded-[18px] border border-slate-200 bg-card p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-700">
           <p className="text-[24px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">Frame-by-Frame 3D Hand Mesh Generation</p>
