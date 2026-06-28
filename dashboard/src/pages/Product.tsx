@@ -1,7 +1,9 @@
 import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function Product() {
+  usePageTitle("Product");
   const location = useLocation();
   const navigate = useNavigate();
 
