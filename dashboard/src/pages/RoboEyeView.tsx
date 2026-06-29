@@ -5,16 +5,13 @@ import { Link } from "react-router-dom";
 import FooterSection from "@/components/FooterSection";
 import FeatureShowcaseCarousel, { type FeatureShowcaseItem } from "@/components/FeatureShowcaseCarousel";
 import Navigation from "@/components/Navigation";
-import { usePageTitle } from "@/hooks/usePageTitle";
 import { canImportData, ROBODATAHUB_IMPORT_DATA_PATH } from "@/lib/dataImportAccess";
 import pduInstallationVideo from "@/assets/Products/RoboAnnotator/v2v/input/pduInstallation.mp4";
 import pduInstallationPoster from "@/assets/Products/RoboAnnotator/v2v/input/pduInstallation-poster.jpg";
 import sourcedataRackInstall from "@/assets/Products/RoboAnnotator/v2v/input/source-dataRackInstall.mp4";
 import sourcedataRackInstallPoster from "@/assets/Products/RoboAnnotator/v2v/input/source-dataRackInstall-poster.png";
 import dataRackInstallLeftVideo from "@/assets/Products/RoboAnnotator/v2v/newangles/dataRackInstall-left.mp4";
-import dataRackInstallZoomOutVideo from "@/assets/Products/RoboAnnotator/v2v/newangles/dataRackInstall-zoom-out.mp4";
 import dataRackInstallLeftPoster from "@/assets/Products/RoboAnnotator/v2v/newangles/dataRackInstall-left-poster.png";
-import dataRackInstallZoomOutPoster from "@/assets/Products/RoboAnnotator/v2v/newangles/dataRackInstall-zoom-out-poster.png";
 import noPersonVideo from "@/assets/Products/RoboAnnotator/v2v/occl_removal/no_person.mp4";
 import noPersonPoster from "@/assets/Products/RoboAnnotator/v2v/occl_removal/no_person-poster.jpg";
 import cableInsertionVideo from "@/assets/Products/RoboAnnotator/v2v/exo2ego/cableInsertion.mp4";
@@ -27,13 +24,15 @@ import cornerCaseInput from "@/assets/Products/RoboAnnotator/i2i/cornercase/inpu
 import cornerCaseFire from "@/assets/Products/RoboAnnotator/i2i/cornercase/fireoutput.png";
 import cornerCaseOil from "@/assets/Products/RoboAnnotator/i2i/cornercase/oilleak.png";
 import maskInput000 from "@/assets/Products/RoboAnnotator/i2i/maskseg/000.png";
-import maskInput103 from "@/assets/Products/RoboAnnotator/i2i/maskseg/103.png";
-import maskInput206 from "@/assets/Products/RoboAnnotator/i2i/maskseg/206.png";
-import maskInput310 from "@/assets/Products/RoboAnnotator/i2i/maskseg/310.png";
 import maskOutput000 from "@/assets/Products/RoboAnnotator/i2i/maskseg/000mask.png";
+import maskInput103 from "@/assets/Products/RoboAnnotator/i2i/maskseg/103.png";
 import maskOutput103 from "@/assets/Products/RoboAnnotator/i2i/maskseg/103mask.png";
+import maskInput206 from "@/assets/Products/RoboAnnotator/i2i/maskseg/206.png";
 import maskOutput206 from "@/assets/Products/RoboAnnotator/i2i/maskseg/206mask.png";
 import maskOutput309 from "@/assets/Products/RoboAnnotator/i2i/maskseg/309mask.png";
+import maskInput310 from "@/assets/Products/RoboAnnotator/i2i/maskseg/310.png";
+import dataRackInstallRightPoster from "@/assets/Products/RoboAnnotator/v2v/newangles/dataRackInstall-right-poster.png";
+import dataRackInstallRightVideo from "@/assets/Products/RoboAnnotator/v2v/newangles/dataRackInstall-right.mp4";
 
 type VideoAsset = {
   videoSrc: string;
@@ -107,10 +106,10 @@ const VIDEO_OUTPUTS = {
     posterSrc: dataRackInstallLeftPoster,
     caption: "Generated left view",
   },
-  newAngleUp: {
-    videoSrc: dataRackInstallZoomOutVideo,
-    posterSrc: dataRackInstallZoomOutPoster,
-    caption: "Generated upper view",
+  newAngleRight: {
+    videoSrc: dataRackInstallRightVideo,
+    posterSrc: dataRackInstallRightPoster,
+    caption: "Generated right view",
   },
   exo2egoLeft: {
     videoSrc: cableInsertionLeftVideo,
@@ -317,15 +316,28 @@ function ImageLightbox({
   );
 }
 
-function VideoPreviewTile({ asset, aspectClass = "aspect-[16/9]" }: { asset: VideoAsset; aspectClass?: string }) {
-  const [hovered, setHovered] = useState(false);
+function VideoPreviewTile({
+  asset,
+  aspectClass = "aspect-[16/9]",
+  playing,
+  onMouseEnter,
+  onMouseLeave,
+}: {
+  asset: VideoAsset;
+  aspectClass?: string;
+  playing?: boolean;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
+}) {
+  const [internalHovered, setInternalHovered] = useState(false);
+  const isPlaying = playing !== undefined ? playing : internalHovered;
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    if (hovered) {
+    if (isPlaying) {
       const playPromise = video.play();
       if (playPromise) {
         void playPromise.catch(() => {
@@ -339,18 +351,28 @@ function VideoPreviewTile({ asset, aspectClass = "aspect-[16/9]" }: { asset: Vid
     if (video.currentTime !== 0) {
       video.currentTime = 0;
     }
-  }, [hovered]);
+  }, [isPlaying]);
+
+  const handleMouseEnter = () => {
+    if (playing === undefined) setInternalHovered(true);
+    onMouseEnter?.();
+  };
+
+  const handleMouseLeave = () => {
+    if (playing === undefined) setInternalHovered(false);
+    onMouseLeave?.();
+  };
 
   return (
     <div
       className={`group relative overflow-hidden rounded-[14px] bg-slate-950 ${aspectClass}`}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       <img
         src={asset.posterSrc}
         alt={asset.caption}
-        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${hovered ? "opacity-0" : "opacity-100"}`}
+        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${isPlaying ? "opacity-0" : "opacity-100"}`}
       />
       <video
         ref={videoRef}
@@ -360,7 +382,7 @@ function VideoPreviewTile({ asset, aspectClass = "aspect-[16/9]" }: { asset: Vid
         loop
         playsInline
         preload="metadata"
-        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${hovered ? "opacity-100" : "opacity-0"}`}
+        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${isPlaying ? "opacity-100" : "opacity-0"}`}
       />
       <div className="absolute inset-0 bg-gradient-to-t from-slate-950/45 via-transparent to-transparent" />
     </div>
@@ -380,6 +402,8 @@ function V2VRow({
   inputAsset: VideoAsset;
   outputAssets: VideoAsset[];
 }) {
+  const [hovered, setHovered] = useState(false);
+
   return (
     <div className="rounded-[16px] border border-slate-200/80 bg-card p-4 dark:border-slate-700 sm:p-5">
       <p className="text-[17px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">{title}</p>
@@ -388,7 +412,12 @@ function V2VRow({
       <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,0.98fr)_118px_minmax(0,1.12fr)] xl:items-center">
         <div>
           <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-blue-700 dark:text-blue-200">Input video</p>
-          <VideoPreviewTile asset={inputAsset} />
+          <VideoPreviewTile
+            asset={inputAsset}
+            playing={hovered}
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+          />
         </div>
 
         <I2IPipe detail={engineDetail} />
@@ -397,7 +426,13 @@ function V2VRow({
           <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-teal-700 dark:text-teal-200">Output video</p>
           <div className="grid grid-cols-1 gap-3">
             {outputAssets.map((asset) => (
-              <VideoPreviewTile key={asset.caption} asset={asset} />
+              <VideoPreviewTile
+                key={asset.caption}
+                asset={asset}
+                playing={hovered}
+                onMouseEnter={() => setHovered(true)}
+                onMouseLeave={() => setHovered(false)}
+              />
             ))}
           </div>
         </div>
@@ -438,7 +473,7 @@ export default function RoboEyeView() {
           description="Generates alternative perspectives from a single clip for robot-view training."
           engineDetail="New Angle Generation"
           inputAsset={VIDEO_OUTPUTS.frontGrilleInput}
-          outputAssets={[VIDEO_OUTPUTS.newAngleLeft, VIDEO_OUTPUTS.newAngleUp]}
+          outputAssets={[VIDEO_OUTPUTS.newAngleLeft, VIDEO_OUTPUTS.newAngleRight]}
         />
       ),
     },
