@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import FooterSection from "@/components/FooterSection";
 import FeatureShowcaseCarousel, { type FeatureShowcaseItem } from "@/components/FeatureShowcaseCarousel";
 import Navigation from "@/components/Navigation";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { canImportData, ROBODATAHUB_IMPORT_DATA_PATH } from "@/lib/dataImportAccess";
 import pduInstallationVideo from "@/assets/Products/RoboAnnotator/v2v/input/pduInstallation.mp4";
 import pduInstallationPoster from "@/assets/Products/RoboAnnotator/v2v/input/pduInstallation-poster.jpg";
