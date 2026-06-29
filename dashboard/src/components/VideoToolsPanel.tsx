@@ -19,6 +19,7 @@ interface VideoToolsPanelProps {
   onOpenViewerPath?: (viewerPath: string) => void;
   variant?: "side" | "inline";
   showHandMesh?: boolean;
+  showTaskAnalysis?: boolean;
 }
 
 type ToolSectionKey = "task" | "views" | "hand";
@@ -35,6 +36,7 @@ export function VideoToolsPanel({
   onOpenViewerPath,
   variant = "side",
   showHandMesh = true,
+  showTaskAnalysis = true,
 }: VideoToolsPanelProps) {
   const [selectedAssetId, setSelectedAssetId] = useState("");
   const [expandedSections, setExpandedSections] = useState<Record<ToolSectionKey, boolean>>({
@@ -116,6 +118,7 @@ export function VideoToolsPanel({
 
         {selectedVideo && (
           <>
+            {showTaskAnalysis && (
             <section className={sectionClassName}>
               <button
                 type="button"
@@ -142,6 +145,7 @@ export function VideoToolsPanel({
                 </div>
               )}
             </section>
+            )}
 
             <section className={sectionClassName}>
               <button
