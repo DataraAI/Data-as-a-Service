@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import Navigation from "@/components/Navigation";
 import AuthRequiredState from "@/components/AuthRequiredState";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/auth/useAuth";
 import type { AuthRole } from "@/auth/AuthProvider";
@@ -114,6 +115,7 @@ function ApprovalBadge({ status }: { status: ApprovalStatus }) {
 }
 
 export default function AdminUsers() {
+  usePageTitle("Admin Users");
   const { isLoading: authLoading, isAuthenticated, isApproved, user } = useAuth();
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
