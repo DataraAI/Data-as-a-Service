@@ -5,7 +5,6 @@ import { Database, Loader2, Search, FolderOpen, Shield, UserRound } from "lucide
 import { DatasetFolderCover } from "@/components/DatasetFolderCover";
 import Navigation from "@/components/Navigation";
 import AuthRequiredState from "@/components/AuthRequiredState";
-import { usePageTitle } from "@/hooks/usePageTitle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -59,7 +58,6 @@ function displayTitle(fullPath: string): string {
 }
 
 export default function ExploreDatasets() {
-  usePageTitle("Explore Datasets");
   const { isLoading, isAuthenticated, isApproved } = useAuth();
   const [paths, setPaths] = useState<DatasetPathRecord[]>([]);
   const [loading, setLoading] = useState(true);
