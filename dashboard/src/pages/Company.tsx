@@ -1,6 +1,5 @@
 import Navigation from "@/components/Navigation";
 import FooterSection from "@/components/FooterSection";
-import { usePageTitle } from "@/hooks/usePageTitle";
 
 type Founder = {
   initials: string;
@@ -53,7 +52,6 @@ const ADVISORS: Advisor[] = [
 ];
 
 export default function Company() {
-  usePageTitle("Company");
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Navigation />
