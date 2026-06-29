@@ -15,12 +15,14 @@ import dataRackInstallLeftVideo from "@/assets/Products/RoboAnnotator/v2v/newang
 import dataRackInstallLeftPoster from "@/assets/Products/RoboAnnotator/v2v/newangles/dataRackInstall-left-poster.png";
 import noPersonVideo from "@/assets/Products/RoboAnnotator/v2v/occl_removal/no_person.mp4";
 import noPersonPoster from "@/assets/Products/RoboAnnotator/v2v/occl_removal/no_person-poster.jpg";
-import cableInsertionVideo from "@/assets/Products/RoboAnnotator/v2v/exo2ego/cableInsertion.mp4";
-import cableInsertionPoster from "@/assets/Products/RoboAnnotator/v2v/exo2ego/cableInsertion-poster.png";
-import cableInsertionLeftVideo from "@/assets/Products/RoboAnnotator/v2v/exo2ego/cableInsertion_left.mp4";
-import cableInsertionLeftPoster from "@/assets/Products/RoboAnnotator/v2v/exo2ego/cableInsertion_left-poster.png";
-import cableInsertionRightVideo from "@/assets/Products/RoboAnnotator/v2v/exo2ego/cableInsertion_right.mp4";
-import cableInsertionRightPoster from "@/assets/Products/RoboAnnotator/v2v/exo2ego/cableInsertion_right-poster.png";
+
+import dataRackCableManagement from "@/assets/Products/RoboAnnotator/v2v/exo2ego/dataRackCableManagement.mp4";
+import dataRackCableManagementPoster from "@/assets/Products/RoboAnnotator/v2v/exo2ego/dataRackCableManagement-poster.png";
+import dataRackCableManagementLeftVideo from "@/assets/Products/RoboAnnotator/v2v/exo2ego/dataRackCableManagement_left.mp4";
+import dataRackCableManagementLeftPoster from "@/assets/Products/RoboAnnotator/v2v/exo2ego/dataRackCableManagement-poster.png";
+import dataRackCableManagementRightVideo from "@/assets/Products/RoboAnnotator/v2v/exo2ego/dataRackCableManagement_right.mp4";
+import dataRackCableManagementRightPoster from "@/assets/Products/RoboAnnotator/v2v/exo2ego/dataRackCableManagement-poster.png";
+
 import cornerCaseInput from "@/assets/Products/RoboAnnotator/i2i/cornercase/input.png";
 import cornerCaseFire from "@/assets/Products/RoboAnnotator/i2i/cornercase/fireoutput.png";
 import cornerCaseOil from "@/assets/Products/RoboAnnotator/i2i/cornercase/oilleak.png";
@@ -92,9 +94,9 @@ const VIDEO_OUTPUTS = {
     posterSrc: sourcedataRackInstallPoster,
     caption: "Front grille source clip",
   },
-  cableInsertionInput: {
-    videoSrc: cableInsertionVideo,
-    posterSrc: cableInsertionPoster,
+  dataRackCableManagementInput: {
+    videoSrc: dataRackCableManagement,
+    posterSrc: dataRackCableManagementPoster,
     caption: "Cable insertion source clip",
   },
   occlusionRemoval: {
@@ -113,13 +115,13 @@ const VIDEO_OUTPUTS = {
     caption: "Generated right view",
   },
   exo2egoLeft: {
-    videoSrc: cableInsertionLeftVideo,
-    posterSrc: cableInsertionLeftPoster,
+    videoSrc: dataRackCableManagementLeftVideo,
+    posterSrc: dataRackCableManagementLeftPoster,
     caption: "Generated occlusion + left view",
   },
   exo2egoRight: {
-    videoSrc: cableInsertionRightVideo,
-    posterSrc: cableInsertionRightPoster,
+    videoSrc: dataRackCableManagementRightVideo,
+    posterSrc: dataRackCableManagementRightPoster,
     caption: "Generated occlusion + right view",
   },
 
@@ -492,7 +494,7 @@ export default function RoboEyeView() {
           title="EXO to EGO Conversion"
           description="Transforms fixed EXO footage into robot-ready EGO perspectives for inspection and manipulation tasks."
           engineDetail="EXO to EGO Conversion"
-          inputAsset={VIDEO_OUTPUTS.cableInsertionInput}
+          inputAsset={VIDEO_OUTPUTS.dataRackCableManagementInput}
           outputAssets={[VIDEO_OUTPUTS.exo2egoLeft, VIDEO_OUTPUTS.exo2egoRight]}
         />
       ),
