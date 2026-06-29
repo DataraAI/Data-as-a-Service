@@ -780,6 +780,20 @@ def generate_hand_mesh(
                                 remote_artifacts.append(posixpath.join(path, filename))
                     else:
                         remote_artifacts.append(zip_path)  # transfer the zip instead
+                     # Zip on the remote, transfer one file, extract locally
+                    zip_path = f"{path}.zip"
+                    _, zip_err, zip_status = _run_command_with_status(
+                        ssh_client,
+                        f'cd "{_shell_escape(path)}" && zip -j "{_shell_escape(zip_path)}" *.obj'
+                    )
+                    if zip_status != 0:
+                        logger.error("Failed to zip OBJ files at %s: %s", path, zip_err)
+                        # Fall back to individual transfers
+                        for filename in sftp.listdir(path):
+                            if filename.lower().endswith(".obj"):
+                                remote_artifacts.append(posixpath.join(path, filename))
+                    else:
+                        remote_artifacts.append(zip_path)  # transfer the zip instead
                 elif line.startswith("OUTPUT_MCAP: "):
                     remote_mcap.append(line[len("OUTPUT_MCAP: "):].strip())
                 elif line.startswith("OUTPUT_NPZ: "):
@@ -820,6 +834,7 @@ def generate_hand_mesh(
                     filename = os.path.basename(remote_artifact_path)
                     local_path = os.path.join(local_artifacts_dir, filename)
                     sftp.get(remote_artifact_path, local_path)
+
                     if filename.endswith(".zip") and os.path.isfile(local_path):
                         import zipfile
                         with zipfile.ZipFile(local_path, "r") as zf:
@@ -830,7 +845,6 @@ def generate_hand_mesh(
                                 local_artifact_paths.append(os.path.join(local_artifacts_dir, extracted))
                     elif os.path.isfile(local_path):
                         local_artifact_paths.append(local_path)   
-
                 for index, remote_mcap_path in enumerate(remote_mcap):
                     filename = os.path.basename(remote_mcap_path) or f"mcap_{index + 1}"
                     local_path = os.path.join(local_mcap_dir, filename)
