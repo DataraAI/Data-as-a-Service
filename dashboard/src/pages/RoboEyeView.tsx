@@ -404,7 +404,6 @@ function V2VRow({
 }) {
   const [hovered, setHovered] = useState(false);
   const multiOutput = outputAssets.length > 1;
-  const multiOutput = outputAssets.length > 1;
 
   return (
     <div className="rounded-[16px] border border-slate-200/80 bg-card p-4 dark:border-slate-700 sm:p-5">
