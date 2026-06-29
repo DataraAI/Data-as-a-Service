@@ -1,30 +1,36 @@
-import { useAuth } from "@/auth/useAuth";
-import { useEffect, useRef, useState } from "react";
-import { Eye, Sparkles, X } from "lucide-react";
-import { Link } from "react-router-dom";
-import FooterSection from "@/components/FooterSection";
-import FeatureShowcaseCarousel, { type FeatureShowcaseItem } from "@/components/FeatureShowcaseCarousel";
-import Navigation from "@/components/Navigation";
-import { usePageTitle } from "@/hooks/usePageTitle";
-import { canImportData, ROBODATAHUB_IMPORT_DATA_PATH } from "@/lib/dataImportAccess";
-import pduInstallationVideo from "@/assets/Products/RoboAnnotator/v2v/input/pduInstallation.mp4";
 import pduInstallationPoster from "@/assets/Products/RoboAnnotator/v2v/input/pduInstallation-poster.jpg";
-import sourcedataRackInstall from "@/assets/Products/RoboAnnotator/v2v/input/source-dataRackInstall.mp4";
+import pduInstallationVideo from "@/assets/Products/RoboAnnotator/v2v/input/pduInstallation.mp4";
 import sourcedataRackInstallPoster from "@/assets/Products/RoboAnnotator/v2v/input/source-dataRackInstall-poster.png";
-import dataRackInstallLeftVideo from "@/assets/Products/RoboAnnotator/v2v/newangles/dataRackInstall-left.mp4";
+import sourcedataRackInstall from "@/assets/Products/RoboAnnotator/v2v/input/source-dataRackInstall.mp4";
 import dataRackInstallLeftPoster from "@/assets/Products/RoboAnnotator/v2v/newangles/dataRackInstall-left-poster.png";
-import noPersonVideo from "@/assets/Products/RoboAnnotator/v2v/occl_removal/no_person.mp4";
+import dataRackInstallLeftVideo from "@/assets/Products/RoboAnnotator/v2v/newangles/dataRackInstall-left.mp4";
 import noPersonPoster from "@/assets/Products/RoboAnnotator/v2v/occl_removal/no_person-poster.jpg";
+import noPersonVideo from "@/assets/Products/RoboAnnotator/v2v/occl_removal/no_person.mp4";
+import { useAuth } from "@/auth/useAuth";
+import FeatureShowcaseCarousel, {
+  type FeatureShowcaseItem,
+} from "@/components/FeatureShowcaseCarousel";
+import FooterSection from "@/components/FooterSection";
+import Navigation from "@/components/Navigation";
+import {
+  canImportData,
+  ROBODATAHUB_IMPORT_DATA_PATH,
+} from "@/lib/dataImportAccess";
+import { Eye, Sparkles, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 
+import {
+  default as dataRackCableManagementLeftPoster,
+  default as dataRackCableManagementPoster,
+  default as dataRackCableManagementRightPoster,
+} from "@/assets/Products/RoboAnnotator/v2v/exo2ego/dataRackCableManagement-poster.png";
 import dataRackCableManagement from "@/assets/Products/RoboAnnotator/v2v/exo2ego/dataRackCableManagement.mp4";
-import dataRackCableManagementPoster from "@/assets/Products/RoboAnnotator/v2v/exo2ego/dataRackCableManagement-poster.png";
 import dataRackCableManagementLeftVideo from "@/assets/Products/RoboAnnotator/v2v/exo2ego/dataRackCableManagement_left.mp4";
-import dataRackCableManagementLeftPoster from "@/assets/Products/RoboAnnotator/v2v/exo2ego/dataRackCableManagement-poster.png";
 import dataRackCableManagementRightVideo from "@/assets/Products/RoboAnnotator/v2v/exo2ego/dataRackCableManagement_right.mp4";
-import dataRackCableManagementRightPoster from "@/assets/Products/RoboAnnotator/v2v/exo2ego/dataRackCableManagement-poster.png";
 
-import cornerCaseInput from "@/assets/Products/RoboAnnotator/i2i/cornercase/input.png";
 import cornerCaseFire from "@/assets/Products/RoboAnnotator/i2i/cornercase/fireoutput.png";
+import cornerCaseInput from "@/assets/Products/RoboAnnotator/i2i/cornercase/input.png";
 import cornerCaseOil from "@/assets/Products/RoboAnnotator/i2i/cornercase/oilleak.png";
 import maskInput000 from "@/assets/Products/RoboAnnotator/i2i/maskseg/000.png";
 import maskOutput000 from "@/assets/Products/RoboAnnotator/i2i/maskseg/000mask.png";
@@ -124,7 +130,6 @@ const VIDEO_OUTPUTS = {
     posterSrc: dataRackCableManagementRightPoster,
     caption: "Generated occlusion + right view",
   },
-
 } satisfies Record<string, VideoAsset>;
 
 function InlineEngineCard({ detail }: { detail: string }) {
@@ -134,8 +139,12 @@ function InlineEngineCard({ detail }: { detail: string }) {
         <div className="mx-auto mb-2 grid h-9 w-9 place-items-center rounded-[10px] border border-teal-200 bg-teal-100 text-teal-700 dark:border-white/20 dark:bg-white/10 dark:text-teal-200">
           <Sparkles className="h-4 w-4" />
         </div>
-        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-teal-700 dark:text-teal-200">RoboAnnotator</p>
-        <p className="mt-1 text-[13px] font-extrabold text-slate-950 dark:text-slate-100">{detail}</p>
+        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-teal-700 dark:text-teal-200">
+          RoboAnnotator
+        </p>
+        <p className="mt-1 text-[13px] font-extrabold text-slate-950 dark:text-slate-100">
+          {detail}
+        </p>
       </div>
     </div>
   );
@@ -152,12 +161,28 @@ function I2IPipe({ detail }: { detail: string }) {
             <div className="mx-auto mb-2 grid h-9 w-9 place-items-center rounded-[10px] border border-teal-300 bg-teal-100 text-teal-700 dark:border-teal-800 dark:bg-teal-950/50 dark:text-teal-200">
               <Sparkles className="h-4 w-4" />
             </div>
-            <p className="text-[9px] font-black uppercase tracking-[0.14em] text-teal-700 dark:text-teal-200">RoboAnnotator</p>
-            <p className="mt-1 text-[11px] font-extrabold text-slate-950 dark:text-slate-100">{detail}</p>
+            <p className="text-[9px] font-black uppercase tracking-[0.14em] text-teal-700 dark:text-teal-200">
+              RoboAnnotator
+            </p>
+            <p className="mt-1 text-[11px] font-extrabold text-slate-950 dark:text-slate-100">
+              {detail}
+            </p>
           </div>
           <div className="my-2 h-6 w-px bg-slate-200 dark:bg-slate-700" />
-          <svg width="10" height="14" viewBox="0 0 10 14" fill="none" className="text-teal-600 dark:text-teal-300">
-            <path d="M1 1l8 6-8 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          <svg
+            width="10"
+            height="14"
+            viewBox="0 0 10 14"
+            fill="none"
+            className="text-teal-600 dark:text-teal-300"
+          >
+            <path
+              d="M1 1l8 6-8 6"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </svg>
         </div>
       </div>
@@ -203,7 +228,10 @@ function ImageMosaic({
   return (
     <div className={`grid gap-1 ${gridClass}`}>
       {items.map((item, index) => {
-        const spanClass = columns === 2 && items.length === 3 && index === 2 ? "sm:col-span-2" : "";
+        const spanClass =
+          columns === 2 && items.length === 3 && index === 2
+            ? "sm:col-span-2"
+            : "";
         return (
           <div key={`${item.caption}-${index}`} className={spanClass}>
             <ImagePreviewTile asset={item} onOpen={onOpen} />
@@ -243,22 +271,46 @@ function I2IRow({
 }) {
   return (
     <div className="rounded-[16px] border border-slate-200/80 bg-card p-4 dark:border-slate-700 sm:p-5">
-      <p className="text-[17px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">{title}</p>
-      <p className="mt-1.5 max-w-[760px] text-[12px] leading-6 text-slate-500 dark:text-slate-400">{description}</p>
+      <p className="text-[17px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">
+        {title}
+      </p>
+      <p className="mt-1.5 max-w-[760px] text-[12px] leading-6 text-slate-500 dark:text-slate-400">
+        {description}
+      </p>
 
       <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,0.98fr)_118px_minmax(0,1.12fr)] xl:items-center">
         <div>
-          <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-blue-700 dark:text-blue-200">{inputTitle}</p>
-          <ImageMosaic items={inputItems} columns={inputColumns} onOpen={onImageOpen} />
-          {inputNote ? <p className="mt-3 text-[12px] font-semibold leading-6 text-slate-500 dark:text-slate-400">{inputNote}</p> : null}
+          <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-blue-700 dark:text-blue-200">
+            {inputTitle}
+          </p>
+          <ImageMosaic
+            items={inputItems}
+            columns={inputColumns}
+            onOpen={onImageOpen}
+          />
+          {inputNote ? (
+            <p className="mt-3 text-[12px] font-semibold leading-6 text-slate-500 dark:text-slate-400">
+              {inputNote}
+            </p>
+          ) : null}
         </div>
 
         <I2IPipe detail={engineDetail} />
 
         <div>
-          <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-teal-700 dark:text-teal-200">{outputTitle}</p>
-          <ImageMosaic items={outputItems} columns={outputColumns} onOpen={onImageOpen} />
-          {outputNote ? <p className="mt-3 text-[12px] font-semibold leading-6 text-slate-500 dark:text-slate-400">{outputNote}</p> : null}
+          <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-teal-700 dark:text-teal-200">
+            {outputTitle}
+          </p>
+          <ImageMosaic
+            items={outputItems}
+            columns={outputColumns}
+            onOpen={onImageOpen}
+          />
+          {outputNote ? (
+            <p className="mt-3 text-[12px] font-semibold leading-6 text-slate-500 dark:text-slate-400">
+              {outputNote}
+            </p>
+          ) : null}
         </div>
       </div>
     </div>
@@ -312,8 +364,15 @@ function ImageLightbox({
         <X className="h-5 w-5" />
       </button>
 
-      <div className="max-h-full max-w-[min(96vw,1400px)]" onClick={(event) => event.stopPropagation()}>
-        <img src={image.src} alt={image.alt} className="max-h-[88vh] w-auto max-w-full rounded-[16px] object-contain shadow-[0_18px_50px_rgba(0,0,0,0.35)]" />
+      <div
+        className="max-h-full max-w-[min(96vw,1400px)]"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <img
+          src={image.src}
+          alt={image.alt}
+          className="max-h-[88vh] w-auto max-w-full rounded-[16px] object-contain shadow-[0_18px_50px_rgba(0,0,0,0.35)]"
+        />
       </div>
     </div>
   );
@@ -410,12 +469,18 @@ function V2VRow({
 
   return (
     <div className="rounded-[16px] border border-slate-200/80 bg-card p-4 dark:border-slate-700 sm:p-5">
-      <p className="text-[17px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">{title}</p>
-      <p className="mt-1.5 max-w-[760px] text-[12px] leading-6 text-slate-500 dark:text-slate-400">{description}</p>
+      <p className="text-[17px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">
+        {title}
+      </p>
+      <p className="mt-1.5 max-w-[760px] text-[12px] leading-6 text-slate-500 dark:text-slate-400">
+        {description}
+      </p>
 
       <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,0.98fr)_118px_minmax(0,1.12fr)] xl:items-center">
         <div>
-          <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-blue-700 dark:text-blue-200">Input video</p>
+          <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-blue-700 dark:text-blue-200">
+            Input video
+          </p>
           <VideoPreviewTile
             asset={inputAsset}
             aspectClass={multiOutput ? "aspect-[2/1]" : "aspect-[16/9]"}
@@ -428,7 +493,9 @@ function V2VRow({
         <I2IPipe detail={engineDetail} />
 
         <div>
-          <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-teal-700 dark:text-teal-200">Output video</p>
+          <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-teal-700 dark:text-teal-200">
+            Output video
+          </p>
           <div className="grid grid-cols-1 gap-3">
             {outputAssets.map((asset) => (
               <VideoPreviewTile
@@ -450,7 +517,9 @@ function V2VRow({
 export default function RoboEyeView() {
   usePageTitle("RoboAnnotator");
   const { isAuthenticated, isApproved, user } = useAuth();
-  const [expandedImage, setExpandedImage] = useState<ExpandedImage | null>(null);
+  const [expandedImage, setExpandedImage] = useState<ExpandedImage | null>(
+    null,
+  );
   const canSubmitFootage = canImportData({ isAuthenticated, isApproved, user });
   const showcaseItems: FeatureShowcaseItem[] = [
     {
@@ -480,7 +549,10 @@ export default function RoboEyeView() {
           description="Generates alternative perspectives from a single clip for robot-view training."
           engineDetail="New Angle Generation"
           inputAsset={VIDEO_OUTPUTS.frontGrilleInput}
-          outputAssets={[VIDEO_OUTPUTS.newAngleLeft, VIDEO_OUTPUTS.newAngleRight]}
+          outputAssets={[
+            VIDEO_OUTPUTS.newAngleLeft,
+            VIDEO_OUTPUTS.newAngleRight,
+          ]}
         />
       ),
     },
@@ -571,8 +643,10 @@ export default function RoboEyeView() {
                 </span>
               </div>
               <p className="max-w-[900px] text-[15px] leading-8 text-slate-500 dark:text-slate-400">
-                Generate training-ready robotics data through video-to-video and image-to-image transformation,
-                including new-angle perspectives, occlusion removal, EXO-to-EGO conversion, corner cases, and mask segmentation.
+                Generate training-ready robotics data through video-to-video and
+                image-to-image transformation, including new-angle perspectives,
+                occlusion removal, EXO-to-EGO conversion, corner cases, and mask
+                segmentation.
               </p>
             </section>
 
@@ -591,7 +665,10 @@ export default function RoboEyeView() {
                         Run RoboAnnotator on Your Footage
                       </p>
                       <p className="max-w-[520px] text-[12px] leading-5 text-slate-500 dark:text-slate-400">
-                        Upload source videos or frames into RoboDataHub, then open the dataset to run view synthesis, occlusion removal, segmentation, or corner-case tools when you&apos;re ready.
+                        Upload source videos or frames into RoboDataHub, then
+                        open the dataset to run view synthesis, occlusion
+                        removal, segmentation, or corner-case tools when
+                        you&apos;re ready.
                       </p>
                     </div>
                   </div>
@@ -618,7 +695,10 @@ export default function RoboEyeView() {
         </div>
       </main>
 
-      <ImageLightbox image={expandedImage} onClose={() => setExpandedImage(null)} />
+      <ImageLightbox
+        image={expandedImage}
+        onClose={() => setExpandedImage(null)}
+      />
 
       <FooterSection />
     </div>
