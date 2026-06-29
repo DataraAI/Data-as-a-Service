@@ -79,8 +79,24 @@ class LambdaJobStore:
             self._acquire_job_lock(session, f"lambda-jobs-user-{owner_user_id}")
             self._acquire_job_lock(session, "lambda-jobs-ticket-sequence")
 
+            session.execute(
+                update(self.lambda_jobs)
+                .where(
+                    and_(
+                        self.lambda_jobs.c.active_dedupe_key == active_dedupe_key,
+                        self.lambda_jobs.c.status.in_(("succeeded", "failed")),
+                    )
+                )
+                .values(active_dedupe_key=None)
+            )
+
             duplicate = session.execute(
-                select(self.lambda_jobs).where(self.lambda_jobs.c.active_dedupe_key == active_dedupe_key)
+                select(self.lambda_jobs).where(
+                    and_(
+                        self.lambda_jobs.c.active_dedupe_key == active_dedupe_key,
+                        self.lambda_jobs.c.status.in_(("queued", "running")),
+                    )
+                )
             ).mappings().first()
             if duplicate:
                 return "duplicate", dict(duplicate)
@@ -149,6 +165,22 @@ class LambdaJobStore:
             .where(self.lambda_jobs.c.job_id == job_id)
         )
         return self._select_one(statement)
+
+    def get_active_duplicate_lambda_job(
+        self,
+        *,
+        owner_user_id: int,
+        request_fingerprint: str,
+    ) -> dict[str, Any] | None:
+        active_dedupe_key = f"{owner_user_id}:{request_fingerprint}"
+        return self._select_one(
+            select(self.lambda_jobs).where(
+                and_(
+                    self.lambda_jobs.c.active_dedupe_key == active_dedupe_key,
+                    self.lambda_jobs.c.status.in_(("queued", "running")),
+                )
+            )
+        )
 
     def list_lambda_jobs(
         self,
