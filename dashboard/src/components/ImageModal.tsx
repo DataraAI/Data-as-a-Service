@@ -1,9 +1,22 @@
-import { ChevronLeft, ChevronRight, Copy, Download, Film, Info, Loader2, X } from "lucide-react";
+import {
+  submitGenerationRequest,
+  useQueuedJob,
+  type LambdaJob,
+} from "@/lib/lambdaJobs";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Copy,
+  Download,
+  Film,
+  Info,
+  Loader2,
+  X,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { QueuedJobStatus } from "./QueuedJobStatus";
 import { ThreeDViewer } from "./ThreeDViewer";
 import { VideoToolsPanel } from "./VideoToolsPanel";
-import { QueuedJobStatus } from "./QueuedJobStatus";
-import { submitGenerationRequest, useQueuedJob, type LambdaJob } from "@/lib/lambdaJobs";
 
 interface ImageModalProps {
   image: any;
@@ -23,7 +36,10 @@ interface ImageModalProps {
 const VLM_PRESET_OPTIONS = [
   { value: "describe_image", label: "Describe the image." },
   { value: "task_completed", label: "Has the task been completed?" },
-  { value: "sensor_modalities", label: "What are the sensor modalities detected?" },
+  {
+    value: "sensor_modalities",
+    label: "What are the sensor modalities detected?",
+  },
 ];
 
 function isExoSourceImage(image: any): boolean {
@@ -32,7 +48,8 @@ function isExoSourceImage(image: any): boolean {
   if (blobId.includes("/egos/")) return false;
   if (image.metadata?.view === "exo") return true;
   if (blobId.includes("/orig/")) return true;
-  if (Array.isArray(image.tags) && image.tags.includes("exocentric")) return true;
+  if (Array.isArray(image.tags) && image.tags.includes("exocentric"))
+    return true;
   return false;
 }
 
@@ -50,36 +67,55 @@ export function ImageModal({
   onVideoToolSuccess,
   onOpenViewerPath,
 }: ImageModalProps) {
-  const [selectedCameraWork, setSelectedCameraWork] = useState("Rotate right 45 degrees");
+  const [selectedCameraWork, setSelectedCameraWork] = useState(
+    "Rotate right 45 degrees",
+  );
   const [isGeneratingEgo, setIsGeneratingEgo] = useState(false);
   const [cornerCasePrompt, setCornerCasePrompt] = useState("");
   const [isAddingCornerCase, setIsAddingCornerCase] = useState(false);
-  const [vlmPromptMode, setVlmPromptMode] = useState<"preset" | "custom">("preset");
+  const [vlmPromptMode, setVlmPromptMode] = useState<"preset" | "custom">(
+    "preset",
+  );
   const [selectedVlmPreset, setSelectedVlmPreset] = useState("describe_image");
   const [customVlmPrompt, setCustomVlmPrompt] = useState("");
   const [isCreatingVlmTags, setIsCreatingVlmTags] = useState(false);
-  const automatedTagsJob = useQueuedJob(`datara-job:automated-tags:${image?.asset_id ?? "none"}`, (completedJob) => {
-    if (completedJob.status === "succeeded") onVlmSuccess?.();
-  });
-  const cornerCaseJob = useQueuedJob(`datara-job:scene-variation:${image?.asset_id ?? "none"}`, (completedJob) => {
-    if (completedJob.status === "succeeded") onCornerCaseSuccess?.();
-  });
-  const perspectiveJob = useQueuedJob(`datara-job:perspective:${image?.asset_id ?? "none"}`, (completedJob) => {
-    if (completedJob.status === "succeeded") onEgoGenSuccess?.();
-  });
+  const automatedTagsJob = useQueuedJob(
+    `datara-job:automated-tags:${image?.asset_id ?? "none"}`,
+    (completedJob) => {
+      if (completedJob.status === "succeeded") onVlmSuccess?.();
+    },
+  );
+  const cornerCaseJob = useQueuedJob(
+    `datara-job:scene-variation:${image?.asset_id ?? "none"}`,
+    (completedJob) => {
+      if (completedJob.status === "succeeded") onCornerCaseSuccess?.();
+    },
+  );
+  const perspectiveJob = useQueuedJob(
+    `datara-job:perspective:${image?.asset_id ?? "none"}`,
+    (completedJob) => {
+      if (completedJob.status === "succeeded") onEgoGenSuccess?.();
+    },
+  );
 
-  const sourceVisibility = image?.dataset?.visibility ?? image?.metadata?.visibility ?? "public";
+  const sourceVisibility =
+    image?.dataset?.visibility ?? image?.metadata?.visibility ?? "public";
   const isVideo = image?.type === "video";
   const isStillImage = image?.type === "image";
   const isOcclusionRemovedVideo = Boolean(
     isVideo &&
-      (image?.metadata?.source_type === "occlusion_removed_video" ||
-        (Array.isArray(image?.tags) && image.tags.includes("occlusion_removed"))),
+    (image?.metadata?.source_type === "occlusion_removed_video" ||
+      (Array.isArray(image?.tags) && image.tags.includes("occlusion_removed"))),
   );
   const canShowVideoTools = Boolean(
-    canUseGenerationTools && isVideo && (image?.is_primary_input || isOcclusionRemovedVideo),
+    canUseGenerationTools &&
+    isVideo &&
+    (image?.is_primary_input || isOcclusionRemovedVideo),
   );
-  const isMcap = image?.type === "mcap" || typeof image?.name === "string" && image.name.toLowerCase().endsWith(".mcap");
+  const isMcap =
+    image?.type === "mcap" ||
+    (typeof image?.name === "string" &&
+      image.name.toLowerCase().endsWith(".mcap"));
   const assetUrl = image?.proxy_url || image?.url;
 
   useEffect(() => {
@@ -95,11 +131,13 @@ export function ImageModal({
   const existingVlmRuns = useMemo(() => {
     const rawRuns = image?.metadata?.vlm?.runs;
     if (!rawRuns || typeof rawRuns !== "object") {
-      return [] as Array<[string, { effective_prompt?: string; tags?: string[] }]>;
+      return [] as Array<
+        [string, { effective_prompt?: string; tags?: string[] }]
+      >;
     }
-    return Object.entries(rawRuns as Record<string, { effective_prompt?: string; tags?: string[] }>).filter(
-      ([, run]) => Array.isArray(run?.tags) && run.tags.length > 0,
-    );
+    return Object.entries(
+      rawRuns as Record<string, { effective_prompt?: string; tags?: string[] }>,
+    ).filter(([, run]) => Array.isArray(run?.tags) && run.tags.length > 0);
   }, [image]);
 
   if (!image) return null;
@@ -130,16 +168,28 @@ export function ImageModal({
     event.preventDefault();
     const payload =
       vlmPromptMode === "custom"
-        ? { prompt_mode: "custom", custom_prompt: customVlmPrompt.trim(), asset_id: image.asset_id }
-        : { prompt_mode: "preset", prompt_preset: selectedVlmPreset, asset_id: image.asset_id };
+        ? {
+            prompt_mode: "custom",
+            custom_prompt: customVlmPrompt.trim(),
+            asset_id: image.asset_id,
+          }
+        : {
+            prompt_mode: "preset",
+            prompt_preset: selectedVlmPreset,
+            asset_id: image.asset_id,
+          };
     if (vlmPromptMode === "custom" && !customVlmPrompt.trim()) return;
 
     setIsCreatingVlmTags(true);
     try {
-      const data = await submitGenerationRequest("/api/create_vlm_tags", payload);
+      const data = await submitGenerationRequest(
+        "/api/create_vlm_tags",
+        payload,
+      );
       automatedTagsJob.trackJob(data);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Automated tagging failed";
+      const message =
+        error instanceof Error ? error.message : "Automated tagging failed";
       alert(`Error: ${message}`);
     } finally {
       setIsCreatingVlmTags(false);
@@ -190,7 +240,11 @@ export function ImageModal({
       <div className="relative flex flex-1 items-center justify-center overflow-hidden p-8">
         {image.type === "3d" ? (
           <div className="relative h-full w-full max-w-4xl rounded-lg border border-border bg-card/50">
-            <ThreeDViewer key={`${assetUrl}-${image.name}`} url={assetUrl} fileName={image.name} />
+            <ThreeDViewer
+              key={`${assetUrl}-${image.name}`}
+              url={assetUrl}
+              fileName={image.name}
+            />
           </div>
         ) : isVideo ? (
           <video
@@ -205,8 +259,12 @@ export function ImageModal({
             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
               <Film className="h-6 w-6" />
             </div>
-            <h3 className="font-sans-tech text-sm font-bold text-foreground">{image.name}</h3>
-            <p className="mt-1 font-sans-tech text-xs text-muted-foreground">MCAP Robotics Data Container</p>
+            <h3 className="font-sans-tech text-sm font-bold text-foreground">
+              {image.name}
+            </h3>
+            <p className="mt-1 font-sans-tech text-xs text-muted-foreground">
+              MCAP Robotics Data Container
+            </p>
           </div>
         ) : (
           <img
@@ -224,7 +282,9 @@ export function ImageModal({
       </div>
       <div className="z-20 flex w-96 flex-col border-l border-border bg-card shadow-2xl">
         <div className="flex items-center justify-between border-b border-border bg-card p-4">
-          <h2 className="font-sans-tech font-bold text-foreground tracking-tight">Asset Details</h2>
+          <h2 className="font-sans-tech font-bold text-foreground tracking-tight">
+            Asset Details
+          </h2>
           <button
             onClick={onClose}
             className="rounded-sm p-1 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
@@ -239,8 +299,13 @@ export function ImageModal({
                 File Path
               </label>
               <div className="flex items-center space-x-2 rounded-sm border border-border bg-input p-2">
-                <code className="flex-1 truncate text-xs text-primary">{image.id}</code>
-                <button onClick={() => copyToClipboard(image.id)} className="text-muted-foreground hover:text-foreground">
+                <code className="flex-1 truncate text-xs text-primary">
+                  {image.id}
+                </code>
+                <button
+                  onClick={() => copyToClipboard(image.id)}
+                  className="text-muted-foreground hover:text-foreground"
+                >
                   <Copy className="h-3 w-3" />
                 </button>
               </div>
@@ -250,7 +315,9 @@ export function ImageModal({
                 Asset Id
               </label>
               <div className="flex items-center space-x-2 rounded-sm border border-border bg-input p-2">
-                <code className="flex-1 truncate text-xs text-blue-400">{image.asset_id}</code>
+                <code className="flex-1 truncate text-xs text-blue-400">
+                  {image.asset_id}
+                </code>
                 <button
                   onClick={() => copyToClipboard(image.asset_id)}
                   className="text-muted-foreground hover:text-foreground"
@@ -290,7 +357,9 @@ export function ImageModal({
             </div>
             <div className="divide-y divide-border rounded-sm border border-border bg-background/50 text-[11px]">
               <div className="flex justify-between gap-3 p-3">
-                <span className="font-medium text-muted-foreground">Date Captured</span>
+                <span className="font-medium text-muted-foreground">
+                  Date Captured
+                </span>
                 <span className="text-right text-foreground">
                   {image.metadata?.date
                     ? `${image.metadata.date.substring(0, 4)}-${image.metadata.date.substring(4, 6)}-${image.metadata.date.substring(6, 8)}`
@@ -299,17 +368,29 @@ export function ImageModal({
               </div>
               <div className="flex justify-between gap-3 p-3">
                 <span className="font-medium text-muted-foreground">View</span>
-                <span className="text-right text-foreground">{image.metadata?.view || "N/A"}</span>
+                <span className="text-right text-foreground">
+                  {image.metadata?.view || "N/A"}
+                </span>
               </div>
               <div className="flex justify-between gap-3 p-3">
-                <span className="font-medium text-muted-foreground">Asset Type</span>
+                <span className="font-medium text-muted-foreground">
+                  Asset Type
+                </span>
                 <span className="text-right text-foreground">
-                  {image.type === "3d" ? "3D model" : isVideo ? "Video" : isMcap ? "MCAP File" : "Image"}
+                  {image.type === "3d"
+                    ? "3D model"
+                    : isVideo
+                      ? "Video"
+                      : isMcap
+                        ? "MCAP File"
+                        : "Image"}
                 </span>
               </div>
               {isVideo && (
                 <div className="flex justify-between gap-3 p-3">
-                  <span className="font-medium text-muted-foreground">Playback</span>
+                  <span className="font-medium text-muted-foreground">
+                    Playback
+                  </span>
                   <span className="inline-flex items-center gap-1 text-right text-foreground">
                     <Film className="h-3.5 w-3.5 text-primary" />
                     Watch in browser or download
@@ -317,8 +398,12 @@ export function ImageModal({
                 </div>
               )}
               <div className="flex justify-between gap-3 p-3">
-                <span className="font-medium text-muted-foreground">Visibility</span>
-                <span className="text-right text-foreground">{sourceVisibility}</span>
+                <span className="font-medium text-muted-foreground">
+                  Visibility
+                </span>
+                <span className="text-right text-foreground">
+                  {sourceVisibility}
+                </span>
               </div>
               <div className="flex justify-between gap-3 p-3">
                 <span className="font-medium text-muted-foreground">Task</span>
@@ -336,15 +421,19 @@ export function ImageModal({
               </label>
               <div className="space-y-3">
                 {existingVlmRuns.map(([promptLabel, run]) => (
-                  <div key={promptLabel} className="space-y-2 rounded-sm border border-border bg-background/40 p-3">
+                  <div
+                    key={promptLabel}
+                    className="space-y-2 rounded-sm border border-border bg-background/40 p-3"
+                  >
                     <div className="break-words font-sans-tech text-xs font-semibold text-foreground">
                       {promptLabel}
                     </div>
-                    {run?.effective_prompt && run.effective_prompt !== promptLabel && (
-                      <div className="break-words text-[11px] text-muted-foreground">
-                        Effective prompt: {run.effective_prompt}
-                      </div>
-                    )}
+                    {run?.effective_prompt &&
+                      run.effective_prompt !== promptLabel && (
+                        <div className="break-words text-[11px] text-muted-foreground">
+                          Effective prompt: {run.effective_prompt}
+                        </div>
+                      )}
                     <div className="flex flex-wrap gap-2">
                       {(run?.tags ?? []).map((tag) => (
                         <span
@@ -386,7 +475,9 @@ export function ImageModal({
                 {vlmPromptMode === "preset" ? (
                   <select
                     value={selectedVlmPreset}
-                    onChange={(event) => setSelectedVlmPreset(event.target.value)}
+                    onChange={(event) =>
+                      setSelectedVlmPreset(event.target.value)
+                    }
                     className="w-full rounded-sm border border-border bg-input px-3 py-2 text-sm focus:border-primary/50 focus:outline-none"
                   >
                     {VLM_PRESET_OPTIONS.map((option) => (
@@ -406,14 +497,24 @@ export function ImageModal({
                 )}
                 <button
                   type="submit"
-                  disabled={(vlmPromptMode === "custom" && !customVlmPrompt.trim()) || isCreatingVlmTags}
+                  disabled={
+                    (vlmPromptMode === "custom" && !customVlmPrompt.trim()) ||
+                    isCreatingVlmTags
+                  }
                   className="flex items-center gap-2 rounded-sm bg-primary px-6 py-2 text-xs font-bold uppercase text-primary-foreground shadow-lg shadow-primary/20 disabled:opacity-50"
                 >
-                  {isCreatingVlmTags && <Loader2 className="h-3 w-3 animate-spin" />}
-                  {isCreatingVlmTags ? "Submitting..." : "Create automated tags"}
+                  {isCreatingVlmTags && (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  )}
+                  {isCreatingVlmTags
+                    ? "Submitting..."
+                    : "Create automated tags"}
                 </button>
               </form>
-              <QueuedJobStatus jobs={automatedTagsJob.jobs} onClear={automatedTagsJob.clearJob} />
+              <QueuedJobStatus
+                jobs={automatedTagsJob.jobs}
+                onClear={automatedTagsJob.clearJob}
+              />
             </div>
           )}
 
@@ -435,11 +536,16 @@ export function ImageModal({
                   disabled={!cornerCasePrompt.trim() || isAddingCornerCase}
                   className="flex items-center gap-2 rounded-sm bg-primary px-6 py-2 text-xs font-bold uppercase text-primary-foreground shadow-lg shadow-primary/20 disabled:opacity-50"
                 >
-                  {isAddingCornerCase && <Loader2 className="h-3 w-3 animate-spin" />}
+                  {isAddingCornerCase && (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  )}
                   {isAddingCornerCase ? "Submitting..." : "Add corner case"}
                 </button>
               </form>
-              <QueuedJobStatus jobs={cornerCaseJob.jobs} onClear={cornerCaseJob.clearJob} />
+              <QueuedJobStatus
+                jobs={cornerCaseJob.jobs}
+                onClear={cornerCaseJob.clearJob}
+              />
             </div>
           )}
 
@@ -451,30 +557,52 @@ export function ImageModal({
               <form onSubmit={generateEgoView} className="space-y-4">
                 <select
                   value={selectedCameraWork}
-                  onChange={(event) => setSelectedCameraWork(event.target.value)}
+                  onChange={(event) =>
+                    setSelectedCameraWork(event.target.value)
+                  }
                   className="w-full rounded-sm border border-border bg-input px-3 py-2 text-sm focus:border-primary/50 focus:outline-none"
                 >
-                  <option value="Rotate right 45 degrees">Rotate right 45 degrees</option>
-                  <option value="Rotate right 90 degrees">Rotate right 90 degrees</option>
-                  <option value="Rotate left 45 degrees">Rotate left 45 degrees</option>
-                  <option value="Rotate left 90 degrees">Rotate left 90 degrees</option>
-                  <option value="Rotate up 45 degrees">Rotate up 45 degrees</option>
-                  <option value="Rotate up 90 degrees">Rotate up 90 degrees</option>
-                  <option value="Rotate down 45 degrees">Rotate down 45 degrees</option>
-                  <option value="Rotate down 90 degrees">Rotate down 90 degrees</option>
+                  <option value="Rotate right 45 degrees">
+                    Rotate right 45 degrees
+                  </option>
+                  <option value="Rotate right 90 degrees">
+                    Rotate right 90 degrees
+                  </option>
+                  <option value="Rotate left 45 degrees">
+                    Rotate left 45 degrees
+                  </option>
+                  <option value="Rotate left 90 degrees">
+                    Rotate left 90 degrees
+                  </option>
+                  <option value="Rotate up 45 degrees">
+                    Rotate up 45 degrees
+                  </option>
+                  <option value="Rotate up 90 degrees">
+                    Rotate up 90 degrees
+                  </option>
+                  <option value="Rotate down 45 degrees">
+                    Rotate down 45 degrees
+                  </option>
+                  <option value="Rotate down 90 degrees">
+                    Rotate down 90 degrees
+                  </option>
                 </select>
                 <button
                   type="submit"
                   disabled={isGeneratingEgo}
                   className="flex items-center gap-2 rounded-sm bg-primary px-6 py-2 text-xs font-bold uppercase text-primary-foreground shadow-lg shadow-primary/20 disabled:opacity-50"
                 >
-                  {isGeneratingEgo && <Loader2 className="h-3 w-3 animate-spin" />}
+                  {isGeneratingEgo && (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  )}
                   {isGeneratingEgo ? "Submitting..." : "Generate Ego View"}
                 </button>
               </form>
               <QueuedJobStatus
                 jobs={perspectiveJob.jobs}
-                onOpenViewerPath={(viewerPath) => window.location.assign(viewerPath)}
+                onOpenViewerPath={(viewerPath) =>
+                  window.location.assign(viewerPath)
+                }
                 onClear={perspectiveJob.clearJob}
               />
             </div>
@@ -482,7 +610,11 @@ export function ImageModal({
 
           {canShowVideoTools && (
             <VideoToolsPanel
-              routePath={routePath || image.dataset?.viewer_path?.replace(/^\/viewer\//, "") || ""}
+              routePath={
+                routePath ||
+                image.dataset?.viewer_path?.replace(/^\/viewer\//, "") ||
+                ""
+              }
               videos={[
                 {
                   asset_id: image.asset_id,
@@ -502,7 +634,8 @@ export function ImageModal({
 
           {isVideo && !canShowVideoTools && canUseGenerationTools && (
             <div className="rounded-sm border border-border bg-background/40 p-3 text-[11px] leading-relaxed text-muted-foreground">
-              Generation tools are available from the original input video for this dataset.
+              Generation tools are available from the original input video for
+              this dataset.
             </div>
           )}
 

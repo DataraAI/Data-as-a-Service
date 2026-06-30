@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, Film, Workflow } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { HandMeshGenerationPanel } from "./HandMeshGenerationPanel";
-import TaskIntelligencePanel, { getTaskIntelligenceFromMetadata } from "./TaskIntelligencePanel";
+import TaskIntelligencePanel, {
+  getTaskIntelligenceFromMetadata,
+} from "./TaskIntelligencePanel";
 import VideoToVideoViewsPanel from "./VideoToVideoViewsPanel";
 
 export interface VideoFolderAsset {
@@ -39,7 +41,9 @@ export function VideoToolsPanel({
   showTaskAnalysis = true,
 }: VideoToolsPanelProps) {
   const [selectedAssetId, setSelectedAssetId] = useState("");
-  const [expandedSections, setExpandedSections] = useState<Record<ToolSectionKey, boolean>>({
+  const [expandedSections, setExpandedSections] = useState<
+    Record<ToolSectionKey, boolean>
+  >({
     task: true,
     views: true,
     hand: false,
@@ -60,7 +64,8 @@ export function VideoToolsPanel({
   }, [sortedVideos]);
 
   const selectedVideo = useMemo(
-    () => sortedVideos.find((video) => video.asset_id === selectedAssetId) ?? null,
+    () =>
+      sortedVideos.find((video) => video.asset_id === selectedAssetId) ?? null,
     [selectedAssetId, sortedVideos],
   );
 
@@ -74,7 +79,10 @@ export function VideoToolsPanel({
   }
 
   const toggleSection = (section: ToolSectionKey) =>
-    setExpandedSections((previous) => ({ ...previous, [section]: !previous[section] }));
+    setExpandedSections((previous) => ({
+      ...previous,
+      [section]: !previous[section],
+    }));
 
   const sectionClassName =
     "overflow-hidden rounded-sm border border-border bg-background/35";
@@ -92,7 +100,9 @@ export function VideoToolsPanel({
   return (
     <div className={containerClassName}>
       <div className="flex items-center justify-between border-b border-border bg-background/50 p-3">
-        <span className="font-sans-tech font-bold text-foreground">Video Tools</span>
+        <span className="font-sans-tech font-bold text-foreground">
+          Video Tools
+        </span>
         <Workflow className="h-3.5 w-3.5 text-primary" />
       </div>
 
@@ -119,32 +129,34 @@ export function VideoToolsPanel({
         {selectedVideo && (
           <>
             {showTaskAnalysis && (
-            <section className={sectionClassName}>
-              <button
-                type="button"
-                onClick={() => toggleSection("task")}
-                className={sectionButtonClassName}
-              >
-                <span>Task Analysis</span>
-                {expandedSections.task ? (
-                  <ChevronDown className="h-3.5 w-3.5 text-primary" />
-                ) : (
-                  <ChevronRight className="h-3.5 w-3.5" />
+              <section className={sectionClassName}>
+                <button
+                  type="button"
+                  onClick={() => toggleSection("task")}
+                  className={sectionButtonClassName}
+                >
+                  <span>Task Analysis</span>
+                  {expandedSections.task ? (
+                    <ChevronDown className="h-3.5 w-3.5 text-primary" />
+                  ) : (
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  )}
+                </button>
+                {expandedSections.task && (
+                  <div className="border-t border-border p-3">
+                    <TaskIntelligencePanel
+                      key={`${selectedVideo.asset_id}-task`}
+                      assetId={selectedVideo.asset_id}
+                      videoID={selectedVideo.asset_id}
+                      videoURL={
+                        selectedVideo.url ?? selectedVideo.proxy_url ?? ""
+                      }
+                      initialTasks={initialTasks}
+                      onGenerated={onGenerationSuccess}
+                    />
+                  </div>
                 )}
-              </button>
-              {expandedSections.task && (
-                <div className="border-t border-border p-3">
-                  <TaskIntelligencePanel
-                    key={`${selectedVideo.asset_id}-task`}
-                    assetId={selectedVideo.asset_id}
-                    videoID={selectedVideo.asset_id}
-                    videoURL={selectedVideo.url ?? selectedVideo.proxy_url ?? ""}
-                    initialTasks={initialTasks}
-                    onGenerated={onGenerationSuccess}
-                  />
-                </div>
-              )}
-            </section>
+              </section>
             )}
 
             <section className={sectionClassName}>
@@ -166,7 +178,9 @@ export function VideoToolsPanel({
                     key={`${selectedVideo.asset_id}-views`}
                     assetId={selectedVideo.asset_id}
                     videoID={selectedVideo.asset_id}
-                    videoURL={selectedVideo.url ?? selectedVideo.proxy_url ?? ""}
+                    videoURL={
+                      selectedVideo.url ?? selectedVideo.proxy_url ?? ""
+                    }
                     datasetName={videoDatasetName(selectedVideo)}
                     onGenerated={onGenerationSuccess}
                   />
@@ -193,7 +207,9 @@ export function VideoToolsPanel({
                     <HandMeshGenerationPanel
                       key={`${selectedVideo.asset_id}-hand`}
                       assetId={selectedVideo.asset_id}
-                      videoUrl={selectedVideo.url || selectedVideo.proxy_url || ""}
+                      videoUrl={
+                        selectedVideo.url || selectedVideo.proxy_url || ""
+                      }
                       routePath={routePath}
                       videoName={selectedVideo.name}
                       onGenerated={(viewerPath) => {
