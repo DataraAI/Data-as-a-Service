@@ -161,7 +161,7 @@ const PRODUCT_CARDS: ProductCard[] = [
     badge: "Task Intelligence",
     tagline: "Full task workflows for assembly, pick-place & cabling",
     pills: ["Assembly & pick-place data", "95% precision - Peer Robotics", "Multi-step task sequences"],
-    linkLabel: "See case study",
+    linkLabel: "Learn more",
     to: "/robotaskmanipulator",
     icon: Workflow,
     tone: "border-amber-200/80 border-t-4 border-t-amber-700",
