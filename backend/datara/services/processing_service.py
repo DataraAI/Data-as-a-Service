@@ -1586,7 +1586,6 @@ class ProcessingService:
         # Check whether a cached VIPE zip already exists in blob storage for this asset.
         # If found, pass its SAS URL to the lambda so VIPE can be skipped.
         dataset_prefix = source_dataset["storage_prefix"].rstrip("/")
-        task_slug = str(source_dataset.get("dataset_name") or video_name).strip() or video_name
         vipe_zip_blob = f"{dataset_prefix}/misc/cache/{video_name}_vipe_output.zip"
         vipe_zip_url = None
         try:
@@ -1619,7 +1618,7 @@ class ProcessingService:
             if status_code != 200 or not result_path:
                 return {"error": "Failed to generate video-to-video views on the Lambda VM."}, status_code or 500
 
-            output_blob_name = f"{dataset_prefix}/{task_slug}_{trajectory}.mp4"
+            output_blob_name = f"{dataset_prefix}/{video_name}_{trajectory}.mp4"
             container_client = self.azure_service.get_container_client(source_dataset["storage_container"])
             with open(local_output_video, "rb") as fh:
                 container_client.upload_blob(
@@ -3011,8 +3010,7 @@ class ProcessingService:
         video_name = os.path.splitext(os.path.basename(source_blob))[0]
         trajectory = str(data.get("trajectory") or "left").strip()
         dataset_prefix = dataset["storage_prefix"].rstrip("/")
-        task_slug = str(dataset.get("dataset_name") or video_name).strip() or video_name
-        output_blob = f"{dataset_prefix}/{task_slug}_{trajectory}.mp4"
+        output_blob = f"{dataset_prefix}/{video_name}_{trajectory}.mp4"
         vipe_blob = f"{dataset_prefix}/misc/cache/{video_name}_vipe_output.zip"
         container = self.azure_service.get_container_client(dataset["storage_container"])
         with open(videos[0], "rb") as handle:
