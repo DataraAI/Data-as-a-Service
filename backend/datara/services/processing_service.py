@@ -2058,6 +2058,7 @@ class ProcessingService:
         seq_slug = self._slugify_sequence_name(
             str(data.get("seq") or os.path.splitext(video_basename)[0])
         )
+        video_name = os.path.splitext(video_basename)[0]
         dataset_summary = self.sql_store.build_dataset_summary(dataset, current_user)
         output_route_path = dataset_summary["full_path"].rstrip("/")
         output_storage_prefix = dataset["storage_prefix"].rstrip("/")
@@ -2065,7 +2066,21 @@ class ProcessingService:
         output_artifact_prefix = f"{output_storage_prefix}/misc/handmeshes"
         legacy_output_artifact_prefix = f"{output_storage_prefix}/hand_meshes"
         output_download_prefix = output_storage_prefix
+        vipe_zip_blob = f"{output_storage_prefix}/misc/cache/{video_name}_vipe_output.zip"
         source_task = str(dataset.get("task") or "").strip()
+        
+        # Check for a cached ViPE result so the remote script can skip ViPE inference
+        vipe_zip_url = None
+        try:
+            if self.azure_service.blob_exists(dataset["storage_container"], vipe_zip_blob):
+                vipe_zip_url = self.azure_service.generate_sas_url(
+                    dataset["storage_container"],
+                    vipe_zip_blob,
+                    expiry_hours=6,
+                )
+                logger.info("Found cached ViPE output for %s, skipping ViPE inference", video_name)
+        except Exception as exc:
+            logger.warning("Could not check for cached ViPE output: %s", exc)
 
         job_root = tempfile.mkdtemp(prefix="hand_mesh_job_", dir=DATASET_LIST_DIR)
         local_output_dir = os.path.join(job_root, "outputs")
@@ -2073,11 +2088,12 @@ class ProcessingService:
         try:
             from datara.services import call_lambda_vm
 
-            local_video_paths, local_artifact_paths, local_mcap_paths, local_npz_paths, status_code, error_message = call_lambda_vm.generate_hand_mesh(
+            local_video_paths, local_artifact_paths, local_mcap_paths, local_npz_paths, local_vipe_zip_paths, status_code, error_message = call_lambda_vm.generate_hand_mesh(
                 video_url=effective_video_url,
                 seq_name=seq_slug,
                 pipeline=pipeline,
                 local_output_dir=local_output_dir,
+                vipe_zip_url=vipe_zip_url,
             )
             if status_code != 200 or (not local_video_paths and not local_artifact_paths and not local_mcap_paths and not local_npz_paths):
                 return {"error": error_message or "Hand mesh generation failed"}, status_code or 500
@@ -2087,6 +2103,22 @@ class ProcessingService:
             self.azure_service.delete_blobs_with_prefix(dataset["storage_container"], legacy_output_artifact_prefix)
             self.azure_service.delete_cosmos_docs_for_prefix(dataset["storage_container"], legacy_output_artifact_prefix)
 
+            # Cache the fresh ViPE output to Azure for future hand mesh and
+            # video-to-video jobs on the same source video to reuse
+            if local_vipe_zip_paths:
+                try:
+                    container = self.azure_service.get_container_client(dataset["storage_container"])
+                    with open(local_vipe_zip_paths[0], "rb") as handle:
+                        container.upload_blob(
+                            name=vipe_zip_blob,
+                            data=handle,
+                            overwrite=True,
+                            content_settings=ContentSettings(content_type="application/zip"),
+                        )
+                    logger.info("Cached ViPE output to blob: %s", vipe_zip_blob)
+                except Exception as exc:
+                    logger.warning("Failed to cache ViPE output: %s", exc)
+                    
             uploaded_videos: list[str] = []
             uploaded_artifacts: list[str] = []
             uploaded_mcaps: list[str] = []
