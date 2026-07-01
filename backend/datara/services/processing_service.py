@@ -64,7 +64,7 @@ class ProcessingService:
         for codec in codec_attempts:
             writer = cv2.VideoWriter(
                 output_path,
-                cv2.VideoWriter_fourcc(*codec),
+                cv2.VideoWriter.fourcc(*codec),
                 effective_fps,
                 (width, height),
             )
@@ -125,10 +125,10 @@ class ProcessingService:
                 )
             raise ValueError("output_name must be category/task")
 
-        category = self._normalize_path_segment(data.get("category"), "category")
+        category = self._normalize_path_segment(data.get("category") or "", "category")
         brand = self._normalize_path_segment(data.get("brand") or "public", "brand")
         dataset_name = self._normalize_task_slug(
-            data.get("dataset_name") or data.get("task"),
+            data.get("dataset_name") or data.get("task") or "",
             "dataset_name",
         )
         return category, brand, dataset_name
@@ -985,14 +985,14 @@ class ProcessingService:
             metadata = image.get("metadata") if isinstance(image, dict) else None
             candidate = metadata.get("fps") if isinstance(metadata, dict) else None
             try:
-                numeric_fps = float(candidate)
+                numeric_fps = float(candidate if candidate is not None else fps)
             except (TypeError, ValueError):
                 numeric_fps = 0.0
             if numeric_fps > 0:
                 fps = numeric_fps
                 break
 
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        fourcc = cv2.VideoWriter.fourcc(*"mp4v")
         source_writer = cv2.VideoWriter(source_video_path, fourcc, fps, (width, height))
         mask_writer = cv2.VideoWriter(mask_video_path, fourcc, fps, (width, height))
         if not source_writer.isOpened() or not mask_writer.isOpened():
@@ -3050,7 +3050,8 @@ class ProcessingService:
         video_name = os.path.splitext(os.path.basename(source_blob))[0]
         trajectory = str(data.get("trajectory") or "left").strip()
         dataset_prefix = dataset["storage_prefix"].rstrip("/")
-        output_blob = f"{dataset_prefix}/{video_name}_{trajectory}.mp4"
+        task_slug = str(dataset.get("dataset_name") or video_name).strip() or video_name
+        output_blob = f"{dataset_prefix}/{task_slug}_{trajectory}.mp4"
         vipe_blob = f"{dataset_prefix}/misc/cache/{video_name}_vipe_output.zip"
         container = self.azure_service.get_container_client(dataset["storage_container"])
         with open(videos[0], "rb") as handle:
