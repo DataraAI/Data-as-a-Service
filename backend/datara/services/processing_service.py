@@ -2552,22 +2552,30 @@ class ProcessingService:
         data: dict[str, Any],
         _job_id: str,
     ) -> dict[str, Any]:
-        asset_id = str(data.get("asset_id") or "").strip()
-        if asset_id:
-            source = self._resolve_source_asset(current_user, asset_id)
-            video_url = self.azure_service.generate_sas_url(
-                source["dataset"]["storage_container"],
-                source["blob_name"],
-                expiry_hours=6,
-            )
-            video_basename = os.path.basename(source["blob_name"])
-        else:
-            video_url = self._resolve_hand_mesh_video_url(str(data.get("video_url") or ""), current_user)
-            video_basename = os.path.basename(urlparse(video_url).path)
+        source = self._resolve_source_asset(current_user, str(data.get("asset_id") or ""))
+        source_dataset = source["dataset"]
+        source_blob = source["blob_name"]
+        video_name = os.path.splitext(os.path.basename(source_blob))[0]
+        vipe_zip_blob = f"{source_dataset['storage_prefix'].rstrip('/')}/misc/cache/{video_name}_vipe_output.zip"
+        vipe_zip_url = ""
+        try:
+            if self.azure_service.blob_exists(source_dataset["storage_container"], vipe_zip_blob):
+                vipe_zip_url = self.azure_service.generate_sas_url(
+                    source_dataset["storage_container"],
+                    vipe_zip_blob,
+                    expiry_hours=6,
+                )
+        except Exception:
+            vipe_zip_url = ""
         return {
-            "video_url": video_url,
-            "seq": self._slugify_sequence_name(str(data.get("seq") or os.path.splitext(video_basename)[0])),
-            "pipeline": str(data.get("pipeline") or "default").strip() or "default",
+            "video_url": self.azure_service.generate_sas_url(
+                source_dataset["storage_container"],
+                source_blob,
+                expiry_hours=6,
+            ),
+            "seq": video_name,
+            "pipeline": str(data.get("pipeline") or "default"),
+            "vipe_zip_url": vipe_zip_url,
         }
 
     def _prepare_remote_remove_occlusion(
