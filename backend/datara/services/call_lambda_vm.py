@@ -834,7 +834,6 @@ def generate_hand_mesh(
                     filename = os.path.basename(remote_artifact_path)
                     local_path = os.path.join(local_artifacts_dir, filename)
                     sftp.get(remote_artifact_path, local_path)
-
                     if filename.endswith(".zip") and os.path.isfile(local_path):
                         import zipfile
                         with zipfile.ZipFile(local_path, "r") as zf:
@@ -845,6 +844,7 @@ def generate_hand_mesh(
                                 local_artifact_paths.append(os.path.join(local_artifacts_dir, extracted))
                     elif os.path.isfile(local_path):
                         local_artifact_paths.append(local_path)   
+
                 for index, remote_mcap_path in enumerate(remote_mcap):
                     filename = os.path.basename(remote_mcap_path) or f"mcap_{index + 1}"
                     local_path = os.path.join(local_mcap_dir, filename)
