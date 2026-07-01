@@ -3170,6 +3170,7 @@ class ProcessingService:
         seq_slug = self._slugify_sequence_name(
             str(data.get("seq") or os.path.splitext(video_basename)[0])
         )
+        video_name = os.path.splitext(video_basename)[0]
         summary = self.sql_store.build_dataset_summary(dataset, current_user)
         output_route_path = summary["full_path"].rstrip("/")
         output_storage_prefix = dataset["storage_prefix"].rstrip("/")
@@ -3177,6 +3178,7 @@ class ProcessingService:
         output_artifact_prefix = f"{output_storage_prefix}/misc/handmeshes"
         legacy_output_artifact_prefix = f"{output_storage_prefix}/hand_meshes"
         output_download_prefix = output_storage_prefix
+        vipe_zip_blob = f"{output_storage_prefix}/misc/cache/{video_name}_vipe_output.zip"
 
         videos = self._remote_artifacts(
             artifact_paths,
@@ -3184,10 +3186,11 @@ class ProcessingService:
         )
         mcaps = self._remote_artifacts(artifact_paths, extensions=(".mcap",))
         npz_files = self._remote_artifacts(artifact_paths, extensions=(".npz",))
+        vipe_zips = self._remote_artifacts(artifact_paths, marker="outputs/vipe", extensions=(".zip",))
         artifacts = [
             path
             for path in artifact_paths
-            if path not in set(videos) | set(mcaps) | set(npz_files)
+            if path not in set(videos) | set(mcaps) | set(npz_files) | set(vipe_zips)
         ]
         if not videos and not artifacts and not mcaps and not npz_files:
             raise ValueError("Hand mesh generation returned no artifacts")
@@ -3196,6 +3199,17 @@ class ProcessingService:
         self.azure_service.delete_cosmos_docs_for_prefix(dataset["storage_container"], output_artifact_prefix)
         self.azure_service.delete_blobs_with_prefix(dataset["storage_container"], legacy_output_artifact_prefix)
         self.azure_service.delete_cosmos_docs_for_prefix(dataset["storage_container"], legacy_output_artifact_prefix)
+
+        if vipe_zips:
+            container = self.azure_service.get_container_client(dataset["storage_container"])
+            with open(vipe_zips[0], "rb") as handle:
+                container.upload_blob(
+                    name=vipe_zip_blob,
+                    data=handle,
+                    overwrite=True,
+                    content_settings=ContentSettings(content_type="application/zip"),
+                )
+            logger.info("Cached ViPE output to blob: %s", vipe_zip_blob)
 
         source_task = str(dataset.get("task") or "").strip()
         uploaded_videos = [
