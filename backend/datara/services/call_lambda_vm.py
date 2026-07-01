@@ -686,8 +686,9 @@ def generate_hand_mesh(
     *,
     video_url,
     seq_name,
-    pipeline="default",
+    pipeline="lyra",
     local_output_dir,
+    vipe_zip_url=None,
 ):
     """
     Pass the video URL directly to the SaaS VM so it handles downloading.
@@ -696,22 +697,25 @@ def generate_hand_mesh(
     Returns (local_video_paths, local_artifact_paths, status_code, error_message).
     """
     if not seq_name:
-        return [], [], [], [], 400, "Missing sequence name"
+        return [], [], [], [], [], 400, "Missing sequence name"
     if not video_url:
-        return [], [], [], [], 400, "Missing video URL"
+        return [], [], [], [], [], 400, "Missing video URL"
 
     local_videos_dir = os.path.join(local_output_dir, "videos")
     local_artifacts_dir = os.path.join(local_output_dir, "artifacts")
     local_mcap_dir = os.path.join(local_output_dir, "mcaps")
     local_npz_dir = os.path.join(local_output_dir, "npz")
+    local_vipe_dir = os.path.join(local_output_dir, "vipe")
     os.makedirs(local_videos_dir, exist_ok=True)
     os.makedirs(local_artifacts_dir, exist_ok=True)
     os.makedirs(local_mcap_dir, exist_ok=True)
     os.makedirs(local_npz_dir, exist_ok=True)
+    os.makedirs(local_vipe_dir, exist_ok=True)
 
     safe_seq = _shell_escape(seq_name)
-    safe_pipeline = _shell_escape(pipeline or "default")
+    safe_pipeline = _shell_escape(pipeline or "lyra")
     safe_url = _shell_escape(video_url.strip())
+    safe_vipe_url = _shell_escape(vipe_zip_url.strip()) if vipe_zip_url else ""
 
     try:
         with _ssh_session() as ssh_client:
@@ -725,7 +729,7 @@ def generate_hand_mesh(
                     REMOTE_VIPE_RUNNER_SCRIPT,
                     runner_err,
                 )
-                return [], [], [], [], 500, "VIPE hand mesh runner script was not found on the SaaS VM"
+                return [], [], [], [], [], 500, "VIPE hand mesh runner script was not found on the SaaS VM"
 
             runner_script = (
                 f'cd "{_shell_escape(REMOTE_DYN_HAMR_ROOT)}" && '
@@ -734,21 +738,27 @@ def generate_hand_mesh(
                 f'--video-url "{safe_url}" '
                 f'--seq "{safe_seq}" '
                 f'--pipeline "{safe_pipeline}"'
+                + (f' --vipe-zip-url "{safe_vipe_url}"' if safe_vipe_url else '')
             )
             stdout, stderr, runner_status = _run_bash_script(ssh_client, runner_script)
             if runner_status != 0:
                 logger.error("VIPE hand mesh runner failed: %s", stderr or stdout)
-                return [], [], [], [], 500, stderr or stdout or "Hand mesh generation failed on the SaaS VM"
+                return [], [], [], [], [], 500, stderr or stdout or "Hand mesh generation failed on the SaaS VM"
 
             # Parse sentinel lines emitted by run_vipe_dynhamr.py:
-            #   OUTPUT_VIDEO:   /path/to/foo_src_cam.mp4
-            #   OUTPUT_OBJ:     /path/to/foo folder to .obj files
-            #   OUTPUT_MCAP:    /path/to/foo.mcap
-            #   OUTPUT_NPZ:     /path/to/foo.npz
+            #   OUTPUT_VIDEO:       /path/to/foo_src_cam.mp4
+            #   OUTPUT_OBJ:         /path/to/foo folder to .obj files
+            #   OUTPUT_MCAP:        /path/to/foo.mcap
+            #   OUTPUT_NPZ:         /path/to/foo.npz
+            #   OUTPUT_VIPE_ZIP:    /path/to/foo_vipe_output.zip
+            #   OUTPUT_RUN_DIR:     /path/to/video-custom/YYY-MM-DD/seq-N/
             remote_videos: list[str] = []
             remote_artifacts: list[str] = []
             remote_mcap: list[str] = []
             remote_npz: list[str] = []
+            remote_vipe_zip: list[str] = []
+            remote_run_dir: str = ""
+
             sftp = ssh_client.open_sftp()
             for line in stdout.splitlines():
                 line = line.strip()
@@ -756,15 +766,28 @@ def generate_hand_mesh(
                     remote_videos.append(line[len("OUTPUT_VIDEO: "):].strip())
                 elif line.startswith("OUTPUT_OBJ: "):
                     path = line[len("OUTPUT_OBJ: "):].strip()
-                    dir_contents = sftp.listdir(path)
-                    for filename in dir_contents:
-                        if filename.lower().endswith(".obj"):
-                            full_path = posixpath.join(path, filename)
-                            remote_artifacts.append(full_path)
+                     # Zip on the remote, transfer one file, extract locally
+                    zip_path = f"{path}.zip"
+                    _, zip_err, zip_status = _run_command_with_status(
+                        ssh_client,
+                        f'cd "{_shell_escape(path)}" && zip -j "{_shell_escape(zip_path)}" *.obj'
+                    )
+                    if zip_status != 0:
+                        logger.error("Failed to zip OBJ files at %s: %s", path, zip_err)
+                        # Fall back to individual transfers
+                        for filename in sftp.listdir(path):
+                            if filename.lower().endswith(".obj"):
+                                remote_artifacts.append(posixpath.join(path, filename))
+                    else:
+                        remote_artifacts.append(zip_path)  # transfer the zip instead
                 elif line.startswith("OUTPUT_MCAP: "):
                     remote_mcap.append(line[len("OUTPUT_MCAP: "):].strip())
                 elif line.startswith("OUTPUT_NPZ: "):
                     remote_npz.append(line[len("OUTPUT_NPZ: "):].strip())
+                elif line.startswith("OUTPUT_VIPE_ZIP: "):
+                    remote_vipe_zip.append(line[len("OUTPUT_VIPE_ZIP: "):].strip())
+                elif line.startswith("OUTPUT_RUN_DIR: "):
+                    remote_run_dir = line[len("OUTPUT_RUN_DIR: "):].strip()
             sftp.close()
 
             if not remote_videos and not remote_artifacts and not remote_mcap and not remote_npz:
@@ -773,19 +796,14 @@ def generate_hand_mesh(
                     stdout,
                     stderr,
                 )
-                return [], [], [], [], 500, "Hand mesh pipeline completed without outputs"
-
-            # Determine the run output dir from any sentinel path so we can clean it up
-            run_output_dir = ""
-            for path in remote_videos + remote_artifacts + remote_mcap + remote_npz:
-                run_output_dir = _extract_hand_mesh_run_dir_from_path(path)
-                if run_output_dir:
-                    break
+                return [], [], [], [], [], 500, "Hand mesh pipeline completed without outputs"
 
             local_video_paths: list[str] = []
             local_artifact_paths: list[str] = []
             local_mcap_paths: list[str] = []
             local_npz_paths: list[str] = []
+            local_vipe_zip_paths: list[str] = []
+
             sftp = ssh_client.open_sftp()
             try:
                 for index, remote_video_path in enumerate(remote_videos):
@@ -799,15 +817,20 @@ def generate_hand_mesh(
                         local_video_paths.append(local_path)
 
                 for index, remote_artifact_path in enumerate(remote_artifacts):
-                    filename = os.path.basename(remote_artifact_path) or f"artifact_{index + 1}"
+                    filename = os.path.basename(remote_artifact_path)
                     local_path = os.path.join(local_artifacts_dir, filename)
-                    if os.path.exists(local_path):
-                        stem, ext = os.path.splitext(filename)
-                        local_path = os.path.join(local_artifacts_dir, f"{stem}_{index + 1}{ext or ''}")
                     sftp.get(remote_artifact_path, local_path)
-                    if os.path.isfile(local_path):
-                        local_artifact_paths.append(local_path)
-                
+                    if filename.endswith(".zip") and os.path.isfile(local_path):
+                        import zipfile
+                        with zipfile.ZipFile(local_path, "r") as zf:
+                            zf.extractall(local_artifacts_dir)
+                        os.remove(local_path)
+                        for extracted in os.listdir(local_artifacts_dir):
+                            if extracted.lower().endswith(".obj"):
+                                local_artifact_paths.append(os.path.join(local_artifacts_dir, extracted))
+                    elif os.path.isfile(local_path):
+                        local_artifact_paths.append(local_path)   
+
                 for index, remote_mcap_path in enumerate(remote_mcap):
                     filename = os.path.basename(remote_mcap_path) or f"mcap_{index + 1}"
                     local_path = os.path.join(local_mcap_dir, filename)
@@ -827,20 +850,44 @@ def generate_hand_mesh(
                     sftp.get(remote_npz_path, local_path)
                     if os.path.isfile(local_path):
                         local_npz_paths.append(local_path)
+
+                for index, remote_vipe_zip_path in enumerate(remote_vipe_zip):
+                    filename = os.path.basename(remote_vipe_zip_path) or f"vipe_{index + 1}.zip"
+                    local_path = os.path.join(local_vipe_dir, filename)
+                    if os.path.exists(local_path):
+                        stem, ext = os.path.splitext(filename)
+                        local_path = os.path.join(local_vipe_dir, f"{stem}_{index + 1}{ext or '.zip'}")
+                    sftp.get(remote_vipe_zip_path, local_path)
+                    if os.path.isfile(local_path):
+                        local_vipe_zip_paths.append(local_path)
             finally:
                 sftp.close()
 
-            if run_output_dir:
-                _run_command(ssh_client, f'rm -rf "{_shell_escape(run_output_dir)}"')
-                logger.info("Cleaned up remote output directory: %s", run_output_dir)
+            # Clean up the run output directory on the remote using the
+            # emitted OUTPUT_RUN_DIR sentinel — no path parsing heuristics needed.
+            if remote_run_dir:
+                _, cleanup_err, cleanup_status = _run_command_with_status(
+                    ssh_client, f'rm -rf "{_shell_escape(remote_run_dir)}"'
+                )
+                if cleanup_status != 0:
+                    logger.warning(
+                        "Failed to clean up remote output directory %s: %s",
+                        remote_run_dir, cleanup_err,
+                    )
+                else:
+                    logger.info("Cleaned up remote output directory: %s", remote_run_dir)
+            else:
+                logger.warning(
+                    "OUTPUT_RUN_DIR sentinel not emitted — remote output directory was not cleaned up"
+                )
 
             if local_video_paths or local_artifact_paths or local_mcap_paths or local_npz_paths:
-                return local_video_paths, local_artifact_paths, local_mcap_paths, local_npz_paths, 200, ""
-            return [], [], [], [], 500, "Hand mesh outputs could not be downloaded"
+                return local_video_paths, local_artifact_paths, local_mcap_paths, local_npz_paths, local_vipe_zip_paths, 200, ""
+            return [], [], [], [], [], 500, "Hand mesh outputs could not be downloaded"
 
     except Exception as exc:
         logger.error("generate_hand_mesh error: %s", exc, exc_info=True)
-        return [], [], [], [], 500, str(exc)
+        return [], [], [], [], [], 500, str(exc)
 
 def generate_task_intelligence(video_url: str):
     """
