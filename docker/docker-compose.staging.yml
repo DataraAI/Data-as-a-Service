@@ -1,0 +1,82 @@
+name: datara-staging
+
+services:
+  rabbitmq:
+    image: rabbitmq:3.13
+    container_name: datara-rabbitmq-staging
+    env_file:
+      - ../config/.env
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-datara-producer}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_DEFAULT_VHOST:-datara}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile-backend
+      target: production
+    container_name: datara-backend-staging
+    expose:
+      - "5151"
+    environment:
+      - FLASK_ENV=staging
+      - PYTHONUNBUFFERED=1
+      - CELERY_BROKER_URL=amqp://${RABBITMQ_DEFAULT_USER:-datara-producer}:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672/${RABBITMQ_DEFAULT_VHOST:-datara}
+    volumes:
+      - ../config:/app/config:ro
+      - ./uploads-staging:/app/backend/uploads
+      - ./logs-staging:/app/backend/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:5151/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  dashboard:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile-dashboard
+      target: production
+    container_name: datara-dashboard-staging
+    expose:
+      - "8080"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      - backend
+
+  nginx:
+    image: nginx:alpine
+    container_name: datara-nginx-staging
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./nginx/nginx.staging.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - dashboard
+      - backend
+    restart: unless-stopped
+
+volumes:
+  rabbitmq_data:
+  uploads:
+  logs:
