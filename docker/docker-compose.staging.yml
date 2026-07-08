@@ -30,7 +30,7 @@ services:
     environment:
       - FLASK_ENV=staging
       - PYTHONUNBUFFERED=1
-      - CELERY_BROKER_URL=amqp://${RABBITMQ_DEFAULT_USER:-datara-producer}:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672/${RABBITMQ_DEFAULT_VHOST:-datara}
+      - CELERY_BROKER_URL=amqp://${RABBITMQ_DEFAULT_USER:-datara-producer}:${RABBITMQ_DEFAULT_PASS}@172.17.0.1:5672/${RABBITMQ_DEFAULT_VHOST:-datara}
     volumes:
       - ../config:/app/config:ro
       - ./uploads-staging:/app/backend/uploads
