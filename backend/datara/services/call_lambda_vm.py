@@ -49,9 +49,9 @@ SAAS_HOST = os.getenv("SAAS_HOST") or _legacy_saas_attr("HOST")
 SAAS_HOST = SAAS_HOST or "192.222.51.234"
 SAAS_USER = os.getenv("SAAS_USER") or _legacy_saas_attr("USER") or "ubuntu"
 SAAS_KEY_PATH = (
-    os.getenv("SAAS_KEY_PATH")
+    os.path.expanduser("~/.ssh/azure_to_lambda")
     or _legacy_saas_attr("KEY_PATH")
-    or os.path.expanduser("~/.ssh/azure_to_lambda")
+    or os.getenv("SAAS_KEY_PATH")
 )
 DEFAULT_SAM3_PYTHON_BIN = f"/home/{SAAS_USER}/miniconda3/envs/sam3/bin/python"
 DEFAULT_QWEN_ANGLES_PYTHON_BIN = f"/home/{SAAS_USER}/miniconda3/envs/qwen-angles-2509/bin/python"
