@@ -71,7 +71,15 @@ export function ImageModal({
   const sourceVisibility = image?.dataset?.visibility ?? image?.metadata?.visibility ?? "public";
   const isVideo = image?.type === "video";
   const isStillImage = image?.type === "image";
-  const canShowVideoTools = Boolean(canUseGenerationTools && isVideo && image?.is_primary_input);
+  const isOriginalInputVideo = Boolean(isVideo && image?.is_primary_input);
+  const isOcclusionRemovedVideo = Boolean(
+    isVideo &&
+      (image?.metadata?.source_type === "occlusion_removed_video" ||
+        (Array.isArray(image?.tags) && image.tags.includes("occlusion_removed"))),
+  );
+  const canShowVideoTools = Boolean(
+    canUseGenerationTools && isVideo && (isOriginalInputVideo || isOcclusionRemovedVideo),
+  );
   const isMcap = image?.type === "mcap" || typeof image?.name === "string" && image.name.toLowerCase().endsWith(".mcap");
   const assetUrl = image?.proxy_url || image?.url;
 
@@ -486,7 +494,8 @@ export function ImageModal({
                 },
               ]}
               variant="inline"
-              showHandMesh={showHandMeshGeneration}
+              showHandMesh={!isOcclusionRemovedVideo && showHandMeshGeneration}
+              showTaskAnalysis={isOriginalInputVideo}
               onGenerationSuccess={onVideoToolSuccess}
               onOpenViewerPath={onOpenViewerPath}
             />

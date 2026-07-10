@@ -1,5 +1,13 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { type KeyboardEvent, type ReactNode, type TouchEvent, useEffect, useId, useRef, useState } from "react";
+import {
+  type KeyboardEvent,
+  type ReactNode,
+  type TouchEvent,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from "react";
 
 type ShowcaseAccent = "teal" | "blue" | "violet" | "orange";
 
@@ -9,6 +17,7 @@ export type FeatureShowcaseItem = {
   shortLabel?: string;
   accent: ShowcaseAccent;
   content: ReactNode;
+  tall?: number;
 };
 
 type FeatureShowcaseCarouselProps = {
@@ -20,22 +29,28 @@ type FeatureShowcaseCarouselProps = {
 const ACTIVE_TAB_CLASSES: Record<ShowcaseAccent, string> = {
   teal: "border-teal-400 bg-gradient-to-r from-teal-500 to-cyan-500 text-white shadow-[0_9px_24px_rgba(13,148,136,0.30)]",
   blue: "border-blue-500 bg-gradient-to-r from-blue-600 to-indigo-500 text-white shadow-[0_9px_24px_rgba(37,99,235,0.28)]",
-  violet: "border-violet-500 bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white shadow-[0_9px_24px_rgba(124,58,237,0.28)]",
-  orange: "border-orange-400 bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-[0_9px_24px_rgba(249,115,22,0.28)]",
+  violet:
+    "border-violet-500 bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white shadow-[0_9px_24px_rgba(124,58,237,0.28)]",
+  orange:
+    "border-orange-400 bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-[0_9px_24px_rgba(249,115,22,0.28)]",
 };
 
 const INACTIVE_TAB_CLASSES: Record<ShowcaseAccent, string> = {
   teal: "border-teal-200 bg-teal-50/80 text-teal-800 hover:border-teal-300 hover:bg-teal-100 dark:border-teal-900/70 dark:bg-teal-950/25 dark:text-teal-200 dark:hover:border-teal-800 dark:hover:bg-teal-950/45",
   blue: "border-blue-200 bg-blue-50/80 text-blue-800 hover:border-blue-300 hover:bg-blue-100 dark:border-blue-900/70 dark:bg-blue-950/25 dark:text-blue-200 dark:hover:border-blue-800 dark:hover:bg-blue-950/45",
-  violet: "border-violet-200 bg-violet-50/80 text-violet-800 hover:border-violet-300 hover:bg-violet-100 dark:border-violet-900/70 dark:bg-violet-950/25 dark:text-violet-200 dark:hover:border-violet-800 dark:hover:bg-violet-950/45",
-  orange: "border-orange-200 bg-orange-50/80 text-orange-800 hover:border-orange-300 hover:bg-orange-100 dark:border-orange-900/70 dark:bg-orange-950/25 dark:text-orange-200 dark:hover:border-orange-800 dark:hover:bg-orange-950/45",
+  violet:
+    "border-violet-200 bg-violet-50/80 text-violet-800 hover:border-violet-300 hover:bg-violet-100 dark:border-violet-900/70 dark:bg-violet-950/25 dark:text-violet-200 dark:hover:border-violet-800 dark:hover:bg-violet-950/45",
+  orange:
+    "border-orange-200 bg-orange-50/80 text-orange-800 hover:border-orange-300 hover:bg-orange-100 dark:border-orange-900/70 dark:bg-orange-950/25 dark:text-orange-200 dark:hover:border-orange-800 dark:hover:bg-orange-950/45",
 };
 
 const CONTROL_CLASSES: Record<ShowcaseAccent, string> = {
   teal: "border-teal-200 bg-teal-50 text-teal-700 hover:border-teal-400 hover:bg-teal-100 dark:border-teal-900/70 dark:bg-teal-950/30 dark:text-teal-200 dark:hover:border-teal-700 dark:hover:bg-teal-950/55",
   blue: "border-blue-200 bg-blue-50 text-blue-700 hover:border-blue-400 hover:bg-blue-100 dark:border-blue-900/70 dark:bg-blue-950/30 dark:text-blue-200 dark:hover:border-blue-700 dark:hover:bg-blue-950/55",
-  violet: "border-violet-200 bg-violet-50 text-violet-700 hover:border-violet-400 hover:bg-violet-100 dark:border-violet-900/70 dark:bg-violet-950/30 dark:text-violet-200 dark:hover:border-violet-700 dark:hover:bg-violet-950/55",
-  orange: "border-orange-200 bg-orange-50 text-orange-700 hover:border-orange-400 hover:bg-orange-100 dark:border-orange-900/70 dark:bg-orange-950/30 dark:text-orange-200 dark:hover:border-orange-700 dark:hover:bg-orange-950/55",
+  violet:
+    "border-violet-200 bg-violet-50 text-violet-700 hover:border-violet-400 hover:bg-violet-100 dark:border-violet-900/70 dark:bg-violet-950/30 dark:text-violet-200 dark:hover:border-violet-700 dark:hover:bg-violet-950/55",
+  orange:
+    "border-orange-200 bg-orange-50 text-orange-700 hover:border-orange-400 hover:bg-orange-100 dark:border-orange-900/70 dark:bg-orange-950/30 dark:text-orange-200 dark:hover:border-orange-700 dark:hover:bg-orange-950/55",
 };
 
 const COUNT_CLASSES: Record<ShowcaseAccent, string> = {
@@ -100,7 +115,10 @@ export default function FeatureShowcaseCarousel({
 
     if (tabLeft < visibleLeft || tabRight > visibleRight) {
       tabList.scrollTo({
-        left: Math.max(0, tabLeft - (tabList.clientWidth - activeTab.offsetWidth) / 2),
+        left: Math.max(
+          0,
+          tabLeft - (tabList.clientWidth - activeTab.offsetWidth) / 2,
+        ),
         behavior: "smooth",
       });
     }
@@ -108,9 +126,14 @@ export default function FeatureShowcaseCarousel({
 
   if (!activeItem) return null;
 
-  const selectItem = (nextIndex: number, nextDirection?: "forward" | "backward") => {
+  const selectItem = (
+    nextIndex: number,
+    nextDirection?: "forward" | "backward",
+  ) => {
     if (nextIndex === activeIndex) return;
-    setDirection(nextDirection ?? (nextIndex > activeIndex ? "forward" : "backward"));
+    setDirection(
+      nextDirection ?? (nextIndex > activeIndex ? "forward" : "backward"),
+    );
     setActiveIndex(nextIndex);
   };
 
@@ -124,7 +147,8 @@ export default function FeatureShowcaseCarousel({
 
   const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     const target = event.target as HTMLElement;
-    if (target !== event.currentTarget && target.getAttribute("role") !== "tab") return;
+    if (target !== event.currentTarget && target.getAttribute("role") !== "tab")
+      return;
 
     if (event.key === "ArrowLeft") {
       event.preventDefault();
@@ -201,7 +225,9 @@ export default function FeatureShowcaseCarousel({
       </div>
 
       <div className="flex shrink-0 items-center gap-1.5 border-l border-slate-200 pl-3 dark:border-slate-700">
-        <span className={`mr-1 hidden min-w-10 text-center font-mono-tech text-[10px] font-bold tracking-[0.08em] sm:inline ${COUNT_CLASSES[activeItem.accent]}`}>
+        <span
+          className={`mr-1 hidden min-w-10 text-center font-mono-tech text-[10px] font-bold tracking-[0.08em] sm:inline ${COUNT_CLASSES[activeItem.accent]}`}
+        >
           {activeIndex + 1} / {items.length}
         </span>
         <button
@@ -248,7 +274,7 @@ export default function FeatureShowcaseCarousel({
         </button>
         <div
           ref={panelViewportRef}
-          className="custom-scrollbar h-[34rem] overflow-y-auto overscroll-contain"
+          className={`custom-scrollbar overflow-y-auto overscroll-contain transition-[height] duration-300 ${activeItem.tall ? `h-[${activeItem.tall}rem]` : "h-[34rem]"}`}
         >
           <div
             key={activeItem.id}
@@ -270,12 +296,17 @@ export default function FeatureShowcaseCarousel({
         </button>
       </div>
 
-      <div className="flex items-center justify-center gap-2 sm:hidden" aria-hidden="true">
+      <div
+        className="flex items-center justify-center gap-2 sm:hidden"
+        aria-hidden="true"
+      >
         {items.map((item, index) => (
           <span
             key={item.id}
             className={`h-1.5 rounded-full transition-all duration-200 ${
-              index === activeIndex ? `w-6 ${DOT_CLASSES[activeItem.accent]}` : "w-1.5 bg-slate-300 dark:bg-slate-700"
+              index === activeIndex
+                ? `w-6 ${DOT_CLASSES[activeItem.accent]}`
+                : "w-1.5 bg-slate-300 dark:bg-slate-700"
             }`}
           />
         ))}

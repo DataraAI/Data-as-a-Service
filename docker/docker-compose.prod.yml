@@ -28,7 +28,7 @@ services:
     expose:
       - "5151"
     environment:
-      - FLASK_ENV=staging
+      - FLASK_ENV=production
       - PYTHONUNBUFFERED=1
       - CELERY_BROKER_URL=amqp://${RABBITMQ_DEFAULT_USER:-datara-producer}:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672/${RABBITMQ_DEFAULT_VHOST:-datara}
     volumes:
@@ -68,9 +68,12 @@ services:
     image: nginx:alpine
     container_name: datara-nginx
     ports:
-      - "5173:5173"
+      - "80:80"
+      - "443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./fullchain.crt:/etc/nginx/certs/fullchain.crt:ro
+      - ./dataraai.key:/etc/nginx/certs/dataraai.key:ro
     depends_on:
       - dashboard
       - backend

@@ -9,29 +9,33 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { canImportData, ROBODATAHUB_IMPORT_DATA_PATH } from "@/lib/dataImportAccess";
 import pduInstallationVideo from "@/assets/Products/RoboAnnotator/v2v/input/pduInstallation.mp4";
 import pduInstallationPoster from "@/assets/Products/RoboAnnotator/v2v/input/pduInstallation-poster.jpg";
-import sourceFrontGrilleVideo from "@/assets/Products/RoboAnnotator/v2v/input/source-front-grille.mp4";
-import sourceFrontGrillePoster from "@/assets/Products/RoboAnnotator/v2v/input/source-front-grille-poster.jpg";
-import frontGrilleLeftVideo from "@/assets/Products/RoboAnnotator/v2v/newangles/front-grille-left.mp4";
-import frontGrilleLeftPoster from "@/assets/Products/RoboAnnotator/v2v/newangles/front-grille-left-poster.jpg";
-import frontGrilleUpVideo from "@/assets/Products/RoboAnnotator/v2v/newangles/front-grille-up.mp4";
-import frontGrilleUpPoster from "@/assets/Products/RoboAnnotator/v2v/newangles/front-grille-up-poster.jpg";
+import sourcedataRackInstall from "@/assets/Products/RoboAnnotator/v2v/input/source-dataRackInstall.mp4";
+import sourcedataRackInstallPoster from "@/assets/Products/RoboAnnotator/v2v/input/source-dataRackInstall-poster.png";
+import dataRackInstallLeftVideo from "@/assets/Products/RoboAnnotator/v2v/newangles/dataRackInstall-left.mp4";
+import dataRackInstallLeftPoster from "@/assets/Products/RoboAnnotator/v2v/newangles/dataRackInstall-left-poster.png";
 import noPersonVideo from "@/assets/Products/RoboAnnotator/v2v/occl_removal/no_person.mp4";
 import noPersonPoster from "@/assets/Products/RoboAnnotator/v2v/occl_removal/no_person-poster.jpg";
-import exoServerRack from "@/assets/Products/RoboAnnotator/i2i/exo2ego/2exo_serverrack.png";
-import egoServerRackFront from "@/assets/Products/RoboAnnotator/i2i/exo2ego/2ego_serverrack.png";
-import egoServerRackOverhead from "@/assets/Products/RoboAnnotator/i2i/exo2ego/2ego_serverrack1.png";
-import egoServerRackSide from "@/assets/Products/RoboAnnotator/i2i/exo2ego/2ego_serverrack2.png";
+
+import dataRackCableManagement from "@/assets/Products/RoboAnnotator/v2v/exo2ego/dataRackCableManagement.mp4";
+import dataRackCableManagementPoster from "@/assets/Products/RoboAnnotator/v2v/exo2ego/dataRackCableManagement-poster.png";
+import dataRackCableManagementLeftVideo from "@/assets/Products/RoboAnnotator/v2v/exo2ego/dataRackCableManagement_left.mp4";
+import dataRackCableManagementLeftPoster from "@/assets/Products/RoboAnnotator/v2v/exo2ego/dataRackCableManagement-poster.png";
+import dataRackCableManagementRightVideo from "@/assets/Products/RoboAnnotator/v2v/exo2ego/dataRackCableManagement_right.mp4";
+import dataRackCableManagementRightPoster from "@/assets/Products/RoboAnnotator/v2v/exo2ego/dataRackCableManagement-poster.png";
+
 import cornerCaseInput from "@/assets/Products/RoboAnnotator/i2i/cornercase/input.png";
 import cornerCaseFire from "@/assets/Products/RoboAnnotator/i2i/cornercase/fireoutput.png";
 import cornerCaseOil from "@/assets/Products/RoboAnnotator/i2i/cornercase/oilleak.png";
 import maskInput000 from "@/assets/Products/RoboAnnotator/i2i/maskseg/000.png";
-import maskInput103 from "@/assets/Products/RoboAnnotator/i2i/maskseg/103.png";
-import maskInput206 from "@/assets/Products/RoboAnnotator/i2i/maskseg/206.png";
-import maskInput310 from "@/assets/Products/RoboAnnotator/i2i/maskseg/310.png";
 import maskOutput000 from "@/assets/Products/RoboAnnotator/i2i/maskseg/000mask.png";
+import maskInput103 from "@/assets/Products/RoboAnnotator/i2i/maskseg/103.png";
 import maskOutput103 from "@/assets/Products/RoboAnnotator/i2i/maskseg/103mask.png";
+import maskInput206 from "@/assets/Products/RoboAnnotator/i2i/maskseg/206.png";
 import maskOutput206 from "@/assets/Products/RoboAnnotator/i2i/maskseg/206mask.png";
 import maskOutput309 from "@/assets/Products/RoboAnnotator/i2i/maskseg/309mask.png";
+import maskInput310 from "@/assets/Products/RoboAnnotator/i2i/maskseg/310.png";
+import dataRackInstallRightPoster from "@/assets/Products/RoboAnnotator/v2v/newangles/dataRackInstall-right-poster.png";
+import dataRackInstallRightVideo from "@/assets/Products/RoboAnnotator/v2v/newangles/dataRackInstall-right.mp4";
 
 type VideoAsset = {
   videoSrc: string;
@@ -47,30 +51,6 @@ type ImageAsset = {
 type ExpandedImage = {
   src: string;
   alt: string;
-};
-
-type ExoToEgoExample = {
-  title: string;
-  description: string;
-  engineDetail: string;
-  input: ImageAsset;
-  outputs: ImageAsset[];
-};
-
-const DATA_CENTER_EXO_TO_EGO_EXAMPLE: ExoToEgoExample = {
-  title: "Data Center EXO to EGO",
-  description:
-    "Converts fixed server-rack capture into robot-ready inspection perspectives.",
-  engineDetail: "Robot Perspective Generation",
-  input: {
-    src: exoServerRack,
-    caption: "Server rack EXO source",
-  },
-  outputs: [
-    { src: egoServerRackFront, caption: "Front inspection view" },
-    { src: egoServerRackOverhead, caption: "Overhead inspection view" },
-    { src: egoServerRackSide, caption: "Side inspection view" },
-  ],
 };
 
 const CORNER_CASE_INPUT: ImageAsset = {
@@ -110,9 +90,14 @@ const VIDEO_OUTPUTS = {
     caption: "PDU installation source clip",
   },
   frontGrilleInput: {
-    videoSrc: sourceFrontGrilleVideo,
-    posterSrc: sourceFrontGrillePoster,
+    videoSrc: sourcedataRackInstall,
+    posterSrc: sourcedataRackInstallPoster,
     caption: "Front grille source clip",
+  },
+  dataRackCableManagementInput: {
+    videoSrc: dataRackCableManagement,
+    posterSrc: dataRackCableManagementPoster,
+    caption: "Cable insertion source clip",
   },
   occlusionRemoval: {
     videoSrc: noPersonVideo,
@@ -120,15 +105,26 @@ const VIDEO_OUTPUTS = {
     caption: "PDU installation with installer removed",
   },
   newAngleLeft: {
-    videoSrc: frontGrilleLeftVideo,
-    posterSrc: frontGrilleLeftPoster,
+    videoSrc: dataRackInstallLeftVideo,
+    posterSrc: dataRackInstallLeftPoster,
     caption: "Generated left view",
   },
-  newAngleUp: {
-    videoSrc: frontGrilleUpVideo,
-    posterSrc: frontGrilleUpPoster,
-    caption: "Generated upper view",
+  newAngleRight: {
+    videoSrc: dataRackInstallRightVideo,
+    posterSrc: dataRackInstallRightPoster,
+    caption: "Generated right view",
   },
+  exo2egoLeft: {
+    videoSrc: dataRackCableManagementLeftVideo,
+    posterSrc: dataRackCableManagementLeftPoster,
+    caption: "Generated occlusion + left view",
+  },
+  exo2egoRight: {
+    videoSrc: dataRackCableManagementRightVideo,
+    posterSrc: dataRackCableManagementRightPoster,
+    caption: "Generated occlusion + right view",
+  },
+
 } satisfies Record<string, VideoAsset>;
 
 function InlineEngineCard({ detail }: { detail: string }) {
@@ -323,15 +319,28 @@ function ImageLightbox({
   );
 }
 
-function VideoPreviewTile({ asset, aspectClass = "aspect-[16/9]" }: { asset: VideoAsset; aspectClass?: string }) {
-  const [hovered, setHovered] = useState(false);
+function VideoPreviewTile({
+  asset,
+  aspectClass = "aspect-[16/9]",
+  playing,
+  onMouseEnter,
+  onMouseLeave,
+}: {
+  asset: VideoAsset;
+  aspectClass?: string;
+  playing?: boolean;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
+}) {
+  const [internalHovered, setInternalHovered] = useState(false);
+  const isPlaying = playing !== undefined ? playing : internalHovered;
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    if (hovered) {
+    if (isPlaying) {
       const playPromise = video.play();
       if (playPromise) {
         void playPromise.catch(() => {
@@ -345,18 +354,28 @@ function VideoPreviewTile({ asset, aspectClass = "aspect-[16/9]" }: { asset: Vid
     if (video.currentTime !== 0) {
       video.currentTime = 0;
     }
-  }, [hovered]);
+  }, [isPlaying]);
+
+  const handleMouseEnter = () => {
+    if (playing === undefined) setInternalHovered(true);
+    onMouseEnter?.();
+  };
+
+  const handleMouseLeave = () => {
+    if (playing === undefined) setInternalHovered(false);
+    onMouseLeave?.();
+  };
 
   return (
     <div
       className={`group relative overflow-hidden rounded-[14px] bg-slate-950 ${aspectClass}`}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       <img
         src={asset.posterSrc}
         alt={asset.caption}
-        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${hovered ? "opacity-0" : "opacity-100"}`}
+        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${isPlaying ? "opacity-0" : "opacity-100"}`}
       />
       <video
         ref={videoRef}
@@ -366,7 +385,7 @@ function VideoPreviewTile({ asset, aspectClass = "aspect-[16/9]" }: { asset: Vid
         loop
         playsInline
         preload="metadata"
-        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${hovered ? "opacity-100" : "opacity-0"}`}
+        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${isPlaying ? "opacity-100" : "opacity-0"}`}
       />
       <div className="absolute inset-0 bg-gradient-to-t from-slate-950/45 via-transparent to-transparent" />
     </div>
@@ -386,6 +405,9 @@ function V2VRow({
   inputAsset: VideoAsset;
   outputAssets: VideoAsset[];
 }) {
+  const [hovered, setHovered] = useState(false);
+  const multiOutput = outputAssets.length > 1;
+
   return (
     <div className="rounded-[16px] border border-slate-200/80 bg-card p-4 dark:border-slate-700 sm:p-5">
       <p className="text-[17px] font-black tracking-[-0.03em] text-slate-950 dark:text-slate-100">{title}</p>
@@ -394,7 +416,13 @@ function V2VRow({
       <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,0.98fr)_118px_minmax(0,1.12fr)] xl:items-center">
         <div>
           <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-blue-700 dark:text-blue-200">Input video</p>
-          <VideoPreviewTile asset={inputAsset} />
+          <VideoPreviewTile
+            asset={inputAsset}
+            aspectClass={multiOutput ? "aspect-[2/1]" : "aspect-[16/9]"}
+            playing={hovered}
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+          />
         </div>
 
         <I2IPipe detail={engineDetail} />
@@ -403,7 +431,14 @@ function V2VRow({
           <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-teal-700 dark:text-teal-200">Output video</p>
           <div className="grid grid-cols-1 gap-3">
             {outputAssets.map((asset) => (
-              <VideoPreviewTile key={asset.caption} asset={asset} />
+              <VideoPreviewTile
+                key={asset.caption}
+                asset={asset}
+                aspectClass={multiOutput ? "aspect-[2/1]" : "aspect-[16/9]"}
+                playing={hovered}
+                onMouseEnter={() => setHovered(true)}
+                onMouseLeave={() => setHovered(false)}
+              />
             ))}
           </div>
         </div>
@@ -417,7 +452,6 @@ export default function RoboEyeView() {
   const { isAuthenticated, isApproved, user } = useAuth();
   const [expandedImage, setExpandedImage] = useState<ExpandedImage | null>(null);
   const canSubmitFootage = canImportData({ isAuthenticated, isApproved, user });
-  const dataCenterExample = DATA_CENTER_EXO_TO_EGO_EXAMPLE;
   const showcaseItems: FeatureShowcaseItem[] = [
     {
       id: "occlusion-removal",
@@ -439,13 +473,14 @@ export default function RoboEyeView() {
       label: "New Angle Generation",
       shortLabel: "New Angles",
       accent: "teal",
+      tall: 44,
       content: (
         <V2VRow
           title="New Angle Video Generation"
           description="Generates alternative perspectives from a single clip for robot-view training."
           engineDetail="New Angle Generation"
           inputAsset={VIDEO_OUTPUTS.frontGrilleInput}
-          outputAssets={[VIDEO_OUTPUTS.newAngleLeft, VIDEO_OUTPUTS.newAngleUp]}
+          outputAssets={[VIDEO_OUTPUTS.newAngleLeft, VIDEO_OUTPUTS.newAngleRight]}
         />
       ),
     },
@@ -454,18 +489,14 @@ export default function RoboEyeView() {
       label: "EXO → EGO",
       shortLabel: "EXO → EGO",
       accent: "blue",
+      tall: 44,
       content: (
-        <I2IRow
-          title={dataCenterExample.title}
-          description={dataCenterExample.description}
-          engineDetail={dataCenterExample.engineDetail}
-          inputTitle="EXO Source"
-          outputTitle="Generated EGO Views"
-          inputItems={[dataCenterExample.input]}
-          outputItems={dataCenterExample.outputs}
-          inputColumns={1}
-          outputColumns={2}
-          onImageOpen={setExpandedImage}
+        <V2VRow
+          title="EXO to EGO Conversion"
+          description="Transforms fixed EXO footage into robot-ready EGO perspectives for inspection and manipulation tasks."
+          engineDetail="EXO to EGO Conversion"
+          inputAsset={VIDEO_OUTPUTS.dataRackCableManagementInput}
+          outputAssets={[VIDEO_OUTPUTS.exo2egoLeft, VIDEO_OUTPUTS.exo2egoRight]}
         />
       ),
     },

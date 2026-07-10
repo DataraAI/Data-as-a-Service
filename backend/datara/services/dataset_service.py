@@ -351,6 +351,7 @@ class DatasetService:
                         "visibility": cosmos_doc.get("visibility", dataset["visibility"]),
                         "frame_count": cosmos_doc.get("frameCount"),
                         "fps": cosmos_doc.get("fps"),
+                        "source_type": cosmos_doc.get("sourceType"),
                         "vlm": vlm,
                     },
                 }
@@ -426,6 +427,13 @@ class DatasetService:
             and blob_name.lower().endswith(".obj")
         ]
 
+        cosmos_metadata: dict[str, dict] = {}
+        if download_blobs:
+            cosmos_metadata = self.azure_service.get_cosmos_metadata_for_prefix(
+                dataset["storage_container"],
+                storage_prefix,
+            )
+
         misc = {
             key: self._build_misc_manifest_section(
                 summary=summary,
@@ -461,7 +469,11 @@ class DatasetService:
                 else None
             ),
             "downloads": [
-                self._build_dataset_asset(dataset, blob_name)
+                self._build_dataset_asset(
+                    dataset, 
+                    blob_name,
+                    source_type=cosmos_metadata.get(blob_name, {}).get("sourceType"),
+                )
                 for blob_name in sorted(download_blobs, key=self._download_sort_key)
             ],
             "misc": misc,
@@ -546,6 +558,7 @@ class DatasetService:
         blob_name: str,
         *,
         is_primary_input: bool = False,
+        source_type: str | None = None,
     ) -> dict[str, Any]:
         asset_id = self.encode_asset_id(dataset["id"], blob_name)
         return {
@@ -570,6 +583,7 @@ class DatasetService:
                 "view": self._infer_view_for_blob(blob_name),
                 "task": dataset.get("task"),
                 "visibility": dataset["visibility"],
+                "source_type": source_type,
             },
         }
 
