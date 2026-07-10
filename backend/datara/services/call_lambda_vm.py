@@ -59,6 +59,7 @@ DEFAULT_QWEN_VLM_PYTHON_BIN = f"/home/{SAAS_USER}/miniconda3/envs/qwen-vlm/bin/p
 DEFAULT_ROSE_PYTHON_BIN = f"/home/{SAAS_USER}/miniconda3/envs/rose_runtime/bin/python"
 DEFAULT_ADDIT_SAM2_PYTHON_BIN = f"/home/{SAAS_USER}/miniconda3/envs/addit-sam2/bin/python"
 DEFAULT_ERASERDIT_PYTHON_BIN = f"/home/{SAAS_USER}/miniconda3/envs/EraserDiT/bin/python"
+DEFAULT_ERASERDIT_PYTHON_BIN = f"/home/{SAAS_USER}/miniconda3/envs/EraserDiT/bin/python"
 
 def _ssh_config_identity_path(hostname: str) -> str | None:
     """Return the first existing IdentityFile for a host in the local SSH config."""
@@ -144,6 +145,11 @@ SAAS_ROSE_PYTHON_BIN = (
     os.getenv("SAAS_ROSE_PYTHON_BIN")
     or _legacy_saas_attr("ROSE_PYTHON_BIN")
     or DEFAULT_ROSE_PYTHON_BIN
+)
+SAAS_ERASERDIT_PYTHON_BIN = (
+    os.getenv("SAAS_ERASERDIT_PYTHON_BIN")
+    or _legacy_saas_attr("ERASERDIT_PYTHON_BIN")
+    or DEFAULT_ERASERDIT_PYTHON_BIN
 )
 SAAS_ERASERDIT_PYTHON_BIN = (
     os.getenv("SAAS_ERASERDIT_PYTHON_BIN")
@@ -743,6 +749,7 @@ def generate_masks(*, prompt, local_input_dir, local_output_dir):
 
 
 def remove_occlusion_rose(
+def remove_occlusion_rose(
     *,
     local_input_video,
     local_mask_video,
@@ -1133,6 +1140,7 @@ def generate_hand_mesh(
 
                 for index, remote_npz_path in enumerate(remote_npz):
                     filename = os.path.basename(remote_npz_path) or f"npz_{index + 1}"
+                    local_path = os.path.join(local_mcap_dir, filename)
                     local_path = os.path.join(local_mcap_dir, filename)
                     if os.path.exists(local_path):
                         stem, ext = os.path.splitext(filename)
