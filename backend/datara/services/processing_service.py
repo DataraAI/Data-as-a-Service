@@ -480,6 +480,7 @@ class ProcessingService:
             f"- `{task_slug}_hand_keypoints.mcap` is the downloadable hand keypoint track.\n"
             f"- `{task_slug}_overlayed_hands.mp4` is the source-camera hand overlay video.\n"
             f"- `{task_slug}_hand_keypoints.npz` is the downloadable hand keypoint array.\n"
+            f"- `{task_slug}_hand_animation.usdz` is the downloadable 3D hand mesh animation sequence.\n"
             "\n"
             if is_dexterity
             else ""

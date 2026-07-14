@@ -787,7 +787,7 @@ def generate_hand_mesh(
                 elif line.startswith("OUTPUT_RUN_DIR: "):
                     remote_run_dir = line[len("OUTPUT_RUN_DIR: "):].strip()
                 elif line.startswith("OUTPUT_USD: "):
-                    remote_usdz.append(line[len("OUTPUT_USD: ")].strip())
+                    remote_usdz.append(line[len("OUTPUT_USD: "):].strip())
             sftp.close()
 
             if not remote_videos and not remote_artifacts and not remote_mcap and not remote_npz and not remote_usdz:
@@ -868,7 +868,7 @@ def generate_hand_mesh(
                     if os.path.exists(local_path):
                         stem, ext = os.path.splitext(filename)
                         local_path = os.path.join(local_usdz_dir, f"{stem}_{index + 1}{ext or ''}")
-                    sftp.get(remote_usdz_path, local_path)
+                    sftp.get(remote_usdz_path, local_path, prefetch=False)
                     if os.path.isfile(local_path):
                         local_usdz_paths.append(local_path)
             finally:
