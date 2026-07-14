@@ -698,8 +698,6 @@ def remove_occlusion(
     remote_mask_video = posixpath.join(remote_input_dir, "mask.mp4")
 
     logger.info("The prompt for the current job is: %s:", prompt)
-    logger.info("The local input video is stored at: %s", local_input_video)
-    logger.info("The local mask video is stored at: %s", local_mask_video)
 
     try:
         with _ssh_session() as ssh_client:
@@ -732,6 +730,7 @@ def remove_occlusion(
                     message = verify_stderr or "EraserDiT runtime is not installed/configured on the SaaS VM"
                     logger.error("EraserDiT runtime verification failed: %s", message)
                     return None, 503, message
+                logger.info("EraserDiT runtime verification passed")
 
                 runner_script = (
                     f'"{_shell_escape(SAAS_ERASERDIT_PYTHON_BIN)}" -s "{_shell_escape(REMOTE_ERASERDIT_RUNNER_SCRIPT)}" '
@@ -744,6 +743,7 @@ def remove_occlusion(
                 if runner_status != 0:
                     logger.error("EraserDiT occlusion runner failed: %s", stderr or stdout)
                     return None, 500, stderr or stdout or "EraserDiT occlusion removal failed"
+                logger.info("EraserDiT occlusion removal completed successfully")
 
                 remote_output_path = ""
                 for line in reversed(stdout.splitlines()):
@@ -763,14 +763,15 @@ def remove_occlusion(
                     if not remote_output_path:
                         logger.error("EraserDiT output discovery failed: stdout=%s stderr=%s", stdout, stderr or find_stderr)
                         return None, 500, "EraserDiT completed without returning an output video"
+                logger.info("EraserDiT output video found at: %s", remote_output_path)
 
                 sftp = ssh_client.open_sftp()
                 try:
                     sftp.get(remote_output_path, local_output_video)
                 finally:
                     sftp.close()
-
                 if os.path.isfile(local_output_video):
+                    logger.info("EraserDiT output video downloaded to: %s", local_output_video)
                     return local_output_video, 200, ""
                 return None, 500, "EraserDiT output video could not be downloaded"
             finally:
