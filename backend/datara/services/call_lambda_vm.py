@@ -49,9 +49,9 @@ SAAS_HOST = os.getenv("SAAS_HOST") or _legacy_saas_attr("HOST")
 SAAS_HOST = SAAS_HOST or "192.222.51.234"
 SAAS_USER = os.getenv("SAAS_USER") or _legacy_saas_attr("USER") or "ubuntu"
 SAAS_KEY_PATH = (
-    os.getenv("SAAS_KEY_PATH")
+    os.path.expanduser("~/.ssh/azure_to_lambda")
     or _legacy_saas_attr("KEY_PATH")
-    or os.path.expanduser("~/.ssh/azure_to_lambda")
+    or os.getenv("SAAS_KEY_PATH")
 )
 DEFAULT_SAM3_PYTHON_BIN = f"/home/{SAAS_USER}/miniconda3/envs/sam3/bin/python"
 DEFAULT_QWEN_ANGLES_PYTHON_BIN = f"/home/{SAAS_USER}/miniconda3/envs/qwen-angles-2509/bin/python"
@@ -162,7 +162,10 @@ REMOTE_CORNER_CASE_OUTPUT_ROOT = "corner_images_controlnet"
 REMOTE_CORNER_CASE_LOCALIZATION_MODEL = "attention_points_sam"
 REMOTE_VLM_IMAGE_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "Post Annotation", "qwen_vlm_image.py")
 REMOTE_SEGMENTATION_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "DataraAI_segmentation.py")
-REMOTE_SUBTASK_ANNOTATOR_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "Post Annotation", "qwen_subtask_annotator.py")
+REMOTE_SUBTASK_ANNOTATOR_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "Post Annotation", "vila_subtask_annotator.py")
+REMOTE_VILA_INFER_SCRIPT = posixpath.join(REMOTE_PACKAGES_ROOT, "VILA", "llava", "cli", "infer.py")
+REMOTE_VILA_MEDIA_UTILS_SCRIPT = posixpath.join(REMOTE_PACKAGES_ROOT, "VILA", "llava", "utils", "media.py")
+REMOTE_VILA_TOKENIZER_UTILS_SCRIPT = posixpath.join(REMOTE_PACKAGES_ROOT, "VILA", "llava", "utils", "tokenizer.py")
 REMOTE_ROSE_RUNNER_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "DataraAI_rose_occlusion.py")
 REMOTE_ROSE_VERIFY_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "verify_rose_runtime.sh")
 REMOTE_ROSE_SETUP_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "setup_rose_runtime.sh")
@@ -321,9 +324,197 @@ def _rose_env_exports():
 def _remote_image_env_prefix():
     return (
         f'cd "{_shell_escape(REMOTE_SAAS_ROOT)}" && '
+        f'NVCC_PREPEND_FLAGS="${{NVCC_PREPEND_FLAGS:-}}" '
+        f'NVCC_APPEND_FLAGS="${{NVCC_APPEND_FLAGS:-}}" '
         f'PYTHONNOUSERSITE=1 '
         f'PYTHONPATH="{_shell_escape(REMOTE_USER_HOME)}:{_shell_escape(REMOTE_SAAS_ROOT)}:$PYTHONPATH" '
     )
+
+
+def _remote_vila_env_prefix():
+    return (
+        f'cd "{_shell_escape(REMOTE_SAAS_ROOT)}" && '
+        f'NVCC_PREPEND_FLAGS="${{NVCC_PREPEND_FLAGS:-}}" '
+        f'NVCC_APPEND_FLAGS="${{NVCC_APPEND_FLAGS:-}}" '
+    )
+
+
+def _video_suffix_from_url(video_url: str) -> str:
+    suffix = posixpath.splitext(urlparse(video_url).path)[1].lower()
+    return suffix if suffix in HAND_MESH_VIDEO_SUFFIXES else ".mp4"
+
+
+def _ensure_remote_vila_video_fps_default(client) -> bool:
+    patch_code = (
+        "import pathlib, re, sys; "
+        "path = pathlib.Path(sys.argv[1]); "
+        "text = path.read_text(); "
+        "original = text; "
+        "text = re.sub(r'(?: or 0\\.0)+', ' or 0.0', text); "
+        "text = re.sub(r'(?:fps is not None and )+', 'fps is not None and ', text); "
+        "text = text.replace('fps = getattr(config, \"fps\", 0.0)\\n', 'fps = getattr(config, \"fps\", 0.0) or 0.0\\n'); "
+        "text = text.replace('if fps > 0:\\n', 'if fps is not None and fps > 0:\\n'); "
+        "path.write_text(text) if text != original else None; "
+        "print('__PATCHED__' if text != original else '__UNCHANGED__')"
+    )
+    command = (
+        f'test -f "{_shell_escape(REMOTE_VILA_MEDIA_UTILS_SCRIPT)}" && '
+        f'"{_shell_escape(SAAS_VLM_PYTHON_BIN)}" -s -c "{_shell_escape(patch_code)}" '
+        f'"{_shell_escape(REMOTE_VILA_MEDIA_UTILS_SCRIPT)}"'
+    )
+    stdout, stderr, status = _run_command_with_status(client, command)
+    if status != 0:
+        logger.error(
+            "Failed to ensure VILA video fps default at %s: %s",
+            REMOTE_VILA_MEDIA_UTILS_SCRIPT,
+            stderr or stdout,
+        )
+        return False
+    return True
+
+
+def _ensure_remote_vila_tokenizer_fallback(client) -> bool:
+    previous_fallback = (
+        '    if getattr(tokenizer, "chat_template", None) is None:\n'
+        '        return tokenize_conversation_legacy(\n'
+        '            messages,\n'
+        '            tokenizer,\n'
+        '            add_generation_prompt=add_generation_prompt,\n'
+        '            overrides=overrides,\n'
+        '            no_system_prompt=no_system_prompt,\n'
+        '        )\n\n'
+    )
+    legacy_fallback = (
+        '    if getattr(tokenizer, "chat_template", None) is None:\n'
+        '        if conversation_lib.default_conversation.sep_style == conversation_lib.SeparatorStyle.AUTO:\n'
+        '            conversation_lib.default_conversation = conversation_lib.conv_templates["vicuna_v1"]\n'
+        '        return tokenize_conversation_legacy(\n'
+        '            messages,\n'
+        '            tokenizer,\n'
+        '            add_generation_prompt=add_generation_prompt,\n'
+        '            overrides=overrides,\n'
+        '            no_system_prompt=no_system_prompt,\n'
+        '        )\n\n'
+    )
+    patch_code = (
+        "import pathlib, sys; "
+        "path = pathlib.Path(sys.argv[1]); "
+        "text = path.read_text(); "
+        "marker = '    text = tokenizer.apply_chat_template(\\n'; "
+        "previous_fallback = sys.argv[2]; "
+        "fallback = sys.argv[3]; "
+        "original = text; "
+        "text = text.replace(previous_fallback, fallback, 1) if previous_fallback in text else text; "
+        "text = text.replace(marker, fallback + marker, 1) if fallback not in text and marker in text else text; "
+        "path.write_text(text) if text != original else None; "
+        "print('__PATCHED__' if text != original else '__UNCHANGED__')"
+    )
+    command = (
+        f'test -f "{_shell_escape(REMOTE_VILA_TOKENIZER_UTILS_SCRIPT)}" && '
+        f'"{_shell_escape(SAAS_VLM_PYTHON_BIN)}" -s -c "{_shell_escape(patch_code)}" '
+        f'"{_shell_escape(REMOTE_VILA_TOKENIZER_UTILS_SCRIPT)}" "{_shell_escape(previous_fallback)}" '
+        f'"{_shell_escape(legacy_fallback)}"'
+    )
+    stdout, stderr, status = _run_command_with_status(client, command)
+    if status != 0:
+        logger.error(
+            "Failed to ensure VILA tokenizer fallback at %s: %s",
+            REMOTE_VILA_TOKENIZER_UTILS_SCRIPT,
+            stderr or stdout,
+        )
+        return False
+    return True
+
+
+def _ensure_remote_vila_cli_cuda_placement(client) -> bool:
+    marker = "    # Datara compatibility: ensure VILA is placed on GPU before generation.\n"
+    cuda_block = (
+        marker +
+        '    if hasattr(model, "cuda"):\n'
+        '        model = model.cuda()\n'
+        '    if hasattr(model, "eval"):\n'
+        '        model.eval()\n\n'
+    )
+    patch_code = (
+        "import pathlib, sys; "
+        "path = pathlib.Path(sys.argv[1]); "
+        "text = path.read_text(); "
+        "marker = sys.argv[2]; "
+        "block = sys.argv[3]; "
+        "anchor = '    # Override num_video_frames and video_max_tiles\\n'; "
+        "original = text; "
+        "text = text.replace(anchor, block + anchor, 1) if marker not in text and anchor in text else text; "
+        "path.write_text(text) if text != original else None; "
+        "print('__PATCHED__' if text != original else '__UNCHANGED__')"
+    )
+    command = (
+        f'test -f "{_shell_escape(REMOTE_VILA_INFER_SCRIPT)}" && '
+        f'"{_shell_escape(SAAS_VLM_PYTHON_BIN)}" -s -c "{_shell_escape(patch_code)}" '
+        f'"{_shell_escape(REMOTE_VILA_INFER_SCRIPT)}" "{_shell_escape(marker)}" "{_shell_escape(cuda_block)}"'
+    )
+    stdout, stderr, status = _run_command_with_status(client, command)
+    if status != 0:
+        logger.error(
+            "Failed to ensure VILA CLI CUDA placement at %s: %s",
+            REMOTE_VILA_INFER_SCRIPT,
+            stderr or stdout,
+        )
+        return False
+    return True
+
+
+def _ensure_remote_vila_annotator_raw_output(client, script_path: str) -> bool:
+    raw_arg_marker = '    parser.add_argument(\n        "--model_path",'
+    raw_write_marker = "    payload = parse_first_json_value(raw_output)\n"
+    raw_arg_block = (
+        '    parser.add_argument(\n'
+        '        "--raw_output",\n'
+        '        type=str,\n'
+        '        help="optional path for raw vila-infer stdout",\n'
+        '        default="",\n'
+        '    )\n'
+    )
+    raw_write_block = (
+        '    if args.raw_output:\n'
+        '        raw_output_path = os.path.abspath(os.path.expanduser(args.raw_output))\n'
+        '        Path(raw_output_path).parent.mkdir(parents=True, exist_ok=True)\n'
+        '        with open(raw_output_path, "w", encoding="utf-8") as handle:\n'
+        '            handle.write(raw_output)\n'
+        '            if raw_output and not raw_output.endswith("\\n"):\n'
+        '                handle.write("\\n")\n\n'
+    )
+    patch_code = (
+        "import pathlib, sys; "
+        "path = pathlib.Path(sys.argv[1]); "
+        "text = path.read_text(); "
+        "arg_marker = sys.argv[2]; "
+        "arg_block = sys.argv[3]; "
+        "raw_marker = sys.argv[4]; "
+        "raw_block = sys.argv[5]; "
+        "original = text; "
+        "text = text.replace(arg_marker, arg_block + arg_marker, 1) if '--raw_output' not in text and arg_marker in text else text; "
+        "text = text.replace(raw_marker, raw_block + raw_marker, 1) if 'raw_output_path = os.path.abspath' not in text and raw_marker in text else text; "
+        "path.write_text(text) if text != original else None; "
+        "print('__PATCHED__' if text != original else '__UNCHANGED__')"
+    )
+    command = (
+        f'test -f "{_shell_escape(script_path)}" && '
+        f'"{_shell_escape(SAAS_VLM_PYTHON_BIN)}" -s -c "{_shell_escape(patch_code)}" '
+        f'"{_shell_escape(script_path)}" '
+        f'"{_shell_escape(raw_arg_marker)}" '
+        f'"{_shell_escape(raw_arg_block)}" '
+        f'"{_shell_escape(raw_write_marker)}" '
+        f'"{_shell_escape(raw_write_block)}"'
+    )
+    stdout, stderr, status = _run_command_with_status(client, command)
+    if status != 0:
+        logger.error(
+            "Failed to ensure VILA annotator raw-output capture at %s: %s",
+            script_path,
+            stderr or stdout,
+        )
+        return False
+    return True
 
 
 def _cleanup_remote_job_root(client, remote_root):
@@ -956,8 +1147,8 @@ def generate_hand_mesh(
                 _run_command(ssh_client, f'rm -rf "{_shell_escape(run_output_dir)}"')
                 logger.info("Cleaned up remote output directory: %s", run_output_dir)
 
-            if local_video_paths or local_artifact_paths or local_mcap_paths:
-                return local_video_paths, local_artifact_paths, local_mcap_paths, 200, ""
+            if local_video_paths or local_artifact_paths or local_mcap_paths or local_npz_paths:
+                return local_video_paths, local_artifact_paths, local_mcap_paths, local_npz_paths, 200, ""
             return [], [], [], [], 500, "Hand mesh outputs could not be downloaded"
 
     except Exception as exc:
@@ -974,53 +1165,107 @@ def generate_task_intelligence(video_url: str):
         return None, 400
 
     safe_url = _shell_escape(video_url)
-    command = (
-        f'"{_shell_escape(SAAS_VLM_PYTHON_BIN)}" -s "{_shell_escape(REMOTE_SUBTASK_ANNOTATOR_SCRIPT)}" '
-        f'--asset_path "{safe_url}"'
-    )
-    logger.info("call_lambda_vm.generate_task_intelligence() command: %s", command)
+    remote_asset_root = posixpath.join("/tmp", f"datara_task_intelligence_{uuid.uuid4().hex}")
+    remote_asset_path = posixpath.join(remote_asset_root, f"asset{_video_suffix_from_url(video_url)}")
+    logger.info("call_lambda_vm.generate_task_intelligence() asset_url: %s", video_url)
 
     try:
         with _ssh_session() as ssh_client:
-            # Check where the script exists on the remote VM
-            check_script_cmd = (
-                f'if [ -f "{_shell_escape(REMOTE_SUBTASK_ANNOTATOR_SCRIPT)}" ]; then echo "{_shell_escape(REMOTE_SUBTASK_ANNOTATOR_SCRIPT)}"; '
-                f'elif [ -f "{_shell_escape(posixpath.join(REMOTE_SAAS_ROOT, "Post Annotation", "qwen_subtask_annotator.py"))}" ]; then echo "{_shell_escape(posixpath.join(REMOTE_SAAS_ROOT, "Post Annotation", "qwen_subtask_annotator.py"))}"; '
-                f'elif [ -f "{_shell_escape(posixpath.join(REMOTE_SAAS_ROOT, "qwen_subtask_annotator.py"))}" ]; then echo "{_shell_escape(posixpath.join(REMOTE_SAAS_ROOT, "qwen_subtask_annotator.py"))}"; '
-                f'else echo "MISSING"; fi'
-            )
-            script_path_out, _ = _run_command(ssh_client, check_script_cmd)
-            script_path_out = script_path_out.strip()
-
-            if script_path_out == "MISSING":
-                logger.error("qwen_subtask_annotator.py is missing from the Lambda VM. Ensure the SaaS repo is updated.")
-                return None, 404
-
-            command = (
-                f'"{_shell_escape(SAAS_VLM_PYTHON_BIN)}" -s "{script_path_out}" '
-                f'--asset_path "{safe_url}"'
-            )
-            stdout, stderr = _run_command(ssh_client, _remote_image_env_prefix() + command)
-            remote_json_path = (stdout.strip().split("\n")[-1].strip() if stdout else "") or ""
-
-            if not remote_json_path or not remote_json_path.endswith(".json"):
-                logger.error("Annotator script failed or returned invalid path: %s", stderr or stdout)
-                return None, 500
-
-            os.makedirs(DATASET_LIST_DIR, exist_ok=True)
-            local_json_path = os.path.join(DATASET_LIST_DIR, os.path.basename(remote_json_path))
-
-            sftp = ssh_client.open_sftp()
             try:
-                sftp.get(remote_json_path, local_json_path)
+                # Check where the script exists on the remote VM
+                check_script_cmd = (
+                    f'if [ -f "{_shell_escape(REMOTE_SUBTASK_ANNOTATOR_SCRIPT)}" ]; then echo "{_shell_escape(REMOTE_SUBTASK_ANNOTATOR_SCRIPT)}"; '
+                    f'elif [ -f "{_shell_escape(posixpath.join(REMOTE_SAAS_ROOT, "Post Annotation", "vila_subtask_annotator.py"))}" ]; then echo "{_shell_escape(posixpath.join(REMOTE_SAAS_ROOT, "Post Annotation", "vila_subtask_annotator.py"))}"; '
+                    f'elif [ -f "{_shell_escape(posixpath.join(REMOTE_SAAS_ROOT, "vila_subtask_annotator.py"))}" ]; then echo "{_shell_escape(posixpath.join(REMOTE_SAAS_ROOT, "vila_subtask_annotator.py"))}"; '
+                    f'else echo "MISSING"; fi'
+                )
+                script_path_out, _ = _run_command(ssh_client, check_script_cmd)
+                script_path_out = script_path_out.strip()
+
+                if script_path_out == "MISSING":
+                    logger.error("vila_subtask_annotator.py is missing from the Lambda VM. Ensure the SaaS repo is updated.")
+                    return None, 404
+
+                if not _ensure_remote_vila_video_fps_default(ssh_client):
+                    return None, 500
+                if not _ensure_remote_vila_tokenizer_fallback(ssh_client):
+                    return None, 500
+                if not _ensure_remote_vila_cli_cuda_placement(ssh_client):
+                    return None, 500
+                if not _ensure_remote_vila_annotator_raw_output(ssh_client, script_path_out):
+                    return None, 500
+
+                download_code = "import sys, urllib.request; urllib.request.urlretrieve(sys.argv[1], sys.argv[2])"
+                download_command = (
+                    f'mkdir -p "{_shell_escape(remote_asset_root)}" && '
+                    f'"{_shell_escape(SAAS_VLM_PYTHON_BIN)}" -s -c \'{download_code}\' "{safe_url}" '
+                    f'"{_shell_escape(remote_asset_path)}"'
+                )
+                _, download_stderr, download_status = _run_command_with_status(ssh_client, download_command)
+                if download_status != 0:
+                    logger.error("Failed to download task intelligence asset on Lambda VM: %s", download_stderr)
+                    return None, 500
+
+                remote_raw_output_path = posixpath.join(remote_asset_root, "vila_raw_output.txt")
+                command = (
+                    f'"{_shell_escape(SAAS_VLM_PYTHON_BIN)}" -s "{_shell_escape(script_path_out)}" '
+                    f'--asset_path "{_shell_escape(remote_asset_path)}" '
+                    f'--conv_mode "vicuna_v1" '
+                    f'--raw_output "{_shell_escape(remote_raw_output_path)}"'
+                )
+                logger.info("call_lambda_vm.generate_task_intelligence() command: %s", command)
+                remote_stdout_path = posixpath.join(remote_asset_root, "annotator.stdout")
+                remote_stderr_path = posixpath.join(remote_asset_root, "annotator.stderr")
+                redirected_command = (
+                    f'{_remote_vila_env_prefix()}{command} '
+                    f'> "{_shell_escape(remote_stdout_path)}" '
+                    f'2> "{_shell_escape(remote_stderr_path)}"; '
+                    'status=$?; '
+                    'if [ "$status" -eq 0 ]; then '
+                    f'cat "{_shell_escape(remote_stdout_path)}"; '
+                    'else '
+                    f'cat "{_shell_escape(remote_stderr_path)}" >&2; '
+                    'exit "$status"; '
+                    'fi'
+                )
+                stdout, stderr = _run_command(ssh_client, redirected_command)
+                remote_json_path = (stdout.strip().split("\n")[-1].strip() if stdout else "") or ""
+
+                if not remote_json_path or not remote_json_path.endswith(".json"):
+                    logger.error("Annotator script failed or returned invalid path: %s", stderr or stdout)
+                    return None, 500
+
+                os.makedirs(DATASET_LIST_DIR, exist_ok=True)
+                local_json_path = os.path.join(DATASET_LIST_DIR, os.path.basename(remote_json_path))
+
+                sftp = ssh_client.open_sftp()
+                try:
+                    sftp.get(remote_json_path, local_json_path)
+                    local_raw_path = os.path.splitext(local_json_path)[0] + ".raw.txt"
+                    try:
+                        sftp.get(remote_raw_output_path, local_raw_path)
+                        logger.info("Saved raw VILA output to %s", local_raw_path)
+                        try:
+                            with open(local_raw_path, "r", encoding="utf-8", errors="replace") as handle:
+                                raw_preview = handle.read(2000).strip()
+                            if raw_preview:
+                                logger.info("VILA raw output preview: %s", raw_preview)
+                            else:
+                                logger.info("VILA raw output was empty")
+                        except OSError:
+                            logger.warning("Could not read downloaded raw VILA output at %s", local_raw_path)
+                    except OSError:
+                        logger.warning("Raw VILA output was not available at %s", remote_raw_output_path)
+                finally:
+                    sftp.close()
+
+                _run_command(ssh_client, f"rm -f '{_shell_escape(remote_json_path)}'")
+
+                if os.path.exists(local_json_path):
+                    return local_json_path, 200
+                return None, 500
             finally:
-                sftp.close()
-
-            _run_command(ssh_client, f"rm -f '{_shell_escape(remote_json_path)}'")
-
-            if os.path.exists(local_json_path):
-                return local_json_path, 200
-            return None, 500
+                _cleanup_remote_job_root(ssh_client, remote_asset_root)
     except Exception as e:
         logger.error("generate_task_intelligence error: %s", e)
         return None, 500

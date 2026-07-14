@@ -236,15 +236,23 @@ class LambdaJobService:
         self._validate_payload(definition, normalized_payload)
         normalized_payload = self._authorize_and_enrich_payload(current_user, normalized_payload)
 
-        if execute_inline and self._active_jobs():
-            raise GenerationBusy(GENERATION_BUSY_MESSAGE)
-
         scope_key = self._scope_key(normalized_payload)
         payload_json = _json_dumps(normalized_payload)
         fingerprint_source = _json_dumps(
             {"job_type": job_type, "scope_key": scope_key, "payload": normalized_payload}
         )
         request_fingerprint = hashlib.sha256(fingerprint_source.encode("utf-8")).hexdigest()
+
+        if execute_inline:
+            duplicate = self.job_store.get_active_duplicate_lambda_job(
+                owner_user_id=int(current_user["id"]),
+                request_fingerprint=request_fingerprint,
+            )
+            if duplicate:
+                raise DuplicateActiveJob(self.serialize(duplicate))
+            if self._active_jobs():
+                raise GenerationBusy(GENERATION_BUSY_MESSAGE)
+
         outcome, record = self.job_store.create_lambda_job_atomic(
             owner_user_id=int(current_user["id"]),
             job_type=job_type,

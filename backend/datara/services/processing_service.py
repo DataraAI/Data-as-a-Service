@@ -107,6 +107,110 @@ class ProcessingService:
         text = re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", text)
         return re.sub(r"\s+", " ", text).strip()
 
+    @staticmethod
+    def _first_present(mapping: dict[str, Any], keys: tuple[str, ...], default: Any = None) -> Any:
+        for key in keys:
+            if key in mapping:
+                return mapping[key]
+        normalized = {str(key).lower(): value for key, value in mapping.items()}
+        for key in keys:
+            value = normalized.get(key.lower())
+            if value is not None:
+                return value
+        return default
+
+    @staticmethod
+    def _normalize_frame_value(value: Any) -> int:
+        if isinstance(value, str):
+            match = re.search(r"-?\d+(?:\.\d+)?", value)
+            if not match:
+                return 0
+            value = match.group(0)
+        try:
+            return max(0, int(float(value)))
+        except (TypeError, ValueError):
+            return 0
+
+    @staticmethod
+    def _normalize_task_text(value: Any, default: str = "unknown") -> str:
+        text = re.sub(r"\s+", " ", str(value or "").strip())
+        return text or default
+
+    @classmethod
+    def _extract_task_analysis_items(cls, annotation: Any) -> list[Any]:
+        if isinstance(annotation, list):
+            items: list[Any] = []
+            for item in annotation:
+                extracted = cls._extract_task_analysis_items(item)
+                items.extend(extracted or [item])
+            return items
+
+        if isinstance(annotation, dict):
+            for key in ("subTasks", "subtasks", "steps", "actions", "segments", "tasks"):
+                value = cls._first_present(annotation, (key,))
+                if isinstance(value, list):
+                    items = cls._extract_task_analysis_items(value)
+                    if items:
+                        return items
+            return [annotation]
+
+        if isinstance(annotation, str):
+            return [annotation]
+
+        return []
+
+    @classmethod
+    def _normalize_task_analysis_subtasks(cls, annotation: Any) -> list[dict[str, Any]]:
+        normalized_subtasks: list[dict[str, Any]] = []
+        for item in cls._extract_task_analysis_items(annotation):
+            if isinstance(item, dict):
+                label = cls._first_present(
+                    item,
+                    (
+                        "subTaskDescription",
+                        "sub_task_description",
+                        "sub_task",
+                        "subtask",
+                        "subtask_name",
+                        "step",
+                        "action",
+                        "description",
+                        "taskDescription",
+                        "task_name",
+                        "taskName",
+                        "name",
+                    ),
+                    "unknown",
+                )
+                start_frame = cls._normalize_frame_value(
+                    cls._first_present(
+                        item,
+                        ("startFrame", "start_frame", "frame_start", "start", "startTime", "start_time"),
+                    )
+                )
+                end_frame = cls._normalize_frame_value(
+                    cls._first_present(
+                        item,
+                        ("endFrame", "end_frame", "frame_end", "end", "endTime", "end_time"),
+                    )
+                )
+            elif isinstance(item, str):
+                label = item
+                start_frame = 0
+                end_frame = 0
+            else:
+                continue
+
+            normalized_subtasks.append(
+                {
+                    "sub_task": cls._normalize_task_text(label),
+                    "start_frame": start_frame,
+                    "end_frame": max(start_frame, end_frame),
+                }
+            )
+
+        return normalized_subtasks
+
     def _resolve_dataset_identity(self, data: dict[str, Any]) -> tuple[str, str, str]:
         output_name = str(data.get("output_name") or "").strip().strip("/")
         if output_name:
@@ -1461,11 +1565,12 @@ class ProcessingService:
                 return {"error": "Failed to generate task intelligence on the Lambda VM."}, status_code or 500
 
             with open(local_json_path, "r") as f:
-                raw_subtasks = json.load(f)
+                raw_annotation = json.load(f)
+            normalized_subtasks = self._normalize_task_analysis_subtasks(raw_annotation)
 
             # Format the output
             formatted_subtasks = []
-            for st in raw_subtasks:
+            for st in normalized_subtasks:
                 formatted_subtasks.append({
                     "subtask_name": str(st.get("sub_task", "unknown")).title(),
                     "start_time": f"Frame {st.get('start_frame', 0)}",
@@ -1481,8 +1586,16 @@ class ProcessingService:
                     {
                         "task_name": task_name,
                         "description": f"Extracted from {dataset_summary['full_path']}",
-                        "start_time": f"Frame {raw_subtasks[0].get('start_frame', 0)}" if raw_subtasks else "Start",
-                        "end_time": f"Frame {raw_subtasks[-1].get('end_frame', 0)}" if raw_subtasks else "End",
+                        "start_time": (
+                            f"Frame {normalized_subtasks[0].get('start_frame', 0)}"
+                            if normalized_subtasks
+                            else "Start"
+                        ),
+                        "end_time": (
+                            f"Frame {normalized_subtasks[-1].get('end_frame', 0)}"
+                            if normalized_subtasks
+                            else "End"
+                        ),
                         "subtasks": formatted_subtasks,
                     }
                 ]
@@ -2551,29 +2664,37 @@ class ProcessingService:
         data: dict[str, Any],
         _job_id: str,
     ) -> dict[str, Any]:
-        source = self._resolve_source_asset(current_user, str(data.get("asset_id") or ""))
-        source_dataset = source["dataset"]
-        source_blob = source["blob_name"]
-        video_name = os.path.splitext(os.path.basename(source_blob))[0]
-        vipe_zip_blob = f"{source_dataset['storage_prefix'].rstrip('/')}/misc/cache/{video_name}_vipe_output.zip"
+        asset_id = str(data.get("asset_id") or "").strip()
         vipe_zip_url = ""
-        try:
-            if self.azure_service.blob_exists(source_dataset["storage_container"], vipe_zip_blob):
-                vipe_zip_url = self.azure_service.generate_sas_url(
-                    source_dataset["storage_container"],
-                    vipe_zip_blob,
-                    expiry_hours=6,
-                )
-        except Exception:
-            vipe_zip_url = ""
-        return {
-            "video_url": self.azure_service.generate_sas_url(
+        if asset_id:
+            source = self._resolve_source_asset(current_user, asset_id)
+            source_dataset = source["dataset"]
+            source_blob = source["blob_name"]
+            video_url = self.azure_service.generate_sas_url(
                 source_dataset["storage_container"],
                 source_blob,
                 expiry_hours=6,
-            ),
-            "seq": video_name,
-            "pipeline": str(data.get("pipeline") or "default"),
+            )
+            video_basename = os.path.basename(source_blob)
+            video_name = os.path.splitext(video_basename)[0]
+            vipe_zip_blob = f"{source_dataset['storage_prefix'].rstrip('/')}/misc/cache/{video_name}_vipe_output.zip"
+            try:
+                if self.azure_service.blob_exists(source_dataset["storage_container"], vipe_zip_blob):
+                    vipe_zip_url = self.azure_service.generate_sas_url(
+                        source_dataset["storage_container"],
+                        vipe_zip_blob,
+                        expiry_hours=6,
+                    )
+            except Exception:
+                vipe_zip_url = ""
+        else:
+            video_url = self._resolve_hand_mesh_video_url(str(data.get("video_url") or ""), current_user)
+            video_basename = os.path.basename(urlparse(video_url).path)
+
+        return {
+            "video_url": video_url,
+            "seq": self._slugify_sequence_name(str(data.get("seq") or os.path.splitext(video_basename)[0])),
+            "pipeline": str(data.get("pipeline") or "default").strip() or "default",
             "vipe_zip_url": vipe_zip_url,
         }
 
@@ -2783,8 +2904,9 @@ class ProcessingService:
         if len(json_paths) != 1:
             raise ValueError("Task analysis must return exactly one JSON artifact")
         with open(json_paths[0], encoding="utf-8") as handle:
-            raw_subtasks = json.load(handle)
-        if not isinstance(raw_subtasks, list):
+            raw_annotation = json.load(handle)
+        normalized_subtasks = self._normalize_task_analysis_subtasks(raw_annotation)
+        if not normalized_subtasks:
             raise ValueError("Task analysis returned invalid JSON")
 
         source = self._resolve_source_asset(current_user, str(data.get("asset_id") or ""))
@@ -2795,8 +2917,7 @@ class ProcessingService:
                 "end_time": f"Frame {subtask.get('end_frame', 0)}",
                 "description": "Identified during task analysis.",
             }
-            for subtask in raw_subtasks
-            if isinstance(subtask, dict)
+            for subtask in normalized_subtasks
         ]
         dataset_summary = self.sql_store.build_dataset_summary(source["dataset"], current_user) if hasattr(
             self.sql_store, "build_dataset_summary"
@@ -2807,8 +2928,16 @@ class ProcessingService:
                 {
                     "task_name": task_name,
                     "description": f"Extracted from {dataset_summary['full_path']}",
-                    "start_time": f"Frame {raw_subtasks[0].get('start_frame', 0)}" if raw_subtasks else "Start",
-                    "end_time": f"Frame {raw_subtasks[-1].get('end_frame', 0)}" if raw_subtasks else "End",
+                    "start_time": (
+                        f"Frame {normalized_subtasks[0].get('start_frame', 0)}"
+                        if normalized_subtasks
+                        else "Start"
+                    ),
+                    "end_time": (
+                        f"Frame {normalized_subtasks[-1].get('end_frame', 0)}"
+                        if normalized_subtasks
+                        else "End"
+                    ),
                     "subtasks": formatted_subtasks,
                 }
             ]
