@@ -749,7 +749,6 @@ def generate_masks(*, prompt, local_input_dir, local_output_dir):
 
 
 def remove_occlusion_rose(
-def remove_occlusion_rose(
     *,
     local_input_video,
     local_mask_video,
