@@ -685,6 +685,8 @@ def remove_occlusion(
         return None, 400, "Missing EraserDiT prompt"
     if not os.path.isfile(local_input_video) or not os.path.isfile(local_mask_video):
         return None, 400, "Source or mask video is missing"
+    
+    logger.info("Starting remove_occlusion process")
 
     os.makedirs(os.path.dirname(local_output_video), exist_ok=True)
 
@@ -694,6 +696,10 @@ def remove_occlusion(
     remote_output_dir = posixpath.join(remote_root, "output")
     remote_source_video = posixpath.join(remote_input_dir, "source.mp4")
     remote_mask_video = posixpath.join(remote_input_dir, "mask.mp4")
+
+    logger.info("The prompt for the current job is: %s:", prompt)
+    logger.info("The local input video is stored at: %s", local_input_video)
+    logger.info("The local mask video is stored at: %s", local_mask_video)
 
     try:
         with _ssh_session() as ssh_client:
