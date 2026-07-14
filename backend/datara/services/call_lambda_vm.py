@@ -1140,7 +1140,6 @@ def generate_hand_mesh(
                 for index, remote_npz_path in enumerate(remote_npz):
                     filename = os.path.basename(remote_npz_path) or f"npz_{index + 1}"
                     local_path = os.path.join(local_mcap_dir, filename)
-                    local_path = os.path.join(local_mcap_dir, filename)
                     if os.path.exists(local_path):
                         stem, ext = os.path.splitext(filename)
                         local_path = os.path.join(local_npz_dir, f"{stem}_{index + 1}{ext or ''}")
