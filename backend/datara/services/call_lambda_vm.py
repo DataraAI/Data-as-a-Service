@@ -58,6 +58,8 @@ DEFAULT_QWEN_ANGLES_PYTHON_BIN = f"/home/{SAAS_USER}/miniconda3/envs/qwen-angles
 DEFAULT_QWEN_VLM_PYTHON_BIN = f"/home/{SAAS_USER}/miniconda3/envs/qwen-vlm/bin/python"
 DEFAULT_ROSE_PYTHON_BIN = f"/home/{SAAS_USER}/miniconda3/envs/rose_runtime/bin/python"
 DEFAULT_ADDIT_SAM2_PYTHON_BIN = f"/home/{SAAS_USER}/miniconda3/envs/addit-sam2/bin/python"
+DEFAULT_ERASERDIT_PYTHON_BIN = f"/home/{SAAS_USER}/miniconda3/envs/EraserDiT/bin/python"
+DEFAULT_ERASERDIT_PYTHON_BIN = f"/home/{SAAS_USER}/miniconda3/envs/EraserDiT/bin/python"
 
 def _ssh_config_identity_path(hostname: str) -> str | None:
     """Return the first existing IdentityFile for a host in the local SSH config."""
@@ -144,6 +146,16 @@ SAAS_ROSE_PYTHON_BIN = (
     or _legacy_saas_attr("ROSE_PYTHON_BIN")
     or DEFAULT_ROSE_PYTHON_BIN
 )
+SAAS_ERASERDIT_PYTHON_BIN = (
+    os.getenv("SAAS_ERASERDIT_PYTHON_BIN")
+    or _legacy_saas_attr("ERASERDIT_PYTHON_BIN")
+    or DEFAULT_ERASERDIT_PYTHON_BIN
+)
+SAAS_ERASERDIT_PYTHON_BIN = (
+    os.getenv("SAAS_ERASERDIT_PYTHON_BIN")
+    or _legacy_saas_attr("ERASERDIT_PYTHON_BIN")
+    or DEFAULT_ERASERDIT_PYTHON_BIN
+)
 
 REMOTE_USER_HOME = f"/home/{SAAS_USER}"
 REMOTE_PACKAGES_ROOT = posixpath.join(REMOTE_USER_HOME, "packages")
@@ -163,6 +175,7 @@ REMOTE_VILA_TOKENIZER_UTILS_SCRIPT = posixpath.join(REMOTE_PACKAGES_ROOT, "VILA"
 REMOTE_ROSE_RUNNER_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "DataraAI_rose_occlusion.py")
 REMOTE_ROSE_VERIFY_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "verify_rose_runtime.sh")
 REMOTE_ROSE_SETUP_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "setup_rose_runtime.sh")
+REMOTE_ERASERDIT_RUNNER_SCRIPT = posixpath.join(REMOTE_SAAS_ROOT, "DataraAI_eraserdit_occlusion.py")
 REMOTE_SAM3_PACKAGE_ROOT = f"{REMOTE_USER_HOME}/packages/sam3"
 REMOTE_DYN_HAMR_ROOT = os.getenv("SAAS_DYN_HAMR_ROOT") or f"{REMOTE_USER_HOME}/packages/Dyn-HaMR"
 DEFAULT_VIPE_PYTHON_BIN = f"/home/{SAAS_USER}/miniconda3/envs/vipe/bin/python"
@@ -735,7 +748,7 @@ def generate_masks(*, prompt, local_input_dir, local_output_dir):
         return None, 500
 
 
-def remove_occlusion(
+def remove_occlusion_rose(
     *,
     local_input_video,
     local_mask_video,
@@ -847,6 +860,121 @@ def remove_occlusion(
                 _cleanup_remote_job_root(ssh_client, remote_root)
     except Exception as exc:
         logger.error("remove_occlusion error: %s", exc, exc_info=True)
+        return None, 500, str(exc)
+    
+def remove_occlusion(
+    *,
+    local_input_video,
+    local_mask_video,
+    local_output_video,
+    prompt,
+    sample_height=None,
+    sample_width=None,
+    window_length=None,
+):
+    """
+    Upload locally staged source/mask videos to the SaaS VM, verify the
+    SaaS-owned EraserDiT runtime, run the remote DataraAI_eraserdit_occlusion.py
+    script, and fetch the final MP4 output locally.
+    Returns (local_output_video, status_code, error_message).
+    """
+    if not prompt:
+        return None, 400, "Missing EraserDiT prompt"
+    if not os.path.isfile(local_input_video) or not os.path.isfile(local_mask_video):
+        return None, 400, "Source or mask video is missing"
+    
+    logger.info("Starting remove_occlusion process")
+
+    os.makedirs(os.path.dirname(local_output_video), exist_ok=True)
+
+    job_id = uuid.uuid4().hex[:12]
+    remote_root = f"/home/{SAAS_USER}/datara_eraserdit_jobs/{job_id}"
+    remote_input_dir = posixpath.join(remote_root, "input")
+    remote_output_dir = posixpath.join(remote_root, "output")
+    remote_source_video = posixpath.join(remote_input_dir, "source.mp4")
+    remote_mask_video = posixpath.join(remote_input_dir, "mask.mp4")
+
+    logger.info("The prompt for the current job is: %s:", prompt)
+
+    try:
+        with _ssh_session() as ssh_client:
+            try:
+                runner_found, runner_err = _run_command(
+                    ssh_client,
+                    f'test -f "{_shell_escape(REMOTE_ERASERDIT_RUNNER_SCRIPT)}" && echo "__FOUND__"',
+                )
+                if "__FOUND__" not in runner_found:
+                    logger.error(
+                        "Remote DataraAI_eraserdit_occlusion.py was not found at %s | stderr=%s",
+                        REMOTE_ERASERDIT_RUNNER_SCRIPT,
+                        runner_err,
+                    )
+                    return None, 500, "EraserDiT runner script was not found on the SaaS VM"
+
+                sftp = ssh_client.open_sftp()
+                try:
+                    _sftp_put_tree(sftp, local_input_video, remote_source_video)
+                    _sftp_put_tree(sftp, local_mask_video, remote_mask_video)
+                finally:
+                    sftp.close()
+
+                verify_script = (
+                    f'"{_shell_escape(SAAS_ERASERDIT_PYTHON_BIN)}" -s '
+                    f'"{_shell_escape(REMOTE_ERASERDIT_RUNNER_SCRIPT)}" --verify-only'
+                )
+                _verify_stdout, verify_stderr, verify_status = _run_bash_script(ssh_client, verify_script)
+                if verify_status != 0:
+                    message = verify_stderr or "EraserDiT runtime is not installed/configured on the SaaS VM"
+                    logger.error("EraserDiT runtime verification failed: %s", message)
+                    return None, 503, message
+                logger.info("EraserDiT runtime verification passed")
+
+                runner_script = (
+                    f'"{_shell_escape(SAAS_ERASERDIT_PYTHON_BIN)}" -s "{_shell_escape(REMOTE_ERASERDIT_RUNNER_SCRIPT)}" '
+                    f'--source_video "{_shell_escape(remote_source_video)}" '
+                    f'--mask_video "{_shell_escape(remote_mask_video)}" '
+                    f'--output_dir "{_shell_escape(remote_output_dir)}" '
+                    f'--prompt "{_shell_escape(prompt)}"'
+                )
+                stdout, stderr, runner_status = _run_bash_script(ssh_client, runner_script)
+                if runner_status != 0:
+                    logger.error("EraserDiT occlusion runner failed: %s", stderr or stdout)
+                    return None, 500, stderr or stdout or "EraserDiT occlusion removal failed"
+                logger.info("EraserDiT occlusion removal completed successfully")
+
+                remote_output_path = ""
+                for line in reversed(stdout.splitlines()):
+                    candidate = line.strip()
+                    if candidate.endswith((".mp4", ".mov", ".m4v", ".webm")):
+                        remote_output_path = candidate
+                        break
+
+                if not remote_output_path:
+                    find_stdout, find_stderr, find_status = _run_bash_script(
+                        ssh_client,
+                        f'find "{_shell_escape(remote_output_dir)}" -maxdepth 1 -type f '
+                        r'\( -name "*.mp4" -o -name "*.mov" -o -name "*.m4v" -o -name "*.webm" \) | head -n 1',
+                    )
+                    if find_status == 0:
+                        remote_output_path = (find_stdout.strip().splitlines()[-1].strip() if find_stdout else "") or ""
+                    if not remote_output_path:
+                        logger.error("EraserDiT output discovery failed: stdout=%s stderr=%s", stdout, stderr or find_stderr)
+                        return None, 500, "EraserDiT completed without returning an output video"
+                logger.info("EraserDiT output video found at: %s", remote_output_path)
+
+                sftp = ssh_client.open_sftp()
+                try:
+                    sftp.get(remote_output_path, local_output_video)
+                finally:
+                    sftp.close()
+                if os.path.isfile(local_output_video):
+                    logger.info("EraserDiT output video downloaded to: %s", local_output_video)
+                    return local_output_video, 200, ""
+                return None, 500, "EraserDiT output video could not be downloaded"
+            finally:
+                _cleanup_remote_job_root(ssh_client, remote_root)
+    except Exception as exc:
+        logger.error("remove_occlusion_eraserdit error: %s", exc, exc_info=True)
         return None, 500, str(exc)
 
 
@@ -1011,7 +1139,7 @@ def generate_hand_mesh(
 
                 for index, remote_npz_path in enumerate(remote_npz):
                     filename = os.path.basename(remote_npz_path) or f"npz_{index + 1}"
-                    local_path = os.path.join(local_npz_dir, filename)
+                    local_path = os.path.join(local_mcap_dir, filename)
                     if os.path.exists(local_path):
                         stem, ext = os.path.splitext(filename)
                         local_path = os.path.join(local_npz_dir, f"{stem}_{index + 1}{ext or ''}")
