@@ -24,11 +24,13 @@ function assetUrl(asset: DatasetAsset) {
 
 function fileTypeLabel(asset: DatasetAsset) {
   const type = String(asset.type || "").toLowerCase();
+  const name = String(asset.name || "").toLowerCase();
   if (type === "video") return "Video";
   if (type === "mcap") return "MCAP";
   if (type === "npz") return "NPZ";
   if (type === "json") return "JSON";
   if (type === "3d") return "OBJ";
+  if (type === "usdz" || type === "hand_mesh_usdz" || name.endsWith(".usdz")) return "USDZ Animation";
   if (type === "markdown") return "Markdown";
   return "File";
 }
@@ -338,8 +340,13 @@ function DownloadCard({
   canDelete?: boolean;
   onDelete?: (asset: DatasetAsset) => void;
 }) {
-  const isPlayable = asset.type === "video" || asset.type === "3d";
-  const Icon = asset.type === "json" ? FileJson : asset.type === "video" ? Film : FileText;
+  const type = String(asset.type || "").toLowerCase();
+  const name = String(asset.name || "").toLowerCase();
+
+  const isUSDZ = type === "usdz" || type === "hand_mesh_usdz" || name.endsWith(".usdz");
+  const isPlayable = type === "video" || type === "3d";
+
+  const Icon = type === "json" ? FileJson : (type === "video" || isUSDZ) ? Film : FileText;
 
   return (
     <div className="relative rounded-[18px] border border-slate-200 bg-card p-4 shadow-[0_12px_30px_rgba(15,23,42,0.04)]">
@@ -437,12 +444,33 @@ export function DatasetLanding({
     [manifest.dataset.viewer_path, manifest.hand_meshes.length, manifest.misc],
   );
 
+  // Safely extract potential top-level manifest keys containing the main USDZ asset
   const downloadableAssets = useMemo(
-    () => [
-      ...(manifest.primary_video ? [{ asset: manifest.primary_video, label: "Original input video" }] : []),
-      ...manifest.downloads.map((asset) => ({ asset, label: undefined })),
-    ],
-    [manifest.downloads, manifest.primary_video],
+    () => {
+      const items: Array<{ asset: DatasetAsset; label?: string }> = [];
+
+      // 1. Primary input video
+      if (manifest.primary_video) {
+        items.push({ asset: manifest.primary_video, label: "Original input video" });
+      }
+
+      // 2. Check for explicit USDZ properties attached directly to the manifest root
+      const rawManifest = manifest as any;
+      const explicitUsdz = rawManifest.hand_mesh_usdz || rawManifest.usdz || rawManifest.hand_mesh;
+      if (explicitUsdz && typeof explicitUsdz === "object") {
+        items.push({ asset: explicitUsdz, label: "Generated USDZ Animation" });
+      }
+
+      // 3. Populate standard downloads array
+      if (Array.isArray(manifest.downloads)) {
+        manifest.downloads.forEach((asset) => {
+          items.push({ asset, label: undefined });
+        });
+      }
+
+      return items;
+    },
+    [manifest],
   );
 
   const handleDownloadAll = async () => {

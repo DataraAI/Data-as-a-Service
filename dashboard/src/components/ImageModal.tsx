@@ -1,9 +1,9 @@
+import { submitGenerationRequest, useQueuedJob, type LambdaJob } from "@/lib/lambdaJobs";
 import { ChevronLeft, ChevronRight, Copy, Download, Film, Info, Loader2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { QueuedJobStatus } from "./QueuedJobStatus";
 import { ThreeDViewer } from "./ThreeDViewer";
 import { VideoToolsPanel } from "./VideoToolsPanel";
-import { QueuedJobStatus } from "./QueuedJobStatus";
-import { submitGenerationRequest, useQueuedJob, type LambdaJob } from "@/lib/lambdaJobs";
 
 interface ImageModalProps {
   image: any;
@@ -69,13 +69,19 @@ export function ImageModal({
   });
 
   const sourceVisibility = image?.dataset?.visibility ?? image?.metadata?.visibility ?? "public";
+
+  const type = String(image?.type || "").toLowerCase();
+  const name = String(image?.name || "").toLowerCase();
+
   const isVideo = image?.type === "video";
   const isStillImage = image?.type === "image";
   const isOriginalInputVideo = Boolean(isVideo && image?.is_primary_input);
+  const is3D = type === "3d" || name.endsWith(".obj");
+  const isUSDZ = type === "usdz" || type === "hand_mesh_usdz" || name.endsWith(".usdz");
   const isOcclusionRemovedVideo = Boolean(
     isVideo &&
-      (image?.metadata?.source_type === "occlusion_removed_video" ||
-        (Array.isArray(image?.tags) && image.tags.includes("occlusion_removed"))),
+    (image?.metadata?.source_type === "occlusion_removed_video" ||
+      (Array.isArray(image?.tags) && image.tags.includes("occlusion_removed"))),
   );
   const canShowVideoTools = Boolean(
     canUseGenerationTools && isVideo && (isOriginalInputVideo || isOcclusionRemovedVideo),
@@ -189,7 +195,7 @@ export function ImageModal({
         <ChevronLeft className="h-8 w-8 text-muted-foreground transition-colors group-hover:text-primary" />
       </div>
       <div className="relative flex flex-1 items-center justify-center overflow-hidden p-8">
-        {image.type === "3d" ? (
+        {is3D ? (
           <div className="relative h-full w-full max-w-4xl rounded-lg border border-border bg-card/50">
             <ThreeDViewer key={`${assetUrl}-${image.name}`} url={assetUrl} fileName={image.name} />
           </div>
@@ -305,7 +311,11 @@ export function ImageModal({
               <div className="flex justify-between gap-3 p-3">
                 <span className="font-medium text-muted-foreground">Asset Type</span>
                 <span className="text-right text-foreground">
-                  {image.type === "3d" ? "3D model" : isVideo ? "Video" : isMcap ? "MCAP File" : "Image"}
+                  {image.type === "3d"
+                    ? "3D Model (OBJ)"
+                    : (image.type === "usdz" || image.type === "hand_mesh_usdz")
+                      ? "3D Scene Animation (USDZ)"
+                      : isVideo ? "Video" : isMcap ? "MCAP File" : "Image"}
                 </span>
               </div>
               {isVideo && (
