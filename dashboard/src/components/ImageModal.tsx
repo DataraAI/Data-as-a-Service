@@ -75,6 +75,7 @@ export function ImageModal({
 
   const isVideo = image?.type === "video";
   const isStillImage = image?.type === "image";
+  const isOriginalInputVideo = Boolean(isVideo && image?.is_primary_input);
   const is3D = type === "3d" || name.endsWith(".obj");
   const isUSDZ = type === "usdz" || type === "hand_mesh_usdz" || name.endsWith(".usdz");
   const isOcclusionRemovedVideo = Boolean(
@@ -83,7 +84,7 @@ export function ImageModal({
       (Array.isArray(image?.tags) && image.tags.includes("occlusion_removed"))),
   );
   const canShowVideoTools = Boolean(
-    canUseGenerationTools && isVideo && (image?.is_primary_input || isOcclusionRemovedVideo),
+    canUseGenerationTools && isVideo && (isOriginalInputVideo || isOcclusionRemovedVideo),
   );
   const isMcap = image?.type === "mcap" || typeof image?.name === "string" && image.name.toLowerCase().endsWith(".mcap");
   const assetUrl = image?.proxy_url || image?.url;
@@ -504,7 +505,7 @@ export function ImageModal({
               ]}
               variant="inline"
               showHandMesh={!isOcclusionRemovedVideo && showHandMeshGeneration}
-              showTaskAnalysis={isOcclusionRemovedVideo}
+              showTaskAnalysis={isOriginalInputVideo}
               onGenerationSuccess={onVideoToolSuccess}
               onOpenViewerPath={onOpenViewerPath}
             />

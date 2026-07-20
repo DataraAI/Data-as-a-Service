@@ -29,3 +29,10 @@ backend/saas_config.py
 config/.env
 config/.env.development
 config/.env.staging
+config/.env.production
+
+# Security Encryption Keys
+*.key
+*.csr
+*.crt
+*.ca-bundle
