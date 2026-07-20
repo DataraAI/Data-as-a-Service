@@ -1,9 +1,18 @@
 import { submitGenerationRequest, useQueuedJob, type LambdaJob } from "@/lib/lambdaJobs";
-import { ChevronLeft, ChevronRight, Copy, Download, Film, Info, Loader2, X } from "lucide-react";
+import { Box, ChevronLeft, ChevronRight, Copy, Download, ExternalLink, Film, Info, Loader2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { QueuedJobStatus } from "./QueuedJobStatus";
 import { ThreeDViewer } from "./ThreeDViewer";
 import { VideoToolsPanel } from "./VideoToolsPanel";
+
+// Apple's AR Quick Look anchor (rel="ar") expects an <img> child as its thumbnail.
+// This is a tiny inline cube glyph so we don't need a real asset for it.
+const AR_QUICK_LOOK_THUMB =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z'/%3E%3Cpath d='m3.3 7 8.7 5 8.7-5M12 22V12'/%3E%3C/svg%3E";
+
+function foxgloveUrl(url: string) {
+  return `https://studio.foxglove.dev/?ds=remote-file&ds.url=${encodeURIComponent(url)}`;
+}
 
 interface ImageModalProps {
   image: any;
@@ -214,6 +223,38 @@ export function ImageModal({
             </div>
             <h3 className="font-sans-tech text-sm font-bold text-foreground">{image.name}</h3>
             <p className="mt-1 font-sans-tech text-xs text-muted-foreground">MCAP Robotics Data Container</p>
+            <a
+              href={foxgloveUrl(assetUrl)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-4 inline-flex items-center gap-2 rounded-sm bg-primary px-4 py-2.5 text-xs font-sans-tech font-bold uppercase tracking-wider text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:opacity-90"
+            >
+              <ExternalLink className="h-4 w-4" />
+              Open in Foxglove
+            </a>
+            <p className="mt-3 max-w-xs font-sans-tech text-[10px] leading-relaxed text-muted-foreground">
+              Launches Foxglove Studio with this file loaded for full playback, 3D scenes, and plots.
+            </p>
+          </div>
+        ) : isUSDZ ? (
+          <div className="flex h-64 w-full max-w-md flex-col items-center justify-center rounded-xl border border-border bg-card/40 p-8 text-center shadow-2xl">
+            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Box className="h-6 w-6" />
+            </div>
+            <h3 className="font-sans-tech text-sm font-bold text-foreground">{image.name}</h3>
+            <p className="mt-1 font-sans-tech text-xs text-muted-foreground">3D Scene Animation (USDZ)</p>
+            <a
+              rel="ar"
+              href={assetUrl}
+              className="mt-4 inline-flex items-center gap-2 rounded-sm bg-primary px-4 py-2.5 text-xs font-sans-tech font-bold uppercase tracking-wider text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:opacity-90"
+            >
+              <img src={AR_QUICK_LOOK_THUMB} alt="" className="h-4 w-4" />
+              View in AR
+            </a>
+            <p className="mt-3 max-w-xs font-sans-tech text-[10px] leading-relaxed text-muted-foreground">
+              Opens in Apple Quick Look on Safari (iOS/macOS). On other browsers, download the file to view it in a
+              compatible USDZ or AR app.
+            </p>
           </div>
         ) : (
           <img
@@ -277,14 +318,45 @@ export function ImageModal({
               </a>
             )}
             {isMcap && (
-              <a
-                href={assetUrl}
-                download={image.name}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-sm bg-primary px-4 py-2.5 text-xs font-sans-tech font-bold uppercase tracking-wider text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:opacity-90"
-              >
-                <Download className="h-4 w-4" />
-                Download Raw MCAP File
-              </a>
+              <div className="space-y-2">
+                <a
+                  href={foxgloveUrl(assetUrl)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-sm bg-primary px-4 py-2.5 text-xs font-sans-tech font-bold uppercase tracking-wider text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:opacity-90"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Open in Foxglove
+                </a>
+                <a
+                  href={assetUrl}
+                  download={image.name}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-sm border border-primary/30 bg-primary/10 px-4 py-2.5 text-xs font-sans-tech font-semibold uppercase tracking-wider text-primary transition-colors hover:bg-primary/20"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Download Raw MCAP File
+                </a>
+              </div>
+            )}
+            {isUSDZ && (
+              <div className="space-y-2">
+                <a
+                  rel="ar"
+                  href={assetUrl}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-sm bg-primary px-4 py-2.5 text-xs font-sans-tech font-bold uppercase tracking-wider text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:opacity-90"
+                >
+                  <img src={AR_QUICK_LOOK_THUMB} alt="" className="h-4 w-4" />
+                  View in AR
+                </a>
+                <a
+                  href={assetUrl}
+                  download={image.name}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-sm border border-primary/30 bg-primary/10 px-4 py-2.5 text-xs font-sans-tech font-semibold uppercase tracking-wider text-primary transition-colors hover:bg-primary/20"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Download USDZ
+                </a>
+              </div>
             )}
           </div>
 
@@ -324,6 +396,15 @@ export function ImageModal({
                   <span className="inline-flex items-center gap-1 text-right text-foreground">
                     <Film className="h-3.5 w-3.5 text-primary" />
                     Watch in browser or download
+                  </span>
+                </div>
+              )}
+              {isUSDZ && (
+                <div className="flex justify-between gap-3 p-3">
+                  <span className="font-medium text-muted-foreground">Playback</span>
+                  <span className="inline-flex items-center gap-1 text-right text-foreground">
+                    <Box className="h-3.5 w-3.5 text-primary" />
+                    View in AR (Safari) or download
                   </span>
                 </div>
               )}
@@ -520,6 +601,13 @@ export function ImageModal({
           {isVideo && !canUseGenerationTools && (
             <div className="rounded-sm border border-border bg-background/40 p-3 text-[11px] leading-relaxed text-muted-foreground">
               This video is available to view and download.
+            </div>
+          )}
+
+          {isUSDZ && (
+            <div className="rounded-sm border border-border bg-background/40 p-3 text-[11px] leading-relaxed text-muted-foreground">
+              This 3D animation opens in AR on Safari (iOS/macOS) via Apple Quick Look, or can be downloaded to view
+              in a compatible USDZ app elsewhere.
             </div>
           )}
         </div>

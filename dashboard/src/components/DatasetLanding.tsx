@@ -344,7 +344,7 @@ function DownloadCard({
   const name = String(asset.name || "").toLowerCase();
 
   const isUSDZ = type === "usdz" || type === "hand_mesh_usdz" || name.endsWith(".usdz");
-  const isPlayable = type === "video" || type === "3d";
+  const isPlayable = type === "video" || type === "3d" || type === "mcap" || isUSDZ;
 
   const Icon = type === "json" ? FileJson : (type === "video" || isUSDZ) ? Film : FileText;
 
