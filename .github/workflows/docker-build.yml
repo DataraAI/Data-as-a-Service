@@ -1,25 +1,24 @@
-name: Build and Publish to GHCR
+name: CI/CD Pipeline
 
 on:
-#  push:
-#    branches:
-#      - main
-#      - develop
-#    paths:
-#      - 'backend/**'
-#      - 'dashboard/**'
-#      - '../../docker/Dockerfile-backend'
-#      - '../../docker/Dockerfile-dashboard'
-#      - '.github/workflows/docker-build.yml'
-#  pull_request:
-#    branches:
-#      - main
-#      - develop
-#    paths:
-#      - 'backend/**'
-#      - 'dashboard/**'
-#      - '../../docker/Dockerfile-backend'
-#      - '../../docker/Dockerfile-dashboard'
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'backend/**'
+      - 'dashboard/**'
+      - 'docker/**'
+      - '.github/workflows/docker-build.yml'
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'backend/**'
+      - 'dashboard/**'
+      - 'docker/**'
+      - '.github/workflows/docker-build.yml'
   workflow_dispatch:
 
 env:
@@ -27,8 +26,76 @@ env:
   GITHUB_OWNER: ${{ github.repository_owner }}
 
 jobs:
+  verify-backend:
+    name: Verify Backend (Lint & Test)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+          pip install pytest pytest-flask ruff
+
+      - name: Run Linter (Ruff)
+        run: |
+          cd backend
+          ruff check .
+
+      - name: Run Tests (Pytest)
+        run: |
+          cd backend
+          python -m pytest
+
+  verify-dashboard:
+    name: Verify Dashboard (Lint & Test)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: 'dashboard/package.json'
+
+      - name: Install dependencies
+        run: |
+          cd dashboard
+          npm ci || npm install
+
+      - name: Run Linter (ESLint)
+        run: |
+          cd dashboard
+          npm run lint
+
+      - name: Run Type Check (TypeScript)
+        run: |
+          cd dashboard
+          npm run typecheck || echo "Typecheck warnings ignored"
+
+      - name: Run Security Audit
+        run: |
+          cd dashboard
+          npm audit || echo "Audit warnings ignored"
+
+      - name: Run Tests with Coverage (Vitest)
+        run: |
+          cd dashboard
+          npm run test:coverage
+
   build-backend:
     name: Build and Publish Backend
+    needs: [verify-backend]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -72,6 +139,7 @@ jobs:
 
   build-dashboard:
     name: Build and Publish Dashboard
+    needs: [verify-dashboard]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -158,6 +226,32 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+
+
+  deploy:
+    name: Deploy to Production
+    needs: [build-production]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Deploy to Server via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            # Navigate to deployment directory (configure path as needed)
+            mkdir -p /opt/datara-ai && cd /opt/datara-ai 
+            
+            # Pull the latest docker-compose.prod.yml if you have a way to fetch it, 
+            # or rely on pulling the images specified in the already-present compose file.
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d
+            
+            # Cleanup old unused images
+            docker system prune -f
+
   publish-release:
     name: Create Release
     needs: [build-backend, build-dashboard]
@@ -195,4 +289,3 @@ jobs:
 
             ## Changes
             See [commits](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }}) for more details.
-

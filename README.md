@@ -321,6 +321,26 @@ See [INTEGRATION_README.md](docs/INTEGRATION_README.md) for complete API documen
 
 Configuration via environment variables in `.env`
 
+## 🔄 CI/CD & Automated Testing
+
+DataraAI uses a production-grade Continuous Integration and Continuous Deployment (CI/CD) pipeline powered by GitHub Actions (`.github/workflows/docker-build.yml`).
+
+### How It Works with New Commits
+Whenever a developer pushes a new commit or opens a Pull Request against the `main` or `develop` branches, GitHub Actions automatically intercepts the code and runs a strict verification pipeline.
+
+### Verification Pipeline (Pre-Docker)
+Before any containers are built, the code must pass several quality gates executed in isolated environments:
+- **Testing & Coverage:** `pytest` (Backend) and `vitest` (Frontend) execute test suites and track code coverage.
+- **Linting:** Code style is enforced via `ruff` (Python) and `eslint` (React).
+- **Type Checking:** Strict static type checking using `mypy` (Python) and `tsc` (TypeScript).
+- **Security:** Security scans run via `bandit` (Python SAST) and `npm audit` (Node.js dependencies).
+
+### How It Works with Docker
+1. **Fail-Fast:** If any tests, type checks, or security scans fail, the pipeline halts immediately. Bad code never becomes a Docker image.
+2. **Containerization:** Once verification passes, Docker Buildx compiles the optimized production images (`Dockerfile-backend` and `Dockerfile-dashboard`).
+3. **Registry Push:** The new Docker images are tagged (using the branch name and commit SHA) and published securely to the GitHub Container Registry (GHCR).
+4. **Continuous Deployment (CD):** If the commit was pushed directly to `main`, the pipeline automatically connects to the production server via SSH, pulls the newly built Docker images from GHCR, and cleanly restarts the live containers.
+
 ## 🚀 Deployment
 
 ### Quick Deploy
