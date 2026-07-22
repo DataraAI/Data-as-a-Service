@@ -2698,6 +2698,13 @@ class ProcessingService:
             raise ValueError("Invalid video trajectory")
         source_dataset = source["dataset"]
         source_blob = source["blob_name"]
+        source_meta = source["metadata"]
+
+        # CHANGED: derive duration from cosmos metadata instead of using default
+        fps = float(source_meta.get("fps") or 0) or 30.0
+        frame_count = int(source_meta.get("frameCount") or 0)
+        duration_seconds = round(frame_count / fps, 2) if frame_count > 0 else 5.0
+
         video_name = os.path.splitext(os.path.basename(source_blob))[0]
         vipe_zip_blob = f"{source_dataset['storage_prefix'].rstrip('/')}/misc/cache/{video_name}_vipe_output.zip"
         vipe_zip_url = ""
@@ -2718,7 +2725,9 @@ class ProcessingService:
             ),
             "trajectory": trajectory,
             "vipe_zip_url": vipe_zip_url,
-        }
+            "duration_seconds": duration_seconds,  # ADDED
+            "fps": fps,                             # ADDED
+    }
 
     def _prepare_remote_generate_hand_mesh(
         self,
