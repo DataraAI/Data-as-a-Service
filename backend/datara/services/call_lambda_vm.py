@@ -1153,14 +1153,19 @@ def generate_hand_mesh(
                         local_video_paths.append(local_path)
 
                 for index, remote_artifact_path in enumerate(remote_artifacts):
-                    filename = os.path.basename(remote_artifact_path) or f"artifact_{index + 1}"
+                    filename = os.path.basename(remote_artifact_path)
                     local_path = os.path.join(local_artifacts_dir, filename)
-                    if os.path.exists(local_path):
-                        stem, ext = os.path.splitext(filename)
-                        local_path = os.path.join(local_artifacts_dir, f"{stem}_{index + 1}{ext or ''}")
                     sftp.get(remote_artifact_path, local_path)
-                    if os.path.isfile(local_path):
-                        local_artifact_paths.append(local_path)
+                    if filename.endswith(".zip") and os.path.isfile(local_path):
+                        import zipfile
+                        with zipfile.ZipFile(local_path, "r") as zf:
+                            zf.extractall(local_artifacts_dir)
+                        os.remove(local_path)
+                        for extracted in os.listdir(local_artifacts_dir):
+                            if extracted.lower().endswith(".obj"):
+                                local_artifact_paths.append(os.path.join(local_artifacts_dir, extracted))
+                    elif os.path.isfile(local_path):
+                        local_artifact_paths.append(local_path)   
                 
                 for index, remote_mcap_path in enumerate(remote_mcap):
                     filename = os.path.basename(remote_mcap_path) or f"mcap_{index + 1}"

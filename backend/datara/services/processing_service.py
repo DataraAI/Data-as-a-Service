@@ -1989,7 +1989,7 @@ class ProcessingService:
         source_asset_id: str,
     ) -> str:
         filename = f"{seq_slug}_hand_keypoints.mcap"
-        blob_name = f"{output_prefix.rstrip('/')}/mcaps/{filename}"
+        blob_name = f"{output_prefix.rstrip('/')}/{filename}"
         container_client = self.azure_service.get_container_client(dataset["storage_container"])
 
         with open(local_file_path, "rb") as handle:
@@ -2141,7 +2141,7 @@ class ProcessingService:
         source_asset_id: str,
     ) -> str:
         filename = os.path.basename(local_file_path)
-        blob_name = f"{output_prefix.rstrip('/')}/mcaps/{filename}"
+        blob_name = f"{output_prefix.rstrip('/')}/{filename}"
         container_client = self.azure_service.get_container_client(dataset["storage_container"])
 
         with open(local_file_path, "rb") as handle:
@@ -2370,15 +2370,6 @@ class ProcessingService:
                 )
                 uploaded_mcaps.append(blob_name)
 
-            mcap_download_urls: list[str] = []
-            for blob_name_full in [f"{output_download_prefix}/{os.path.basename(p)}" for p in local_mcap_paths]:
-                sas_url = self.azure_service.generate_sas_url(
-                    dataset["storage_container"],
-                    blob_name_full,
-                    expiry_hours=24,
-                )
-                mcap_download_urls.append(sas_url)
-
             for local_npz_path in local_npz_paths:
                 blob_name = self._upload_hand_mesh_npz(
                     dataset=dataset,
@@ -2424,7 +2415,6 @@ class ProcessingService:
             "output_videos": uploaded_videos,
             "output_artifacts": uploaded_artifacts,
             "output_mcaps" : uploaded_mcaps,
-            "output_mcap_download_urls": mcap_download_urls,
             "output_npz": uploaded_npz,
             "output_usdz": uploaded_usdz,
             "output_layout": uploaded_layout,
@@ -3526,14 +3516,6 @@ class ProcessingService:
             )
             for path in layouts
         ]
-        mcap_download_urls = [
-            self.azure_service.generate_sas_url(
-                dataset["storage_container"],
-                blob_name,
-                expiry_hours=24,
-            )
-            for blob_name in uploaded_mcaps
-        ]
         return {
             "message": "Hand mesh outputs generated and uploaded successfully.",
             "output_route_path": output_route_path,
@@ -3541,7 +3523,6 @@ class ProcessingService:
             "output_videos": uploaded_videos,
             "output_artifacts": uploaded_artifacts,
             "output_mcaps": uploaded_mcaps,
-            "output_mcap_download_urls": mcap_download_urls,
             "output_npz": uploaded_npz,
             "output_usdz": uploaded_usdz,
             "output_layout": uploaded_layout,
