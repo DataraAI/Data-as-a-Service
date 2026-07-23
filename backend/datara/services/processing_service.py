@@ -585,6 +585,7 @@ class ProcessingService:
             f"- `{task_slug}_overlayed_hands.mp4` is the source-camera hand overlay video.\n"
             f"- `{task_slug}_hand_keypoints.npz` is the downloadable hand keypoint array.\n"
             f"- `{task_slug}_hand_animation.usdz` is the downloadable 3D hand mesh animation sequence.\n"
+            f"- `{task_slug}.layout.json` is the downloadable .mcap layout viewable in Foxglove.\n"
             "\n"
             if is_dexterity
             else ""
@@ -2128,6 +2129,54 @@ class ProcessingService:
             }
         )
         return blob_name
+    
+    def _upload_hand_mesh_layout(
+        self,
+        *,
+        dataset: dict[str, Any],
+        output_prefix: str,
+        local_file_path: str,
+        source_task: str,
+        seq_slug: str,
+        source_asset_id: str,
+    ) -> str:
+        filename = os.path.basename(local_file_path)
+        blob_name = f"{output_prefix.rstrip('/')}/{filename}"
+        container_client = self.azure_service.get_container_client(dataset["storage_container"])
+
+        with open(local_file_path, "rb") as handle:
+            container_client.upload_blob(
+                name=blob_name,
+                data=handle,
+                overwrite=True,
+                content_settings=ContentSettings(content_type="model/vnd.usdz+zip"),
+            )
+
+        existing_doc = self.azure_service.get_cosmos_doc_for_blob(dataset["storage_container"], blob_name) or {}
+        self.azure_service.upsert_cosmos_item(
+            {
+                "id": existing_doc.get("id", os.urandom(16).hex()),
+                "docType": "hand_mesh_layout",
+                "containerName": dataset["storage_container"],
+                "datasetName": output_prefix.rstrip("/"),
+                "datasetId": dataset["id"],
+                "ownerUserId": dataset["owner_user_id"],
+                "visibility": dataset["visibility"],
+                "sourceDatasetId": dataset["id"],
+                "view": "hand_mesh",
+                "frameName": filename,
+                "blobPath": blob_name,
+                "date": existing_doc.get("date", ""),
+                "frameId": None,
+                "miscTags": ["hand_mesh", "layout", "json", seq_slug],
+                "task": source_task,
+                "handMeshSequence": seq_slug,
+                "sourceAssetId": source_asset_id,
+                "sourceType": "hand_mesh_layout",
+                "downloadable": True,
+            }
+        )
+        return blob_name
 
     def _resolve_hand_mesh_video_url(self, video_url: str, current_user: dict[str, Any]) -> str:
         video_url = str(video_url or "").strip()
@@ -2249,14 +2298,14 @@ class ProcessingService:
         try:
             from datara.services import call_lambda_vm
 
-            local_video_paths, local_artifact_paths, local_mcap_paths, local_npz_paths, local_vipe_zip_paths, local_usdz_paths, status_code, error_message = call_lambda_vm.generate_hand_mesh(
+            local_video_paths, local_artifact_paths, local_mcap_paths, local_npz_paths, local_vipe_zip_paths, local_usdz_paths, local_layout_paths, status_code, error_message = call_lambda_vm.generate_hand_mesh(
                 video_url=effective_video_url,
                 seq_name=seq_slug,
                 pipeline=pipeline,
                 local_output_dir=local_output_dir,
                 vipe_zip_url=vipe_zip_url,
             )
-            if status_code != 200 or (not local_video_paths and not local_artifact_paths and not local_mcap_paths and not local_npz_paths and not local_usdz_paths):
+            if status_code != 200 or (not local_video_paths and not local_artifact_paths and not local_mcap_paths and not local_npz_paths and not local_usdz_paths and not local_layout_paths):
                 return {"error": error_message or "Hand mesh generation failed"}, status_code or 500
 
             self.azure_service.delete_blobs_with_prefix(dataset["storage_container"], output_artifact_prefix)
@@ -2285,6 +2334,7 @@ class ProcessingService:
             uploaded_mcaps: list[str] = []
             uploaded_npz: list[str] = []
             uploaded_usdz: list[str] = []
+            uploaded_layout: list[str] = []
             for local_video_path in local_video_paths:
                 blob_name = self._upload_hand_mesh_video(
                     dataset=dataset,
@@ -2320,15 +2370,6 @@ class ProcessingService:
                 )
                 uploaded_mcaps.append(blob_name)
 
-            mcap_download_urls: list[str] = []
-            for blob_name_full in [f"{output_download_prefix}/{os.path.basename(p)}" for p in local_mcap_paths]:
-                sas_url = self.azure_service.generate_sas_url(
-                    dataset["storage_container"],
-                    blob_name_full,
-                    expiry_hours=24,
-                )
-                mcap_download_urls.append(sas_url)
-
             for local_npz_path in local_npz_paths:
                 blob_name = self._upload_hand_mesh_npz(
                     dataset=dataset,
@@ -2350,6 +2391,17 @@ class ProcessingService:
                     source_asset_id=source_asset_id,
                 )
                 uploaded_usdz.append(blob_name)
+            
+            for local_layout_path in local_layout_paths:
+                blob_name = self._upload_hand_mesh_layout(
+                    dataset=dataset,
+                    output_prefix=output_download_prefix,
+                    local_file_path=local_layout_path,
+                    source_task=source_task,
+                    seq_slug=seq_slug,
+                    source_asset_id=source_asset_id,
+                )
+                uploaded_layout.append(blob_name)
         except Exception as exc:
             logger.error("generate_hand_mesh error: %s", exc, exc_info=True)
             return {"error": str(exc)}, 400 if isinstance(exc, ValueError) else 500
@@ -2363,9 +2415,9 @@ class ProcessingService:
             "output_videos": uploaded_videos,
             "output_artifacts": uploaded_artifacts,
             "output_mcaps" : uploaded_mcaps,
-            "output_mcap_download_urls": mcap_download_urls,
             "output_npz": uploaded_npz,
             "output_usdz": uploaded_usdz,
+            "output_layout": uploaded_layout,
             "seq": seq_slug,
         }, 200
 
@@ -3375,6 +3427,7 @@ class ProcessingService:
         mcaps = self._remote_artifacts(artifact_paths, extensions=(".mcap",))
         npz_files = self._remote_artifacts(artifact_paths, extensions=(".npz",))
         usdz_files = self._remote_artifacts(artifact_paths, extensions=(".usdz", ".usdc", ".usd"))
+        layouts = self._remote_artifacts(artifact_paths, extensions=(".json",))
         artifacts = [
             path
             for path in artifact_paths
@@ -3452,13 +3505,16 @@ class ProcessingService:
             )
             for path in usdz_files
         ]
-        mcap_download_urls = [
-            self.azure_service.generate_sas_url(
-                dataset["storage_container"],
-                blob_name,
-                expiry_hours=24,
+        uploaded_layout=[
+            self._upload_hand_mesh_layout(
+                dataset=dataset,
+                output_prefix=output_download_prefix,
+                local_file_path=path,
+                source_task=source_task,
+                seq_slug=seq_slug,
+                source_asset_id=source_asset_id,
             )
-            for blob_name in uploaded_mcaps
+            for path in layouts
         ]
         return {
             "message": "Hand mesh outputs generated and uploaded successfully.",
@@ -3467,9 +3523,9 @@ class ProcessingService:
             "output_videos": uploaded_videos,
             "output_artifacts": uploaded_artifacts,
             "output_mcaps": uploaded_mcaps,
-            "output_mcap_download_urls": mcap_download_urls,
             "output_npz": uploaded_npz,
             "output_usdz": uploaded_usdz,
+            "output_layout": uploaded_layout,
             "seq": seq_slug,
         }, 200
 
