@@ -1330,7 +1330,9 @@ def generate_task_intelligence(video_url: str):
         return None, 500
 
 # Rename to Create Video Angle Adjustment, or something similar; v2v is entire pipeline not this specific component
-def generate_video_to_video(*, video_url: str, local_output_video: str, vipe_zip_url: str | None = None, trajectory: str = "left"):
+def generate_video_to_video(*, video_url, local_output_video,
+                             vipe_zip_url=None, trajectory="left",
+                             duration_seconds=5.0, fps=24): 
     """
     SSH into the Lambda VM, invoke lyra_v2v.py from the SaaS repo with the given
     arguments, then SFTP the Gen3C output video and VIPE zip back locally.
@@ -1357,7 +1359,9 @@ def generate_video_to_video(*, video_url: str, local_output_video: str, vipe_zip
             script_args = (
                 f'--video_url "{_shell_escape(video_url)}" '
                 f'--output_dir "{_shell_escape(remote_output_dir)}" '
-                f'--trajectory {trajectory}'
+                f'--trajectory {trajectory} '
+                f'--duration_seconds {duration_seconds} '  # ADD
+                f'--fps {int(fps)}'
             )
             if vipe_zip_url:
                 script_args += f' --vipe_zip_url "{_shell_escape(vipe_zip_url)}"'

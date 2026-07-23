@@ -1696,7 +1696,11 @@ class ProcessingService:
         trajectory = str(data.get("trajectory") or "left").strip()
         if trajectory not in ("up", "down", "left", "right", "zoom_in", "zoom_out"):
             return {"error": f"Invalid trajectory '{trajectory}'. Must be one of: up, down, left, right, zoom_in, zoom_out."}, 400
-
+        source_meta = source.get("metadata") or {}
+        fps = float(source_meta.get("fps") or 0) or 30.0
+        frame_count = int(source_meta.get("frameCount") or 0)
+        duration_seconds = round(frame_count / fps, 2) if frame_count > 0 else 5.0
+        duration_seconds = min(duration_seconds, 10.0)  # ~363 frames, 3 chunks
         # Check whether a cached VIPE zip already exists in blob storage for this asset.
         # If found, pass its SAS URL to the lambda so VIPE can be skipped.
         dataset_prefix = source_dataset["storage_prefix"].rstrip("/")
@@ -1727,6 +1731,8 @@ class ProcessingService:
                 local_output_video=local_output_video,
                 vipe_zip_url=vipe_zip_url,
                 trajectory=trajectory,
+                duration_seconds=duration_seconds,  # ADD
+                fps=fps,   
             )
 
             if status_code != 200 or not result_path:
