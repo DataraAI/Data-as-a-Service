@@ -1666,28 +1666,12 @@ class ProcessingService:
         """
         source = self._resolve_source_asset(current_user, str(data.get("asset_id") or ""))
 
-        # Check Cache in Cosmos DB <- Remove, we have a database
-        # if source["metadata"].get("videoToVideoViews"):
-        #     logger.info("Found cached video-to-video views for asset %s", data.get("asset_id"))
-        #     cached = source["metadata"]["videoToVideoViews"]
-        #     # Rebuild proxy_url in case it was stored before this field existed
-        #     if "proxy_url" not in cached and "blob_name" in cached:
-        #         source_dataset_cached = source["dataset"]
-        #         cached["proxy_url"] = f"/api/proxy/{self.dataset_service.encode_asset_id(source_dataset_cached['id'], cached['blob_name'])}"
-        #     return {
-        #         "message": "Video-to-video views retrieved from cache.",
-        #         "data": cached,
-        #         "cached": True,
-        #     }, 200
-
         source_dataset = source["dataset"]
         source_blob = source["blob_name"]
 
         if not any(source_blob.lower().endswith(ext) for ext in (".mp4", ".mov", ".m4v", ".webm")):
             return {"error": "Video-to-Video views can only be generated for video assets."}, 400
 
-        # Generate a SAS URL so the Lambda VM can download the video directly from Azure.
-        # Expiry is set generously to cover the full VIPE + Gen3C runtime.
         video_url = self.azure_service.generate_sas_url(
             source_dataset["storage_container"],
             source_blob,
@@ -1698,8 +1682,6 @@ class ProcessingService:
         if trajectory not in ("up", "down", "left", "right", "zoom_in", "zoom_out"):
             return {"error": f"Invalid trajectory '{trajectory}'. Must be one of: up, down, left, right, zoom_in, zoom_out."}, 400
 
-        # Check whether a cached VIPE zip already exists in blob storage for this asset.
-        # If found, pass its SAS URL to the lambda so VIPE can be skipped.
         dataset_prefix = source_dataset["storage_prefix"].rstrip("/")
         vipe_zip_blob = f"{dataset_prefix}/misc/cache/{video_name}_vipe_output.zip"
         vipe_zip_url = None
@@ -1723,7 +1705,9 @@ class ProcessingService:
             from datara.services import call_lambda_vm
 
             logger.info("Running Lyra v2v on Lambda VM for asset: %s", source_blob)
-            result_path, status_code = call_lambda_vm.generate_video_to_video(
+
+            # CHANGED: unpack 3 values (added local_usd_path)
+            result_path, local_usd_path, status_code = call_lambda_vm.generate_video_to_video(
                 video_url=video_url,
                 local_output_video=local_output_video,
                 vipe_zip_url=vipe_zip_url,
@@ -1743,7 +1727,6 @@ class ProcessingService:
                     content_settings=ContentSettings(content_type="video/mp4"),
                 )
 
-            # Upload the VIPE zip so it can be reused on future runs.
             local_vipe_zip = os.path.join(job_root, "vipe_output.zip")
             if os.path.isfile(local_vipe_zip):
                 with open(local_vipe_zip, "rb") as fh:
@@ -1758,7 +1741,6 @@ class ProcessingService:
             generated_at = datetime.now(timezone.utc).isoformat()
             source_meta  = source["metadata"]
 
-            # Cosmos annotation for the Gen3C output video (metadata-only, not browseable)
             gen3c_existing = self.azure_service.get_cosmos_doc_for_blob(
                 source_dataset["storage_container"], output_blob_name
             ) or {}
@@ -1787,7 +1769,6 @@ class ProcessingService:
                 "generatedAt":     generated_at,
             })
 
-            # Cosmos annotation for the VIPE zip (cache tracking)
             vipe_existing = self.azure_service.get_cosmos_doc_for_blob(
                 source_dataset["storage_container"], vipe_zip_blob
             ) or {}
@@ -1812,12 +1793,31 @@ class ProcessingService:
                 "generatedAt":     generated_at,
             })
 
+            # CHANGED: upload USD scene if generated
+            usd_download_url = None
+            if local_usd_path and os.path.isfile(local_usd_path):
+                usd_blob_name = f"{dataset_prefix}/{video_name}_{trajectory}.usd"
+                with open(local_usd_path, "rb") as fh:
+                    container_client.upload_blob(
+                        name=usd_blob_name,
+                        data=fh,
+                        overwrite=True,
+                        content_settings=ContentSettings(content_type="application/octet-stream"),
+                    )
+                logger.info("Uploaded USD scene to blob: %s", usd_blob_name)
+                usd_download_url = self.azure_service.generate_sas_url(
+                    source_dataset["storage_container"],
+                    usd_blob_name,
+                    expiry_hours=24,
+                )
+
             output_asset_id = self.dataset_service.encode_asset_id(source_dataset["id"], output_blob_name)
             v2v_result = {
-                "blob_name": output_blob_name,
-                "container": source_dataset["storage_container"],
+                "blob_name":    output_blob_name,
+                "container":    source_dataset["storage_container"],
                 "generated_at": generated_at,
-                "proxy_url": f"/api/proxy/{output_asset_id}",
+                "proxy_url":    f"/api/proxy/{output_asset_id}",
+                "usd_url":      usd_download_url,  # NEW: direct download link for Isaac Sim scene
             }
 
             cosmos_doc = source["metadata"]
@@ -3287,6 +3287,9 @@ class ProcessingService:
         if len(videos) != 1:
             raise ValueError("Video perspective generation must return exactly one video")
         vipe_zips = self._remote_artifacts(artifact_paths, marker="outputs/vipe", extensions=(".zip",))
+        # CHANGED: also look for USD scene
+        usd_files = self._remote_artifacts(artifact_paths, marker="outputs/scene", extensions=(".usd",))
+
         source = self._resolve_source_asset(current_user, str(data.get("asset_id") or ""))
         dataset = source["dataset"]
         source_blob = source["blob_name"]
@@ -3297,6 +3300,7 @@ class ProcessingService:
         output_blob = f"{dataset_prefix}/{task_slug}_{trajectory}.mp4"
         vipe_blob = f"{dataset_prefix}/misc/cache/{video_name}_vipe_output.zip"
         container = self.azure_service.get_container_client(dataset["storage_container"])
+
         with open(videos[0], "rb") as handle:
             container.upload_blob(
                 name=output_blob,
@@ -3304,6 +3308,7 @@ class ProcessingService:
                 overwrite=True,
                 content_settings=ContentSettings(content_type="video/mp4"),
             )
+
         if vipe_zips:
             with open(vipe_zips[0], "rb") as handle:
                 container.upload_blob(
@@ -3315,72 +3320,90 @@ class ProcessingService:
 
         generated_at = datetime.now(timezone.utc).isoformat()
         source_meta = source["metadata"]
+
         output_existing = self.azure_service.get_cosmos_doc_for_blob(
-            dataset["storage_container"],
-            output_blob,
+            dataset["storage_container"], output_blob,
         ) or {}
-        self.azure_service.upsert_cosmos_item(
-            {
-                "id": output_existing.get("id", os.urandom(16).hex()),
-                "docType": "gen3c_v2v_output",
-                "containerName": dataset["storage_container"],
-                "datasetName": dataset["storage_prefix"],
-                "datasetId": dataset["id"],
-                "ownerUserId": dataset["owner_user_id"],
-                "visibility": dataset["visibility"],
-                "sourceDatasetId": dataset["id"],
-                "sourceBlobPath": source_blob,
-                "view": "gen3c",
-                "frameName": os.path.basename(output_blob),
-                "blobPath": output_blob,
-                "date": source_meta.get("date", ""),
-                "frameId": None,
-                "width": source_meta.get("width"),
-                "height": source_meta.get("height"),
-                "fps": source_meta.get("fps"),
-                "frameCount": source_meta.get("frameCount"),
-                "miscTags": ["gen3c", "new_angle_video"],
-                "task": source_meta.get("task", ""),
-                "sourceType": "gen3c_output",
-                "generatedAt": generated_at,
-            }
-        )
+        self.azure_service.upsert_cosmos_item({
+            "id":              output_existing.get("id", os.urandom(16).hex()),
+            "docType":         "gen3c_v2v_output",
+            "containerName":   dataset["storage_container"],
+            "datasetName":     dataset["storage_prefix"],
+            "datasetId":       dataset["id"],
+            "ownerUserId":     dataset["owner_user_id"],
+            "visibility":      dataset["visibility"],
+            "sourceDatasetId": dataset["id"],
+            "sourceBlobPath":  source_blob,
+            "view":            "gen3c",
+            "frameName":       os.path.basename(output_blob),
+            "blobPath":        output_blob,
+            "date":            source_meta.get("date", ""),
+            "frameId":         None,
+            "width":           source_meta.get("width"),
+            "height":          source_meta.get("height"),
+            "fps":             source_meta.get("fps"),
+            "frameCount":      source_meta.get("frameCount"),
+            "miscTags":        ["gen3c", "new_angle_video"],
+            "task":            source_meta.get("task", ""),
+            "sourceType":      "gen3c_output",
+            "generatedAt":     generated_at,
+        })
+
         if vipe_zips:
             vipe_existing = self.azure_service.get_cosmos_doc_for_blob(
-                dataset["storage_container"],
-                vipe_blob,
+                dataset["storage_container"], vipe_blob,
             ) or {}
-            self.azure_service.upsert_cosmos_item(
-                {
-                    "id": vipe_existing.get("id", os.urandom(16).hex()),
-                    "docType": "vipe",
-                    "containerName": dataset["storage_container"],
-                    "datasetName": dataset["storage_prefix"],
-                    "datasetId": dataset["id"],
-                    "ownerUserId": dataset["owner_user_id"],
-                    "visibility": dataset["visibility"],
-                    "sourceDatasetId": dataset["id"],
-                    "sourceBlobPath": source_blob,
-                    "view": "vipe",
-                    "frameName": os.path.basename(vipe_blob),
-                    "blobPath": vipe_blob,
-                    "date": source_meta.get("date", ""),
-                    "frameId": None,
-                    "miscTags": ["gen3c", "vipe", "new_angle_video"],
-                    "task": source_meta.get("task", ""),
-                    "sourceType": "vipe_output",
-                    "generatedAt": generated_at,
-                }
+            self.azure_service.upsert_cosmos_item({
+                "id":              vipe_existing.get("id", os.urandom(16).hex()),
+                "docType":         "vipe",
+                "containerName":   dataset["storage_container"],
+                "datasetName":     dataset["storage_prefix"],
+                "datasetId":       dataset["id"],
+                "ownerUserId":     dataset["owner_user_id"],
+                "visibility":      dataset["visibility"],
+                "sourceDatasetId": dataset["id"],
+                "sourceBlobPath":  source_blob,
+                "view":            "vipe",
+                "frameName":       os.path.basename(vipe_blob),
+                "blobPath":        vipe_blob,
+                "date":            source_meta.get("date", ""),
+                "frameId":         None,
+                "miscTags":        ["gen3c", "vipe", "new_angle_video"],
+                "task":            source_meta.get("task", ""),
+                "sourceType":      "vipe_output",
+                "generatedAt":     generated_at,
+            })
+
+        # CHANGED: upload USD scene if generated
+        usd_download_url = None
+        if usd_files:
+            usd_blob = f"{dataset_prefix}/{task_slug}_{trajectory}.usd"
+            with open(usd_files[0], "rb") as handle:
+                container.upload_blob(
+                    name=usd_blob,
+                    data=handle,
+                    overwrite=True,
+                    content_settings=ContentSettings(content_type="application/octet-stream"),
+                )
+            logger.info("Uploaded USD scene to blob: %s", usd_blob)
+            usd_download_url = self.azure_service.generate_sas_url(
+                dataset["storage_container"],
+                usd_blob,
+                expiry_hours=24,
             )
+
         output_asset_id = self.dataset_service.encode_asset_id(dataset["id"], output_blob)
         result = {
-            "blob_name": output_blob,
-            "container": dataset["storage_container"],
+            "blob_name":    output_blob,
+            "container":    dataset["storage_container"],
             "generated_at": generated_at,
-            "proxy_url": f"/api/proxy/{output_asset_id}",
+            "proxy_url":    f"/api/proxy/{output_asset_id}",
+            "usd_url":      usd_download_url,  # NEW: direct download link for Isaac Sim scene
         }
+
         source_meta["NewAngleViews"] = result
         self.azure_service.upsert_cosmos_item(source_meta)
+
         return {
             "message": "Video-to-video generation completed successfully.",
             "data": result,

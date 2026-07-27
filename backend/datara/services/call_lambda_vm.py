@@ -1364,17 +1364,19 @@ def generate_task_intelligence(video_url: str):
         return None, 500
 
 # Rename to Create Video Angle Adjustment, or something similar; v2v is entire pipeline not this specific component
-def generate_video_to_video(*, video_url: str, local_output_video: str, vipe_zip_url: str | None = None, trajectory: str = "left"):
+def generate_video_to_video(*, video_url: str, local_output_video: str,
+                             vipe_zip_url: str | None = None,
+                             trajectory: str = "left"):
     """
     SSH into the Lambda VM, invoke lyra_v2v.py from the SaaS repo with the given
-    arguments, then SFTP the Gen3C output video and VIPE zip back locally.
+    arguments, then SFTP the Gen3C output video, VIPE zip, and USD scene back locally.
     If vipe_zip_url is provided it is forwarded to the script so VIPE inference
     can be skipped when a cached zip already exists in Azure.
     trajectory selects the Gen3C camera preset (up/down/left/right/zoom_in/zoom_out).
-    Returns (local_output_video, status_code).
+    Returns (local_output_video, local_output_usd, status_code).
     """
     if not video_url:
-        return None, 400
+        return None, None, 400
 
     import json as _json
 
@@ -1384,10 +1386,10 @@ def generate_video_to_video(*, video_url: str, local_output_video: str, vipe_zip
     remote_root       = f"/home/{SAAS_USER}/datara_lyra_jobs/{job_id}"
     remote_output_dir = posixpath.join(remote_root, "output")
     output_dir        = os.path.dirname(os.path.abspath(local_output_video))
+    local_output_usd  = os.path.join(output_dir, "scene.usd")
 
     try:
         with _ssh_session() as ssh_client:
-            # Build the lyra_v2v.py invocation
             script_args = (
                 f'--video_url "{_shell_escape(video_url)}" '
                 f'--output_dir "{_shell_escape(remote_output_dir)}" '
@@ -1404,32 +1406,42 @@ def generate_video_to_video(*, video_url: str, local_output_video: str, vipe_zip
             if status != 0:
                 logger.error("lyra_v2v.py failed (exit %s): %s", status, stderr or stdout)
                 _run_command(ssh_client, f"rm -rf {remote_root}")
-                return None, 500
+                return None, None, 500
 
-            # The script prints a single JSON line as its last stdout line
             last_line = (stdout.strip().splitlines() or [""])[-1].strip()
             try:
                 result = _json.loads(last_line)
                 remote_gen3c_video = result["gen3c_video"]
-                remote_vipe_zip = result["vipe_zip"]
+                remote_vipe_zip    = result["vipe_zip"]
+                remote_output_usd  = result.get("output_usd")  # NEW
             except (ValueError, KeyError) as exc:
                 logger.error("Could not parse lyra_v2v.py output JSON (%s): %r", exc, last_line)
                 _run_command(ssh_client, f"rm -rf {remote_root}")
-                return None, 500
+                return None, None, 500
 
-            # SFTP results back locally
             sftp = ssh_client.open_sftp()
             try:
                 sftp.get(remote_gen3c_video, local_output_video)
                 sftp.get(remote_vipe_zip, f"{output_dir}/vipe_output.zip")
+                # NEW: download the USD scene if it was generated
+                if remote_output_usd:
+                    try:
+                        sftp.get(remote_output_usd, local_output_usd)
+                        logger.info("Downloaded USD scene to %s", local_output_usd)
+                    except Exception as e:
+                        logger.warning("Could not download USD scene: %s", e)
+                        local_output_usd = None
+                else:
+                    local_output_usd = None
             finally:
                 sftp.close()
 
             _run_command(ssh_client, f"rm -rf {remote_root}")
 
             if os.path.isfile(local_output_video):
-                return local_output_video, 200
-            return None, 500
+                return local_output_video, local_output_usd, 200
+            return None, None, 500
+
     except Exception as exc:
         logger.error("generate_video_to_video error: %s", exc, exc_info=True)
-        return None, 500
+        return None, None, 500
