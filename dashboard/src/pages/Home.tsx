@@ -384,20 +384,27 @@ export default function Home() {
               The complete data stack for Physical AI. Dexterity. Automotive. Warehouse. Data Center.
             </p>
 
-            <div className="mt-9 flex flex-col items-center justify-center gap-4 sm:flex-row">
+            <div className="group mt-9 inline-flex flex-col items-center gap-4 sm:flex-row">
               <button
                 type="button"
                 onClick={() => scrollToHomeSection(productsRef.current)}
-                className="inline-flex h-14 items-center justify-center rounded-full bg-primary px-8 text-[15px] font-extrabold text-primary-foreground shadow-[0_6px_20px_rgba(13,148,136,0.2)] transition-all hover:-translate-y-0.5 hover:opacity-90"
+                className="inline-flex h-14 items-center justify-center rounded-full border border-primary bg-primary px-8 text-[15px] font-extrabold text-primary-foreground shadow-[0_6px_20px_rgba(13,148,136,0.2)] transition-all duration-0 hover:-translate-y-0.5 hover:opacity-90 group-hover:border-slate-200 group-hover:bg-card group-hover:text-slate-700 group-hover:shadow-none hover:border-primary hover:bg-primary hover:text-primary-foreground hover:shadow-[0_6px_20px_rgba(13,148,136,0.2)]"
               >
                 See How It Works
               </button>
               <Link
                 to={buildAuthPath("register", "/")}
-                className="inline-flex h-14 items-center justify-center rounded-full border border-slate-200 bg-card px-8 text-[15px] font-bold text-slate-700 transition-colors hover:bg-muted"
+                className="inline-flex h-14 items-center justify-center rounded-full border border-slate-200 bg-card px-8 text-[15px] font-bold text-slate-700 transition-all hover:border-primary hover:bg-primary hover:text-primary-foreground hover:shadow-[0_6px_20px_rgba(13,148,136,0.2)] hover:-translate-y-0.5"
               >
                 Request a Demo
               </Link>
+              <a
+                href="mailto:durgesh@dataraai.ai"
+                title="durgesh@dataraai.ai"
+                className="inline-flex h-14 items-center justify-center rounded-full border border-slate-200 bg-card px-8 text-[15px] font-bold text-slate-700 transition-all hover:border-primary hover:bg-primary hover:text-primary-foreground hover:shadow-[0_6px_20px_rgba(13,148,136,0.2)] hover:-translate-y-0.5"
+              >
+                Contact Us
+              </a>
             </div>
           </div>
         </section>

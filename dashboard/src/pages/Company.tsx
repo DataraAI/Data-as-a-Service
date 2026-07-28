@@ -32,9 +32,22 @@ const FOUNDERS: Founder[] = [
     ],
   },
   {
+    initials: "YC",
+    name: "Yuhlin Chang",
+    role: "Co-Founder & CTO",
+    bio: "Spatial Computing & ML expert. Meta, Reality Lab Architect. Magic Leap, Director of CV. PhD UT Austin.",
+    tone: "border-violet-300 bg-violet-50 text-violet-700",
+    tags: [
+      { label: "Meta", tone: "border-violet-200 bg-violet-50 text-violet-700" },
+      { label: "Magic Leap", tone: "border-violet-200 bg-violet-50 text-violet-700" },
+      { label: "Spatial Computing", tone: "border-blue-200 bg-blue-50 text-blue-700" },
+      { label: "PhD UT Austin", tone: "border-blue-200 bg-blue-50 text-blue-700" },
+    ],
+  },
+  {
     initials: "NR",
     name: "Niraj Rai",
-    role: "Co-Founder & CTO",
+    role: "Co-Founder & CPO",
     bio: "Serial entrepreneur. Founder SproutsAi. Ex-CTO Vimaan (AI/Robotics). Software & AI expert. IIT Kharagpur.",
     tone: "border-teal-300 bg-teal-50 text-primary",
     tags: [
@@ -107,7 +120,7 @@ export default function Company() {
             Serial entrepreneurs with deep roots in NVIDIA, AI, and robotics infrastructure.
           </p>
 
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-4 lg:grid-cols-3">
             {FOUNDERS.map((founder) => (
               <article key={founder.name} className="marketing-surface rounded-[14px] p-6">
                 <div className="flex items-start gap-4">
