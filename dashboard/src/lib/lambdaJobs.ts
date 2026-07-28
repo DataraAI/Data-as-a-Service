@@ -9,6 +9,7 @@ export interface LambdaJobResult {
   viewer_path?: string;
   proxy_url?: string;
   tasks?: unknown[];
+  usd_url?: string;
 }
 
 export interface LambdaJob {
