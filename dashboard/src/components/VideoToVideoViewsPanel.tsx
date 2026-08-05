@@ -1,4 +1,4 @@
-import { Loader2, Video } from "lucide-react";
+import { Loader2, Video, Download } from "lucide-react";
 import { useState } from "react";
 import { QueuedJobStatus } from "./QueuedJobStatus";
 import { submitGenerationRequest, useQueuedJob } from "@/lib/lambdaJobs";
@@ -31,28 +31,33 @@ export default function VideoToVideoViewsPanel({
 }: VideoToVideoViewsPanelProps) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [generatedVideoUrl, setGeneratedVideoUrl] = useState<string | null>(
-        null,
-    );
+    const [generatedVideoUrl, setGeneratedVideoUrl] = useState<string | null>(null);
+    const [usdUrl, setUsdUrl] = useState<string | null>(null);
     const [trajectory, setTrajectory] = useState<Trajectory>("left");
-    const queuedJob = useQueuedJob(`datara-job:video-perspective:${assetId || videoID}:${trajectory}`, (completedJob) => {
-        if (completedJob.status === "succeeded" && completedJob.result?.proxy_url) {
-            setGeneratedVideoUrl(completedJob.result.proxy_url);
-            onGenerated?.();
+
+    const queuedJob = useQueuedJob(
+        `datara-job:video-perspective:${assetId || videoID}:${trajectory}`,
+        (completedJob) => {
+            if (completedJob.status === "succeeded" && completedJob.result?.proxy_url) {
+                setGeneratedVideoUrl(completedJob.result.proxy_url);
+                if (completedJob.result?.usd_url) {
+                    setUsdUrl(completedJob.result.usd_url);
+                }
+                onGenerated?.();
+            }
         }
-    });
+    );
 
     const generateViews = async () => {
         setLoading(true);
         setError(null);
-
         try {
             const result = await submitGenerationRequest("/api/generate_video_to_video_views", {
-                    asset_id: assetId || videoID,
-                    videoID,
-                    videoURL,
-                    datasetName,
-                    trajectory,
+                asset_id: assetId || videoID,
+                videoID,
+                videoURL,
+                datasetName,
+                trajectory,
             });
             queuedJob.trackJob(result);
         } catch (err: any) {
@@ -84,9 +89,7 @@ export default function VideoToVideoViewsPanel({
                         </label>
                         <select
                             value={trajectory}
-                            onChange={(e) =>
-                                setTrajectory(e.target.value as Trajectory)
-                            }
+                            onChange={(e) => setTrajectory(e.target.value as Trajectory)}
                             className="rounded-sm border border-border bg-card px-3 py-1.5 font-sans-tech text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                         >
                             {TRAJECTORY_OPTIONS.map((opt) => (
@@ -156,7 +159,7 @@ export default function VideoToVideoViewsPanel({
                                 : "Generated successfully"}
                         </span>
                         <div className="flex items-center gap-2">
-                            <a
+                            
                                 href={generatedVideoUrl}
                                 download={`generated_${trajectory}.mp4`}
                                 className="inline-flex items-center gap-1 rounded-sm border border-primary/30 bg-primary/10 px-2 py-1 font-sans-tech text-[11px] font-semibold uppercase tracking-wider text-primary transition-colors hover:bg-primary/20"
@@ -177,6 +180,23 @@ export default function VideoToVideoViewsPanel({
                     <div className="rounded-sm border border-green-500/30 bg-green-500/10 px-4 py-3 text-xs font-bold text-green-500">
                         ✓ Success!
                     </div>
+
+                    {/* USD download button -- only shown when Isaac Sim scene is ready */}
+                    {usdUrl && (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                const a = document.createElement("a");
+                                a.href = usdUrl;
+                                a.download = `${videoID}_${trajectory}.usd`;
+                                a.click();
+                            }}
+                            className="flex w-full items-center justify-center gap-2 rounded-sm border border-primary/30 bg-primary/10 px-4 py-2 font-sans-tech text-xs font-bold uppercase tracking-wider text-primary transition-colors hover:bg-primary/20"
+                        >
+                            <Download className="h-3.5 w-3.5" />
+                            Download Isaac Sim Scene (.usd)
+                        </button>
+                    )}
                 </div>
             )}
         </div>
