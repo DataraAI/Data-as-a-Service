@@ -1,7 +1,8 @@
 """Build a py_trees behaviour tree from task-intelligence JSON.
 
-This is intentionally a local test harness: it uses the sample JSON below by
-default and does not call the Datara backend, Azure, or the remote annotator.
+By default this uses the sample JSON below. With ``--dataset-prefix``, it pulls
+the generated task-intelligence JSON from an Azure-backed dataset and builds the
+tree from that artifact.
 
 Run from the repository root:
 
@@ -10,6 +11,10 @@ Run from the repository root:
 You can also point it at a generated task-intelligence JSON file:
 
     python backend/utils/task_intelligence_behaviour_tree.py --json path/to/file.json
+
+Or pull the generated JSON from a dataset prefix:
+
+    python backend/utils/task_intelligence_behaviour_tree.py --dataset-prefix carAutomation/Porsche/frontSeat --container roboteyeview-public
 """
 
 from __future__ import annotations
@@ -17,9 +22,11 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sys
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
+from pathlib import PurePosixPath
 from typing import Any
 
 try:
@@ -117,6 +124,12 @@ class TaskSpec:
     start_time: str = ""
     end_time: str = ""
     steps: list[StepSpec] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class LoadedTaskIntelligence:
+    payload: Any
+    source: str
 
 
 class FactCheck(py_trees.behaviour.Behaviour):
@@ -242,6 +255,85 @@ def render_tree(tree: py_trees.trees.BehaviourTree) -> str:
     return py_trees.display.unicode_tree(tree.root, show_status=True)
 
 
+def load_task_intelligence_from_dataset(
+    dataset_prefix: str | None,
+    *,
+    container_names: Iterable[str] | None = None,
+    task_intelligence_blob: str | None = None,
+    allow_cosmos_metadata: bool = True,
+    azure_service: Any | None = None,
+    settings: Any | None = None,
+) -> LoadedTaskIntelligence:
+    """Find and load task intelligence JSON from an Azure dataset.
+
+    The generated artifact is expected to live at the dataset root with a name
+    like ``<task>_intelligence.JSON``. If no JSON artifact is found, this can
+    fall back to a ``taskIntelligence`` value stored in Cosmos metadata.
+    """
+
+    dataset_prefix = _normalize_blob_path(dataset_prefix or "")
+    task_intelligence_blob = _resolve_task_intelligence_blob_path(
+        dataset_prefix,
+        task_intelligence_blob,
+    )
+    if not dataset_prefix and not task_intelligence_blob:
+        raise ValueError("Provide --dataset-prefix or --task-intelligence-blob")
+
+    if azure_service is None or settings is None:
+        azure_service, settings = _load_azure_dependencies()
+
+    containers = _resolve_container_names(container_names, settings)
+    errors: list[str] = []
+
+    for container_name in containers:
+        if task_intelligence_blob:
+            try:
+                payload = _download_json_blob(
+                    azure_service,
+                    container_name,
+                    task_intelligence_blob,
+                )
+                return LoadedTaskIntelligence(
+                    payload=payload,
+                    source=f"azure://{container_name}/{task_intelligence_blob}",
+                )
+            except Exception as exc:  # noqa: BLE001 - continue through alternate containers
+                errors.append(f"{container_name}: failed to load {task_intelligence_blob}: {exc}")
+                continue
+
+        try:
+            blob_name = _find_task_intelligence_blob(
+                azure_service,
+                container_name,
+                dataset_prefix,
+            )
+            if blob_name:
+                payload = _download_json_blob(azure_service, container_name, blob_name)
+                return LoadedTaskIntelligence(
+                    payload=payload,
+                    source=f"azure://{container_name}/{blob_name}",
+                )
+        except Exception as exc:  # noqa: BLE001 - include context in final not-found error
+            errors.append(f"{container_name}: blob discovery failed: {exc}")
+
+        if allow_cosmos_metadata:
+            try:
+                loaded = _load_task_intelligence_from_cosmos_metadata(
+                    azure_service,
+                    container_name,
+                    dataset_prefix,
+                )
+                if loaded:
+                    return loaded
+            except Exception as exc:  # noqa: BLE001 - include context in final not-found error
+                errors.append(f"{container_name}: Cosmos metadata lookup failed: {exc}")
+
+    searched = ", ".join(containers) or "none"
+    target = task_intelligence_blob or dataset_prefix
+    detail = f" Details: {'; '.join(errors)}" if errors else ""
+    raise ValueError(f"Could not find task intelligence JSON for {target!r} in container(s): {searched}.{detail}")
+
+
 def _unwrap_task_intelligence(payload: Any) -> Any:
     if isinstance(payload, dict):
         metadata_value = payload.get("taskIntelligence")
@@ -354,7 +446,11 @@ def _string_list(value: Any) -> list[str]:
         text = _clean_text(value, "")
         return [text] if text else []
     if isinstance(value, dict):
-        return [_clean_text(key, "") for key, enabled in value.items() if enabled and _clean_text(key, "")]
+        return [
+            _clean_text(key, "")
+            for key, enabled in value.items()
+            if enabled and _clean_text(key, "")
+        ]
     if isinstance(value, Iterable):
         return [_clean_text(item, "") for item in value if _clean_text(item, "")]
 
@@ -394,16 +490,215 @@ def _infer_primitive(name: str) -> str:
     return "execute_subtask"
 
 
-def _load_payload(json_path: Path | None) -> Any:
-    if json_path is None:
-        return SAMPLE_TASK_INTELLIGENCE
-    with json_path.open(encoding="utf-8") as handle:
-        return json.load(handle)
+def _load_payload(args: argparse.Namespace) -> LoadedTaskIntelligence:
+    if args.json:
+        with args.json.open(encoding="utf-8") as handle:
+            return LoadedTaskIntelligence(
+                payload=json.load(handle),
+                source=f"file://{args.json}",
+            )
+
+    if args.dataset_prefix or args.task_intelligence_blob:
+        return load_task_intelligence_from_dataset(
+            args.dataset_prefix,
+            container_names=args.containers,
+            task_intelligence_blob=args.task_intelligence_blob,
+            allow_cosmos_metadata=not args.no_cosmos_metadata,
+        )
+
+    return LoadedTaskIntelligence(payload=SAMPLE_TASK_INTELLIGENCE, source="embedded sample")
+
+
+def _load_azure_dependencies() -> tuple[Any, Any]:
+    backend_dir = Path(__file__).resolve().parents[1]
+    backend_dir_str = str(backend_dir)
+    if backend_dir_str not in sys.path:
+        sys.path.insert(0, backend_dir_str)
+
+    from datara.config import settings
+    from datara.services.azure_service import AzureService
+
+    return AzureService(), settings
+
+
+def _resolve_container_names(container_names: Iterable[str] | None, settings: Any) -> list[str]:
+    configured_names: list[str] = []
+    for raw_value in container_names or ():
+        configured_names.extend(part.strip() for part in str(raw_value).split(",") if part.strip())
+
+    if not configured_names:
+        configured_names = [
+            getattr(settings, "azure_public_container", ""),
+            getattr(settings, "azure_blob_container", ""),
+        ]
+
+    seen: set[str] = set()
+    resolved: list[str] = []
+    for name in configured_names:
+        if name and name not in seen:
+            seen.add(name)
+            resolved.append(name)
+
+    if not resolved:
+        raise ValueError("No Azure containers were configured")
+    return resolved
+
+
+def _resolve_task_intelligence_blob_path(dataset_prefix: str, blob_name: str | None) -> str:
+    blob_name = _normalize_blob_path(blob_name or "")
+    if not blob_name:
+        return ""
+    if dataset_prefix and blob_name != dataset_prefix and not blob_name.startswith(f"{dataset_prefix}/"):
+        return f"{dataset_prefix}/{blob_name}"
+    return blob_name
+
+
+def _find_task_intelligence_blob(azure_service: Any, container_name: str, dataset_prefix: str) -> str | None:
+    if not dataset_prefix:
+        return None
+
+    candidates = []
+    for blob in azure_service.list_blobs(container_name, dataset_prefix):
+        blob_name = _blob_name(blob)
+        basename = PurePosixPath(blob_name).name.lower()
+        if basename.endswith(".json") and "intelligence" in basename:
+            candidates.append(blob_name)
+
+    if not candidates:
+        return None
+
+    return sorted(
+        candidates,
+        key=lambda blob_name: _task_intelligence_candidate_rank(dataset_prefix, blob_name),
+    )[0]
+
+
+def _load_task_intelligence_from_cosmos_metadata(
+    azure_service: Any,
+    container_name: str,
+    dataset_prefix: str,
+) -> LoadedTaskIntelligence | None:
+    if not dataset_prefix or not hasattr(azure_service, "get_cosmos_metadata_for_prefix"):
+        return None
+
+    metadata = azure_service.get_cosmos_metadata_for_prefix(container_name, dataset_prefix)
+    for blob_path, doc in sorted(metadata.items()):
+        payload = doc.get("taskIntelligence") if isinstance(doc, dict) else None
+        if isinstance(payload, (dict, list)):
+            return LoadedTaskIntelligence(
+                payload=payload,
+                source=f"cosmos://{container_name}/{blob_path}#taskIntelligence",
+            )
+
+    for blob_path, doc in sorted(metadata.items()):
+        if not isinstance(doc, dict) or not _is_task_intelligence_metadata_doc(doc):
+            continue
+        target_blob = _normalize_blob_path(str(doc.get("blobPath") or blob_path))
+        if not target_blob:
+            continue
+        payload = _download_json_blob(azure_service, container_name, target_blob)
+        return LoadedTaskIntelligence(
+            payload=payload,
+            source=f"azure://{container_name}/{target_blob}",
+        )
+
+    return None
+
+
+def _download_json_blob(azure_service: Any, container_name: str, blob_name: str) -> Any:
+    raw = azure_service.download_blob(container_name, blob_name).readall()
+    if isinstance(raw, bytes):
+        text = raw.decode("utf-8-sig")
+    else:
+        text = str(raw)
+    return json.loads(text)
+
+
+def _is_task_intelligence_metadata_doc(doc: dict[str, Any]) -> bool:
+    tags = [str(tag).lower() for tag in doc.get("miscTags", []) if str(tag).strip()]
+    typed_values = {
+        str(doc.get("docType") or "").lower(),
+        str(doc.get("sourceType") or "").lower(),
+        str(doc.get("view") or "").lower(),
+        *tags,
+    }
+    return bool(
+        typed_values
+        & {
+            "task_intelligence",
+            "task_intelligence_file",
+            "task_intelligence_json",
+        }
+    )
+
+
+def _task_intelligence_candidate_rank(dataset_prefix: str, blob_name: str) -> tuple[int, str]:
+    normalized_prefix = dataset_prefix.rstrip("/")
+    basename = PurePosixPath(blob_name).name.lower()
+    dataset_slug = PurePosixPath(normalized_prefix).name.lower()
+    is_root_child = _is_dataset_root_child(normalized_prefix, blob_name)
+    is_exact_dataset_json = basename == f"{dataset_slug}_intelligence.json"
+    is_standard_json = basename.endswith("_intelligence.json")
+
+    if is_root_child and is_exact_dataset_json:
+        rank = 0
+    elif is_root_child and is_standard_json:
+        rank = 1
+    elif is_root_child:
+        rank = 2
+    elif is_standard_json:
+        rank = 3
+    else:
+        rank = 4
+    return rank, blob_name.lower()
+
+
+def _is_dataset_root_child(dataset_prefix: str, blob_name: str) -> bool:
+    normalized_prefix = dataset_prefix.rstrip("/")
+    normalized_blob = _normalize_blob_path(blob_name)
+    if not normalized_prefix or not normalized_blob.startswith(f"{normalized_prefix}/"):
+        return False
+    suffix = normalized_blob[len(normalized_prefix) + 1 :]
+    return bool(suffix) and "/" not in suffix
+
+
+def _blob_name(blob: Any) -> str:
+    return _normalize_blob_path(str(getattr(blob, "name", blob) or ""))
+
+
+def _normalize_blob_path(value: str) -> str:
+    return str(value or "").replace("\\", "/").strip().strip("/")
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--json", type=Path, help="Optional task-intelligence JSON path.")
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument("--json", type=Path, help="Optional local task-intelligence JSON path.")
+    parser.add_argument(
+        "--dataset-prefix",
+        help="Azure dataset storage prefix, e.g. carAutomation/Porsche/frontSeat.",
+    )
+    parser.add_argument(
+        "--container",
+        action="append",
+        dest="containers",
+        metavar="CONTAINER",
+        help=(
+            "Azure Blob container to search. Repeat this flag or pass comma-separated "
+            "values. Defaults to configured public and private containers."
+        ),
+    )
+    parser.add_argument(
+        "--task-intelligence-blob",
+        help="Exact task-intelligence blob path, or filename under --dataset-prefix.",
+    )
+    parser.add_argument(
+        "--no-cosmos-metadata",
+        action="store_true",
+        help="Disable fallback lookup from Cosmos taskIntelligence metadata.",
+    )
     parser.add_argument("--ticks", type=int, default=12, help="Maximum tree ticks to run.")
     parser.add_argument(
         "--initial-fact",
@@ -411,18 +706,25 @@ def _parse_args() -> argparse.Namespace:
         default=[],
         help="Additional initial world-state fact. Can be repeated.",
     )
-    return parser.parse_args()
+    args = parser.parse_args()
+    if args.json and (args.dataset_prefix or args.task_intelligence_blob or args.containers):
+        parser.error("--json cannot be combined with Azure dataset options")
+    if args.containers and not (args.dataset_prefix or args.task_intelligence_blob):
+        parser.error("--container requires --dataset-prefix or --task-intelligence-blob")
+    return args
 
 
 def main() -> None:
     args = _parse_args()
-    payload = _load_payload(args.json)
+    loaded = _load_payload(args)
+    payload = loaded.payload
     initial_state = set(INITIAL_WORLD_STATE)
     initial_state.update(args.initial_fact)
 
     tree, world_state = build_behaviour_tree(payload, initial_world_state=initial_state)
     tree.setup(timeout=15)
 
+    print(f"Loaded task intelligence from: {loaded.source}\n")
     print("Initial tree:")
     print(render_tree(tree))
     print(f"Initial world state: {', '.join(sorted(world_state))}\n")
